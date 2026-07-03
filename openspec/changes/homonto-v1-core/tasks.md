@@ -20,7 +20,7 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 3.1 Adapter interface + `Change`/`ChangeSet` + plan printer (`internal/adapter`, `internal/plan`) — `+`/`~`, hide noops, never resolve secrets
 - [x] 3.2 ⚑ Claude adapter (`internal/adapter/claude`) — MCP/settings/plugins surgical projection; state-aware noop for secret keys; **redact `Change.Old` for secret-bearing keys**; store `{desired, sha256(resolved)}` on apply
 - [x] 3.3 ⚑ OpenCode adapter (`internal/adapter/opencode`) + Claude skill linking — JSONC merge, plugin array append, same hashed-state + redaction rules
-- [ ] 3.4 ⚑ Secret-safety tests — `plan` output **and** `state.json` never contain a resolved secret, including on **drift of a secret-backed key**
+- [x] 3.4 ⚑ Secret-safety tests — `plan` output **and** `state.json` never contain a resolved secret, including on **drift of a secret-backed key**
 
 ## 4. Engine + CLI
 - [ ] 4.1 Engine + `plan`/`apply` (`internal/engine`, `internal/cli`) — two-phase (resolve all, abort before any write), confirm `[y/N]`/`--yes`, save state last
