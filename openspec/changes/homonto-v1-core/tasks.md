@@ -23,7 +23,7 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 3.4 ⚑ Secret-safety tests — `plan` output **and** `state.json` never contain a resolved secret, including on **drift of a secret-backed key**
 
 ## 4. Engine + CLI
-- [ ] 4.1 Engine + `plan`/`apply` (`internal/engine`, `internal/cli`) — two-phase (resolve all, abort before any write), confirm `[y/N]`/`--yes`, save state last
+- [x] 4.1 Engine + `plan`/`apply` (`internal/engine`, `internal/cli`) — two-phase (resolve all, abort before any write), confirm `[y/N]`/`--yes`, save state last
 - [ ] 4.2 `status` (drift) + `doctor` (`pass` on PATH, tool dirs, owned-skill presence)
 - [ ] 4.3 `init` scaffold (never overwrite existing files)
 - [ ] 4.4 `import` — bootstrap `homonto.toml` from existing setup with **secret redaction** to `${pass:…}`; `--force` guard

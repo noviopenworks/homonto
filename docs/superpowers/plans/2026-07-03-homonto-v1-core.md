@@ -99,7 +99,7 @@ above applies. Check off the item in both this plan and
 9. [x] **3.2** ⚑ Claude adapter — base Task 8 + O-3, O-4 (redact `Old`; hashed state)
 10. [x] **3.3** ⚑ OpenCode adapter + Claude skill linking — base Task 9 + O-3, O-4
 11. [x] **3.4** ⚑ Secret-safety tests incl. drift path — O-5
-12. **4.1** Engine + `plan`/`apply` (base Task 10)
+12. [x] **4.1** Engine + `plan`/`apply` (base Task 10)
 13. **4.2** `status` (drift ⚑ O-6) + `doctor` (base Task 11)
 14. **4.3** `init` scaffold (base Task 12)
 15. **4.4** `import` with secret redaction (base Task 13)
