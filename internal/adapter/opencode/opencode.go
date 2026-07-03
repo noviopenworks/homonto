@@ -1,7 +1,6 @@
 package opencode
 
 import (
-	"encoding/json"
 	"path/filepath"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
@@ -82,7 +81,13 @@ func planKey(st *state.State, key, want, disk string, hasDisk bool) adapter.Chan
 		if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
 			return adapter.Change{Action: "noop", Key: key}
 		}
-		return adapter.Change{Action: "update", Key: key, Old: disk, New: want}
+		old := disk
+		// If the key was previously a secret, the on-disk value is a resolved
+		// secret — never print it, even though `want` is now a literal.
+		if inState && secret.ContainsRef(e.Desired) {
+			old = adapter.SecretRedaction
+		}
+		return adapter.Change{Action: "update", Key: key, Old: old, New: want}
 	default:
 		if inState && e.Desired == want && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
 			return adapter.Change{Action: "noop", Key: key}
@@ -100,22 +105,14 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if c.Action == "noop" {
 			continue
 		}
-		resolved, err := res.Resolve(c.New)
+		val, err := res.ResolveJSON(c.New)
 		if err != nil {
 			return err
 		}
 		switch {
 		case hasPrefix(c.Key, "mcp."):
-			var val any
-			if err := json.Unmarshal([]byte(resolved), &val); err != nil {
-				return err
-			}
 			doc, err = jsonutil.SetJSON(doc, "mcp."+trim(c.Key, "mcp."), val)
 		case hasPrefix(c.Key, "setting."):
-			var val any
-			if err := json.Unmarshal([]byte(resolved), &val); err != nil {
-				return err
-			}
 			doc, err = jsonutil.SetJSON(doc, trim(c.Key, "setting."), val)
 		case hasPrefix(c.Key, "plugin."):
 			doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin."))
@@ -123,14 +120,20 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if err != nil {
 			return err
 		}
-		st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(resolved)))
+		st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
+	}
+	// Fail fast on link conflicts before writing any file.
+	links := map[string]string{}
+	for _, name := range a.skills {
+		links[filepath.Join(a.home, ".config", "opencode", "skills", name)] = filepath.Join(a.content, "skills", name)
+	}
+	if _, err := link.LinkPlan(links); err != nil {
+		return err
 	}
 	if err := writeAtomic(a.cfgFile(), doc); err != nil {
 		return err
 	}
-	for _, name := range a.skills {
-		src := filepath.Join(a.content, "skills", name)
-		dst := filepath.Join(a.home, ".config", "opencode", "skills", name)
+	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {
 			return err
 		}

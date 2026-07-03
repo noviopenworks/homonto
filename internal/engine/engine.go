@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
@@ -18,7 +19,11 @@ type Engine struct {
 	State      *state.State
 	StateDir   string
 	ContentDir string
+	Home       string
 	Resolver   *secret.Resolver
+	// Warnings collects non-fatal per-adapter failures from the last Plan (e.g.
+	// an unparseable tool file); other tools still proceed.
+	Warnings []string
 }
 
 // Build loads config and wires both adapters. home is $HOME; contentDir holds
@@ -39,17 +44,22 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		State:      st,
 		StateDir:   stateDir,
 		ContentDir: contentDir,
+		Home:       home,
 		Resolver:   secret.NewResolver(),
 	}, nil
 }
 
-// Plan runs each adapter's Plan.
+// Plan runs each adapter's Plan. An adapter that fails (e.g. its tool file is
+// unparseable) is skipped with a warning so the other tools still proceed; its
+// file is never written. Warnings from the run are recorded on e.Warnings.
 func (e *Engine) Plan() ([]adapter.ChangeSet, error) {
+	e.Warnings = nil
 	var sets []adapter.ChangeSet
 	for _, a := range e.Adapters {
 		cs, err := a.Plan(e.Cfg, e.State)
 		if err != nil {
-			return nil, err
+			e.Warnings = append(e.Warnings, fmt.Sprintf("%s skipped: %v", a.Name(), err))
+			continue
 		}
 		sets = append(sets, cs)
 	}
@@ -69,8 +79,18 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 			}
 		}
 	}
-	for i, a := range e.Adapters {
-		if err := a.Apply(sets[i], e.Resolver, e.State); err != nil {
+	// Match each planned set to its adapter by tool name (Plan may have skipped
+	// some adapters, so indexes need not line up).
+	byName := map[string]adapter.Adapter{}
+	for _, a := range e.Adapters {
+		byName[a.Name()] = a
+	}
+	for _, cs := range sets {
+		a, ok := byName[cs.Tool]
+		if !ok {
+			continue
+		}
+		if err := a.Apply(cs, e.Resolver, e.State); err != nil {
 			return err
 		}
 	}

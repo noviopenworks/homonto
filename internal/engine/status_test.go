@@ -24,6 +24,26 @@ func TestDoctorFlagsMissingSkillContent(t *testing.T) {
 	}
 }
 
+func TestDoctorChecksToolConfigLocations(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(""), 0o644)
+	// Claude dir present, OpenCode dir absent
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+
+	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Join(e.Doctor(), "\n")
+	if !strings.Contains(lines, ".claude") {
+		t.Fatalf("doctor should mention the claude config location:\n%s", lines)
+	}
+	if !strings.Contains(lines, "opencode") {
+		t.Fatalf("doctor should mention the opencode config location:\n%s", lines)
+	}
+}
+
 func TestDriftDetectedAfterOutOfBandChange(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()

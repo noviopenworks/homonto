@@ -38,6 +38,16 @@ func (e *Engine) Doctor() []string {
 	} else {
 		out = append(out, "ok: pass found")
 	}
+	for _, loc := range []struct{ label, path string }{
+		{".claude (Claude Code)", filepath.Join(e.Home, ".claude")},
+		{".config/opencode (OpenCode)", filepath.Join(e.Home, ".config", "opencode")},
+	} {
+		if _, err := os.Stat(loc.path); err != nil {
+			out = append(out, fmt.Sprintf("warn: %s config location %s not found", loc.label, loc.path))
+		} else {
+			out = append(out, fmt.Sprintf("ok: %s config location present", loc.label))
+		}
+	}
 	for _, name := range e.Cfg.Skills.Own {
 		p := filepath.Join(e.ContentDir, "skills", name)
 		if _, err := os.Stat(p); err != nil {

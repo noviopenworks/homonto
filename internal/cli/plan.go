@@ -23,6 +23,9 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			for _, w := range e.Warnings {
+				cmd.Println("warn:", w)
+			}
 			if !plan.HasChanges(sets) {
 				cmd.Println("No changes. Everything up to date.")
 				return nil

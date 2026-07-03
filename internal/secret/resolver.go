@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,6 +33,45 @@ func NewResolver() *Resolver {
 
 // ContainsRef reports whether s contains a ${...} reference.
 func ContainsRef(s string) bool { return refRe.MatchString(s) }
+
+// ResolveJSON parses a JSON-encoded value and resolves ${...} tokens in every
+// string leaf, returning the resolved Go value. Resolving on parsed leaves (not
+// on the serialized text) means a secret containing quotes, backslashes, or
+// newlines can never corrupt the document or inject sibling keys.
+func (r *Resolver) ResolveJSON(raw string) (any, error) {
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return nil, err
+	}
+	return r.resolveValue(v)
+}
+
+func (r *Resolver) resolveValue(v any) (any, error) {
+	switch t := v.(type) {
+	case string:
+		return r.Resolve(t)
+	case map[string]any:
+		for k, e := range t {
+			rv, err := r.resolveValue(e)
+			if err != nil {
+				return nil, err
+			}
+			t[k] = rv
+		}
+		return t, nil
+	case []any:
+		for i, e := range t {
+			rv, err := r.resolveValue(e)
+			if err != nil {
+				return nil, err
+			}
+			t[i] = rv
+		}
+		return t, nil
+	default:
+		return v, nil
+	}
+}
 
 // Resolve replaces every ${...} token in s with its resolved value.
 func (r *Resolver) Resolve(s string) (string, error) {

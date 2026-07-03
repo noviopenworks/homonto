@@ -72,6 +72,37 @@ func TestPlanThenApplyIsSurgicalAndIdempotent(t *testing.T) {
 	}
 }
 
+func TestSecretWithSpecialCharsDoesNotCorruptFile(t *testing.T) {
+	home := t.TempDir()
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir())
+	res := &secret.Resolver{
+		Getenv: os.Getenv,
+		Pass:   func(string) (string, error) { return `x","injected":"y`, nil },
+	}
+	cs, _ := a.Plan(cfg(), st)
+	if err := a.Apply(cs, res, st); err != nil {
+		t.Fatalf("apply with quote-bearing secret: %v", err)
+	}
+	mj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if !gjson.ValidBytes(mj) {
+		t.Fatalf("apply produced invalid JSON: %s", mj)
+	}
+	if gjson.GetBytes(mj, "mcpServers.brave.env.K").String() != `x","injected":"y` {
+		t.Fatalf("secret not stored verbatim as a string: %s", mj)
+	}
+	if gjson.GetBytes(mj, "mcpServers.brave.injected").Exists() || gjson.GetBytes(mj, "injected").Exists() {
+		t.Fatal("secret value injected a sibling key")
+	}
+	// still idempotent
+	cs2, _ := a.Plan(cfg(), st)
+	for _, c := range cs2.Changes {
+		if c.Action != "noop" {
+			t.Fatalf("not idempotent with special-char secret: %+v", c)
+		}
+	}
+}
+
 func TestStateHasNoPlaintextSecret(t *testing.T) {
 	home := t.TempDir()
 	a := New(home, t.TempDir())

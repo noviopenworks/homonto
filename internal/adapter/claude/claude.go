@@ -68,7 +68,13 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
 				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
 			} else {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: key, Old: disk, New: want})
+				old := disk
+				// If the key was previously a secret, the on-disk value is a
+				// resolved secret — never print it, even though `want` is now literal.
+				if inState && secret.ContainsRef(e.Desired) {
+					old = adapter.SecretRedaction
+				}
+				cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: key, Old: old, New: want})
 			}
 		default: // secret-bearing key: never expose the on-disk resolved value
 			if inState && e.Desired == want && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
@@ -122,12 +128,8 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if c.Action == "noop" {
 			continue
 		}
-		resolved, err := res.Resolve(c.New)
+		val, err := res.ResolveJSON(c.New)
 		if err != nil {
-			return err
-		}
-		var val any
-		if err := json.Unmarshal([]byte(resolved), &val); err != nil {
 			return err
 		}
 		switch {
@@ -142,7 +144,15 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			return err
 		}
 		// Store the unresolved form + a non-secret hash of the resolved value.
-		st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(resolved)))
+		st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
+	}
+	// Fail fast on link conflicts before writing any file.
+	links := map[string]string{}
+	for _, name := range a.skills {
+		links[filepath.Join(a.home, ".claude", "skills", name)] = filepath.Join(a.content, "skills", name)
+	}
+	if _, err := link.LinkPlan(links); err != nil {
+		return err
 	}
 	if err := writeAtomic(a.claudeJSON(), mj); err != nil {
 		return err
@@ -150,9 +160,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if err := writeAtomic(a.settingsJSON(), sj); err != nil {
 		return err
 	}
-	for _, name := range a.skills {
-		src := filepath.Join(a.content, "skills", name)
-		dst := filepath.Join(a.home, ".claude", "skills", name)
+	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {
 			return err
 		}

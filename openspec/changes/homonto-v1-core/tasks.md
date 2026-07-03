@@ -34,3 +34,30 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 5.3 Golden-file surgical-merge tests (adapter unmanaged-key/comment assertions) — unmanaged keys survive in all target files
 - [x] 5.4 README (quickstart, secret-reference syntax, JSONC comment caveat, symlinked content)
 - [x] 5.5 Full suite green: `go test ./... && go vet ./... && go build ./...`
+
+## Code review outcome (executing-plans review gate)
+
+Reviewer: general-purpose subagent over base 02d9779..HEAD. Verdict: "With fixes".
+
+Fixed before verify:
+- [x] CRITICAL: secret resolution now operates on parsed JSON string leaves
+  (`secret.ResolveJSON`), so a secret containing `"`/`\`/newline can no longer
+  corrupt the tool file or inject sibling keys (regression tests added).
+- [x] Adapters fault-isolate: an unparseable tool file is skipped with a warning
+  (`engine.Warnings`); other tools still proceed (spec scenario now covered).
+- [x] `doctor` checks each tool's config location (`~/.claude`, `~/.config/opencode`).
+- [x] Secret→literal config edit redacts `Change.Old` (no on-disk secret in plan).
+- [x] Link conflicts are checked before writing tool files (fail fast per adapter).
+
+Accepted for v1 (non-critical), with rationale:
+- `import` covers Claude `mcpServers` only (not OpenCode / settings / plugins).
+  Rationale: v1 `import` is a best-effort bootstrap; secret redaction + `--force`
+  guard are the safety-critical parts and are implemented/tested. Broader import
+  is a documented follow-up.
+- Cross-adapter partial apply (Claude applied, OpenCode then errors) leaves
+  Claude keys on disk but unsaved in state until a fully successful apply.
+  Rationale: state is intentionally written last for crash-safety; the next apply
+  reconciles (re-plans the unsaved keys). No data loss; matches "fail safe".
+- Minor: drift includes pending config edits; deleted managed keys re-plan as
+  create; dotted key names aren't path-escaped; `contentDir` is CWD-relative.
+  Rationale: edge cases outside v1's common-denominator scope; noted for follow-up.

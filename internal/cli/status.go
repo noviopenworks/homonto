@@ -22,6 +22,9 @@ func statusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			for _, w := range e.Warnings {
+				cmd.Println("warn:", w)
+			}
 			if len(lines) == 0 {
 				cmd.Println("No drift.")
 				return nil

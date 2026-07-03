@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/plan"
 	"github.com/noviopenworks/homonto/internal/state"
 )
@@ -45,5 +46,32 @@ func TestRenderedPlanNeverLeaksSecret(t *testing.T) {
 	}
 	if !strings.Contains(rendered2, adapter.SecretRedaction) {
 		t.Fatalf("drift plan should redact the old value:\n%s", rendered2)
+	}
+}
+
+// TestSecretToLiteralTransitionRedacts covers the case where a key that was a
+// secret reference is edited to a literal: the on-disk value is still a resolved
+// secret, so plan output must not print it.
+func TestSecretToLiteralTransitionRedacts(t *testing.T) {
+	home := t.TempDir()
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir())
+
+	// apply the secret-backed MCP (disk now holds resolved "SECRET")
+	cs, _ := a.Plan(cfg(), st)
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatal(err)
+	}
+
+	// user edits the env value to a literal (no ${...})
+	literalCfg := &config.Config{
+		MCPs: map[string]config.MCP{
+			"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "now-literal"}, Targets: []string{"claude"}},
+		},
+	}
+	cs2, _ := a.Plan(literalCfg, st)
+	rendered := plan.Render([]adapter.ChangeSet{cs2})
+	if strings.Contains(rendered, "SECRET") {
+		t.Fatalf("secret->literal transition leaked the resolved secret:\n%s", rendered)
 	}
 }
