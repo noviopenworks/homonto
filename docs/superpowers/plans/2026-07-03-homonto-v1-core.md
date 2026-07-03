@@ -2,6 +2,7 @@
 change: homonto-v1-core
 design-doc: docs/superpowers/specs/2026-07-03-homonto-v1-core-design.md
 base-ref: 83785cef924e1aa9b0e17c01a7e276714b81ca1a
+archived-with: 2026-07-03-homonto-v1-core
 ---
 
 # homonto v1 core — Build Plan

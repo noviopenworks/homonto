@@ -2,6 +2,8 @@
 comet_change: homonto-v1-core
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-03-homonto-v1-core
+status: final
 ---
 
 # homonto v1 core — Technical Design
