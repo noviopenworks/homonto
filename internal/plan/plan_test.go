@@ -1,0 +1,48 @@
+package plan
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/noviopenworks/homonto/internal/adapter"
+)
+
+func TestRenderShowsChangesNotNoops(t *testing.T) {
+	sets := []adapter.ChangeSet{{
+		Tool: "claude",
+		Changes: []adapter.Change{
+			{Action: "update", Key: "settings.model", Old: `"sonnet"`, New: `"opus"`},
+			{Action: "create", Key: "mcp.brave", New: `{"command":["npx"]}`},
+			{Action: "noop", Key: "mcp.codegraph"},
+		},
+	}}
+	out := Render(sets)
+	if !strings.Contains(out, "~ settings.model") || !strings.Contains(out, `"sonnet" -> "opus"`) {
+		t.Fatalf("update line missing:\n%s", out)
+	}
+	if !strings.Contains(out, "+ mcp.brave") {
+		t.Fatalf("create line missing:\n%s", out)
+	}
+	if strings.Contains(out, "codegraph") {
+		t.Fatalf("noop should be hidden:\n%s", out)
+	}
+	if !HasChanges(sets) {
+		t.Fatal("HasChanges should be true")
+	}
+}
+
+func TestRenderNeverResolvesSecrets(t *testing.T) {
+	sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{
+		{Action: "create", Key: "mcp.brave.env", New: `{"BRAVE_API_KEY":"${pass:ai/brave}"}`},
+	}}}
+	if !strings.Contains(Render(sets), "${pass:ai/brave}") {
+		t.Fatal("plan must show the unresolved token verbatim")
+	}
+}
+
+func TestHasChangesFalseWhenAllNoop(t *testing.T) {
+	sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{{Action: "noop", Key: "x"}}}}
+	if HasChanges(sets) {
+		t.Fatal("expected no changes")
+	}
+}

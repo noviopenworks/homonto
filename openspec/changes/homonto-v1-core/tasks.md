@@ -17,7 +17,7 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 2.3 Content linker (`internal/link`) — idempotent symlink + conflict detection (never clobber)
 
 ## 3. Adapters
-- [ ] 3.1 Adapter interface + `Change`/`ChangeSet` + plan printer (`internal/adapter`, `internal/plan`) — `+`/`~`, hide noops, never resolve secrets
+- [x] 3.1 Adapter interface + `Change`/`ChangeSet` + plan printer (`internal/adapter`, `internal/plan`) — `+`/`~`, hide noops, never resolve secrets
 - [ ] 3.2 ⚑ Claude adapter (`internal/adapter/claude`) — MCP/settings/plugins surgical projection; state-aware noop for secret keys; **redact `Change.Old` for secret-bearing keys**; store `{desired, sha256(resolved)}` on apply
 - [ ] 3.3 ⚑ OpenCode adapter (`internal/adapter/opencode`) + Claude skill linking — JSONC merge, plugin array append, same hashed-state + redaction rules
 - [ ] 3.4 ⚑ Secret-safety tests — `plan` output **and** `state.json` never contain a resolved secret, including on **drift of a secret-backed key**

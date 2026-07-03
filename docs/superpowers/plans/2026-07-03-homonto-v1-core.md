@@ -95,7 +95,7 @@ above applies. Check off the item in both this plan and
 5. [x] **2.1** ⚑ State store with `Entry{Desired,Applied}` — O-1
 6. [x] **2.2** Surgical JSON/JSONC merge (base Task 5)
 7. [x] **2.3** Content linker (base Task 7)
-8. **3.1** Adapter interface + `Change`/`ChangeSet` + plan printer (base Task 6)
+8. [x] **3.1** Adapter interface + `Change`/`ChangeSet` + plan printer (base Task 6)
 9. **3.2** ⚑ Claude adapter — base Task 8 + O-3, O-4 (redact `Old`; hashed state)
 10. **3.3** ⚑ OpenCode adapter + Claude skill linking — base Task 9 + O-3, O-4
 11. **3.4** ⚑ Secret-safety tests incl. drift path — O-5
