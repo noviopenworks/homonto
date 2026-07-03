@@ -88,7 +88,7 @@ Follow the base plan for each item's Red/Green steps EXCEPT where an ⚑ overrid
 above applies. Check off the item in both this plan and
 `openspec/changes/homonto-v1-core/tasks.md` on completion, then commit.
 
-1. **1.1** Scaffold module + `version` (base Task 1)
+1. [x] **1.1** Scaffold module + `version` (base Task 1)
 2. **1.2** Config model + TOML loader (base Task 2)
 3. **1.3** Secret resolver (base Task 3)
 4. **1.4** ⚑ `Hash` helper — O-2
