@@ -106,8 +106,8 @@ above applies. Check off the item in both this plan and
 16. [x] **5.1** ⚑ e2e incl. secret-backed idempotency — base Task 14 + O-7
 17. [x] **5.2** Two-phase abort test (base Task 10 test)
 18. [x] **5.3** Golden-file surgical-merge tests (fold into 3.2/3.3 where already covered)
-19. **5.4** README (base Task 14 Step 3)
-20. **5.5** Full suite green: `go test ./... && go vet ./... && go build ./...`
+19. [x] **5.4** README (base Task 14 Step 3)
+20. [x] **5.5** Full suite green: `go test ./... && go vet ./... && go build ./...`
 
 Note: base-plan Tasks 8/9 tests that assert secret-backed idempotency must be
 written against the ⚑ hashed-state model (state seeded so a repeat plan is a
