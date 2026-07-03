@@ -1,5 +1,5 @@
 workflow: full
-phase: build
+phase: verify
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -19,3 +19,5 @@ verified_at: null
 archived: false
 handoff_context: openspec/changes/homonto-v1-core/.comet/handoff/design-context.json
 handoff_hash: b5752c3ef783f763b6e630fb10762110e09b6d01d3cf75953f0ba461e9bb93f3
+build_command: go build ./...
+verify_command: go test ./... && go vet ./...
