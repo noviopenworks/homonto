@@ -29,8 +29,8 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 4.4 `import` — bootstrap `homonto.toml` from existing setup with **secret redaction** to `${pass:…}`; `--force` guard
 
 ## 5. Verification
-- [ ] 5.1 ⚑ End-to-end test: `init`→edit→`plan`→`apply` projects into both tools + symlinks; **second apply is a no-op including a secret-backed MCP**
-- [ ] 5.2 Two-phase abort test — missing secret ref → no file written, missing ref named
-- [ ] 5.3 Golden-file surgical-merge tests — unmanaged keys survive in all target files
+- [x] 5.1 ⚑ End-to-end test: `init`→edit→`plan`→`apply` projects into both tools + symlinks; **second apply is a no-op including a secret-backed MCP**
+- [x] 5.2 Two-phase abort test (internal/engine/engine_test.go) — missing secret ref → no file written, missing ref named
+- [x] 5.3 Golden-file surgical-merge tests (adapter unmanaged-key/comment assertions) — unmanaged keys survive in all target files
 - [ ] 5.4 README (quickstart, secret-reference syntax, JSONC comment caveat, symlinked content)
 - [ ] 5.5 Full suite green: `go test ./... && go vet ./... && go build ./...`

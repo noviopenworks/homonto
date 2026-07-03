@@ -103,9 +103,9 @@ above applies. Check off the item in both this plan and
 13. [x] **4.2** `status` (drift ⚑ O-6) + `doctor` (base Task 11)
 14. [x] **4.3** `init` scaffold (base Task 12)
 15. [x] **4.4** `import` with secret redaction (base Task 13)
-16. **5.1** ⚑ e2e incl. secret-backed idempotency — base Task 14 + O-7
-17. **5.2** Two-phase abort test (base Task 10 test)
-18. **5.3** Golden-file surgical-merge tests (fold into 3.2/3.3 where already covered)
+16. [x] **5.1** ⚑ e2e incl. secret-backed idempotency — base Task 14 + O-7
+17. [x] **5.2** Two-phase abort test (base Task 10 test)
+18. [x] **5.3** Golden-file surgical-merge tests (fold into 3.2/3.3 where already covered)
 19. **5.4** README (base Task 14 Step 3)
 20. **5.5** Full suite green: `go test ./... && go vet ./... && go build ./...`
 
