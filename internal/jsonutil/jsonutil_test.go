@@ -49,6 +49,20 @@ func TestEnsureArrayElemIdempotent(t *testing.T) {
 	}
 }
 
+func TestCanonicalIsOrderIndependent(t *testing.T) {
+	a := Canonical(`{"b":2,"a":1}`)
+	b := Canonical(`{"a":1,"b":2}`)
+	if a != b {
+		t.Fatalf("canonical differs by key order: %q vs %q", a, b)
+	}
+}
+
+func TestCanonicalPassesThroughInvalid(t *testing.T) {
+	if got := Canonical("${pass:x}"); got != "${pass:x}" {
+		t.Fatalf("invalid JSON should pass through: %q", got)
+	}
+}
+
 func TestGetJSON(t *testing.T) {
 	raw, ok := GetJSON([]byte(`{"a":{"b":2}}`), "a.b")
 	if !ok || strings.TrimSpace(raw) != "2" {

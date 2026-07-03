@@ -1,10 +1,27 @@
 package jsonutil
 
 import (
+	"encoding/json"
+
 	"github.com/tailscale/hujson"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )
+
+// Canonical returns a key-order-independent, whitespace-normalized form of a
+// JSON value (encoding/json marshals map keys sorted). Non-JSON input is
+// returned unchanged, so unresolved ${...} tokens pass through untouched.
+func Canonical(raw string) string {
+	var v any
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
+		return raw
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return raw
+	}
+	return string(b)
+}
 
 var opts = &sjson.Options{Optimistic: false}
 

@@ -1,0 +1,132 @@
+package claude
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/secret"
+	"github.com/noviopenworks/homonto/internal/state"
+	"github.com/tidwall/gjson"
+)
+
+func cfg() *config.Config {
+	return &config.Config{
+		MCPs: map[string]config.MCP{
+			"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "${pass:ai/brave}"}, Targets: []string{"claude"}},
+		},
+		Settings: config.Settings{Claude: map[string]any{"model": "opus"}},
+	}
+}
+
+func resolver() *secret.Resolver {
+	return &secret.Resolver{
+		Getenv: os.Getenv,
+		Pass:   func(string) (string, error) { return "SECRET", nil },
+	}
+}
+
+func TestPlanThenApplyIsSurgicalAndIdempotent(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{"keep":true,"mcpServers":{}}`), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"theme":"dark"}`), 0o644)
+
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir())
+
+	cs, err := a.Plan(cfg(), st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if len(cs.Changes) == 0 {
+		t.Fatal("expected changes on first plan")
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	mj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if !gjson.GetBytes(mj, "keep").Bool() {
+		t.Fatal("unmanaged .claude.json key lost")
+	}
+	if gjson.GetBytes(mj, "mcpServers.brave.env.K").String() != "SECRET" {
+		t.Fatalf("secret not resolved on apply: %s", mj)
+	}
+	sj, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if gjson.GetBytes(sj, "theme").String() != "dark" {
+		t.Fatal("unmanaged settings key lost")
+	}
+	if gjson.GetBytes(sj, "model").String() != "opus" {
+		t.Fatal("managed setting not written")
+	}
+
+	// second plan = no changes (idempotent), including the secret-backed MCP.
+	cs2, _ := a.Plan(cfg(), st)
+	for _, c := range cs2.Changes {
+		if c.Action != "noop" {
+			t.Fatalf("expected idempotent noop, got %+v", c)
+		}
+	}
+}
+
+func TestStateHasNoPlaintextSecret(t *testing.T) {
+	home := t.TempDir()
+	a := New(home, t.TempDir())
+	dir := t.TempDir()
+	st, _ := state.Load(dir)
+
+	cs, _ := a.Plan(cfg(), st)
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(filepath.Join(dir, "state.json"))
+	if strings.Contains(string(raw), "SECRET") {
+		t.Fatalf("state.json leaked resolved secret: %s", raw)
+	}
+	if !strings.Contains(string(raw), "${pass:ai/brave}") {
+		t.Fatalf("state.json should keep the unresolved token: %s", raw)
+	}
+}
+
+func TestSecretDriftPlanIsRedacted(t *testing.T) {
+	home := t.TempDir()
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir())
+
+	// first apply records hashed state
+	cs, _ := a.Plan(cfg(), st)
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatal(err)
+	}
+
+	// simulate out-of-band drift of the secret value on disk
+	mj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
+	mj2 := strings.Replace(string(mj), "SECRET", "LEAKED-DRIFT-VALUE", 1)
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(mj2), 0o644)
+
+	cs2, _ := a.Plan(cfg(), st)
+	var found bool
+	for _, c := range cs2.Changes {
+		if c.Key == "mcp.brave" {
+			found = true
+			if c.Action != "update" {
+				t.Fatalf("expected drift update, got %s", c.Action)
+			}
+			if strings.Contains(c.Old, "LEAKED-DRIFT-VALUE") {
+				t.Fatalf("drift plan leaked the on-disk secret in Old: %q", c.Old)
+			}
+			if c.Old != "«secret»" {
+				t.Fatalf("secret Old should be redacted, got %q", c.Old)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected an mcp.brave change after drift")
+	}
+}
