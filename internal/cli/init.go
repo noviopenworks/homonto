@@ -1,0 +1,28 @@
+package cli
+
+import (
+	"github.com/noviopenworks/homonto/internal/scaffold"
+	"github.com/spf13/cobra"
+)
+
+func initCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "init [dir]",
+		Short: "Scaffold a new homonto repo",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dir := "."
+			if len(args) == 1 {
+				dir = args[0]
+			}
+			created, err := scaffold.Init(dir)
+			if err != nil {
+				return err
+			}
+			for _, p := range created {
+				cmd.Println("created", p)
+			}
+			return nil
+		},
+	}
+}

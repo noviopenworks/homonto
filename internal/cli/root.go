@@ -23,6 +23,6 @@ func NewRootCmd() *cobra.Command {
 			return nil
 		},
 	})
-	root.AddCommand(planCmd(), applyCmd(), statusCmd(), doctorCmd())
+	root.AddCommand(planCmd(), applyCmd(), statusCmd(), doctorCmd(), initCmd())
 	return root
 }

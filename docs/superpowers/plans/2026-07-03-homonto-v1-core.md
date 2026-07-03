@@ -101,7 +101,7 @@ above applies. Check off the item in both this plan and
 11. [x] **3.4** ⚑ Secret-safety tests incl. drift path — O-5
 12. [x] **4.1** Engine + `plan`/`apply` (base Task 10)
 13. [x] **4.2** `status` (drift ⚑ O-6) + `doctor` (base Task 11)
-14. **4.3** `init` scaffold (base Task 12)
+14. [x] **4.3** `init` scaffold (base Task 12)
 15. **4.4** `import` with secret redaction (base Task 13)
 16. **5.1** ⚑ e2e incl. secret-backed idempotency — base Task 14 + O-7
 17. **5.2** Two-phase abort test (base Task 10 test)
