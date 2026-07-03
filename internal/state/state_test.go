@@ -1,0 +1,49 @@
+package state
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestLoadAbsentReturnsEmpty(t *testing.T) {
+	s, err := Load(t.TempDir())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if _, ok := s.Get("claude", "setting.model"); ok {
+		t.Fatal("expected empty state")
+	}
+}
+
+func TestSaveAndReloadEntry(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested")
+	s, _ := Load(dir)
+	s.Set("claude", "setting.model", `"opus"`, "abc123hash")
+	if err := s.Save(dir); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	got, _ := Load(dir)
+	e, ok := got.Get("claude", "setting.model")
+	if !ok {
+		t.Fatal("entry missing after reload")
+	}
+	if e.Desired != `"opus"` || e.Applied != "abc123hash" {
+		t.Fatalf("reloaded entry = %+v", e)
+	}
+}
+
+func TestSaveIsAtomicJSON(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := Load(dir)
+	s.Set("opencode", "mcp.brave", `{"env":{"K":"${pass:x}"}}`, "deadbeef")
+	if err := s.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	// The unresolved token is stored under desired; a hash under applied.
+	raw, _ := os.ReadFile(filepath.Join(dir, "state.json"))
+	if !strings.Contains(string(raw), "${pass:x}") || !strings.Contains(string(raw), "deadbeef") {
+		t.Fatalf("state.json = %s", raw)
+	}
+}

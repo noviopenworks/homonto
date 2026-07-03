@@ -1,0 +1,75 @@
+package state
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+)
+
+// Entry is the last-applied record for one managed key. Desired holds the
+// unresolved value (may contain ${...} tokens); Applied holds a non-secret
+// sha256 of the resolved value that was written to disk. Neither field ever
+// contains a plaintext secret, so state.json is safe to share.
+type Entry struct {
+	Desired string `json:"desired"`
+	Applied string `json:"applied"`
+}
+
+// State is the last-applied snapshot, keyed tool -> managed key -> Entry.
+type State struct {
+	Managed map[string]map[string]Entry `json:"managed"`
+}
+
+func newState() *State { return &State{Managed: map[string]map[string]Entry{}} }
+
+func file(dir string) string { return filepath.Join(dir, "state.json") }
+
+// Load reads <dir>/state.json, returning an empty State if the file is absent.
+func Load(dir string) (*State, error) {
+	data, err := os.ReadFile(file(dir))
+	if errors.Is(err, os.ErrNotExist) {
+		return newState(), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	s := newState()
+	if err := json.Unmarshal(data, s); err != nil {
+		return nil, err
+	}
+	if s.Managed == nil {
+		s.Managed = map[string]map[string]Entry{}
+	}
+	return s, nil
+}
+
+// Save writes the state atomically (temp + rename), creating dir if needed.
+func (s *State) Save(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := file(dir) + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, file(dir))
+}
+
+// Set records the unresolved desired value and the applied-value hash for a key.
+func (s *State) Set(tool, key, desired, appliedHash string) {
+	if s.Managed[tool] == nil {
+		s.Managed[tool] = map[string]Entry{}
+	}
+	s.Managed[tool][key] = Entry{Desired: desired, Applied: appliedHash}
+}
+
+// Get returns the recorded Entry for a key and whether it exists.
+func (s *State) Get(tool, key string) (Entry, bool) {
+	e, ok := s.Managed[tool][key]
+	return e, ok
+}

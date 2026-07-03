@@ -12,7 +12,7 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 1.4 ⚑ Hash helper — `sha256` of a resolved value (in `internal/secret` or `internal/state`)
 
 ## 2. State + merge primitives
-- [ ] 2.1 ⚑ State store with hashed entries (`internal/state`) — `Entry{Desired, Applied}`; `Set(tool,key,desired,appliedHash)`, `Get`, atomic `Save`/`Load`
+- [x] 2.1 ⚑ State store with hashed entries (`internal/state`) — `Entry{Desired, Applied}`; `Set(tool,key,desired,appliedHash)`, `Get`, atomic `Save`/`Load`
 - [ ] 2.2 Surgical JSON/JSONC merge (`internal/jsonutil`) — `SetJSON`, `GetJSON`, `Standardize`, `EnsureArrayElem`
 - [ ] 2.3 Content linker (`internal/link`) — idempotent symlink + conflict detection (never clobber)
 

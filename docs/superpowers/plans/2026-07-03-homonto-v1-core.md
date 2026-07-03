@@ -92,7 +92,7 @@ above applies. Check off the item in both this plan and
 2. [x] **1.2** Config model + TOML loader (base Task 2)
 3. [x] **1.3** Secret resolver (base Task 3)
 4. [x] **1.4** ⚑ `Hash` helper — O-2
-5. **2.1** ⚑ State store with `Entry{Desired,Applied}` — O-1
+5. [x] **2.1** ⚑ State store with `Entry{Desired,Applied}` — O-1
 6. **2.2** Surgical JSON/JSONC merge (base Task 5)
 7. **2.3** Content linker (base Task 7)
 8. **3.1** Adapter interface + `Change`/`ChangeSet` + plan printer (base Task 6)
