@@ -9,7 +9,7 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 1.1 Scaffold module + `version` command (`go.mod`, `main.go`, `internal/cli/root.go`, `.gitignore`)
 - [x] 1.2 Config model + TOML loader (`internal/config`) — MCPs, Skills, Plugins, Settings, `TargetsOrAll`
 - [x] 1.3 Secret resolver (`internal/secret`) — `${pass:…}` + `${ENV}`, `Resolve`, `ContainsRef`
-- [ ] 1.4 ⚑ Hash helper — `sha256` of a resolved value (in `internal/secret` or `internal/state`)
+- [x] 1.4 ⚑ Hash helper — `sha256` of a resolved value (in `internal/secret` or `internal/state`)
 
 ## 2. State + merge primitives
 - [ ] 2.1 ⚑ State store with hashed entries (`internal/state`) — `Entry{Desired, Applied}`; `Set(tool,key,desired,appliedHash)`, `Get`, atomic `Save`/`Load`
