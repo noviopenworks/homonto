@@ -26,7 +26,7 @@ idempotency model (⚑ marks deltas from that plan).
 - [x] 4.1 Engine + `plan`/`apply` (`internal/engine`, `internal/cli`) — two-phase (resolve all, abort before any write), confirm `[y/N]`/`--yes`, save state last
 - [x] 4.2 `status` (drift) + `doctor` (`pass` on PATH, tool dirs, owned-skill presence)
 - [x] 4.3 `init` scaffold (never overwrite existing files)
-- [ ] 4.4 `import` — bootstrap `homonto.toml` from existing setup with **secret redaction** to `${pass:…}`; `--force` guard
+- [x] 4.4 `import` — bootstrap `homonto.toml` from existing setup with **secret redaction** to `${pass:…}`; `--force` guard
 
 ## 5. Verification
 - [ ] 5.1 ⚑ End-to-end test: `init`→edit→`plan`→`apply` projects into both tools + symlinks; **second apply is a no-op including a secret-backed MCP**
