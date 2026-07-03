@@ -14,7 +14,7 @@ idempotency model (⚑ marks deltas from that plan).
 ## 2. State + merge primitives
 - [x] 2.1 ⚑ State store with hashed entries (`internal/state`) — `Entry{Desired, Applied}`; `Set(tool,key,desired,appliedHash)`, `Get`, atomic `Save`/`Load`
 - [x] 2.2 Surgical JSON/JSONC merge (`internal/jsonutil`) — `SetJSON`, `GetJSON`, `Standardize`, `EnsureArrayElem`
-- [ ] 2.3 Content linker (`internal/link`) — idempotent symlink + conflict detection (never clobber)
+- [x] 2.3 Content linker (`internal/link`) — idempotent symlink + conflict detection (never clobber)
 
 ## 3. Adapters
 - [ ] 3.1 Adapter interface + `Change`/`ChangeSet` + plan printer (`internal/adapter`, `internal/plan`) — `+`/`~`, hide noops, never resolve secrets
