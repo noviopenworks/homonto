@@ -2,10 +2,10 @@
 
 ## 1. Foundation
 
-- [ ] 1.1 Create `docs/` workflow layout skeleton (`adr/`, `specs/`,
+- [x] 1.1 Create `docs/` workflow layout skeleton (`adr/`, `specs/`,
       `changes/`, `changes/archive/`, `guides/`) with a README in each
       explaining its contract
-- [ ] 1.2 Define the `state.yaml` schema and document it (fields, lifecycle,
+- [x] 1.2 Define the `state.yaml` schema and document it (fields, lifecycle,
       file-state-wins recovery rule)
 - [ ] 1.3 Define the ADR template and numbering convention
 
