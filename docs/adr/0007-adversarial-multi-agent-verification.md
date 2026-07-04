@@ -1,6 +1,6 @@
 # Verify with adversarial fresh-context skeptic agents
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-04
 - **Change:** polish-onto-framework
 

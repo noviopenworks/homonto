@@ -1,6 +1,6 @@
 # Use bundled reference files for skill payloads (progressive disclosure)
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-04
 - **Change:** polish-onto-framework
 
