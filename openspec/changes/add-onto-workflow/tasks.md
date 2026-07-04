@@ -54,10 +54,10 @@
 
 ## 5. Validation
 
-- [ ] 5.1 Dry-run walkthrough: simulate a full onto lifecycle on a scratch
+- [x] 5.1 Dry-run walkthrough: simulate a full onto lifecycle on a scratch
       change (open→close) verifying each blocking point, state transition,
       and artifact contract
-- [ ] 5.2 Dry-run preset paths: /onto-fix and /onto-tweak including an
+- [x] 5.2 Dry-run preset paths: /onto-fix and /onto-tweak including an
       upgrade-rule trigger
 - [x] 5.3 Verify skills load via symlink (`/onto` visible to Claude Code) and
       contain no references to openspec CLI or comet scripts

@@ -25,10 +25,13 @@ Minimal clarification: reproduction steps, expected vs actual behavior,
 suspected blast radius. Create `docs/changes/<name>/` with:
 
 - `state.yaml` — `workflow: fix`, `phase: build` (no design phase),
-  `created`, `base_ref`, `guides: pending`, rest per
-  `docs/changes/README.md`
-- `proposal.md` — the bug (link the issue if there is one), reproduction,
-  expected behavior, fix scope
+  `created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
+  open-lite since presets enter build directly: `isolation: branch`,
+  `execution: direct`, `tdd: direct` (the failing-test-first rule below is
+  independent of the `tdd` field); rest per `docs/changes/README.md`
+- `proposal.md` — first line `Preset: fix` (the dispatcher's state rebuild
+  keys on this marker), then the bug (link the issue if there is one),
+  reproduction, expected behavior, fix scope
 - `tasks.md` — short checklist (reproduce → fix → regression)
 
 No full design and no plan.md required. Branch: `fix/YYYYMMDD/<name>`.
@@ -60,7 +63,8 @@ confirmation, archive to `docs/changes/archive/YYYY-MM-DD-<name>/`.
 > **GATE (upgrade):** the moment ANY of these becomes true, pause, explain
 > the trigger, and require fresh user confirmation to upgrade:
 >
-> - the fix touches **3+ files**
+> - the fix touches **3+ non-test files** (the mandatory failing test never
+>   counts toward the trigger)
 > - architecture or schema changes (new modules, interfaces, dependencies)
 > - the fix introduces a **new public API**
 > - the fix scope exceeds a single function/module

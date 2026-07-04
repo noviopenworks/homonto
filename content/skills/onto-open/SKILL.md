@@ -79,5 +79,7 @@ summary — no invented scope.
 - [ ] Workspace exists with `state.yaml`, `proposal.md`, `tasks.md`, all
       non-empty and consistent with the confirmed summary
 - [ ] Both gates answered by the user
-- [ ] `state.yaml` phase advanced: `open → design`
+- [ ] `state.yaml` phase advanced: `open → design` — written **only after**
+      the artifact-review gate is answered, never before (the dispatcher
+      treats a lagging phase as an unanswered gate and will re-present it)
 - [ ] Announce the transition and load `onto-design`

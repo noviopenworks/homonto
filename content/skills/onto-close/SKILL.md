@@ -10,8 +10,9 @@ ADR log, and user-facing guides — then archive the workspace.
 
 ## Entry check
 
-- `state.yaml` has `phase: close`; `verification.md` exists with
-  `verify.result: pass` (or pass-with-recorded-deviations).
+- `state.yaml` has `phase: close`; `verification.md` exists with a
+  `Result: pass` line (accepted deviations, if any, are recorded inside the
+  report; the result enum stays `pass`).
 - Anything else → route back through `/onto`.
 
 ## Steps
@@ -46,8 +47,9 @@ Check `guides:` in `state.yaml`. Archiving with `guides: pending` is
 
 - Write or update the affected `docs/guides/<topic>.md` (and README if the
   change is user-visible) → set `guides: updated`, **or**
-- Record `guides: waived: <reason>` — the reason must come from the user or
-  a recorded directive, never invented.
+- Record `guides: "waived: <reason>"` (quoted — a bare `waived: <reason>`
+  is invalid YAML) — the reason must come from the user or a recorded
+  directive, never invented.
 
 ### 4. Final confirmation
 
@@ -60,7 +62,8 @@ Check `guides:` in `state.yaml`. Archiving with `guides: pending` is
 
 1. `git mv docs/changes/<name> docs/changes/archive/YYYY-MM-DD-<name>`
    (today's date).
-2. Set `archived: true` in the moved `state.yaml`.
+2. Set `archived: true` in the moved `state.yaml`. `phase` intentionally
+   stays `close` — "done" is a derived-only phase, never written.
 3. Commit. The archived workspace is history — never edited afterwards.
 
 The change is done. If the work should ship as a PR, hand off to the

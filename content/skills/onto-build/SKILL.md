@@ -41,9 +41,9 @@ bigger).
 >   content/docs deliverables
 >
 > This gate MAY be pre-authorized: if the user gave an explicit directive
-> (e.g. "run to completion with defaults"), record it **verbatim** under
-> `decisions:` and proceed with the recorded config — but still surface the
-> plan summary so the user sees what will happen.
+> (e.g. "run to completion with defaults"), record it **verbatim** in
+> `decisions.directive` and proceed with the recorded config — but still
+> surface the plan summary so the user sees what will happen.
 
 Create the isolation before the first task: `git checkout -b
 <type>/YYYYMMDD/<change-name>` (or the worktree equivalent). Type prefix:

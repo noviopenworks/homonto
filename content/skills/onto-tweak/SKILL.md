@@ -20,10 +20,12 @@ the full plan — bounded by strict upgrade rules.
 
 ### 1. Open-lite
 
-One-paragraph `proposal.md` (what + why), short `tasks.md`, and
-`state.yaml` with `workflow: tweak`, `phase: build`, `created`, `base_ref`,
-`guides: pending` (schema: `docs/changes/README.md`).
-Branch: `tweak/YYYYMMDD/<name>`.
+One-paragraph `proposal.md` — first line `Preset: tweak` (the dispatcher's
+state rebuild keys on this marker), then what + why — plus short
+`tasks.md`, and `state.yaml` with `workflow: tweak`, `phase: build`,
+`created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
+open-lite (`isolation: branch`, `execution: direct`, `tdd: direct`)
+(schema: `docs/changes/README.md`). Branch: `tweak/YYYYMMDD/<name>`.
 
 ### 2. Lightweight build
 
@@ -51,7 +53,7 @@ Full `onto-close` obligations: merge any spec deltas, guides `updated` or
 > **GATE (upgrade):** pause, explain the trigger, and require fresh user
 > confirmation to upgrade to the full workflow when ANY of:
 >
-> - the change touches **5+ files**
+> - the change touches **5+ files** (test files excluded)
 > - cross-module coordination is required
 > - **5+ new test cases** are needed
 > - config **keys are added or removed** (value changes are fine)

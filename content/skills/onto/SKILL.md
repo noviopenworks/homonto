@@ -32,7 +32,11 @@ and print the install instructions — do not continue in a degraded mode.
    `graphify` skill is loadable, or a `graphify-out/` directory or
    `.codegraph/` index exists at the repo root. The open and design phases
    MUST ground every codebase claim in graphify/codegraph queries rather
-   than guesswork. On failure, HALT and print:
+   than guesswork. Indexing is the user's decision: if only the skill is
+   available and no index exists, ask the user whether to build one before
+   open/design proceeds; if they decline, grounding falls back to direct
+   file reading and that fallback is recorded in the proposal/design. On
+   failure (neither skill nor index), HALT and print:
 
    > onto requires **graphify** (https://graphify.net) for codebase
    > understanding and neither the skill nor an existing index
@@ -65,25 +69,32 @@ proceed to `onto-open`.
 
 1. Read `state.yaml` (schema: `docs/changes/README.md`).
 2. Independently derive the phase from artifacts with this table
-   (**first match from bottom wins**; it must stay identical to the copy in
-   `docs/changes/README.md`):
+   (**first match from the top wins — strongest evidence first**; it must
+   stay identical to the copy in `docs/changes/README.md`):
 
 | Evidence | Real phase |
 |---|---|
 | `archived: true` or workspace under `archive/` | done |
-| `verification.md` exists + `verify.result: pass` | close |
+| `verification.md` with a `Result: pass` line | close |
 | all tasks checked in `tasks.md` | verify |
-| `design.md` confirmed (or preset) + plan/tasks in progress | build |
-| `proposal.md` + `tasks.md` exist, no confirmed design | design (full) / build (preset) |
+| `design.md` marked `Status: Confirmed`, or a preset workspace | build |
+| `proposal.md` + `tasks.md` exist (full workflow, no confirmed design) | design |
 | workspace exists, artifacts incomplete | open |
 
-3. **Files win.** If the derived phase differs from the claimed phase,
-   correct `state.yaml` to match the files, tell the user what was
-   corrected and why, and continue from the real phase.
-4. A missing or malformed `state.yaml` is never an error: rebuild it from
-   the table (fill `workflow` from the proposal's preset marker or default
-   `full`, `base_ref` from the oldest commit touching the workspace),
-   announce the rebuild, continue.
+3. **Files win downward; gates win upward.** If the derived phase is
+   earlier than the claimed phase, correct `state.yaml` to match the files,
+   tell the user what was corrected and why, and continue from the derived
+   phase. If the derived phase is later than the claimed phase, do not
+   silently promote — the phase field advances only when a phase's exit
+   gate is answered, so a lagging claim means an unanswered gate: resume at
+   the claimed phase's gate (artifacts already prepared) and let it advance
+   normally.
+4. A missing or malformed `state.yaml` is never an error: rebuild it per
+   the per-field rules in `docs/changes/README.md` (`workflow` from the
+   proposal's `Preset:` marker, else the branch prefix, else `full`;
+   `base_ref` = parent of the oldest commit touching the workspace;
+   `decisions` reset to null so gates are re-asked; `verify.result` from
+   verification.md's `Result:` line), announce the rebuild, continue.
 5. Never trust conversation history for phase detection — after context
    loss or compaction, this derivation is the recovery mechanism. Re-run it.
 
@@ -128,5 +139,5 @@ including its gates and exit checklist. Never execute phase work here.
 Every sub-skill contains `> **GATE:**` blocks — blocking user decisions.
 A gate may only be skipped when the user explicitly pre-answered *that same
 question*; a blanket directive (e.g. "run to completion") pre-answers only
-the gates that say so, and must be recorded verbatim under `decisions:` in
-`state.yaml`. When in doubt, stop and ask.
+the gates that say so, and must be recorded verbatim in
+`decisions.directive` in `state.yaml`. When in doubt, stop and ask.

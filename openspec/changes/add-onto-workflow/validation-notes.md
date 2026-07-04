@@ -126,3 +126,40 @@ $ grep -rn "openspec/specs\|docs/superpowers" README.md docs/guides docs/specs d
 (no matches — live docs reference only new paths)
 ```
 git history preserved across moves (git log --follow works on docs/specs/*.md and docs/roadmap.md).
+
+## Dry-run: full lifecycle (task 5.1, agent-simulated, 2026-07-04)
+
+Fresh-context agent walked open → design → build → verify → close on a
+scratch change following the eight skills literally. All 9 checklist items
+PASS (preflight-first, zero-active routing, both open gates fresh,
+workspace matches contract, approach gate blocks design.md, plan-ready gate
++ commit-per-task + root-cause-first, evidence-based verification, close
+merge/numbering/guides/archive semantics, derivation consistent at every
+boundary). Scratch dir removed, no tracked file touched.
+
+## Dry-run: presets + drift (task 5.2, agent-simulated, 2026-07-04)
+
+All 8 checklist items PASS (fix skips design, failing-test-first regardless
+of tdd, 3+-files upgrade gate; tweak plan-less build, brief-but-mandatory
+verification.md, config-key upgrade gate; drift demotion verify→build with
+announced correction; deleted state.yaml rebuilt, never fails).
+
+## Defects found by dry-runs — all fixed in the same build phase
+
+1. Derivation table direction reversed ("bottom wins" → "top wins",
+   strongest evidence first) in dispatcher + contract (kept identical).
+2. Silent gate-skipping on lagging phase: new rule "files win downward,
+   gates win upward" — a lagging claim resumes at the unanswered gate.
+3. "plan/tasks in progress" row replaced with file-observable
+   `Status: Confirmed` marker; verify row keys on verification.md's
+   `Result:` line (breaks state.yaml circularity).
+4. `guides: waived: <reason>` invalid YAML → quoted scalar everywhere.
+5. verify.result enum: deviations recorded in the report, enum stays pass.
+6. `decisions.directive` field added for verbatim pre-authorizations.
+7. base_ref rebuild = parent of oldest workspace commit; full per-field
+   rebuild rules enumerated in the contract.
+8. Regression rule for repos with no build/test suite (record the fact).
+9. graphify preflight: index is the user's decision; documented fallback.
+10. Presets: `Preset: fix|tweak` proposal marker (rebuild keys on it),
+    decisions defaulted at open-lite, upgrade thresholds exclude test files.
+11. Archived state.yaml keeps `phase: close`; "done" is derived-only.

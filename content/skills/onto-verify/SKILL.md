@@ -44,33 +44,39 @@ Rules of evidence:
 
 ### 3. Regression
 
-Run the project's full build and test suite. Capture the output.
+Run the project's full build and test suite. Capture the output. If the
+project has no build/test suite (e.g. a content-only repo), record that
+fact as the regression result — that is a valid result, not a skipped
+check.
 
 ### 4. Write the report
 
 Write `docs/changes/<name>/verification.md`:
 
-- Header: change, date, mode, git range (`base_ref..HEAD`)
+- Header: change, date, mode, git range (`base_ref..HEAD`), and a
+  `Result: pass | fail` line — machine-checkable; the dispatcher's phase
+  derivation keys on this line, so it must always be present and current
 - A table: requirement scenario → verdict (pass/fail) → evidence (literal
   command + output excerpt)
 - Design-conformance notes and any deviations
 - Regression results
-- Final `verify.result: pass | fail` — mirror it into `state.yaml`
+- Mirror the result into `state.yaml` `verify.result`
 
 ### 5. Failure gate
 
 > **GATE (on any fail):** list the failing items and ask the user:
 > **fix** (→ back to build: reset `phase: build`, add tasks for the fixes)
-> or **accept deviation** (record each accepted deviation + rationale in
-> `verification.md`; result becomes pass-with-deviations). Always fresh
-> input — never auto-accept a failure. After three consecutive failed
-> verify rounds, stop and make the user choose the path forward.
+> or **accept deviation** (record each accepted deviation + its rationale
+> in `verification.md`; the `Result:` line and `verify.result` stay `pass`
+> — deviations live in the report, not in the enum). Always fresh input —
+> never auto-accept a failure. After three consecutive failed verify
+> rounds, stop and make the user choose the path forward.
 
 ## Exit checklist
 
-- [ ] `verification.md` exists with fresh evidence for every checked
-      scenario, regression results included
-- [ ] `verify.result: pass` (or pass-with-deviations, each recorded with
-      rationale) in both the report and `state.yaml`
+- [ ] `verification.md` exists with a `Result:` line and fresh evidence for
+      every checked scenario, regression results included
+- [ ] `verify.result: pass` in both the report and `state.yaml` (accepted
+      deviations, if any, each recorded with rationale in the report)
 - [ ] `state.yaml` phase advanced: `verify → close`
 - [ ] Announce the transition and load `onto-close`
