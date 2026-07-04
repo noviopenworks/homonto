@@ -21,11 +21,12 @@ one small, verified task at a time.
 
 ### 1. Write the plan
 
-Write `docs/changes/<name>/plan.md`: bite-sized tasks mirroring `tasks.md`,
-each with exact file paths, what to do, and how to verify it. A task that
-can't state its verification isn't ready. Tasks should be small enough that
-one commit each stays reviewable (~200 lines of change; split anything
-bigger).
+Write `docs/changes/<name>/plan.md` from the canonical template
+`references/plan.md`: bite-sized tasks mirroring `tasks.md`, each with
+exact file paths, what to do, and how to verify it; mark tasks warranting
+review `(risk: high)`. A task that can't state its verification isn't
+ready. One reviewable commit (~200 lines) per task — split anything
+bigger. Read `notes.md` first if present.
 
 ### 2. Plan-ready gate
 
@@ -51,7 +52,14 @@ Create the isolation before the first task: `git checkout -b
 
 ### 3. Execute task by task
 
-For each task, in order:
+**`execution: subagent`** → follow `references/subagent-protocol.md`: the
+main session coordinates only — one fresh-context implementer agent per
+task, coordinator verifies commits and checkoffs against the repository
+(never the agent's report), reviewer agent after `(risk: high)` tasks and
+the final task. If no real dispatch capability exists, fall back to
+`execution: direct`, record it, announce it.
+
+**`execution: direct`** → for each task, in order:
 
 1. **`tdd: tdd`** — write the failing test FIRST, run it, watch it fail for
    the expected reason; then write the minimal implementation; watch it
@@ -89,5 +97,6 @@ prohibited.
 - [ ] Project build + test suite run fresh and pass (state the commands and
       results — do not rely on memory)
 - [ ] `decisions:` in `state.yaml` filled (isolation, execution, tdd)
-- [ ] `state.yaml` phase advanced: `build → verify`
+- [ ] `state.yaml` phase advanced: `build → verify`;
+      `metrics.phases.build: <today>` stamped
 - [ ] Announce the transition and load `onto-verify`

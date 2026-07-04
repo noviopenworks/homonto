@@ -14,7 +14,7 @@
 - [x] 2.2 onto-open: notes.md checkpoint protocol, template usage
 - [x] 2.3 onto-design: notes.md checkpoint, optional parallel approach
       exploration (subagents), template usage
-- [ ] 2.4 onto-build: subagent execution protocol (implementer + reviewer),
+- [x] 2.4 onto-build: subagent execution protocol (implementer + reviewer),
       template usage
 - [ ] 2.5 onto-verify: adversarial multi-agent verification protocol
 - [ ] 2.6 onto-close: format lint, RENAMED merge semantics, metrics stamp,
