@@ -11,7 +11,7 @@
 
 ## 2. Skill Set
 
-- [ ] 2.1 Author `content/skills/onto/SKILL.md` — dispatcher: phase detection
+- [x] 2.1 Author `content/skills/onto/SKILL.md` — dispatcher: phase detection
       from state.yaml + file cross-check, routing table, resume rules,
       rtk/graphify preflight, GitHub entry-point contract
 - [ ] 2.2 Author `content/skills/onto-open/SKILL.md` — clarification,
