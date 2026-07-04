@@ -14,7 +14,7 @@
 - [x] 2.1 Author `content/skills/onto/SKILL.md` — dispatcher: phase detection
       from state.yaml + file cross-check, routing table, resume rules,
       rtk/graphify preflight, GitHub entry-point contract
-- [ ] 2.2 Author `content/skills/onto-open/SKILL.md` — clarification,
+- [x] 2.2 Author `content/skills/onto-open/SKILL.md` — clarification,
       split preflight, proposal/design/tasks creation, review blocking point
 - [ ] 2.3 Author `content/skills/onto-design/SKILL.md` — brainstorming-grade
       design, Design Doc, ADR drafts, spec deltas, approach confirmation
