@@ -8,6 +8,11 @@ symlinked into your tools by `homonto apply`), one `docs/` tree for all
 artifacts, and an agent-managed `state.yaml` per change. No workflow CLIs,
 no scripts.
 
+Every artifact has a **canonical template** bundled with the skill that
+creates it (`content/skills/<skill>/references/`) — skills stay lean
+process prose; payload loads only when a phase needs it, and structural
+deviation from a template is a close-phase lint finding.
+
 ## Quick start
 
 - New work: `/onto <what you want to build>`
@@ -36,21 +41,47 @@ docs/
 
 - **open** (`onto-open`) — clarify until unambiguous, check whether the work
   should split into multiple changes, create the workspace (`state.yaml`,
-  `proposal.md`, `tasks.md`). Gates: clarification-complete, artifact review.
-- **design** (`onto-design`) — ground-truth exploration, 2–3 approaches,
-  user confirms one; then `design.md`, ADR drafts (unnumbered, Proposed),
-  and delta specs with testable scenarios. Gate: approach confirmation. No
+  `notes.md`, `proposal.md`, `tasks.md`) from templates. Gates:
+  clarification-complete, artifact review.
+- **design** (`onto-design`) — ground-truth exploration, 2–3 approaches
+  (optionally sketched by parallel agents when genuinely open), user
+  confirms one; then `design.md`, ADR drafts (unnumbered, Proposed), and
+  delta specs with testable scenarios. Gate: approach confirmation. No
   implementation code in this phase, ever.
 - **build** (`onto-build`) — `plan.md` with bite-sized verified tasks;
   plan-ready gate (isolation / execution / tdd recorded in `state.yaml`);
-  one commit per task; root-cause-first debugging on any failure.
+  one commit per task; root-cause-first debugging on any failure. With
+  `execution: subagent`, a coordinator dispatches one fresh implementer
+  agent per task and fault-finding reviewers after risky tasks
+  (protocol: `onto-build/references/subagent-protocol.md`).
 - **verify** (`onto-verify`) — scale-appropriate check of every delta-spec
-  scenario with fresh command output as evidence → `verification.md`.
-  Gate on failure: fix or accept-deviation.
-- **close** (`onto-close`) — merge delta specs into `docs/specs/`, number +
-  accept ADRs into `docs/adr/`, satisfy the guides obligation (update
-  `docs/guides/` or record a waiver), final confirmation, archive the
-  workspace.
+  scenario with fresh command output as evidence, then an **adversarial
+  pass**: in full mode two fresh-context skeptics (conformance +
+  robustness) try to refute the claims → `verification.md`. Gate on
+  failure: fix or accept-deviation.
+- **close** (`onto-close`) — **lint** the change (delta format, workspace
+  state, dangling references — findings block), merge delta specs into
+  `docs/specs/` (incl. RENAMED), number + accept ADRs into `docs/adr/`,
+  satisfy the guides obligation, finalize metrics, final confirmation,
+  archive the workspace, then offer a ready-made **ship handoff** (PR body
+  from the archived evidence) for the PR skills.
+
+## Checkpoints and recovery
+
+Two complementary recovery mechanisms survive context loss: the
+**phase-derivation table** (where the change is — recomputed from files on
+every dispatch) and **notes.md** (why — confirmed facts, pending items,
+grounding; updated before ending any decision-producing turn in
+open/design). After a compaction, skills read notes.md first and resume
+from its Pending items instead of re-asking answered questions.
+
+## Parallel changes
+
+`state.yaml` `deps:` names changes that must archive first; the dispatcher
+shows deps status and warns before resuming a blocked change. For several
+simultaneously active changes, use one git worktree per change. Metrics
+(`metrics:` in state.yaml — phase dates, task count, verify rounds,
+upgrades) are stamped along the way, purely observational.
 
 ## Presets and upgrade rules
 

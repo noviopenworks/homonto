@@ -23,8 +23,8 @@
 
 ## 3. Docs
 
-- [ ] 3.1 Guide updated (docs/guides/onto-workflow.md) for all seven axes
-- [ ] 3.2 ADR draft(s) for the significant decisions
+- [x] 3.1 Guide updated (docs/guides/onto-workflow.md) for all seven axes
+- [x] 3.2 ADR draft(s) for the significant decisions
 
 ## 4. Validation
 
