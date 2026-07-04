@@ -16,7 +16,7 @@
       exploration (subagents), template usage
 - [x] 2.4 onto-build: subagent execution protocol (implementer + reviewer),
       template usage
-- [ ] 2.5 onto-verify: adversarial multi-agent verification protocol
+- [x] 2.5 onto-verify: adversarial multi-agent verification protocol
 - [ ] 2.6 onto-close: format lint, RENAMED merge semantics, metrics stamp,
       ship handoff contract
 - [ ] 2.7 onto-fix / onto-tweak: preset-appropriate versions of the above

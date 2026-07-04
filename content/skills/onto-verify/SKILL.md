@@ -42,6 +42,18 @@ Rules of evidence:
   no "passed earlier", no stale logs.
 - A scenario that cannot be demonstrated is a **fail**, not a skip.
 
+### 2b. Adversarial pass
+
+After the self-evidence table is drafted, follow
+`references/adversarial.md`: **full mode requires two parallel
+fresh-context skeptics** — conformance (refute each scenario claim) and
+robustness (edge cases, drift/recovery paths) — prompted to refute, never
+approve; light mode uses one optional skeptic with skips recorded. Triage
+findings per the protocol: a refuted claim fails its scenario; new defects
+are CRITICAL-fix or gate-decided deviations. No dispatch capability →
+record the skipped pass as a deviation. Increment
+`metrics.verify_rounds` once per round.
+
 ### 3. Regression
 
 Run the project's full build and test suite. Capture the output. If the
@@ -51,16 +63,10 @@ check.
 
 ### 4. Write the report
 
-Write `docs/changes/<name>/verification.md`:
-
-- Header: change, date, mode, git range (`base_ref..HEAD`), and a
-  `Result: pass | fail` line — machine-checkable; the dispatcher's phase
-  derivation keys on this line, so it must always be present and current
-- A table: requirement scenario → verdict (pass/fail) → evidence (literal
-  command + output excerpt)
-- Design-conformance notes and any deviations
-- Regression results
-- Mirror the result into `state.yaml` `verify.result`
+Write `docs/changes/<name>/verification.md` from the canonical template
+`references/verification.md` (header with machine-read `Result:` line,
+scenario-evidence table, design conformance, adversarial pass, regression,
+deviations). Mirror the result into `state.yaml` `verify.result`.
 
 ### 5. Failure gate
 
@@ -78,5 +84,8 @@ Write `docs/changes/<name>/verification.md`:
       every checked scenario, regression results included
 - [ ] `verify.result: pass` in both the report and `state.yaml` (accepted
       deviations, if any, each recorded with rationale in the report)
-- [ ] `state.yaml` phase advanced: `verify → close`
+- [ ] Adversarial pass run (or its skip recorded as a deviation);
+      `metrics.verify_rounds` incremented
+- [ ] `state.yaml` phase advanced: `verify → close`;
+      `metrics.phases.verify: <today>` stamped
 - [ ] Announce the transition and load `onto-close`
