@@ -72,7 +72,7 @@ proposal's `Depends-on:` line). Field-level repair never resets
 | `deps` | proposal's `Depends-on:` line, else `[]` |
 | `decisions` | null — gates are re-asked; a lost directive is never re-assumed |
 | `verify.mode` | null (re-derived at verify entry) |
-| `verify.result` | `Result:` line in verification.md, else `pending` |
+| `verify.result` | `Result:` line in verification.md — a `superseded` line rebuilds as `pending` (the revision invalidated it) — else `pending` |
 | `guides` | `pending` unless workspace commits show guide updates |
 | `metrics` | phase-advance commit dates, else omitted — best-effort |
 | `archived` | false (an archived workspace lives under `archive/`) |
@@ -89,6 +89,7 @@ proposal's `Depends-on:` line). Field-level repair never resets
 Rules: demote **one boundary at a time** until the boundary's record is
 found (or the floor). The floor is `open` for full workflow and **`build`
 for presets** (presets have no open/design phases; their open-lite
-confirmations are re-asked at build entry). A missing notes.md caps a
-full-workflow rebuild at the design→build boundary at most — verify→close
-stays decidable from verification.md regardless.
+confirmations are re-asked at build entry). With notes.md missing
+entirely, demotion iterates through every notes-dependent boundary down
+to the floor — only verify→close resists, staying decidable from
+verification.md regardless.

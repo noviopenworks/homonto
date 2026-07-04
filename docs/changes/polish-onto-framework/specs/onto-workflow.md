@@ -130,7 +130,8 @@ agent after any high-risk task and the final task.
 - **GIVEN** an in-progress build phase
 - **WHEN** a task's verification passes
 - **THEN** the task is checked off in `tasks.md` and committed before the
-  next task starts
+  next task starts (under parallel worktree dispatch, the coordinator's
+  serial join preserves this same one-commit-per-task record)
 
 #### Scenario: Coordinator never implements
 

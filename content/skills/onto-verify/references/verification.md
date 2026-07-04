@@ -12,7 +12,9 @@ leave it stale.
 - **Date:** YYYY-MM-DD
 - **Mode:** light | full (why: <scale rule that picked it>)
 - **Range:** <base_ref short>..HEAD on `<branch>`
-- **Result: pass | fail**
+- **Result: pass | fail** (a third value, `superseded (revision <date>)`,
+  is written by a mid-build design revisit to invalidate this report — it
+  is never written by the verify phase itself)
 
 ## Scenario evidence
 
