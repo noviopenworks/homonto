@@ -93,3 +93,17 @@ documented limitation.
 an adapter (`Read` → `Plan` → `Apply`). Adding a new tool later is one adapter,
 no engine changes. Writes are atomic (temp + rename); `state.json` is written
 last so an interrupted apply always leaves each file valid.
+
+## Development workflow
+
+This repo is developed with **onto**, a self-contained markdown workflow
+shipped from this very repo (`content/skills/onto*` — dogfooded via
+`homonto apply`). Five phases (open → design → build → verify → close) plus
+`/onto-fix` and `/onto-tweak` presets; artifacts live under `docs/`:
+
+- `docs/adr/` — accepted architecture decisions
+- `docs/specs/` — living capability specs (SHALL + scenarios)
+- `docs/changes/` — active change workspaces (+ `archive/`)
+- `docs/guides/` — user-facing guides
+
+Start with `/onto`. Full guide: [docs/guides/onto-workflow.md](docs/guides/onto-workflow.md).

@@ -33,7 +33,7 @@
       `homonto apply` to symlink into `.claude/skills/` (dogfood proof)
 - [x] 3.2 Document GitHub entry points (resolve-issue / continue-pr → onto)
       in the dispatcher skill and a `docs/guides/onto-workflow.md` guide
-- [ ] 3.3 Update `README.md` with the development-workflow section
+- [x] 3.3 Update `README.md` with the development-workflow section
 
 ## 3b. Link-plan bug fix (scope amendment, user-confirmed 2026-07-04)
 
