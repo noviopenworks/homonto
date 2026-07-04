@@ -7,7 +7,7 @@
       explaining its contract
 - [x] 1.2 Define the `state.yaml` schema and document it (fields, lifecycle,
       file-state-wins recovery rule)
-- [ ] 1.3 Define the ADR template and numbering convention
+- [x] 1.3 Define the ADR template and numbering convention
 
 ## 2. Skill Set
 
