@@ -87,8 +87,8 @@ deviations). Mirror the result into `state.yaml` `verify.result`.
       every checked scenario, regression results included
 - [ ] `verify.result: pass` in both the report and `state.yaml` (accepted
       deviations, if any, each recorded with rationale in the report)
-- [ ] Adversarial pass run (or its skip recorded as a deviation);
-      `metrics.verify_rounds` incremented
+- [ ] Adversarial pass run (or its skip recorded in the report's
+      Adversarial section); `metrics.verify_rounds` incremented
 - [ ] `state.yaml` phase advanced: `verify → close`;
       `metrics.phases.verify: <today>` stamped
 - [ ] Announce the transition and load `onto-close`

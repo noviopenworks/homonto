@@ -30,10 +30,11 @@ obligation: fix them or stop.
       map, counters numeric — schema: `onto/references/state-yaml.md`)
 - [ ] `verification.md` has a current `Result:` line
 - [ ] Every ADR draft has `**Status:**`, `**Date:**`, `**Change:**` fields
-- [ ] Every template-based artifact follows its template's section
-      structure — proposal, design, tasks, notes, plan, verification —
-      checked against their references (deviation anywhere is a finding,
-      per the templates requirement)
+- [ ] Every template-based artifact **that exists** follows its
+      template's section structure — proposal, design, tasks, notes,
+      plan, verification — checked against their references (deviation
+      anywhere is a finding; presets legitimately lack design/plan and
+      possibly notes)
 
 ## 3. Post-merge (run AFTER the spec merge, before archive)
 

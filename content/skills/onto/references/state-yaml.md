@@ -66,7 +66,7 @@ proposal's `Depends-on:` line). Field-level repair never resets
 |---|---|
 | `change` | directory name |
 | `workflow` | proposal's `Preset:` marker — an upgrade annotation (`Preset: fix (upgraded to full YYYY-MM-DD)`) means `full` — else branch prefix (`fix/`,`tweak/`), else `full` |
-| `phase` | the phase-derivation table — never crossing a gate: write the derived phase only if notes.md's Confirmed section records the preceding gate as answered, else the earlier phase (resume at its gate) |
+| `phase` | the phase-derivation table, gate-capped per the boundary table below — a rebuild never crosses an unanswered gate |
 | `created` | date of the oldest commit touching the workspace |
 | `base_ref` | parent of the oldest commit touching the workspace (best-effort approximation of the sha at open) |
 | `deps` | proposal's `Depends-on:` line, else `[]` |
@@ -76,3 +76,19 @@ proposal's `Depends-on:` line). Field-level repair never resets
 | `guides` | `pending` unless workspace commits show guide updates |
 | `metrics` | phase-advance commit dates, else omitted — best-effort |
 | `archived` | false (an archived workspace lives under `archive/`) |
+
+## Gate caps for phase rebuild (boundary → record consulted)
+
+| Boundary | Gate | Decidable from |
+|---|---|---|
+| open → design | artifact review | notes.md Confirmed entry (onto-open exit mandates recording it) |
+| design → build | approach confirmation | notes.md Confirmed entry (onto-design records it) |
+| build → verify | plan-ready | notes.md Confirmed entry (onto-build's gate records its answer there — decisions in the lost file don't survive) |
+| verify → close | none (failure gate fires only on fail) | `verification.md` with `Result: pass` — no demotion when present |
+
+Rules: demote **one boundary at a time** until the boundary's record is
+found (or the floor). The floor is `open` for full workflow and **`build`
+for presets** (presets have no open/design phases; their open-lite
+confirmations are re-asked at build entry). A missing notes.md caps a
+full-workflow rebuild at the design→build boundary at most — verify→close
+stays decidable from verification.md regardless.

@@ -4,7 +4,8 @@ The incremental checkpoint for the conversation-shaped phases (open,
 design). The derivation table recovers *where* a change is; notes.md
 recovers *why*. Created at open; updated before ending ANY turn that
 produced new decisions (open and design — the conversation-shaped phases;
-build reads it when present); archived with the change.
+build records its plan-ready gate answer here too, and every phase skill
+reads it at entry when present); archived with the change.
 
 ## Template
 

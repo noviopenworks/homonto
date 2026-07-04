@@ -116,12 +116,14 @@ The build phase SHALL produce an implementation plan with bite-sized tasks,
 execute one task at a time with one commit per task, require a failing test
 first for each task when `tdd: tdd`, and require root-cause analysis
 (systematic-debugging discipline) before any fix when a build, test, or
-unexpected failure occurs. When `execution: subagent`, the main session
-SHALL act only as coordinator: one fresh-context implementer agent per
-task (given the task, exact files, design section, conventions, and
-verification), file-based checkoffs and one commit per task verified by
-the coordinator against the repository, and a fault-finding reviewer agent
-after any high-risk task and the final task.
+unexpected failure occurs; parallel subagent dispatch, when used,
+preserves one commit per task through per-implementer worktrees with
+coordinator-performed serial joins. When `execution: subagent`, the main
+session SHALL act only as coordinator: one fresh-context implementer
+agent per task (given the task, exact files, design section, conventions,
+and verification), file-based checkoffs and one commit per task verified
+by the coordinator against the repository, and a fault-finding reviewer
+agent after any high-risk task and the final task.
 
 #### Scenario: Task completion
 
@@ -171,10 +173,10 @@ SHALL block close until the user chooses fix or accept-deviation
 
 The close phase SHALL lint the change before merging (delta-spec format:
 only ADDED/MODIFIED/REMOVED/RENAMED sections, SHALL/MUST in every
-requirement's first line, GIVEN/WHEN/THEN scenarios; state.yaml validity;
-`Result:` line present; ADR draft fields; post-merge no delta-only
-headings; dangling-reference audit) with findings blocking archive exactly
-like the guides obligation; then merge spec deltas into `docs/specs/`
+ADDED/MODIFIED requirement's first line, GIVEN/WHEN/THEN scenarios;
+state.yaml validity; `Result:` line present; ADR draft fields; post-merge
+no delta-only section headings; dangling-reference audit) with findings
+blocking archive exactly like the guides obligation; then merge spec deltas into `docs/specs/`
 (including RENAMED semantics), assign final numbers to ADR drafts and move
 them to `docs/adr/` with status Accepted, write or update `docs/guides/`
 (or record an explicit `guides: "waived: <reason>"`), finalize

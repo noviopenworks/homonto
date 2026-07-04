@@ -17,9 +17,15 @@ exceeds the work.
 For each unchecked task, **strictly in plan order, one at a time** —
 every task writes the shared bookkeeping files (tasks.md, plan.md), so
 naive parallel dispatch races the same branch. Parallel dispatch is
-allowed ONLY with one worktree per implementer AND the coordinator
-performing the bookkeeping checkoffs/commits itself serially on join.
-Dispatch ONE fresh-context implementer agent whose prompt contains:
+allowed ONLY with one worktree per implementer AND these prompt
+variations: parallel implementers do **NOT** touch tasks.md/plan.md
+(drop item 7) and commit only their task's own files in their worktree;
+on join the coordinator merges the worktree branches into the change
+branch **in plan order**, performs every bookkeeping checkoff/commit
+itself serially, and runs reviewer dispatches (including the mandatory
+final-task review) only after the last join. One commit per task is
+preserved either way. Dispatch ONE fresh-context implementer agent whose
+prompt contains:
 
 1. The task text verbatim (files, do, verify) from `plan.md`
 2. The relevant `design.md` section(s) — pasted, not summarized

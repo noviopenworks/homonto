@@ -16,8 +16,10 @@ ADR log, and user-facing guides — then archive the workspace.
 - Read `notes.md` at entry when present — recorded directives determine
   whether the final gate is pre-authorized.
 - Execute any `DEFERRED to close:` tasks from `tasks.md` during this phase
-  (before the final confirmation); the pre-archive lint blocks on
-  unresolved markers.
+  (before the final confirmation), rewriting each executed line to
+  `- [x] N.N (deferred, done at close YYYY-MM-DD): <desc>` and noting the
+  execution evidence in the close summary; the pre-archive lint blocks on
+  unresolved `DEFERRED to close:` markers.
 - Anything else → route back through `/onto`.
 
 ## Steps

@@ -14,6 +14,8 @@ one small, verified task at a time.
 - `workflow: full` → a `design.md` marked `Status: Confirmed` must exist; if
   it doesn't, the design phase isn't done — route back through `/onto`.
 - Presets (`fix`/`tweak`) enter build directly after open-lite.
+- Read `notes.md` at entry when present — recorded decisions and
+  directives govern how tasks execute.
 - On resume (fresh session, context loss): find the first unchecked task in
   `tasks.md`/`plan.md` and continue from there; never redo committed tasks.
 
@@ -45,6 +47,11 @@ bigger. Read `notes.md` first if present.
 > (e.g. "run to completion with defaults"), record it **verbatim** in
 > `decisions.directive` and proceed with the recorded config — but still
 > surface the plan summary so the user sees what will happen.
+>
+> Record the gate's answer (chosen config, or the pre-authorizing
+> directive) in `notes.md` Confirmed as well — the state-rebuild gate cap
+> for the build→verify boundary consults notes.md, not the losable
+> state file.
 
 Create the isolation before the first task: `git checkout -b
 <type>/YYYYMMDD/<change-name>` (or the worktree equivalent). Type prefix:
@@ -84,10 +91,12 @@ prohibited.
 - Small (missing edge case, scenario): edit the delta spec + design.md
   inline, append a task, note it in the commit message.
 - Medium (interface/component/data-flow changes): pause, get user
-  confirmation, then set `phase: design` and flip `design.md`'s status
-  line to `Status: Under revision` — the derivation then correctly routes
-  to design until the approach gate re-confirms (new `Status: Confirmed`
-  + date), after which build resumes.
+  confirmation, then set `phase: design`, flip `design.md`'s status line
+  to `Status: Under revision`, **and — if a `verification.md` exists —
+  flip its `Result:` line to `Result: superseded (revision <date>)`** so
+  a stale pass can never teleport the revised change past build/verify.
+  The derivation then routes to design until the approach gate re-confirms
+  (new `Status: Confirmed` + date), after which build resumes.
 - Large (new capability, or new tasks exceed half the original task count):
   pause; the user chooses between splitting into a new change or expanding
   this one. Always fresh input.

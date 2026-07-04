@@ -30,7 +30,8 @@ the dispatcher rebuilds it).
 `docs/changes/archive/YYYY-MM-DD-<name>/` (date = close date), unmodified
 except `archived: true` in `state.yaml`. Archived changes are history — never
 edited afterwards, with exactly one sanctioned exception: an accepted
-ship handoff adds `ship.md` immediately after archiving.
+ship handoff adds `ship.md` — the exception is the file itself, not its
+timing (a later user request may still produce it).
 
 ## state.yaml schema
 

@@ -45,7 +45,10 @@ each with the reason>
 ## Rules
 
 - `Status: Confirmed` + `Confirmed:` date are machine-read — first lines
-  after the title, exactly as shown.
+  after the title, exactly as shown. The only other legal status is
+  `Status: Under revision` (set by a mid-build design revisit; the
+  derivation table routes on it, and re-confirmation replaces it with a
+  fresh `Status: Confirmed` + date).
 - Every Key decision needs an ADR draft (`references/adr-draft.md`) and
   every behavior change a delta-spec scenario (`references/delta-spec.md`).
 - No implementation code in this artifact or this phase.

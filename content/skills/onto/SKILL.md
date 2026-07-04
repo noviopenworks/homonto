@@ -120,10 +120,15 @@ proceed to `onto-open`.
 4. **Cross-check `workflow` too, not just phase**: the file sources are
    the proposal's `Preset:` marker (including an upgrade annotation like
    `Preset: fix (upgraded to full YYYY-MM-DD)`, which means full), else
-   the branch prefix (`fix/`, `tweak/`), else full. On mismatch with
-   state.yaml, the file sources win — correct, announce, reroute. A
-   well-typed but wrong `workflow:` value must never silently put a
-   change on the wrong lifecycle.
+   the branch prefix (`fix/`, `tweak/`), else full — a detached HEAD or
+   non-prefixed branch is no signal and means full. On mismatch, the file
+   sources win — correct, announce, reroute — with one hard asymmetry:
+   **corrections may upgrade (preset→full) but never silently downgrade**.
+   The branch prefix alone may select a preset only when no
+   `Status: Confirmed` design.md exists (the branch belongs to the
+   checkout, not the change — a leftover `fix/` branch must not strip a
+   designed change of its lifecycle); any would-be downgrade requires
+   fresh user confirmation, honoring "never talk a change down".
 5. A missing or malformed `state.yaml` is never an error: rebuild it per
    the per-field table in `references/state-yaml.md` (`workflow` from the
    proposal's `Preset:` marker incl. upgrade annotation, else the branch
@@ -131,11 +136,13 @@ proceed to `onto-open`.
    the workspace; `decisions` reset to null so gates are re-asked;
    `verify.result` from verification.md's `Result:` line; `deps` from the
    proposal's `Depends-on:` line; `metrics` best-effort, never blocking),
-   announce the rebuild, continue. **Rebuild never crosses a gate**: the
-   derived phase is written only if `notes.md`'s Confirmed section records
-   the preceding phase's exit gate as answered; otherwise write the
-   earlier phase and resume at its gate — a lost state file must not skip
-   what the user never confirmed.
+   announce the rebuild, continue. **Rebuild never crosses a gate**: cap
+   the derived phase per the boundary table in
+   `references/state-yaml.md` — open→design and design→build need their
+   notes.md Confirmed records, build→verify needs the plan-ready record,
+   verify→close is decidable from verification.md's `Result: pass` alone;
+   demote one boundary at a time, floor `open` (full) / `build` (presets).
+   A lost state file must not skip what the user never confirmed.
 6. Never trust conversation history for phase detection — after context
    loss or compaction, this derivation is the recovery mechanism. Re-run it.
 

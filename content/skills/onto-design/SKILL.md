@@ -19,6 +19,13 @@ the full workflow exists.
   *where*-recovery.
 - Presets never enter this phase — except a preset **upgraded** to full,
   which arrives here to backfill the design it skipped.
+- **Revision entry**: if `design.md` exists marked `Status: Under
+  revision`, this is a mid-build design revisit — the approach gate is
+  re-asked **for the revised scope regardless of what notes.md Confirmed
+  records** (the old approach answer does not cover the new scope; this
+  overrides "never re-ask Confirmed" for exactly this gate).
+  Re-confirmation writes a fresh `Status: Confirmed` + date and records
+  the new answer in notes.md; the change then resumes build.
 - Any other state → route back through `/onto`.
 
 ## Steps

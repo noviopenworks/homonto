@@ -110,11 +110,13 @@ Template: `onto-open/references/notes.md`.
 
 ### Close-phase lint (agent-run, no scripts)
 
-Run before merging, from `onto-close/references/lint-checklist.md`:
+Staged per `onto-close/references/lint-checklist.md` (§1–2 pre-merge, §3
+post-merge, §4 pre-archive):
 
 1. Delta spec format: sections only ADDED/MODIFIED/REMOVED/RENAMED; every
-   requirement's first line contains SHALL or MUST; every requirement has
-   ≥1 `#### Scenario:` with GIVEN/WHEN/THEN bullets.
+   ADDED/MODIFIED requirement's first non-empty line contains SHALL or
+   MUST; every such requirement has ≥1 `#### Scenario:` with
+   GIVEN/WHEN/THEN bullets.
 2. RENAMED semantics (new in specs README): `## RENAMED Requirements` with
    `- FROM: <name>` / `  TO: <name>` pairs; merge renames the requirement
    heading in the living spec, preserving its body unless a MODIFIED block
@@ -150,6 +152,17 @@ Each phase's exit checklist stamps `metrics.phases.<phase>: <date>`; close
 finalizes tasks_total (checked tasks), verify_rounds, upgraded. Metrics are
 observational only — never a gate, never blocking.
 
+## Key decisions
+
+1. **Reference-file skill architecture** (→
+   `adr/reference-file-skill-architecture.md`): payload in bundled
+   references, process in lean SKILL.md — progressive disclosure over
+   inline bulk (A) or a lint subcommand (C).
+2. **Adversarial multi-agent verification** (→
+   `adr/adversarial-multi-agent-verification.md`): fresh-context skeptics
+   prompted to refute, never approve — independence over redundancy,
+   grounded in the v1 dry-run precedent (11 defects self-review missed).
+
 ## Error handling
 
 - Missing reference file (skill symlinked but references pruned): the
@@ -157,8 +170,9 @@ observational only — never a gate, never blocking.
   reconstruct from docs/changes/README.md pointers and note the gap") —
   degraded, never halted.
 - Skeptic agents unavailable (no dispatch capability): record
-  "adversarial pass skipped: no subagent capability" as a deviation in the
-  report; verification may still pass with that deviation recorded.
+  "adversarial pass skipped: no subagent capability" in the report's
+  Adversarial section (no acceptor needed); verification may still pass
+  with the skip recorded.
 - Lint findings at close: same blocking flow as guides obligation.
 
 ## Testing strategy
@@ -174,7 +188,7 @@ observational only — never a gate, never blocking.
    references/; derivation-table byte-identity check.
 5. `go test ./...` stays green (no Go changes).
 
-## Graph grounding
+## Grounding
 
 - C9 (onto Phase Contracts) + C11 (onto Workflow Core) are the touched
   communities; no Go community membership → no product-code risk.

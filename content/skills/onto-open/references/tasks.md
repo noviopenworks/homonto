@@ -28,7 +28,12 @@ refines and checks items off — one commit per checked item.
   greps it). A deliberately deferred task uses `- [x] N.N DEFERRED to
   close: <reason>` — checked, with the deferral stated. Close is the only
   deferral target (build's exit and verify's entry recognize nothing
-  else).
+  else). **Only non-runtime work may be deferred** (bookkeeping, file
+  moves, doc stamps — anything whose behavior verify would need to
+  demonstrate must be built before verify). When close executes a
+  deferred task it rewrites the line to
+  `- [x] N.N (deferred, done at close YYYY-MM-DD): <desc>` — that rewrite
+  is what the pre-archive lint's "no unresolved markers" check reads.
 - Number tasks `<area>.<n>`; keep one outcome per task.
 - Every change ends with a Validation area — a change that can't state its
   own proof isn't ready to build.

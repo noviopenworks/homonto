@@ -20,11 +20,19 @@ marked *pending*.
   + bundled references/, progressive disclosure). A and C rejected
   (context cost / binary dependency).
 - 2026-07-04 verify-fail gate (round 1): "Fix all, round 2" — all 16
-  triaged findings fixed; fixes committed; round 2 pending.
+  triaged findings fixed and committed.
+- 2026-07-04 verify-fail gate (round 2): "Fix all + round 3 light" — 14
+  residual findings (4 substantive: revision-path completion, gate→
+  boundary mapping, downgrade guard, DEFERRED resolution; 10
+  harmonizations) all fixed.
+- 2026-07-04 plan-ready gate: pre-authorized by the recorded directive;
+  config branch/direct/direct (recorded here per the build→verify gate
+  cap).
 
 ## Pending
 
-- Verification round 2 (post-fix skeptic passes) → then close.
+- Verification round 3 (light, single focused skeptic on the round-2
+  fixes) → then close.
 
 ## Grounding
 
