@@ -1,0 +1,11 @@
+[skills]
+own = [
+  "onto",
+  "onto-open",
+  "onto-design",
+  "onto-build",
+  "onto-verify",
+  "onto-close",
+  "onto-fix",
+  "onto-tweak",
+]
