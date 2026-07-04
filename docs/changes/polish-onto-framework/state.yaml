@@ -1,6 +1,6 @@
 change: polish-onto-framework
 workflow: full
-phase: design
+phase: build
 created: 2026-07-04
 base_ref: 4abb3195f96d06b0f3dd62d5dddf9a3c02af833f
 decisions:
