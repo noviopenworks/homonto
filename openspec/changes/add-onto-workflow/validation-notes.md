@@ -86,3 +86,43 @@ No changes. Everything up to date.
 ```
 12 packages ok, 0 failures
 ```
+
+## Final checks (task 5.3, 2026-07-04)
+
+### Self-containment
+```
+$ grep -rn "openspec\|comet\|docs/superpowers" content/skills/
+(no matches, exit 1)
+```
+
+### Symlink load
+```
+$ test -f ~/.claude/skills/onto/SKILL.md && echo RESOLVES
+RESOLVES
+```
+All eight onto skills were also registered live by Claude Code in the
+authoring session (available-skills list), confirming they load via symlink.
+
+### Status / doctor
+```
+$ ./homonto status
+No drift.
+$ ./homonto doctor
+warn: `pass` not found on PATH (pass: references will fail)
+ok: .claude (Claude Code) config location present
+ok: .config/opencode (OpenCode) config location present
+ok: skill "onto" present   (…and the other seven, all ok)
+```
+
+### Regression
+```
+$ go test ./...
+48 passed in 14 packages, 0 failures
+```
+
+### Migration audit (build scope)
+```
+$ grep -rn "openspec/specs\|docs/superpowers" README.md docs/guides docs/specs docs/adr content/
+(no matches — live docs reference only new paths)
+```
+git history preserved across moves (git log --follow works on docs/specs/*.md and docs/roadmap.md).

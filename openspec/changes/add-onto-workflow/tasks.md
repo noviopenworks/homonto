@@ -59,5 +59,5 @@
       and artifact contract
 - [ ] 5.2 Dry-run preset paths: /onto-fix and /onto-tweak including an
       upgrade-rule trigger
-- [ ] 5.3 Verify skills load via symlink (`/onto` visible to Claude Code) and
+- [x] 5.3 Verify skills load via symlink (`/onto` visible to Claude Code) and
       contain no references to openspec CLI or comet scripts
