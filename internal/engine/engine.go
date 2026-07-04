@@ -33,6 +33,15 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A relative content dir is relative to the config file, not the shell
+	// working directory — symlink targets must stay valid from anywhere.
+	if !filepath.IsAbs(contentDir) {
+		base, err := filepath.Abs(filepath.Dir(configPath))
+		if err != nil {
+			return nil, err
+		}
+		contentDir = filepath.Join(base, contentDir)
+	}
 	stateDir := filepath.Join(filepath.Dir(configPath), ".homonto")
 	st, err := state.Load(stateDir)
 	if err != nil {

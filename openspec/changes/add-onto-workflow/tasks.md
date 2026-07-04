@@ -35,6 +35,14 @@
       in the dispatcher skill and a `docs/guides/onto-workflow.md` guide
 - [ ] 3.3 Update `README.md` with the development-workflow section
 
+## 3b. Link-plan bug fix (scope amendment, user-confirmed 2026-07-04)
+
+- [x] 3.4 Fix owned-skill links absent from plan: failing test first
+      (skills-only config → Plan must contain non-noop link changes), then
+      make pending links first-class plan changes in both adapters
+      (`internal/link`, `internal/adapter/claude`, `internal/adapter/opencode`);
+      delta spec for `tool-adapters`; re-run dogfood apply for real evidence
+
 ## 4. Migration
 
 - [ ] 4.1 Migrate `openspec/specs/*` → `docs/specs/` (flatten to

@@ -53,8 +53,13 @@ real entry in the template catalog.
 
 ### Modified Capabilities
 
-<!-- none — no homonto binary behavior (apply-pipeline, cli-commands,
-config-model, secret-references, tool-adapters) changes in this change -->
+- `tool-adapters`: bug fix discovered during dogfooding — owned-skill
+  symlinks are created only inside adapter `Apply`, are absent from the
+  ChangeSet, and `apply` short-circuits on an empty plan, so a skills-only
+  config never links anything (violates the existing "Idempotent link
+  creation" scenario). Fix: pending links become first-class plan changes
+  in both adapters. (Scope amendment confirmed by user 2026-07-04;
+  supersedes the original "no Go source changes" non-goal.)
 
 ## Impact
 

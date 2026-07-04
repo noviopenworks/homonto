@@ -28,20 +28,44 @@ func Link(src, dst string) (bool, error) {
 	return true, nil
 }
 
-// LinkPlan returns descriptions of links (dst->src) that would change.
-func LinkPlan(srcs map[string]string) ([]string, error) {
-	var out []string
+// Op is a pending link change for dst -> src. Cur is the current symlink
+// target, empty when dst does not exist yet (a create).
+type Op struct {
+	Dst, Src, Cur string
+}
+
+// Plan returns the link changes (dst->src) that would be made. Links already
+// pointing at src are omitted; a non-symlink at dst is a conflict error.
+func Plan(srcs map[string]string) ([]Op, error) {
+	var out []Op
 	for dst, src := range srcs {
 		fi, err := os.Lstat(dst)
 		if err != nil {
-			out = append(out, fmt.Sprintf("+ link %s -> %s", dst, src))
+			out = append(out, Op{Dst: dst, Src: src})
 			continue
 		}
 		if fi.Mode()&os.ModeSymlink == 0 {
 			return nil, fmt.Errorf("conflict: %s exists and is not a symlink", dst)
 		}
 		if cur, _ := os.Readlink(dst); cur != src {
-			out = append(out, fmt.Sprintf("~ relink %s -> %s", dst, src))
+			out = append(out, Op{Dst: dst, Src: src, Cur: cur})
+		}
+	}
+	return out, nil
+}
+
+// LinkPlan returns descriptions of links (dst->src) that would change.
+func LinkPlan(srcs map[string]string) ([]string, error) {
+	ops, err := Plan(srcs)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, op := range ops {
+		if op.Cur == "" {
+			out = append(out, fmt.Sprintf("+ link %s -> %s", op.Dst, op.Src))
+		} else {
+			out = append(out, fmt.Sprintf("~ relink %s -> %s", op.Dst, op.Src))
 		}
 	}
 	return out, nil

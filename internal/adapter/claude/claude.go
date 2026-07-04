@@ -29,6 +29,15 @@ func (a *Adapter) Name() string { return "claude" }
 func (a *Adapter) claudeJSON() string   { return filepath.Join(a.home, ".claude.json") }
 func (a *Adapter) settingsJSON() string { return filepath.Join(a.home, ".claude", "settings.json") }
 
+// links maps each owned skill's destination to its content source.
+func (a *Adapter) links() map[string]string {
+	out := map[string]string{}
+	for _, name := range a.skills {
+		out[filepath.Join(a.home, ".claude", "skills", name)] = filepath.Join(a.content, "skills", name)
+	}
+	return out
+}
+
 // desired returns managed key -> unresolved JSON-encoded desired value.
 func (a *Adapter) desired(c *config.Config) map[string]string {
 	out := map[string]string{}
@@ -84,6 +93,17 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			}
 		}
 	}
+	ops, err := link.Plan(a.links())
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	for _, op := range ops {
+		if op.Cur == "" {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + filepath.Base(op.Dst), New: op.Dst + " -> " + op.Src})
+		} else {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + filepath.Base(op.Dst), Old: op.Cur, New: op.Src})
+		}
+	}
 	return cs, nil
 }
 
@@ -125,7 +145,8 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		return err
 	}
 	for _, c := range cs.Changes {
-		if c.Action == "noop" {
+		// skill.* changes are symlink work, handled below — not JSON keys.
+		if c.Action == "noop" || hasPrefix(c.Key, "skill.") {
 			continue
 		}
 		val, err := res.ResolveJSON(c.New)
@@ -147,11 +168,8 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 	}
 	// Fail fast on link conflicts before writing any file.
-	links := map[string]string{}
-	for _, name := range a.skills {
-		links[filepath.Join(a.home, ".claude", "skills", name)] = filepath.Join(a.content, "skills", name)
-	}
-	if _, err := link.LinkPlan(links); err != nil {
+	links := a.links()
+	if _, err := link.Plan(links); err != nil {
 		return err
 	}
 	if err := writeAtomic(a.claudeJSON(), mj); err != nil {

@@ -161,3 +161,45 @@ func TestSecretDriftPlanIsRedacted(t *testing.T) {
 		t.Fatal("expected an mcp.brave change after drift")
 	}
 }
+
+func TestSkillsOnlyConfigPlansAndAppliesLinks(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
+
+	content := t.TempDir()
+	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
+
+	a := New(home, content)
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	nonNoop := 0
+	for _, ch := range cs.Changes {
+		if ch.Action != "noop" {
+			nonNoop++
+		}
+	}
+	if nonNoop == 0 {
+		t.Fatal("skills-only config: plan must contain a non-noop change for the missing link")
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	dst := filepath.Join(home, ".claude", "skills", "onto")
+	if got, err := os.Readlink(dst); err != nil || got != filepath.Join(content, "skills", "onto") {
+		t.Fatalf("link not created: %v %s", err, got)
+	}
+
+	cs2, _ := a.Plan(c, st)
+	for _, ch := range cs2.Changes {
+		if ch.Action != "noop" {
+			t.Fatalf("second plan must be all noop, got %s %s", ch.Action, ch.Key)
+		}
+	}
+}

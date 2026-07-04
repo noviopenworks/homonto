@@ -41,3 +41,43 @@ func TestApplyAbortsBeforeWritingOnMissingSecret(t *testing.T) {
 		t.Fatal("state written despite secret failure")
 	}
 }
+
+func TestRelativeContentDirResolvesAgainstConfig(t *testing.T) {
+	repo := t.TempDir()
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
+	os.MkdirAll(filepath.Join(repo, "content", "skills", "onto"), 0o755)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"onto\"]\n"), 0o644)
+
+	wd, _ := os.Getwd()
+	other := t.TempDir()
+	if err := os.Chdir(other); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+
+	e, err := Build(filepath.Join(repo, "homonto.toml"), home, "content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sets, err := e.Plan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	dst := filepath.Join(home, ".claude", "skills", "onto")
+	target, err := os.Readlink(dst)
+	if err != nil {
+		t.Fatalf("link missing: %v", err)
+	}
+	if !filepath.IsAbs(target) {
+		t.Fatalf("link target must be absolute, got %q", target)
+	}
+	if _, err := os.Stat(dst); err != nil {
+		t.Fatalf("link dangles: %v", err)
+	}
+}

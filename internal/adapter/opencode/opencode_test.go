@@ -101,3 +101,35 @@ func TestOpenCodeLinksOwnedSkill(t *testing.T) {
 		t.Fatalf("skill link missing: %v", err)
 	}
 }
+
+func TestOpenCodeSkillsOnlyPlanShowsLinkChanges(t *testing.T) {
+	home := t.TempDir()
+	content := t.TempDir()
+	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
+	a := New(home, content)
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	nonNoop := 0
+	for _, ch := range cs.Changes {
+		if ch.Action != "noop" {
+			nonNoop++
+		}
+	}
+	if nonNoop == 0 {
+		t.Fatal("skills-only config: plan must contain a non-noop change for the missing link")
+	}
+	if err := a.Apply(cs, noSecret(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	cs2, _ := a.Plan(c, st)
+	for _, ch := range cs2.Changes {
+		if ch.Action != "noop" {
+			t.Fatalf("second plan must be all noop, got %s %s", ch.Action, ch.Key)
+		}
+	}
+}
