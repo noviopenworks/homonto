@@ -13,6 +13,10 @@ the full workflow exists.
 
 - `state.yaml` has `phase: design` and `workflow: full`; `proposal.md`
   exists and was approved in open.
+- Read `notes.md` first (create it from `onto-open/references/notes.md` if
+  missing) — resume from Pending; never re-ask Confirmed. After
+  compaction, notes.md is the *why*-recovery; the derivation table is the
+  *where*-recovery.
 - Presets never enter this phase — except a preset **upgraded** to full,
   which arrives here to backfill the design it skipped.
 - Any other state → route back through `/onto`.
@@ -34,7 +38,18 @@ unknown; resolve it or explicitly record it as a risk with a fallback.
 ### 3. Propose 2–3 approaches
 
 Present genuinely different candidate approaches with trade-offs and a
-recommendation. Lead with the recommended one and say why.
+recommendation. Lead with the recommended one and say why. Record the
+candidates in `notes.md` before presenting.
+
+**Parallel exploration (optional):** when the approaches are genuinely
+open and substantial, you MAY dispatch 2–3 fresh-context agents, each
+developing one approach sketch (architecture, key risks, effort) in
+parallel; the main session synthesizes and still presents the comparison
+itself. Never dispatch agents to make the choice — the gate below is the
+user's.
+
+Update `notes.md` after every clarification round and approach iteration —
+before ending the turn, not after.
 
 > **GATE (approach confirmation):** the user picks or adjusts an approach.
 > The final `design.md` MUST NOT be written before this gate is answered.
@@ -46,23 +61,22 @@ looks.
 
 ### 4. Write the design artifacts
 
-After confirmation, write into the workspace:
+After confirmation, write into the workspace, each from its canonical
+template in this skill's `references/`:
 
-- `design.md` — summary, goals/non-goals, architecture (diagrams welcome),
-  key decisions with the alternatives rejected, data flow, error handling,
-  testing strategy. First lines after the title:
-  `Status: Confirmed` and `Confirmed: <date>` (the dispatcher's phase
-  derivation treats only a confirmed design.md as design-complete).
-- `adr/<slug>.md` — one draft per significant decision (template:
-  `docs/adr/README.md`), `Status: Proposed`, **unnumbered**. Numbers are
-  assigned at close.
-- `specs/<capability>.md` — delta specs (format: `docs/specs/README.md`):
-  `## ADDED|MODIFIED|REMOVED Requirements` with SHALL statements and
-  GIVEN/WHEN/THEN scenarios. Every behavior change in the design needs a
-  scenario here — these are what verify will demand evidence for. Deltas are
-  living documents: build may refine them; close merges them.
+- `design.md` — template: `references/design.md`. `Status: Confirmed` +
+  `Confirmed: <date>` are the lines the phase derivation keys on.
+- `adr/<slug>.md` — template: `references/adr-draft.md`; one draft per
+  significant decision, `Status: Proposed`, **unnumbered** (numbers at
+  close).
+- `specs/<capability>.md` — template: `references/delta-spec.md`
+  (ADDED/MODIFIED/REMOVED/RENAMED sections, SHALL first lines,
+  GIVEN/WHEN/THEN scenarios — the close-phase lint enforces exactly that
+  template's rules). Every behavior change needs a scenario; deltas stay
+  living documents until close merges them.
 
-Update `tasks.md` if the design revealed different task boundaries.
+Mark the confirmed approach in `notes.md`. Update `tasks.md` if the design
+revealed different task boundaries.
 
 ## Exit checklist
 
@@ -71,5 +85,7 @@ Update `tasks.md` if the design revealed different task boundaries.
 - [ ] An ADR draft exists for every significant decision named in design.md
 - [ ] A delta spec scenario exists for every behavior change
 - [ ] No implementation code was written
-- [ ] `state.yaml` phase advanced: `design → build`
+- [ ] `notes.md` records the confirmed approach and every decision made
+- [ ] `state.yaml` phase advanced: `design → build`;
+      `metrics.phases.design: <today>` stamped
 - [ ] Announce the transition and load `onto-build`

@@ -12,7 +12,7 @@
 - [x] 2.1 onto (dispatcher): deps/blocked awareness, parallel-change
       guidance, template pointers
 - [x] 2.2 onto-open: notes.md checkpoint protocol, template usage
-- [ ] 2.3 onto-design: notes.md checkpoint, optional parallel approach
+- [x] 2.3 onto-design: notes.md checkpoint, optional parallel approach
       exploration (subagents), template usage
 - [ ] 2.4 onto-build: subagent execution protocol (implementer + reviewer),
       template usage
