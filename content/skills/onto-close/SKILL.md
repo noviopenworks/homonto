@@ -1,0 +1,77 @@
+---
+name: onto-close
+description: onto phase 5 — close. Use when an active change has phase close (verification passed) — merges spec deltas, numbers and accepts ADR drafts, enforces the guides obligation, and archives the workspace after final confirmation.
+---
+
+# onto-close — Phase 5: Close
+
+Land the change's knowledge where it lives permanently: living specs, the
+ADR log, and user-facing guides — then archive the workspace.
+
+## Entry check
+
+- `state.yaml` has `phase: close`; `verification.md` exists with
+  `verify.result: pass` (or pass-with-recorded-deviations).
+- Anything else → route back through `/onto`.
+
+## Steps
+
+### 1. Merge spec deltas
+
+For each workspace delta `specs/<capability>.md`, merge into
+`docs/specs/<capability>.md` per the semantics in `docs/specs/README.md`:
+
+- `## ADDED Requirements` → append the requirement blocks
+- `## MODIFIED Requirements` → replace the requirement of the same name
+- `## REMOVED Requirements` → delete the named requirement
+- Delta for a capability with no living spec → create the file (strip the
+  ADDED wrapper; the living spec has plain `## Requirements`)
+
+The merged living spec must read as "always true, now" — no change-log
+language.
+
+### 2. Number and accept ADRs
+
+For each draft in the workspace `adr/`:
+
+1. Next free number = highest `NNNN` in `docs/adr/` + 1.
+2. Move the draft to `docs/adr/NNNN-<slug>.md` (git mv).
+3. Set `Status: Accepted`. If it supersedes an existing ADR, set that one's
+   status to `Superseded by NNNN`.
+
+### 3. Guides obligation (hard block)
+
+Check `guides:` in `state.yaml`. Archiving with `guides: pending` is
+**prohibited**:
+
+- Write or update the affected `docs/guides/<topic>.md` (and README if the
+  change is user-visible) → set `guides: updated`, **or**
+- Record `guides: waived: <reason>` — the reason must come from the user or
+  a recorded directive, never invented.
+
+### 4. Final confirmation
+
+> **GATE (final confirmation):** summarize what was merged (specs), numbered
+> (ADRs), and documented (guides), then ask for confirmation to archive.
+> This gate MAY be pre-authorized by a verbatim recorded directive — still
+> surface the summary.
+
+### 5. Archive
+
+1. `git mv docs/changes/<name> docs/changes/archive/YYYY-MM-DD-<name>`
+   (today's date).
+2. Set `archived: true` in the moved `state.yaml`.
+3. Commit. The archived workspace is history — never edited afterwards.
+
+The change is done. If the work should ship as a PR, hand off to the
+dedicated PR skills — that is outside onto.
+
+## Exit checklist
+
+- [ ] Every delta spec merged; living specs read as current truth
+- [ ] Every ADR draft numbered, accepted, moved to `docs/adr/`
+- [ ] `guides: updated` or `guides: waived: <reason>` — never pending
+- [ ] Final confirmation given (or pre-authorized verbatim directive)
+- [ ] Workspace under `docs/changes/archive/YYYY-MM-DD-<name>/` with
+      `archived: true`, everything committed
+- [ ] Announce completion and summarize where the knowledge landed

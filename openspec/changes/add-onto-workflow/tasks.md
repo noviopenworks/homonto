@@ -22,7 +22,7 @@
       plan-ready pause, TDD/direct modes, commit-per-task, failure handling
 - [x] 2.5 Author `content/skills/onto-verify/SKILL.md` — verification levels,
       checks vs design/specs/tasks, verification.md, fail decision point
-- [ ] 2.6 Author `content/skills/onto-close/SKILL.md` — spec delta merge, ADR
+- [x] 2.6 Author `content/skills/onto-close/SKILL.md` — spec delta merge, ADR
       status finalization, docs/guides obligation, archive, final confirmation
 - [ ] 2.7 Author `content/skills/onto-fix/SKILL.md` and
       `content/skills/onto-tweak/SKILL.md` — preset paths + upgrade rules
