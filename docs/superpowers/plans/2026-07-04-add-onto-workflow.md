@@ -2,6 +2,7 @@
 change: add-onto-workflow
 design-doc: docs/superpowers/specs/2026-07-04-onto-workflow-design.md
 base-ref: 94e3f5a4a35f5a567ea6975e0e7dc79ca60a7ad6
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 # onto Workflow Implementation Plan
@@ -53,6 +54,7 @@ homonto.toml                # dogfood wiring (Task 11)
 README.md                   # dev-workflow section (Task 13)
 ```
 
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 ## Phase 1: Foundation
@@ -299,6 +301,7 @@ git add docs/adr/README.md
 git commit -m "docs: add ADR template and numbering convention"
 ```
 
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 ## Phase 2: Skill Set
@@ -331,9 +334,11 @@ Expected: no matches (exit code 1).
 - [x] **Step 1: Write frontmatter**
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto
 description: onto workflow dispatcher. Use when starting, resuming, or asking about any development work in a repo with the docs/ onto layout — runs tooling preflight, finds the active change, derives the real phase from file state, and routes to the matching onto sub-skill.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -368,9 +373,11 @@ git commit -m "feat: add onto dispatcher skill"
 - [x] **Step 1: Write frontmatter**
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-open
 description: onto phase 1 — open a change. Use when starting a new change or when the dispatcher routes here (phase open) — clarifies requirements, checks for scope splits, and creates the change workspace with proposal and tasks skeleton.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -403,9 +410,11 @@ git commit -m "feat: add onto-open skill"
 - [x] **Step 1: Write frontmatter**
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-design
 description: onto phase 2 — deep design. Use when an active full-workflow change has phase design — brainstorming-grade exploration, approach confirmation, then design.md plus ADR drafts and spec deltas.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -438,9 +447,11 @@ git commit -m "feat: add onto-design skill"
 - [x] **Step 1: Write frontmatter**
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-build
 description: onto phase 3 — plan and build. Use when an active change has phase build — writes the implementation plan, pauses at the plan-ready gate, then executes bite-sized tasks with one commit each under the chosen TDD/direct mode.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -473,9 +484,11 @@ git commit -m "feat: add onto-build skill"
 - [x] **Step 1: Write frontmatter**
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-verify
 description: onto phase 4 — verify. Use when an active change has phase verify (all tasks checked) — picks a verification level from change scale, checks implementation against design and every spec scenario with fresh evidence, and writes verification.md.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -508,9 +521,11 @@ git commit -m "feat: add onto-verify skill"
 - [x] **Step 1: Write frontmatter**
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-close
 description: onto phase 5 — close. Use when an active change has phase close (verification passed) — merges spec deltas, numbers and accepts ADR drafts, enforces the guides obligation, and archives the workspace after final confirmation.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -546,9 +561,11 @@ git commit -m "feat: add onto-close skill"
 Frontmatter:
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-fix
 description: onto preset — bug fix. Use for behavior fixes that need no new capability design — open-lite, then build starting from a failing test that reproduces the bug, verify, close; upgrades to the full workflow when scope grows.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -564,9 +581,11 @@ Required sections:
 Frontmatter:
 
 ```yaml
+archived-with: 2026-07-04-add-onto-workflow
 ---
 name: onto-tweak
 description: onto preset — small non-bug change. Use for copy, configuration, documentation, or prompt tweaks — open-lite, lightweight build, light verify, close; upgrades to the full workflow when scope grows.
+archived-with: 2026-07-04-add-onto-workflow
 ---
 ```
 
@@ -591,6 +610,7 @@ git add content/skills/onto-fix content/skills/onto-tweak
 git commit -m "feat: add onto-fix and onto-tweak preset skills"
 ```
 
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 ## Phase 3: Integration
@@ -719,6 +739,7 @@ git add README.md
 git commit -m "docs: add development-workflow section to README"
 ```
 
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 ## Phase 4: Migration
@@ -885,6 +906,7 @@ git add -A
 git commit -m "chore: retire openspec/ and docs/superpowers/ (onto workflow live)"
 ```
 
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 ## Phase 5: Validation
@@ -985,6 +1007,7 @@ git add openspec/changes/add-onto-workflow/validation-notes.md
 git commit -m "test: self-containment, symlink, and regression evidence for onto"
 ```
 
+archived-with: 2026-07-04-add-onto-workflow
 ---
 
 ## Task → tasks.md mapping

@@ -2,6 +2,8 @@
 comet_change: add-onto-workflow
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-04-add-onto-workflow
+status: final
 ---
 
 # onto Workflow — Technical Design

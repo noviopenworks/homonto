@@ -16,7 +16,7 @@ verification_report: docs/superpowers/reports/2026-07-04-add-onto-workflow-verif
 branch_status: handled
 created_at: 2026-07-04
 verified_at: 2026-07-04
-archived: false
+archived: true
 handoff_context: openspec/changes/add-onto-workflow/.comet/handoff/design-context.json
 handoff_hash: 61026599da4b65da70e825a6f26a2c16d37839a0ec8a642821eb2b3683691bf4
 direct_override: true
