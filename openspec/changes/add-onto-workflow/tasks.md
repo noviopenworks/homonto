@@ -47,7 +47,7 @@
 
 - [x] 4.1 Migrate `openspec/specs/*` → `docs/specs/` (flatten to
       `<capability>.md`)
-- [ ] 4.2 Migrate archived change + `docs/superpowers/` artifacts →
+- [x] 4.2 Migrate archived change + `docs/superpowers/` artifacts →
       `docs/changes/archive/` and extract ADR-worthy decisions → `docs/adr/`
 - [ ] 4.3 Retire `openspec/` and `docs/superpowers/` (this change's own
       workspace moves last, at close)
