@@ -19,6 +19,17 @@ scripts. Artifacts live in a single `docs/` tree per project; phase state is a
 tiny agent-managed YAML file that the dispatcher always cross-checks against
 verifiable file state.
 
+## Implementation Divergence (recorded at verify, 2026-07-04)
+
+The non-goal "no Go code changes" was superseded mid-build with user
+approval: dogfooding exposed two real product bugs (skills-only configs
+never applied symlinks because links were absent from the plan ChangeSet;
+relative content dirs produced dangling symlink targets). Both were fixed
+TDD-style in `internal/link`, `internal/adapter/{claude,opencode}`, and
+`internal/engine`, with a `tool-adapters` delta spec covering the new
+behavior. proposal.md's Modified Capabilities section records the scope
+amendment; the user affirmed the implemented state as authoritative.
+
 ## Goals / Non-Goals
 
 **Goals:** self-contained workflow skills; ADR + living-spec + post-impl-guide

@@ -12,7 +12,7 @@ base_ref: a619821713fb5513684eb46135b081ebf3ed6ee0
 design_doc: docs/superpowers/specs/2026-07-04-onto-workflow-design.md
 plan: docs/superpowers/plans/2026-07-04-add-onto-workflow.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-04-add-onto-workflow-verify.md
 branch_status: pending
 created_at: 2026-07-04
 verified_at: null
