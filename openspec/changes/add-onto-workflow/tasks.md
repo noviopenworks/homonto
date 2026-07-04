@@ -18,7 +18,7 @@
       split preflight, proposal/design/tasks creation, review blocking point
 - [x] 2.3 Author `content/skills/onto-design/SKILL.md` — brainstorming-grade
       design, Design Doc, ADR drafts, spec deltas, approach confirmation
-- [ ] 2.4 Author `content/skills/onto-build/SKILL.md` — implementation plan,
+- [x] 2.4 Author `content/skills/onto-build/SKILL.md` — implementation plan,
       plan-ready pause, TDD/direct modes, commit-per-task, failure handling
 - [ ] 2.5 Author `content/skills/onto-verify/SKILL.md` — verification levels,
       checks vs design/specs/tasks, verification.md, fail decision point
