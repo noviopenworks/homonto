@@ -31,7 +31,7 @@
 
 - [x] 3.1 Wire onto skills into `homonto.toml` `[skills]` and run
       `homonto apply` to symlink into `.claude/skills/` (dogfood proof)
-- [ ] 3.2 Document GitHub entry points (resolve-issue / continue-pr → onto)
+- [x] 3.2 Document GitHub entry points (resolve-issue / continue-pr → onto)
       in the dispatcher skill and a `docs/guides/onto-workflow.md` guide
 - [ ] 3.3 Update `README.md` with the development-workflow section
 
