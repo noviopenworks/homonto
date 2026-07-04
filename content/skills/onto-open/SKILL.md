@@ -14,6 +14,8 @@ with an unambiguous proposal. Nothing is designed and nothing is built here.
   says `phase: open` with `workflow: full`.
 - Bug fixes and small tweaks belong to `onto-fix` / `onto-tweak` — if the
   request fits a preset, hand over to it instead.
+- If the workspace has a `notes.md`, read it first — resume from its
+  Pending items; never re-ask what Confirmed already answers.
 - Any other state → route back through `/onto` (the dispatcher rederives the
   real phase).
 
@@ -53,19 +55,19 @@ dependencies, and core scenarios.
 
 ### 3. Create the workspace
 
-Create `docs/changes/<name>/` (name confirmed by the user, kebab-case):
+Create `docs/changes/<name>/` (name confirmed by the user, kebab-case),
+each artifact from its canonical template:
 
-- `state.yaml` — schema per `docs/changes/README.md`: `change: <name>`,
-  `workflow: full`, `phase: open`, `created: <today>`, `base_ref: <current
-  git sha>`, `decisions:` all null, `verify: {mode: null, result: pending}`,
-  `guides: pending`, `archived: false`.
-- `proposal.md` — **why** (problem, motivation), **what changes** (bulleted,
-  breaking changes marked), **capability impact** (which `docs/specs/`
-  capabilities are new or modified — check the existing spec files), and
-  **impact** (code, dependencies, systems).
-- `tasks.md` — unchecked checklist skeleton grouped by area (foundation /
-  implementation / integration / validation). Tasks get refined in build;
-  here they set boundaries.
+- `state.yaml` — template: `onto/references/state-yaml.md` (`phase: open`,
+  `base_ref: <current git sha>`, `deps` from the proposal's `Depends-on:`
+  line, decisions null, metrics empty).
+- `notes.md` — template: `references/notes.md`. Created NOW, seeded with
+  the confirmed clarification summary. From this point, update it before
+  ending **any** turn that produced new decisions — this is the
+  compaction-recovery checkpoint.
+- `proposal.md` — template: `references/proposal.md`.
+- `tasks.md` — template: `references/tasks.md`. Skeleton sets boundaries;
+  build refines.
 
 Everything in the proposal must trace back to the confirmed clarification
 summary — no invented scope.
@@ -76,10 +78,13 @@ summary — no invented scope.
 
 ## Exit checklist
 
-- [ ] Workspace exists with `state.yaml`, `proposal.md`, `tasks.md`, all
-      non-empty and consistent with the confirmed summary
+- [ ] Workspace exists with `state.yaml`, `notes.md`, `proposal.md`,
+      `tasks.md`, all template-conformant and consistent with the
+      confirmed summary
+- [ ] `notes.md` Confirmed section reflects every answered gate
 - [ ] Both gates answered by the user
 - [ ] `state.yaml` phase advanced: `open → design` — written **only after**
       the artifact-review gate is answered, never before (the dispatcher
       treats a lagging phase as an unanswered gate and will re-present it)
+- [ ] `metrics.phases.open: <today>` stamped
 - [ ] Announce the transition and load `onto-design`
