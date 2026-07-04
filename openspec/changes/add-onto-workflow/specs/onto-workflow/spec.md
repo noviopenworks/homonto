@@ -144,9 +144,10 @@ final user confirmation.
 
 ### Requirement: Preset paths with upgrade rules
 
-`/onto-fix` (bug fixes; failing test reproducing the bug required first) and
-`/onto-tweak` (copy/config/docs/prompt changes) SHALL skip the design phase
-but keep verify and close. The workflow SHALL force an upgrade confirmation
+The workflow SHALL provide preset paths — `/onto-fix` (bug fixes; failing
+test reproducing the bug required first) and `/onto-tweak`
+(copy/config/docs/prompt changes) — that skip the design phase but keep
+verify and close. The workflow SHALL force an upgrade confirmation
 to the full path when scope grows: fix — 3+ files, architecture/schema
 changes, new public API; tweak — 5+ files, cross-module coordination, 5+ new
 tests, config key additions/removals, new capability, or spec-affecting
