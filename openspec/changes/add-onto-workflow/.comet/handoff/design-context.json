@@ -1,0 +1,14 @@
+{
+  "change": "add-onto-workflow",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "61026599da4b65da70e825a6f26a2c16d37839a0ec8a642821eb2b3683691bf4",
+  "files": [
+    { "path": "openspec/changes/add-onto-workflow/proposal.md", "sha256": "6456fc80e315cf4d56f394d1ede4483d7e461b634c7487a96a95a03a28724713" },
+    { "path": "openspec/changes/add-onto-workflow/design.md", "sha256": "41413a556f53558f0644c5177cf7a85ef2f9f96ba94d07d3ff33de4760b81ad8" },
+    { "path": "openspec/changes/add-onto-workflow/tasks.md", "sha256": "b88afe2aa91af363b574df73be00aa1930069a3c12a1545e0d804e29ad8d5967" },
+    { "path": "openspec/changes/add-onto-workflow/specs/onto-workflow/spec.md", "sha256": "8cdf5b9a11db77dff81ac07245ae882e7a36f73a1d3e9f64cb5f455df3ae41e4" }
+  ]
+}
