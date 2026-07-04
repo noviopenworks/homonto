@@ -4,9 +4,9 @@ phase: build
 created: 2026-07-04
 base_ref: 4abb3195f96d06b0f3dd62d5dddf9a3c02af833f
 decisions:
-  isolation: null
-  execution: null
-  tdd: null
+  isolation: branch
+  execution: direct
+  tdd: direct
   directive: "develop eveyrthing till its finside and ready to publish / Yes, run to completion — pre-answers the plan-ready and close gates; clarification/approach/verify-fail gates still come to the user (confirmed 2026-07-04)"
 verify:
   mode: null
