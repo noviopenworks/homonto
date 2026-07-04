@@ -30,6 +30,11 @@ summary.
 
 <why this stays one change>
 
+## Grounding
+
+<graphify/codegraph queries run, or the recorded fallback ("index
+declined — direct file reading", per the dispatcher preflight)>
+
 ## Impact
 
 <files/systems/dependencies touched; risks worth naming at open time>

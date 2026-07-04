@@ -28,9 +28,9 @@
 
 ## 4. Validation
 
-- [ ] 4.1 Dry-run: full lifecycle with new templates + checkpoints +
+- [x] 4.1 Dry-run: full lifecycle with new templates + checkpoints +
       subagent build protocol (fresh-context agent)
-- [ ] 4.2 Dry-run: adversarial verify + close lint + metrics + deps
+- [x] 4.2 Dry-run: adversarial verify + close lint + metrics + deps
       scenarios (fresh-context agent)
-- [ ] 4.3 Self-containment + table-sync + template-conformance checks;
+- [x] 4.3 Self-containment + table-sync + template-conformance checks;
       regression (go test) stays green

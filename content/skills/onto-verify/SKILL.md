@@ -22,8 +22,8 @@ what the design and specs say. **Evidence before assertions, always.**
 Set `verify.mode` in `state.yaml`:
 
 - **full** — `workflow: full`, any upgraded preset, a diff touching more
-  than 5 files, or a new capability. Checks every delta-spec scenario, the
-  full design, and the regression suite.
+  than 5 files in `base_ref..HEAD`, or a new capability. Checks every
+  delta-spec scenario, the full design, and the regression suite.
 - **light** — a preset within its limits. Checks the changed behavior's
   scenarios plus the regression suite; the report may be brief but never
   absent.

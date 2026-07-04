@@ -29,7 +29,8 @@ Full records: `docs/changes/archive/YYYY-MM-DD-<name>/`
 ## If the user accepts
 
 1. Write the body to `docs/changes/archive/YYYY-MM-DD-<name>/ship.md`
-   and commit.
+   and commit — this is the archive contract's single sanctioned
+   post-archive addition (`docs/changes/README.md`).
 2. Name the next step explicitly: the dedicated PR/commit-push skills take
    it from here — onto does not push, does not open PRs.
 

@@ -20,32 +20,40 @@ contains:
 
 1. The task text verbatim (files, do, verify) from `plan.md`
 2. The relevant `design.md` section(s) — pasted, not summarized
-3. Conventions: one commit for this task, message style from recent
+3. The isolation target: the exact branch (and worktree path, if any) to
+   work in — a fresh-context agent must never guess where to commit
+4. Conventions: one commit for this task, message style from recent
    `git log`, match surrounding code idiom
-4. The TDD rule in force (`tdd: tdd` → failing test first, watch it fail)
-5. The debugging rule: on any failure, root cause before any fix —
+5. The TDD rule in force (`tdd: tdd` → failing test first, watch it fail)
+6. The debugging rule: on any failure, root cause before any fix —
    reproduce, read the whole error, trace; no symptom-patching
-6. The bookkeeping obligation: after verification passes, check the task
-   off in BOTH `tasks.md` and `plan.md`, then commit — files, not chat
-7. Return contract: diff summary + literal verification output
+7. The bookkeeping obligation: after verification passes, check the task
+   off in BOTH `tasks.md` and `plan.md` (its `- [ ] done` line), then
+   commit — files, not chat
+8. Return contract: commit sha + diff summary + literal verification
+   output
 
 ## Coordinator duties after each return
 
-- **Verify against the repository, not the report**: the commit exists
-  (`git log`), the checkoffs landed in both files, the working tree is
-  clean, and the stated verification output is plausible (spot-run it
-  when cheap).
+- **Verify against the repository, not the report**: the returned commit
+  sha exists (`git log`), the checkoffs landed in both files, the working
+  tree is clean, and the stated verification output is plausible
+  (spot-run it when cheap).
 - A failed or half-done task is re-dispatched with the failure context, or
-  taken through the failure gate — never silently absorbed.
+  taken through the failure gate — never silently absorbed. Before
+  re-dispatch, restore a clean tree: stash/reset the partial work, or hand
+  it to the replacement agent explicitly as part of the failure context —
+  a fresh agent must never inherit dirty state unknowingly.
 
 ## Reviewer agents
 
 After any task marked `(risk: high)` — and always after the final task —
 dispatch a fresh reviewer agent with the diff range and the design
 section, prompted to **find faults** (correctness, spec conformance,
-missed edge cases), never to approve. CRITICAL findings are fixed before
-the next task; accepted non-critical findings are recorded in the plan or
-commit body.
+missed edge cases), never to approve. CRITICAL findings are fixed via a
+re-dispatched implementer before the next task (the coordinator still
+never implements); accepted non-critical findings are recorded in the
+plan or commit body.
 
 ## Failure of the protocol itself
 

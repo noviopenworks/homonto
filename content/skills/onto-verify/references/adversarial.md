@@ -12,8 +12,9 @@ defects self-review missed).
 - `verify.mode: light` → one skeptic, optional; a skip is recorded in the
   report's Adversarial section with its reason.
 - No subagent capability → record "adversarial pass skipped: no dispatch
-  capability" as a deviation; verification may still pass with it
-  recorded.
+  capability" in the report's Adversarial section (protocol-mandated
+  skips live there, need no acceptor); verification may still pass with
+  it recorded.
 
 ## The two skeptics
 

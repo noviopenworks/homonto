@@ -20,21 +20,25 @@ ADR log, and user-facing guides — then archive the workspace.
 ### 0. Lint (blocking)
 
 Run `references/lint-checklist.md` sections 1–2 (delta format, workspace
-state) now; section 3 (post-merge) after step 1; section 4 (dangling
-references) before archiving. **Findings block the archive exactly like
-the guides obligation** — fix or stop. This replaces the format validation
-the retired external tooling used to perform.
+state) now; section 3 (post-merge) after step 1; section 4 (guides
+resolved + dangling references) before archiving. **Findings block the
+archive exactly like the guides obligation** — fix or stop. This replaces
+the format validation the retired external tooling used to perform.
 
 ### 1. Merge spec deltas
 
 For each workspace delta `specs/<capability>.md`, merge into
-`docs/specs/<capability>.md` per the semantics in `docs/specs/README.md`:
+`docs/specs/<capability>.md` per the semantics in `docs/specs/README.md`,
+applying sections in this order — **RENAMED first, then MODIFIED, then
+REMOVED, then ADDED** (so a MODIFIED block targeting a RENAMED new name
+finds it):
 
-- `## ADDED Requirements` → append the requirement blocks
-- `## MODIFIED Requirements` → replace the requirement of the same name
-- `## REMOVED Requirements` → delete the named requirement
 - `## RENAMED Requirements` → rename the heading per each FROM/TO pair,
-  preserving the body unless a MODIFIED block also targets the new name
+  preserving the body
+- `## MODIFIED Requirements` → replace the requirement of the same name
+  (which may be a just-renamed name)
+- `## REMOVED Requirements` → delete the named requirement
+- `## ADDED Requirements` → append the requirement blocks
 - Delta for a capability with no living spec → create the file (strip the
   ADDED wrapper; the living spec has plain `## Requirements`)
 
@@ -77,7 +81,8 @@ Check `guides:` in `state.yaml`. Archiving with `guides: pending` is
    (today's date).
 3. Set `archived: true` in the moved `state.yaml`. `phase` intentionally
    stays `close` — "done" is a derived-only phase, never written.
-4. Commit. The archived workspace is history — never edited afterwards.
+4. Commit. The archived workspace is history — never edited afterwards,
+   with exactly one sanctioned exception: `ship.md` (step 6).
 
 ### 6. Ship handoff (offer)
 

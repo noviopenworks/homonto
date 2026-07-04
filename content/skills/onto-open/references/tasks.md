@@ -26,7 +26,9 @@ refines and checks items off — one commit per checked item.
 
 - Checkbox syntax exactly `- [ ]` / `- [x]` (the phase-derivation table
   greps it). A deliberately deferred task uses `- [x] N.N DEFERRED to
-  <phase>: <reason>` — checked, with the deferral stated.
+  close: <reason>` — checked, with the deferral stated. Close is the only
+  deferral target (build's exit and verify's entry recognize nothing
+  else).
 - Number tasks `<area>.<n>`; keep one outcome per task.
 - Every change ends with a Validation area — a change that can't state its
   own proof isn't ready to build.

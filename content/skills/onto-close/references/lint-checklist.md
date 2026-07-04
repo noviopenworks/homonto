@@ -1,26 +1,31 @@
 # Close-phase lint checklist
 
-Agent-run checks (grep/read — no scripts) executed BEFORE merging.
-Findings block the archive step exactly like the guides obligation: fix
-them or stop.
+Agent-run checks (grep/read — no scripts), staged: sections run at the
+points onto-close names (§1–2 before the merge, §3 after it, §4 before
+archiving). Findings block the archive step exactly like the guides
+obligation: fix them or stop.
 
 ## 1. Delta spec format (each workspace `specs/<capability>.md`)
 
 - [ ] Section headings are only `## ADDED Requirements`,
       `## MODIFIED Requirements`, `## REMOVED Requirements`,
       `## RENAMED Requirements` — nothing else, empty sections omitted
-- [ ] Every `### Requirement:` block's **first line** contains SHALL or
-      MUST
-- [ ] Every ADDED/MODIFIED requirement has ≥1 `#### Scenario:` with
-      GIVEN/WHEN/THEN bullets
+- [ ] Every `### Requirement:` block's **first non-empty line after the
+      heading** contains SHALL or MUST
+- [ ] **Every** `#### Scenario:` block has GIVEN/WHEN/THEN bullets, and
+      each ADDED/MODIFIED requirement has ≥1 scenario
 - [ ] MODIFIED/REMOVED/RENAMED names match the living spec **exactly**
-      (grep the living file for each name)
+      (grep the living file for each name) — except a MODIFIED name may
+      instead match the TO name of a RENAMED entry in the same delta
+- [ ] A MODIFIED/REMOVED/RENAMED section in a delta whose capability has
+      **no living spec file** is itself a finding
 - [ ] RENAMED entries are `- FROM:` / `  TO:` pairs
 
 ## 2. Workspace state
 
-- [ ] `state.yaml` parses as YAML; enum fields hold allowed values
-      (schema: `onto/references/state-yaml.md`); `guides` is not `pending`
+- [ ] `state.yaml` parses as YAML; enum fields hold allowed values and
+      typed fields hold their types (`deps` a list, `metrics.phases` a
+      map, counters numeric — schema: `onto/references/state-yaml.md`)
 - [ ] `verification.md` has a current `Result:` line
 - [ ] Every ADR draft has `**Status:**`, `**Date:**`, `**Change:**` fields
 - [ ] Artifacts follow their templates' section structure (spot-check
@@ -33,8 +38,10 @@ them or stop.
 - [ ] Merged requirements read as current truth — no change-log language
 - [ ] Scenario structure intact in every touched living spec
 
-## 4. Dangling references
+## 4. Pre-archive
 
+- [ ] `guides` is not `pending` (resolved in the guides-obligation step —
+      checked here because it cannot be satisfied before that step runs)
 - [ ] No live doc (README, docs/guides, docs/specs, docs/adr, skills)
       references a path this change moved or deleted — archives are exempt
       (history may cite old paths)

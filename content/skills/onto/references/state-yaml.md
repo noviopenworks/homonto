@@ -41,13 +41,24 @@ archived: false            # set true at archive; phase stays "close"
   because artifacts happen to exist (gates win upward).
 - `decisions.directive` holds blanket pre-authorizations verbatim; it
   pre-answers only the gates whose skill text says MAY be pre-authorized.
-- `deps` names other changes under `docs/changes/`; the dispatcher warns
-  before resuming a change whose deps are not all archived.
+- `deps` names other changes under `docs/changes/`; a dep is archived iff
+  `docs/changes/archive/*-<dep>/` exists (suffix match). The dispatcher
+  warns before resuming a change whose deps are not all archived, and a
+  dep matching no active or archived change is a finding to correct or
+  drop.
 - `metrics` is best-effort observational data. Skills stamp
   `metrics.phases.<phase>` on exit; close finalizes the rest. Never block
   on metrics for any reason.
 
-## Rebuild rules (missing/malformed state.yaml — never an error)
+## Rebuild rules (never an error)
+
+Rebuild applies at two granularities: a **missing or unparseable file** is
+rebuilt whole from the table below; an **individually missing or
+ill-typed field** in an otherwise valid file is rebuilt per its table row
+alone, other fields untouched (e.g. a pre-v2 state.yaml without `deps` is
+treated as `deps: []`; a string-typed `deps` is re-read from the
+proposal's `Depends-on:` line). Field-level repair never resets
+`decisions` — gates are only re-asked when the whole file was lost.
 
 | Field | Rebuild from |
 |---|---|

@@ -84,7 +84,10 @@ prohibited.
 - Small (missing edge case, scenario): edit the delta spec + design.md
   inline, append a task, note it in the commit message.
 - Medium (interface/component/data-flow changes): pause, get user
-  confirmation, revisit the design (back through the approach gate).
+  confirmation, then set `phase: design` and flip `design.md`'s status
+  line to `Status: Under revision` — the derivation then correctly routes
+  to design until the approach gate re-confirms (new `Status: Confirmed`
+  + date), after which build resumes.
 - Large (new capability, or new tasks exceed half the original task count):
   pause; the user chooses between splitting into a new change or expanding
   this one. Always fresh input.

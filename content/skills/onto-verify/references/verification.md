@@ -29,7 +29,9 @@ findings, not footnotes>
 
 - Conformance skeptic: <verdict summary + findings triaged>
 - Robustness skeptic: <verdict summary + findings triaged>
-<!-- or: "skipped: <reason>" — a recorded deviation -->
+<!-- or: "skipped: <reason>" — protocol-mandated skips (no dispatch
+     capability; light-mode optional) are recorded HERE only and need no
+     acceptor; they do not go in Deviations -->
 
 ## Regression
 

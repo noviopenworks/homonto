@@ -59,8 +59,10 @@ Create `docs/changes/<name>/` (name confirmed by the user, kebab-case),
 each artifact from its canonical template:
 
 - `state.yaml` — template: `onto/references/state-yaml.md` (`phase: open`,
-  `base_ref: <current git sha>`, `deps` from the proposal's `Depends-on:`
-  line, decisions null, metrics empty).
+  `base_ref: <current git sha at open — the parent of the change's first
+  commit>`, `deps` from the proposal's `Depends-on:` line, decisions
+  null, metrics initialized per the template: `phases: {}`, counters 0,
+  `upgraded: false`).
 - `notes.md` — template: `references/notes.md`. Created NOW, seeded with
   the confirmed clarification summary. From this point, update it before
   ending **any** turn that produced new decisions — this is the

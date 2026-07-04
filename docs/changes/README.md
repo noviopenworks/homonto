@@ -14,8 +14,10 @@ Every unit of work is a **change** with its own workspace
 | `design.md` | design | confirmed technical design (full workflow only) |
 | `adr/<slug>.md` | design | ADR drafts, `Status: Proposed`, unnumbered |
 | `specs/<capability>.md` | design | delta spec: ADDED/MODIFIED/REMOVED requirements |
+| `notes.md` | open (updated through design) | context-loss checkpoint: confirmed facts, pending items |
 | `plan.md` | build | implementation plan (full workflow) |
 | `verification.md` | verify | evidence-based verification report |
+| `ship.md` | close (optional, post-archive) | accepted ship-handoff PR body |
 
 A change is **active** iff its directory sits directly under `docs/changes/`
 (not under `archive/`) and `state.yaml` has `archived: false` (or is absent —
@@ -26,7 +28,8 @@ the dispatcher rebuilds it).
 `onto-close` moves the whole workspace to
 `docs/changes/archive/YYYY-MM-DD-<name>/` (date = close date), unmodified
 except `archived: true` in `state.yaml`. Archived changes are history — never
-edited afterwards.
+edited afterwards, with exactly one sanctioned exception: an accepted
+ship handoff adds `ship.md` immediately after archiving.
 
 ## state.yaml schema
 

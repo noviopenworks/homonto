@@ -58,13 +58,18 @@ directory sits directly under `docs/changes/` and its `state.yaml` has
 | Two or more | anything | LIST them (name, workflow, claimed phase, deps status) and ASK which to resume before doing anything else |
 
 **Dependencies**: each change's `state.yaml` may name `deps:` — changes
-that must archive before this one builds. Discovery listings show deps
-status (`ready` / `blocked by <name>`). Before resuming a change whose
-deps are not all archived, warn and require an explicit user choice:
-proceed anyway, switch to the dependency, or stop. For multiple
-simultaneously active changes, recommend one git worktree per change —
-coupled work that can't be separated should have been one change (the
-split-preflight rule already says so).
+that must archive before this one builds. A dep counts as **archived iff
+a directory `docs/changes/archive/*-<dep>/` exists** (suffix match — the
+archive prefix is the close date, unknown to the checker). Discovery
+listings show deps status (`ready` / `blocked by <name>`). Before
+resuming a change whose deps are not all archived, warn and require an
+explicit user choice: proceed anyway, switch to the dependency, or stop.
+A dep matching **no active and no archived change** is a finding — ask
+the user to correct or drop it; never leave a change blocked on a name
+that cannot resolve. For multiple simultaneously active changes,
+recommend one git worktree per change — coupled work that can't be
+separated should have been one change (the split-preflight rule already
+says so).
 
 If the repo has no `docs/changes/` tree at all, offer to bootstrap the
 layout: create `docs/{adr,specs,changes/archive,guides}/` with their README
