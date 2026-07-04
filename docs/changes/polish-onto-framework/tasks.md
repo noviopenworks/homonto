@@ -4,12 +4,12 @@
 
 - [ ] 1.1 Artifact templates authored (state.yaml, proposal, design, tasks,
       plan, verification, ADR draft) in the location the design decides
-- [ ] 1.2 Layout contracts updated to reference the templates and the new
+- [x] 1.2 Layout contracts updated to reference the templates and the new
       state.yaml fields (deps, metrics)
 
 ## 2. Skill upgrades
 
-- [ ] 2.1 onto (dispatcher): deps/blocked awareness, parallel-change
+- [x] 2.1 onto (dispatcher): deps/blocked awareness, parallel-change
       guidance, template pointers
 - [ ] 2.2 onto-open: notes.md checkpoint protocol, template usage
 - [ ] 2.3 onto-design: notes.md checkpoint, optional parallel approach

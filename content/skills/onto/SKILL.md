@@ -55,7 +55,16 @@ directory sits directly under `docs/changes/` and its `state.yaml` has
 | None | nothing | Ask what the user wants to work on, then `onto-open` |
 | Exactly one | nothing | Resume it: derive phase, route |
 | Exactly one | new description | ASK: continue the active change or open a new one |
-| Two or more | anything | LIST them (name, workflow, claimed phase) and ASK which to resume before doing anything else |
+| Two or more | anything | LIST them (name, workflow, claimed phase, deps status) and ASK which to resume before doing anything else |
+
+**Dependencies**: each change's `state.yaml` may name `deps:` — changes
+that must archive before this one builds. Discovery listings show deps
+status (`ready` / `blocked by <name>`). Before resuming a change whose
+deps are not all archived, warn and require an explicit user choice:
+proceed anyway, switch to the dependency, or stop. For multiple
+simultaneously active changes, recommend one git worktree per change —
+coupled work that can't be separated should have been one change (the
+split-preflight rule already says so).
 
 If the repo has no `docs/changes/` tree at all, offer to bootstrap the
 layout: create `docs/{adr,specs,changes/archive,guides}/` with their README
@@ -67,7 +76,11 @@ proceed to `onto-open`.
 
 `state.yaml` is a **cache of truth, not truth**. On every dispatch:
 
-1. Read `state.yaml` (schema: `docs/changes/README.md`).
+1. Read `state.yaml` (canonical schema, template, and per-field rebuild
+   rules: `references/state-yaml.md` in this skill's directory; summary in
+   `docs/changes/README.md`). If a skill's `references/` directory is ever
+   missing, reconstruct from the `docs/` contract pointers, note the gap,
+   and continue — degrade, never halt.
 2. Independently derive the phase from artifacts with this table
    (**first match from the top wins — strongest evidence first**; it must
    stay identical to the copy in `docs/changes/README.md`):
@@ -90,11 +103,13 @@ proceed to `onto-open`.
    the claimed phase's gate (artifacts already prepared) and let it advance
    normally.
 4. A missing or malformed `state.yaml` is never an error: rebuild it per
-   the per-field rules in `docs/changes/README.md` (`workflow` from the
+   the per-field table in `references/state-yaml.md` (`workflow` from the
    proposal's `Preset:` marker, else the branch prefix, else `full`;
    `base_ref` = parent of the oldest commit touching the workspace;
    `decisions` reset to null so gates are re-asked; `verify.result` from
-   verification.md's `Result:` line), announce the rebuild, continue.
+   verification.md's `Result:` line; `deps` from the proposal's
+   `Depends-on:` line; `metrics` best-effort, never blocking), announce
+   the rebuild, continue.
 5. Never trust conversation history for phase detection — after context
    loss or compaction, this derivation is the recovery mechanism. Re-run it.
 

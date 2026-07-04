@@ -1,0 +1,65 @@
+# state.yaml — canonical schema and template
+
+The agent-managed phase state for one change. This file is the canonical
+source; `docs/changes/README.md` summarizes it. **state.yaml is a cache of
+truth, not truth** — verifiable file state wins (the same stated-state vs
+reality reconciliation homonto's own drift detection performs on tool
+configs).
+
+## Template
+
+```yaml
+change: <name>             # must equal directory name
+workflow: full             # full | fix | tweak
+phase: open                # open | design | build | verify | close
+created: YYYY-MM-DD
+base_ref: <git sha at open — parent of the change's first commit>
+deps: []                   # change names that must archive before this builds
+decisions:                 # null until chosen (build entry; presets default at open-lite)
+  isolation: null          # branch | worktree
+  execution: null          # direct | subagent
+  tdd: null                # tdd | direct
+  directive: null          # verbatim user pre-authorization text, if any
+verify:
+  mode: null               # light | full (set at verify entry by scale rules)
+  result: pending          # pending | pass | fail (accepted deviations live in
+                           # verification.md; the enum stays "pass")
+guides: pending            # pending | updated | "waived: <reason>" (quoted —
+                           # a bare waived: <reason> is invalid YAML)
+metrics:                   # observational only — never a gate, never blocking
+  phases: {}               # <phase>: YYYY-MM-DD stamped at each phase exit
+  tasks_total: 0           # finalized at close (checked tasks)
+  verify_rounds: 0         # incremented per verify round
+  upgraded: false          # a preset→full upgrade happened
+archived: false            # set true at archive; phase stays "close"
+                           # ("done" is derived-only, never written)
+```
+
+## Field rules
+
+- `phase` advances only when a phase's exit gate is answered — never
+  because artifacts happen to exist (gates win upward).
+- `decisions.directive` holds blanket pre-authorizations verbatim; it
+  pre-answers only the gates whose skill text says MAY be pre-authorized.
+- `deps` names other changes under `docs/changes/`; the dispatcher warns
+  before resuming a change whose deps are not all archived.
+- `metrics` is best-effort observational data. Skills stamp
+  `metrics.phases.<phase>` on exit; close finalizes the rest. Never block
+  on metrics for any reason.
+
+## Rebuild rules (missing/malformed state.yaml — never an error)
+
+| Field | Rebuild from |
+|---|---|
+| `change` | directory name |
+| `workflow` | proposal's `Preset:` marker → branch prefix (`fix/`,`tweak/`) → `full` |
+| `phase` | the phase-derivation table (dispatcher / docs/changes/README.md) |
+| `created` | date of the oldest commit touching the workspace |
+| `base_ref` | parent of the oldest commit touching the workspace |
+| `deps` | proposal's `Depends-on:` line, else `[]` |
+| `decisions` | null — gates are re-asked; a lost directive is never re-assumed |
+| `verify.mode` | null (re-derived at verify entry) |
+| `verify.result` | `Result:` line in verification.md, else `pending` |
+| `guides` | `pending` unless workspace commits show guide updates |
+| `metrics` | phase-advance commit dates, else omitted — best-effort |
+| `archived` | false (an archived workspace lives under `archive/`) |

@@ -30,12 +30,16 @@ edited afterwards.
 
 ## state.yaml schema
 
+Canonical schema, template, and per-field rebuild rules live with the
+dispatcher skill: `onto/references/state-yaml.md`. Summary:
+
 ```yaml
 change: add-foo            # must equal directory name
 workflow: full             # full | fix | tweak
 phase: build               # open | design | build | verify | close
 created: 2026-07-04
 base_ref: <git sha at open>
+deps: []                   # change names that must archive before this builds
 decisions:                 # null until chosen (build entry; presets default at open-lite)
   isolation: branch        # branch | worktree
   execution: direct        # direct | subagent
@@ -48,6 +52,11 @@ verify:
                            # result stays "pass")
 guides: pending            # pending | updated | "waived: <reason>" (quoted —
                            # a bare waived: <reason> is invalid YAML)
+metrics:                   # observational only — stamped at phase exits,
+  phases: {}               # finalized at close; never a gate, never blocking
+  tasks_total: 0
+  verify_rounds: 0
+  upgraded: false
 archived: false            # set true at archive; phase stays "close" ("done"
                            # is derived-only, never written)
 ```
@@ -67,15 +76,13 @@ archived: false            # set true at archive; phase stays "close" ("done"
   artifacts happen to exist.
 - An explicit user directive that pre-answers a gate (e.g. "run to
   completion") is recorded **verbatim** in `decisions.directive`.
-- A missing or malformed state.yaml is rebuilt instead of failing:
-  `change` = directory name; `workflow` = the proposal's `Preset:` marker
-  (`fix`/`tweak`), else the branch prefix, else `full`; `phase` = derived
-  from the table; `created` = date of the oldest commit touching the
-  workspace; `base_ref` = the **parent** of the oldest commit touching the
-  workspace; `decisions` = null (gates are re-asked — a lost directive is
-  never re-assumed); `verify.mode` = null; `verify.result` = the `Result:`
-  line in verification.md if present, else `pending`; `guides` = `pending`
-  unless the workspace's commits show guide updates; `archived` = false.
+- A missing or malformed state.yaml is rebuilt instead of failing, per the
+  per-field rebuild table in `onto/references/state-yaml.md` (key rules:
+  `workflow` from the proposal's `Preset:` marker → branch prefix →
+  `full`; `base_ref` = parent of the oldest workspace commit; `decisions`
+  = null so gates are re-asked; `verify.result` from verification.md's
+  `Result:` line; `deps` from the proposal's `Depends-on:` line;
+  `metrics` best-effort from phase-advance commit dates, never blocking).
 
 ## Phase derivation (first match from the top wins — strongest evidence first)
 
