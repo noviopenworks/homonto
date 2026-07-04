@@ -20,7 +20,7 @@
       design, Design Doc, ADR drafts, spec deltas, approach confirmation
 - [x] 2.4 Author `content/skills/onto-build/SKILL.md` — implementation plan,
       plan-ready pause, TDD/direct modes, commit-per-task, failure handling
-- [ ] 2.5 Author `content/skills/onto-verify/SKILL.md` — verification levels,
+- [x] 2.5 Author `content/skills/onto-verify/SKILL.md` — verification levels,
       checks vs design/specs/tasks, verification.md, fail decision point
 - [ ] 2.6 Author `content/skills/onto-close/SKILL.md` — spec delta merge, ADR
       status finalization, docs/guides obligation, archive, final confirmation
