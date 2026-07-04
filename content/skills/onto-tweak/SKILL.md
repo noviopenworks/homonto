@@ -25,7 +25,9 @@ state rebuild keys on this marker), then what + why — plus short
 `tasks.md`, and `state.yaml` with `workflow: tweak`, `phase: build`,
 `created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
 open-lite (`isolation: branch`, `execution: direct`, `tdd: direct`)
-(schema: `docs/changes/README.md`). Branch: `tweak/YYYYMMDD/<name>`.
+(canonical schema: `onto/references/state-yaml.md`; artifact templates:
+`onto-open/references/`). Branch: `tweak/YYYYMMDD/<name>`. Stamp
+`metrics.phases.<phase>` at each phase exit.
 
 ### 2. Lightweight build
 
@@ -39,14 +41,17 @@ No `plan.md` required. Still binding:
 
 Demonstrate the changed behavior/content with a fresh command + output
 (render the doc, run the config consumer, show the diff taking effect) and
-run the regression suite. Write `docs/changes/<name>/verification.md` —
-brief is fine, absent is not. `verify.result` set; failures hit the same
-fix-or-accept gate as the full workflow.
+run the regression suite. Write `docs/changes/<name>/verification.md`
+(template: `onto-verify/references/verification.md`) — brief is fine,
+absent is not. One adversarial skeptic optional (skips recorded).
+`verify.result` set; failures hit the same fix-or-accept gate as the full
+workflow.
 
 ### 4. Close
 
-Full `onto-close` obligations: merge any spec deltas, guides `updated` or
-`waived: <reason>`, final confirmation, archive.
+Full `onto-close` obligations: lint, merge any spec deltas, guides
+`updated` or `"waived: <reason>"`, metrics finalized, final confirmation,
+archive, ship handoff offered.
 
 ## Upgrade rules
 
@@ -60,8 +65,9 @@ Full `onto-close` obligations: merge any spec deltas, guides `updated` or
 > - a new capability emerges
 > - an existing spec's requirements are affected
 >
-> On confirmed upgrade: set `workflow: full`, `phase: design`, route through
-> `/onto` to backfill the design phase.
+> On confirmed upgrade: set `workflow: full`, `phase: design`,
+> `metrics.upgraded: true`, route through `/onto` to backfill the design
+> phase.
 
 ## Exit checklist (per phase, lite)
 

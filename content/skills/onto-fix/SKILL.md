@@ -35,6 +35,10 @@ suspected blast radius. Create `docs/changes/<name>/` with:
 - `tasks.md` — short checklist (reproduce → fix → regression)
 
 No full design and no plan.md required. Branch: `fix/YYYYMMDD/<name>`.
+Templates: reuse the full-workflow references (`onto/references/state-yaml.md`,
+`onto-open/references/{proposal,tasks,notes}.md`) — a `notes.md` checkpoint
+is recommended for any fix that takes more than one sitting. Stamp
+`metrics.phases.<phase>` at each phase exit like the full workflow.
 
 ### 2. Build — failing test first, always
 
@@ -48,15 +52,19 @@ fix, watch the test pass, run the surrounding tests. One commit per task.
 
 `verify.mode: light` unless upgraded. The bug's reproduction is the core
 scenario: demonstrate it no longer occurs, with the literal command +
-output in `docs/changes/<name>/verification.md`, plus regression-suite
-results. Failure → same gate as the full workflow (fix or accept-deviation,
-fresh user input).
+output in `docs/changes/<name>/verification.md` (template:
+`onto-verify/references/verification.md`), plus regression-suite results.
+One adversarial skeptic is optional in light mode (protocol:
+`onto-verify/references/adversarial.md`); record a skip. Failure → same
+gate as the full workflow (fix or accept-deviation, fresh user input).
 
 ### 4. Close
 
-Same obligations as `onto-close` — spec deltas merged if any requirement
-changed, guides checked (`updated` or `waived: <reason>`), final
-confirmation, archive to `docs/changes/archive/YYYY-MM-DD-<name>/`.
+Same obligations as `onto-close` — lint (`onto-close/references/
+lint-checklist.md`), spec deltas merged if any requirement changed, guides
+checked (`updated` or `"waived: <reason>"`), metrics finalized, final
+confirmation, archive to `docs/changes/archive/YYYY-MM-DD-<name>/`, ship
+handoff offered.
 
 ## Upgrade rules
 
@@ -69,9 +77,10 @@ confirmation, archive to `docs/changes/archive/YYYY-MM-DD-<name>/`.
 > - the fix introduces a **new public API**
 > - the fix scope exceeds a single function/module
 >
-> On confirmed upgrade: set `workflow: full`, `phase: design` in
-> `state.yaml`, and route through `/onto` to backfill the design phase.
-> Never keep patching past a trigger "because it's almost done".
+> On confirmed upgrade: set `workflow: full`, `phase: design`,
+> `metrics.upgraded: true` in `state.yaml`, and route through `/onto` to
+> backfill the design phase. Never keep patching past a trigger "because
+> it's almost done".
 
 ## Exit checklist (per phase, lite)
 
