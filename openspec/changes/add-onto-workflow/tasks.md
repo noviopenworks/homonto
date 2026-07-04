@@ -45,7 +45,7 @@
 
 ## 4. Migration
 
-- [ ] 4.1 Migrate `openspec/specs/*` → `docs/specs/` (flatten to
+- [x] 4.1 Migrate `openspec/specs/*` → `docs/specs/` (flatten to
       `<capability>.md`)
 - [ ] 4.2 Migrate archived change + `docs/superpowers/` artifacts →
       `docs/changes/archive/` and extract ADR-worthy decisions → `docs/adr/`
