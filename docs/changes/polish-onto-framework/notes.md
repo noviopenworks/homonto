@@ -1,55 +1,41 @@
-# Design Notes: polish-onto-framework
+# Notes: polish-onto-framework
 
-Incremental checkpoint (compaction recovery). Unconfirmed items marked
-*pending*.
+Incremental checkpoint (compaction recovery). Unconfirmed items are
+marked *pending*.
 
-## Confirmed (clarification, 2026-07-04)
+## Confirmed
 
-- 7 axes: orchestration, templates, checkpoints, close lint, deps, ship
-  handoff, metrics. One change (no split — same files).
-- graphify index built: 353 nodes / 609 edges / 22 communities; grounding
-  queries available via `graphify query`.
-- Directive: run to completion (recorded in state.yaml decisions.directive).
+- 2026-07-04 clarification gate: 7 axes — orchestration, templates,
+  checkpoints, close lint, deps, ship handoff, metrics ("Artifact
+  templates, Context-loss checkpoints, Close-phase validation,
+  Multi-agent orchestration" + "Ship handoff, Metrics in archive,
+  Parallel-change coordination"). One change, no split (same files).
+- 2026-07-04 graphify: user chose "Yes — build graphify index"; built
+  (353 nodes / 609 edges / 22 communities).
+- 2026-07-04 directive (recorded in state.yaml decisions.directive):
+  "run to completion" — pre-answers plan-ready and close gates only.
+- 2026-07-04 artifact-review gate: "Approve — name ok" for
+  polish-onto-framework.
+- 2026-07-04 approach gate: "B: Reference files" confirmed (lean SKILL.md
+  + bundled references/, progressive disclosure). A and C rejected
+  (context cost / binary dependency).
+- 2026-07-04 verify-fail gate (round 1): "Fix all, round 2" — all 16
+  triaged findings fixed; fixes committed; round 2 pending.
 
-## Graph-grounded observations
+## Pending
 
-- Graph links "Drift Detection via state.json" ↔ "Phase Derivation and
-  Cross-Check" (semantically_similar_to, INFERRED 0.85) — product and
-  workflow share the reconciliation idiom; align vocabulary.
-- onto Phase Contracts (C9) and onto Workflow Core (C11) communities are
-  separate from v1 Design Decisions (C2) — the polish touches C9/C11 files
-  only; no Go-code communities involved.
+- Verification round 2 (post-fix skeptic passes) → then close.
 
-## Approach: CONFIRMED B (user gate, 2026-07-04)
+## Grounding
 
-Reference-file architecture — lean SKILL.md + bundled `references/`
-templates/protocols. A and C rejected (context cost / binary dependency).
-design.md written with Status: Confirmed; delta spec + 2 ADR drafts in
-workspace.
+- graphify index over the repo; key edge: Drift Detection ↔ Phase
+  Derivation (semantically_similar_to, 0.85) — informed the aligned
+  reconciliation vocabulary in state-yaml.md.
+- Direct reads of all 8 SKILL.md + 13 references during build and both
+  dry-run agents' walks.
 
-## Confirmed decisions (were draft; now in design.md)
+## Approaches
 
-- Templates live in the phase skill that creates the artifact
-  (onto-open/references/{proposal,tasks,state}.md, onto-design/references/
-  {design,adr,delta-spec}.md, onto-build/references/plan.md,
-  onto-verify/references/verification.md).
-- Subagent build protocol: coordinator main session; per-task fresh
-  implementer agent (task + files + verification + conventions + commit);
-  reviewer agent for risky tasks; file-based checkoffs mandatory.
-- Adversarial verify (full mode): 2 fresh skeptics — conformance (vs
-  spec/design) + robustness (edge/drift) — instructed to REFUTE; findings
-  triaged CRITICAL→fix, else deviations. Light mode: optional 1 skeptic.
-- notes.md: this file's own pattern — updated each clarification/decision
-  round in open/design; skills read it on entry; archived with the change.
-- Close lint (agent-run, no scripts): delta format (SHALL first line,
-  scenario GIVEN/WHEN/THEN, only ADDED/MODIFIED/REMOVED/RENAMED sections),
-  RENAMED merge semantics added to specs README, post-merge no-delta-heading
-  check, state.yaml enum validity, dangling-reference audit.
-- deps: `deps: [<change>...]` in state.yaml; dispatcher lists blocked
-  status, warns on resuming a change with unarchived deps; worktree
-  guidance for parallel actives.
-- Ship handoff: close offers a ready PR-body block (proposal why/what +
-  verification summary + evidence pointers); saved as archive `ship.md`
-  when accepted.
-- Metrics: `metrics.phases.<phase>: <date>` stamped at each phase exit;
-  close adds tasks_total, verify_rounds, upgraded (bool).
+- A: everything inline in SKILL.md — rejected (context cost per dispatch).
+- B: reference-file architecture — **CONFIRMED 2026-07-04**.
+- C: homonto lint subcommand — rejected (binary dependency, ADR 0005).

@@ -14,9 +14,12 @@ exceeds the work.
 
 ## Per-task dispatch
 
-For each unchecked task, in plan order (parallelize only tasks with
-disjoint files), dispatch ONE fresh-context implementer agent whose prompt
-contains:
+For each unchecked task, **strictly in plan order, one at a time** —
+every task writes the shared bookkeeping files (tasks.md, plan.md), so
+naive parallel dispatch races the same branch. Parallel dispatch is
+allowed ONLY with one worktree per implementer AND the coordinator
+performing the bookkeeping checkoffs/commits itself serially on join.
+Dispatch ONE fresh-context implementer agent whose prompt contains:
 
 1. The task text verbatim (files, do, verify) from `plan.md`
 2. The relevant `design.md` section(s) — pasted, not summarized

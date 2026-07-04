@@ -56,3 +56,29 @@ raised as defects 1–7.
 11. Wording: metrics initialization, base_ref definition, DEFERRED
     restricted to close, notes.md scope (conversation-shaped phases),
     verify scale range `base_ref..HEAD`, proposal Grounding section.
+
+## Adversarial verify round 1 (2026-07-04) — FAIL → user chose fix-all
+
+Conformance skeptic: most scenarios held (deps flow, RENAMED ordering,
+subagent protocol, ship consistency, byte-identical tables); refuted:
+notes.md "every skill" over-claim, skip-recording contradiction across 4
+documents, lint §3 grep unsatisfiable; workspace template drift.
+Robustness skeptic: 14 findings, 5 CRITICAL (lint grep; REMOVED-template
+SHALL contradiction; dep suffix-match false positives with live
+counterexamples 'core'/'workflow'; workflow field never cross-checked;
+preset upgrade not durable) + gate-skip on rebuild, Under-revision
+derivation gap, vacuous all-tasks-checked, DEFERRED-no-consumer,
+parallel-dispatch race, ship re-offer rigidity, graphify staleness.
+
+All 16 triaged findings fixed: date-anchored dep match + active-overrides
++ cycle finding; workflow cross-check (dispatcher rule 4); durable upgrade
+annotation in the Preset marker; gate-protected rebuild (notes.md
+Confirmed consulted); derivation rows (Under revision; ≥1 task) in both
+copies; lint SHALL scoped to ADDED/MODIFIED, heading-anchored §3 grep,
+full-artifact conformance check, DEFERRED consumer in §4 + close entry;
+serial-by-default subagent dispatch; skip recording harmonized to the
+Adversarial section; notes.md read added to verify/close/presets + spec
+reworded to phase skills / preset SHOULD; ship re-offer unprompted rule +
+no-PR-skills fallback; graphify staleness-counts-as-absence; workspace
+plan.md/notes.md rewritten template-conformant; validation-notes.md
+sanctioned in the contents table.

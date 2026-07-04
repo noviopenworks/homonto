@@ -42,10 +42,12 @@ archived: false            # set true at archive; phase stays "close"
 - `decisions.directive` holds blanket pre-authorizations verbatim; it
   pre-answers only the gates whose skill text says MAY be pre-authorized.
 - `deps` names other changes under `docs/changes/`; a dep is archived iff
-  `docs/changes/archive/*-<dep>/` exists (suffix match). The dispatcher
-  warns before resuming a change whose deps are not all archived, and a
-  dep matching no active or archived change is a finding to correct or
-  drop.
+  `docs/changes/archive/????-??-??-<dep>/` exists (date-anchored exact
+  name, never bare suffix), and an active workspace with the dep's name
+  overrides any archive hit. The dispatcher warns before resuming a change
+  whose deps are not all archived; a dep matching no active or archived
+  change, a self-dep, or a dep cycle reaching this change are findings to
+  correct or drop.
 - `metrics` is best-effort observational data. Skills stamp
   `metrics.phases.<phase>` on exit; close finalizes the rest. Never block
   on metrics for any reason.
@@ -63,10 +65,10 @@ proposal's `Depends-on:` line). Field-level repair never resets
 | Field | Rebuild from |
 |---|---|
 | `change` | directory name |
-| `workflow` | proposal's `Preset:` marker → branch prefix (`fix/`,`tweak/`) → `full` |
-| `phase` | the phase-derivation table (dispatcher / docs/changes/README.md) |
+| `workflow` | proposal's `Preset:` marker — an upgrade annotation (`Preset: fix (upgraded to full YYYY-MM-DD)`) means `full` — else branch prefix (`fix/`,`tweak/`), else `full` |
+| `phase` | the phase-derivation table — never crossing a gate: write the derived phase only if notes.md's Confirmed section records the preceding gate as answered, else the earlier phase (resume at its gate) |
 | `created` | date of the oldest commit touching the workspace |
-| `base_ref` | parent of the oldest commit touching the workspace |
+| `base_ref` | parent of the oldest commit touching the workspace (best-effort approximation of the sha at open) |
 | `deps` | proposal's `Depends-on:` line, else `[]` |
 | `decisions` | null — gates are re-asked; a lost directive is never re-assumed |
 | `verify.mode` | null (re-derived at verify entry) |

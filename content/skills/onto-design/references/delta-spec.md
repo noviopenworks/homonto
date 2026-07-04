@@ -48,8 +48,9 @@ scenarios included; first line MUST contain SHALL or MUST>
 
 - Section headings: only `## ADDED|MODIFIED|REMOVED|RENAMED Requirements`;
   omit empty sections.
-- Every requirement's **first non-empty line after the heading** contains
-  SHALL or MUST.
+- Every ADDED/MODIFIED requirement's **first non-empty line after the
+  heading** contains SHALL or MUST (REMOVED bodies are removal rationales,
+  RENAMED entries have no bodies — neither is subject to this rule).
 - **Every** `#### Scenario:` block has GIVEN/WHEN/THEN bullets, and each
   ADDED/MODIFIED requirement has ≥1 — scenarios are what verify demands
   evidence for; an unverifiable requirement is a lint finding.

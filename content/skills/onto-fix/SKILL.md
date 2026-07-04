@@ -16,6 +16,9 @@ non-negotiable.
   dispatcher routes every phase of a fix change here.
 - Not for new capabilities, refactors, or behavior *changes* — those are
   full-workflow work via `onto-open`.
+- Read `notes.md` at entry when present. If any skill's `references/`
+  directory is missing, degrade per the dispatcher rule: reconstruct from
+  the `docs/` contract pointers, note the gap, continue.
 
 ## Steps
 
@@ -78,9 +81,11 @@ handoff offered.
 > - the fix scope exceeds a single function/module
 >
 > On confirmed upgrade: set `workflow: full`, `phase: design`,
-> `metrics.upgraded: true` in `state.yaml`, and route through `/onto` to
-> backfill the design phase. Never keep patching past a trigger "because
-> it's almost done".
+> `metrics.upgraded: true` in `state.yaml`, **and annotate the proposal's
+> first line to `Preset: fix (upgraded to full YYYY-MM-DD)`** — the
+> state-rebuild rules read that marker, so an upgrade must survive state
+> loss. Then route through `/onto` to backfill the design phase. Never
+> keep patching past a trigger "because it's almost done".
 
 ## Exit checklist (per phase, lite)
 

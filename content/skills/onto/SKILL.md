@@ -35,8 +35,12 @@ and print the install instructions — do not continue in a degraded mode.
    than guesswork. Indexing is the user's decision: if only the skill is
    available and no index exists, ask the user whether to build one before
    open/design proceeds; if they decline, grounding falls back to direct
-   file reading and that fallback is recorded in the proposal/design. On
-   failure (neither skill nor index), HALT and print:
+   file reading and that fallback is recorded in the proposal/design.
+   **Staleness counts as absence**: an index older than the recent work
+   (rule of thumb: predates the last ~20 commits or is weeks old) gets the
+   same ask-to-reindex treatment, and the Grounding section records the
+   index's age either way — a confidently stale graph is worse than none.
+   On failure (neither skill nor index), HALT and print:
 
    > onto requires **graphify** (https://graphify.net) for codebase
    > understanding and neither the skill nor an existing index
@@ -59,17 +63,22 @@ directory sits directly under `docs/changes/` and its `state.yaml` has
 
 **Dependencies**: each change's `state.yaml` may name `deps:` — changes
 that must archive before this one builds. A dep counts as **archived iff
-a directory `docs/changes/archive/*-<dep>/` exists** (suffix match — the
-archive prefix is the close date, unknown to the checker). Discovery
-listings show deps status (`ready` / `blocked by <name>`). Before
-resuming a change whose deps are not all archived, warn and require an
-explicit user choice: proceed anyway, switch to the dependency, or stop.
-A dep matching **no active and no archived change** is a finding — ask
-the user to correct or drop it; never leave a change blocked on a name
-that cannot resolve. For multiple simultaneously active changes,
-recommend one git worktree per change — coupled work that can't be
-separated should have been one change (the split-preflight rule already
-says so).
+a directory `docs/changes/archive/????-??-??-<dep>/` exists** — the
+date-anchored exact-name match (`YYYY-MM-DD-` prefix per the archive
+contract), never a bare suffix match, which falsely resolves deps whose
+name is the tail of another change's name. **An active workspace with the
+dep's name overrides any archive hit** (a reused name in flight is not
+archived). Discovery listings show deps status (`ready` /
+`blocked by <name>`). Before resuming a change whose deps are not all
+archived, warn and require an explicit user choice: proceed anyway,
+switch to the dependency, or stop. Two findings to surface immediately:
+a dep matching **no active and no archived change** (ask the user to
+correct or drop it), and a dep chain that **reaches the current change —
+including a self-dep or an A⇄B cycle** (unsatisfiable by construction;
+ask the user to break the cycle). For multiple simultaneously active
+changes, recommend one git worktree per change — coupled work that can't
+be separated should have been one change (the split-preflight rule
+already says so).
 
 If the repo has no `docs/changes/` tree at all, offer to bootstrap the
 layout: create `docs/{adr,specs,changes/archive,guides}/` with their README
@@ -93,8 +102,9 @@ proceed to `onto-open`.
 | Evidence | Real phase |
 |---|---|
 | `archived: true` or workspace under `archive/` | done |
+| `design.md` marked `Status: Under revision` | design |
 | `verification.md` with a `Result: pass` line | close |
-| all tasks checked in `tasks.md` | verify |
+| `tasks.md` contains ≥1 task and all are checked | verify |
 | `design.md` marked `Status: Confirmed`, or a preset workspace | build |
 | `proposal.md` + `tasks.md` exist (full workflow, no confirmed design) | design |
 | workspace exists, artifacts incomplete | open |
@@ -107,15 +117,26 @@ proceed to `onto-open`.
    gate is answered, so a lagging claim means an unanswered gate: resume at
    the claimed phase's gate (artifacts already prepared) and let it advance
    normally.
-4. A missing or malformed `state.yaml` is never an error: rebuild it per
+4. **Cross-check `workflow` too, not just phase**: the file sources are
+   the proposal's `Preset:` marker (including an upgrade annotation like
+   `Preset: fix (upgraded to full YYYY-MM-DD)`, which means full), else
+   the branch prefix (`fix/`, `tweak/`), else full. On mismatch with
+   state.yaml, the file sources win — correct, announce, reroute. A
+   well-typed but wrong `workflow:` value must never silently put a
+   change on the wrong lifecycle.
+5. A missing or malformed `state.yaml` is never an error: rebuild it per
    the per-field table in `references/state-yaml.md` (`workflow` from the
-   proposal's `Preset:` marker, else the branch prefix, else `full`;
-   `base_ref` = parent of the oldest commit touching the workspace;
-   `decisions` reset to null so gates are re-asked; `verify.result` from
-   verification.md's `Result:` line; `deps` from the proposal's
-   `Depends-on:` line; `metrics` best-effort, never blocking), announce
-   the rebuild, continue.
-5. Never trust conversation history for phase detection — after context
+   proposal's `Preset:` marker incl. upgrade annotation, else the branch
+   prefix, else `full`; `base_ref` = parent of the oldest commit touching
+   the workspace; `decisions` reset to null so gates are re-asked;
+   `verify.result` from verification.md's `Result:` line; `deps` from the
+   proposal's `Depends-on:` line; `metrics` best-effort, never blocking),
+   announce the rebuild, continue. **Rebuild never crosses a gate**: the
+   derived phase is written only if `notes.md`'s Confirmed section records
+   the preceding phase's exit gate as answered; otherwise write the
+   earlier phase and resume at its gate — a lost state file must not skip
+   what the user never confirmed.
+6. Never trust conversation history for phase detection — after context
    loss or compaction, this derivation is the recovery mechanism. Re-run it.
 
 ## 4. Routing table

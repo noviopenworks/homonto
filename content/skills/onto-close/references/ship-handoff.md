@@ -36,4 +36,11 @@ Full records: `docs/changes/archive/YYYY-MM-DD-<name>/`
 
 ## If declined
 
-Nothing is written; the offer is not repeated.
+Nothing is written; the offer is not repeated **unprompted** — a later
+user request may still produce `ship.md` (the sanctioned archive exception
+is the file itself, not its timing).
+
+## If no PR skills exist
+
+Hand the assembled body directly to the user as the deliverable; the
+handoff contract is the body, not any particular skill.

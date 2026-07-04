@@ -15,6 +15,10 @@ the full plan — bounded by strict upgrade rules.
   `workflow: tweak`. This preset owns the change's whole lifecycle.
 - Broken behavior → `onto-fix`. New behavior or anything structural →
   full workflow via `onto-open`.
+- Read `notes.md` at entry when present (recommended for any tweak that
+  spans sittings). If any skill's `references/` directory is missing,
+  degrade per the dispatcher rule: reconstruct from the `docs/` contract
+  pointers, note the gap, continue.
 
 ## Steps
 
@@ -66,7 +70,9 @@ archive, ship handoff offered.
 > - an existing spec's requirements are affected
 >
 > On confirmed upgrade: set `workflow: full`, `phase: design`,
-> `metrics.upgraded: true`, route through `/onto` to backfill the design
+> `metrics.upgraded: true`, **and annotate the proposal's first line to
+> `Preset: tweak (upgraded to full YYYY-MM-DD)`** (the state-rebuild rules
+> read that marker), then route through `/onto` to backfill the design
 > phase.
 
 ## Exit checklist (per phase, lite)

@@ -12,6 +12,8 @@ what the design and specs say. **Evidence before assertions, always.**
 
 - `state.yaml` has `phase: verify` and every `tasks.md` item is checked
   (items explicitly marked deferred-to-close are allowed).
+- Read `notes.md` at entry when present — accepted decisions and recorded
+  directives inform what to verify against.
 - Unchecked tasks mean build isn't done — the dispatcher's derivation table
   will send this back to build; route through `/onto`.
 
@@ -51,7 +53,8 @@ robustness (edge cases, drift/recovery paths) — prompted to refute, never
 approve; light mode uses one optional skeptic with skips recorded. Triage
 findings per the protocol: a refuted claim fails its scenario; new defects
 are CRITICAL-fix or gate-decided deviations. No dispatch capability →
-record the skipped pass as a deviation. Increment
+record the skipped pass in the report's Adversarial section
+(protocol-mandated skips live there, no acceptor needed). Increment
 `metrics.verify_rounds` once per round.
 
 ### 3. Regression

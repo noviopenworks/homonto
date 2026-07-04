@@ -13,6 +13,11 @@ ADR log, and user-facing guides — then archive the workspace.
 - `state.yaml` has `phase: close`; `verification.md` exists with a
   `Result: pass` line (accepted deviations, if any, are recorded inside the
   report; the result enum stays `pass`).
+- Read `notes.md` at entry when present — recorded directives determine
+  whether the final gate is pre-authorized.
+- Execute any `DEFERRED to close:` tasks from `tasks.md` during this phase
+  (before the final confirmation); the pre-archive lint blocks on
+  unresolved markers.
 - Anything else → route back through `/onto`.
 
 ## Steps

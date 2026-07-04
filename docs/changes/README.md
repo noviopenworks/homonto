@@ -17,6 +17,7 @@ Every unit of work is a **change** with its own workspace
 | `notes.md` | open (updated through design) | context-loss checkpoint: confirmed facts, pending items |
 | `plan.md` | build | implementation plan (full workflow) |
 | `verification.md` | verify | evidence-based verification report |
+| `validation-notes.md` | build/verify (optional) | captured validation evidence (dry-runs, command output) |
 | `ship.md` | close (optional, post-archive) | accepted ship-handoff PR body |
 
 A change is **active** iff its directory sits directly under `docs/changes/`
@@ -92,8 +93,9 @@ archived: false            # set true at archive; phase stays "close" ("done"
 | Evidence | Real phase |
 |---|---|
 | `archived: true` or workspace under `archive/` | done |
+| `design.md` marked `Status: Under revision` | design |
 | `verification.md` with a `Result: pass` line | close |
-| all tasks checked in `tasks.md` | verify |
+| `tasks.md` contains ≥1 task and all are checked | verify |
 | `design.md` marked `Status: Confirmed`, or a preset workspace | build |
 | `proposal.md` + `tasks.md` exist (full workflow, no confirmed design) | design |
 | workspace exists, artifacts incomplete | open |

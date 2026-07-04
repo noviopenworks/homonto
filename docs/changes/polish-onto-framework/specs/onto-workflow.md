@@ -30,12 +30,14 @@ template's structure are lint findings at close.
 
 ### Requirement: Context-loss checkpoints
 
-Each change SHALL keep an incremental `notes.md` checkpoint (created at
-open, template-based) recording confirmed facts, candidate decisions, and
-*pending* items; onto-open and onto-design SHALL update it before ending
-any turn that produced new decisions, and every skill SHALL read it at
-entry when present. The derivation table recovers *where* a change is;
-notes.md recovers *why*.
+Each full-workflow change SHALL keep an incremental `notes.md` checkpoint
+(created at open, template-based) recording confirmed facts, candidate
+decisions, gate answers, and *pending* items — presets SHOULD create one
+for work spanning sittings. onto-open and onto-design SHALL update it
+before ending any turn that produced new decisions, and every phase skill
+SHALL read it at entry when present. The derivation table recovers
+*where* a change is; notes.md recovers *why* — and state rebuild consults
+its Confirmed gate answers before crossing any phase boundary.
 
 #### Scenario: Compaction during design
 
@@ -146,9 +148,10 @@ fresh-context skeptic agents in parallel — conformance (attempt to refute
 each scenario claim) and robustness (edge cases, drift and recovery paths)
 — and triage their findings into the report; in light mode one skeptic is
 optional with any skip recorded. If no subagent capability exists, the
-skipped adversarial pass SHALL be recorded as a deviation. A failed
-verification SHALL block close until the user chooses fix or
-accept-deviation (recorded in the report).
+skipped adversarial pass SHALL be recorded in the report's Adversarial
+section (protocol-mandated skips need no acceptor). A failed verification
+SHALL block close until the user chooses fix or accept-deviation
+(recorded in the report).
 
 #### Scenario: Verification pass
 

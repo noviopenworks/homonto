@@ -10,8 +10,10 @@ obligation: fix them or stop.
 - [ ] Section headings are only `## ADDED Requirements`,
       `## MODIFIED Requirements`, `## REMOVED Requirements`,
       `## RENAMED Requirements` — nothing else, empty sections omitted
-- [ ] Every `### Requirement:` block's **first non-empty line after the
-      heading** contains SHALL or MUST
+- [ ] Every `### Requirement:` block **in ADDED/MODIFIED sections** has
+      SHALL or MUST in its first non-empty line after the heading
+      (REMOVED bodies are removal rationales; RENAMED has no bodies —
+      neither is subject to this rule)
 - [ ] **Every** `#### Scenario:` block has GIVEN/WHEN/THEN bullets, and
       each ADDED/MODIFIED requirement has ≥1 scenario
 - [ ] MODIFIED/REMOVED/RENAMED names match the living spec **exactly**
@@ -28,13 +30,18 @@ obligation: fix them or stop.
       map, counters numeric — schema: `onto/references/state-yaml.md`)
 - [ ] `verification.md` has a current `Result:` line
 - [ ] Every ADR draft has `**Status:**`, `**Date:**`, `**Change:**` fields
-- [ ] Artifacts follow their templates' section structure (spot-check
-      proposal/design/tasks against the references)
+- [ ] Every template-based artifact follows its template's section
+      structure — proposal, design, tasks, notes, plan, verification —
+      checked against their references (deviation anywhere is a finding,
+      per the templates requirement)
 
 ## 3. Post-merge (run AFTER the spec merge, before archive)
 
-- [ ] Living specs contain **no** delta-only headings
-      (`grep -n "ADDED\|MODIFIED\|REMOVED\|RENAMED" docs/specs/*.md` → none)
+- [ ] Living specs contain **no** delta-only section headings:
+      `grep -nE '^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements' docs/specs/*.md`
+      → no matches outside `docs/specs/README.md` (the README legitimately
+      documents the section names; prose mentions anywhere are fine — the
+      check is heading-anchored)
 - [ ] Merged requirements read as current truth — no change-log language
 - [ ] Scenario structure intact in every touched living spec
 
@@ -42,6 +49,9 @@ obligation: fix them or stop.
 
 - [ ] `guides` is not `pending` (resolved in the guides-obligation step —
       checked here because it cannot be satisfied before that step runs)
+- [ ] No unresolved `DEFERRED to close:` markers remain in `tasks.md` —
+      deferred tasks are executed during close, before the final
+      confirmation; archiving one undone is prohibited
 - [ ] No live doc (README, docs/guides, docs/specs, docs/adr, skills)
       references a path this change moved or deleted — archives are exempt
       (history may cite old paths)
