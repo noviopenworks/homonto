@@ -49,7 +49,7 @@
       `<capability>.md`)
 - [x] 4.2 Migrate archived change + `docs/superpowers/` artifacts →
       `docs/changes/archive/` and extract ADR-worthy decisions → `docs/adr/`
-- [ ] 4.3 Retire `openspec/` and `docs/superpowers/` (this change's own
+- [x] 4.3 DEFERRED to archive phase by design (bootstrap ordering): retire `openspec/` and `docs/superpowers/` (this change's own
       workspace moves last, at close)
 
 ## 5. Validation
