@@ -22,6 +22,9 @@ abandoned-change noise and avoids number collisions between parallel changes.
 
 ## Template
 
+Canonical template: `onto-design/references/adr-draft.md` (drafts use
+`Status: Proposed`; the fields below are lint-checked at close).
+
 ```markdown
 # <Title, imperative: "Adopt X", "Use Y for Z">
 
@@ -29,15 +32,5 @@ abandoned-change noise and avoids number collisions between parallel changes.
 - **Date:** YYYY-MM-DD
 - **Change:** <change name that produced this decision>
 
-## Context
-
-What forces are at play; why a decision is needed.
-
-## Decision
-
-What we decided, stated actively ("We will …").
-
-## Consequences
-
-What becomes easier/harder; trade-offs accepted; follow-ups.
+## Context / ## Decision ("We will …") / ## Consequences
 ```

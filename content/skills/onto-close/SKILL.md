@@ -17,6 +17,14 @@ ADR log, and user-facing guides — then archive the workspace.
 
 ## Steps
 
+### 0. Lint (blocking)
+
+Run `references/lint-checklist.md` sections 1–2 (delta format, workspace
+state) now; section 3 (post-merge) after step 1; section 4 (dangling
+references) before archiving. **Findings block the archive exactly like
+the guides obligation** — fix or stop. This replaces the format validation
+the retired external tooling used to perform.
+
 ### 1. Merge spec deltas
 
 For each workspace delta `specs/<capability>.md`, merge into
@@ -25,6 +33,8 @@ For each workspace delta `specs/<capability>.md`, merge into
 - `## ADDED Requirements` → append the requirement blocks
 - `## MODIFIED Requirements` → replace the requirement of the same name
 - `## REMOVED Requirements` → delete the named requirement
+- `## RENAMED Requirements` → rename the heading per each FROM/TO pair,
+  preserving the body unless a MODIFIED block also targets the new name
 - Delta for a capability with no living spec → create the file (strip the
   ADDED wrapper; the living spec has plain `## Requirements`)
 
@@ -58,23 +68,34 @@ Check `guides:` in `state.yaml`. Archiving with `guides: pending` is
 > This gate MAY be pre-authorized by a verbatim recorded directive — still
 > surface the summary.
 
-### 5. Archive
+### 5. Finalize metrics and archive
 
-1. `git mv docs/changes/<name> docs/changes/archive/YYYY-MM-DD-<name>`
+1. Finalize `metrics` in `state.yaml`: `phases.close: <today>`,
+   `tasks_total` (checked tasks), `verify_rounds`, `upgraded`. Metrics are
+   observational — never block on them.
+2. `git mv docs/changes/<name> docs/changes/archive/YYYY-MM-DD-<name>`
    (today's date).
-2. Set `archived: true` in the moved `state.yaml`. `phase` intentionally
+3. Set `archived: true` in the moved `state.yaml`. `phase` intentionally
    stays `close` — "done" is a derived-only phase, never written.
-3. Commit. The archived workspace is history — never edited afterwards.
+4. Commit. The archived workspace is history — never edited afterwards.
 
-The change is done. If the work should ship as a PR, hand off to the
-dedicated PR skills — that is outside onto.
+### 6. Ship handoff (offer)
+
+Follow `references/ship-handoff.md`: offer the ready PR body assembled
+from the archived change; if accepted, write it to the archive's
+`ship.md` and name the PR skills as the next step. onto itself never
+pushes or opens PRs.
 
 ## Exit checklist
 
-- [ ] Every delta spec merged; living specs read as current truth
+- [ ] Lint checklist fully passed (pre-merge, post-merge, dangling refs)
+- [ ] Every delta spec merged (incl. RENAMED); living specs read as
+      current truth
 - [ ] Every ADR draft numbered, accepted, moved to `docs/adr/`
-- [ ] `guides: updated` or `guides: waived: <reason>` — never pending
+- [ ] `guides: updated` or `guides: "waived: <reason>"` — never pending
+- [ ] Metrics finalized (phase dates, tasks_total, verify_rounds, upgraded)
 - [ ] Final confirmation given (or pre-authorized verbatim directive)
 - [ ] Workspace under `docs/changes/archive/YYYY-MM-DD-<name>/` with
       `archived: true`, everything committed
+- [ ] Ship handoff offered (ship.md written if accepted)
 - [ ] Announce completion and summarize where the knowledge landed
