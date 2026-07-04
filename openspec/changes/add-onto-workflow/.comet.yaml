@@ -1,5 +1,5 @@
 workflow: full
-phase: verify
+phase: archive
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -11,11 +11,11 @@ auto_transition: true
 base_ref: a619821713fb5513684eb46135b081ebf3ed6ee0
 design_doc: docs/superpowers/specs/2026-07-04-onto-workflow-design.md
 plan: docs/superpowers/plans/2026-07-04-add-onto-workflow.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-04-add-onto-workflow-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-04
-verified_at: null
+verified_at: 2026-07-04
 archived: false
 handoff_context: openspec/changes/add-onto-workflow/.comet/handoff/design-context.json
 handoff_hash: 61026599da4b65da70e825a6f26a2c16d37839a0ec8a642821eb2b3683691bf4
