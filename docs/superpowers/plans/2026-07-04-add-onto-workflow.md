@@ -69,7 +69,7 @@ README.md                   # dev-workflow section (Task 13)
 **Interfaces:**
 - Produces: the four directory contracts every onto skill references by path (`docs/adr/`, `docs/specs/`, `docs/changes/`, `docs/changes/archive/`, `docs/guides/`). Tasks 2 and 3 append sections to `docs/changes/README.md` and `docs/adr/README.md`.
 
-- [ ] **Step 1: Create `docs/specs/README.md`**
+- [x] **Step 1: Create `docs/specs/README.md`**
 
 ```markdown
 # Living Capability Specs
@@ -96,7 +96,7 @@ what the system does **now** — always true, never a change log.
   blocks are deleted. A delta for a new capability creates the spec file.
 ```
 
-- [ ] **Step 2: Create `docs/changes/README.md`** (state.yaml schema is added by Task 2)
+- [x] **Step 2: Create `docs/changes/README.md`** (state.yaml schema is added by Task 2)
 
 ```markdown
 # Change Workspaces
@@ -130,7 +130,7 @@ except `archived: true` in `state.yaml`. Archived changes are history — never
 edited afterwards.
 ```
 
-- [ ] **Step 3: Create `docs/adr/README.md`** (template + numbering are added by Task 3)
+- [x] **Step 3: Create `docs/adr/README.md`** (template + numbering are added by Task 3)
 
 ```markdown
 # Architecture Decision Records
@@ -147,7 +147,7 @@ moves the draft here with `Status: Accepted`. This keeps `docs/adr/` free of
 abandoned-change noise and avoids number collisions between parallel changes.
 ```
 
-- [ ] **Step 4: Create `docs/guides/README.md`**
+- [x] **Step 4: Create `docs/guides/README.md`**
 
 ```markdown
 # Guides
@@ -163,14 +163,14 @@ change while `guides: pending` — either write/update the affected guide(s)
 or record an explicit waiver reason.
 ```
 
-- [ ] **Step 5: Create `docs/changes/archive/.gitkeep`** (empty file, so the archive directory exists in git before the first migration lands)
+- [x] **Step 5: Create `docs/changes/archive/.gitkeep`** (empty file, so the archive directory exists in git before the first migration lands)
 
-- [ ] **Step 6: Verify layout**
+- [x] **Step 6: Verify layout**
 
 Run: `find docs/adr docs/specs docs/changes docs/guides -type f | sort`
 Expected: exactly the five files created above.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add docs/adr docs/specs docs/changes docs/guides
@@ -186,7 +186,7 @@ git commit -m "feat: add onto docs/ layout skeleton with directory contracts"
 - Consumes: `docs/changes/README.md` from Task 1.
 - Produces: the canonical `state.yaml` schema + phase-derivation table that Tasks 4–10 reference (skills point to this file instead of duplicating the schema).
 
-- [ ] **Step 1: Append the schema section to `docs/changes/README.md`**
+- [x] **Step 1: Append the schema section to `docs/changes/README.md`**
 
 Copy the `state.yaml` example block and the phase-derivation table **verbatim from the design doc** (`docs/superpowers/specs/2026-07-04-onto-workflow-design.md`, §Architecture → "state.yaml (agent-managed)"), wrapped as:
 
@@ -234,9 +234,9 @@ archived: false
 | workspace exists, artifacts incomplete | open |
 ```
 
-- [ ] **Step 2: Verify** the appended section matches the design doc: open both files side by side and diff the yaml block and table by eye — field names, allowed values, and table rows must be identical.
+- [x] **Step 2: Verify** the appended section matches the design doc: open both files side by side and diff the yaml block and table by eye — field names, allowed values, and table rows must be identical.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/changes/README.md
@@ -252,7 +252,7 @@ git commit -m "docs: document state.yaml schema, lifecycle, and phase derivation
 - Consumes: `docs/adr/README.md` from Task 1.
 - Produces: the ADR file template used by Task 15 (extracted ADRs 0001–0005) and referenced by `onto-design`/`onto-close` (Tasks 6, 9).
 
-- [ ] **Step 1: Append numbering + template sections**
+- [x] **Step 1: Append numbering + template sections**
 
 ```markdown
 ## Numbering
@@ -287,12 +287,12 @@ What becomes easier/harder; trade-offs accepted; follow-ups.
 ```
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run: `grep -n "^## Staging rule\|^## Numbering\|^## Template" docs/adr/README.md`
 Expected: three hits, in that order.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/adr/README.md
@@ -328,7 +328,7 @@ Expected: no matches (exit code 1).
 **Interfaces:**
 - Produces: the routing contract every sub-skill's Entry check points back to; the phase-derivation cross-check behavior Tasks 17–18 dry-run.
 
-- [ ] **Step 1: Write frontmatter**
+- [x] **Step 1: Write frontmatter**
 
 ```yaml
 ---
@@ -337,7 +337,7 @@ description: onto workflow dispatcher. Use when starting, resuming, or asking ab
 ---
 ```
 
-- [ ] **Step 2: Write the body** with these required sections (content per the design-doc sections named above — do not invent new behavior):
+- [x] **Step 2: Write the body** with these required sections (content per the design-doc sections named above — do not invent new behavior):
 
 1. **Tooling preflight** (hard requirement, runs first, in order): (a) `rtk --version` must succeed — then all subsequent shell commands go through rtk; on failure HALT and print rtk install instructions. (b) graphify must be available (graphify skill present, or an existing `graphify-out/` or `.codegraph/` index) — open/design phases must ground codebase understanding in graphify/codegraph queries; on failure HALT and print graphify install instructions. Include the literal install-instruction text to print for each.
 2. **Active-change discovery**: scan `docs/changes/*/` excluding `archive/`. Zero active changes → route to `onto-open` with the user's description. Exactly one → resume it. Two or more → list them (name, workflow, claimed phase) and ASK the user which to resume before doing anything else.
@@ -346,9 +346,9 @@ description: onto workflow dispatcher. Use when starting, resuming, or asking ab
 5. **GitHub entry points (contract)**: resolve-issue seeds `onto-open` clarification from the issue text (fix preset for bugs, full for features; worktree isolation); continue-pr resumes the matching change's build phase or opens a `fix` change referencing the PR; PR creation/review stay outside — onto ends at a verified, closed change on a branch.
 6. **Exit**: after routing, the dispatcher is done; the sub-skill owns the phase. Never execute phase work inside the dispatcher.
 
-- [ ] **Step 3: Verify** — run the forbidden-strings grep (expected: no matches) and `grep -n "^## " content/skills/onto/SKILL.md` (expected: the six sections above present); read the embedded derivation table against `docs/changes/README.md` (must be identical).
+- [x] **Step 3: Verify** — run the forbidden-strings grep (expected: no matches) and `grep -n "^## " content/skills/onto/SKILL.md` (expected: the six sections above present); read the embedded derivation table against `docs/changes/README.md` (must be identical).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto
@@ -365,7 +365,7 @@ git commit -m "feat: add onto dispatcher skill"
 - Consumes: state.yaml schema (`docs/changes/README.md`), dispatcher routing (Task 4).
 - Produces: workspace artifacts (`state.yaml`, `proposal.md`, `tasks.md`) whose exact shapes `onto-design`/`onto-build` consume.
 
-- [ ] **Step 1: Write frontmatter**
+- [x] **Step 1: Write frontmatter**
 
 ```yaml
 ---
@@ -374,16 +374,16 @@ description: onto phase 1 — open a change. Use when starting a new change or w
 ---
 ```
 
-- [ ] **Step 2: Write the body** with these required sections:
+- [x] **Step 2: Write the body** with these required sections:
 
 1. **Entry check**: no active workspace for this work yet, or `state.yaml` says `phase: open`. Otherwise route back through `/onto`.
 2. **Steps**: (a) clarify — ask questions until the requirement is unambiguous; ground every codebase claim in graphify/codegraph queries, never guesswork; (b) split preflight — if the request spans multiple independent subsystems, propose separate changes and let the user choose; (c) create `docs/changes/<name>/` with initial `state.yaml` (schema per `docs/changes/README.md`: `phase: open`, `workflow` per route, `created`, `base_ref` = current git sha, `decisions: null` fields, `verify` pending, `guides: pending`, `archived: false`), `proposal.md` (why + what + capability impact — which `docs/specs/` capabilities this touches), and `tasks.md` skeleton (unchecked checklist grouped by area).
 3. **Blocking points**: GATE 1a clarification-complete confirmation; GATE 1b artifact review (user reads proposal + tasks skeleton and approves). Both always require fresh user input.
 4. **Exit checklist**: workspace exists with all three artifacts; both gates answered; `phase` advanced to `design` (workflow full) or `build` (fix/tweak); announce the transition and load the next skill.
 
-- [ ] **Step 3: Verify** — forbidden-strings grep (no matches); confirm the four sections exist.
+- [x] **Step 3: Verify** — forbidden-strings grep (no matches); confirm the four sections exist.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto-open
@@ -400,7 +400,7 @@ git commit -m "feat: add onto-open skill"
 - Consumes: `proposal.md` + `tasks.md` from onto-open; ADR template (`docs/adr/README.md`); delta-spec format (`docs/specs/README.md`).
 - Produces: confirmed `design.md`, `adr/<slug>.md` drafts, `specs/<capability>.md` deltas — inputs to `onto-build` and `onto-close`.
 
-- [ ] **Step 1: Write frontmatter**
+- [x] **Step 1: Write frontmatter**
 
 ```yaml
 ---
@@ -409,16 +409,16 @@ description: onto phase 2 — deep design. Use when an active full-workflow chan
 ---
 ```
 
-- [ ] **Step 2: Write the body** with these required sections:
+- [x] **Step 2: Write the body** with these required sections:
 
 1. **Entry check**: `state.yaml` has `phase: design` and `workflow: full`; `proposal.md` exists. Presets never enter this phase (except via upgrade backfill — say so). Otherwise route back through `/onto`.
 2. **Steps** (brainstorming discipline per design doc §Design rigor): explore ground truth first (graphify/codegraph queries, read the real code); question until clear; present **2–3 candidate approaches** with trade-offs; after confirmation write `design.md` (summary, goals/non-goals, architecture, error handling, testing strategy); draft ADRs for each significant decision into `docs/changes/<name>/adr/<slug>.md` (`Status: Proposed`, unnumbered, template per `docs/adr/README.md`); write delta specs into `docs/changes/<name>/specs/<capability>.md` (ADDED/MODIFIED/REMOVED requirement blocks with SHALL + Given/When/Then scenarios, format per `docs/specs/README.md`).
 3. **Blocking points**: GATE 2 approach confirmation — the final `design.md` MUST NOT be written before the user confirms an approach; always fresh input. Plus the hard prohibition: **no implementation code in this phase** — writing source code before a confirmed design exists is prohibited.
 4. **Exit checklist**: `design.md` marked confirmed (record confirmation date + "Status: Confirmed" line); ADR drafts and delta specs exist for every decision/spec impact named in the design; `phase: build`; announce and hand off.
 
-- [ ] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; the code-prohibition sentence exists (`grep -n "implementation code" content/skills/onto-design/SKILL.md` → at least one hit).
+- [x] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; the code-prohibition sentence exists (`grep -n "implementation code" content/skills/onto-design/SKILL.md` → at least one hit).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto-design
@@ -435,7 +435,7 @@ git commit -m "feat: add onto-design skill"
 - Consumes: confirmed `design.md`, `tasks.md`; `decisions` fields in state.yaml schema.
 - Produces: `plan.md`, checked-off `tasks.md`, one commit per task — the state `onto-verify` requires.
 
-- [ ] **Step 1: Write frontmatter**
+- [x] **Step 1: Write frontmatter**
 
 ```yaml
 ---
@@ -444,16 +444,16 @@ description: onto phase 3 — plan and build. Use when an active change has phas
 ---
 ```
 
-- [ ] **Step 2: Write the body** with these required sections:
+- [x] **Step 2: Write the body** with these required sections:
 
 1. **Entry check**: `phase: build`; for `workflow: full` a confirmed `design.md` exists (if not → back to design via `/onto`); presets enter directly after open.
 2. **Steps**: (a) write `docs/changes/<name>/plan.md` — bite-sized tasks mirroring `tasks.md`, each with exact file paths, what to do, and how to verify; (b) plan-ready gate (below); (c) record execution config in `state.yaml` `decisions:` — `isolation: branch|worktree`, `execution: direct|subagent`, `tdd: tdd|direct`; (d) execute one task at a time: when `tdd: tdd`, failing test FIRST, watch it fail, minimal implementation, watch it pass; when `tdd: direct`, implement then run the task's stated verification; (e) after each task's verification passes: check it off in `tasks.md` and commit before starting the next task — never batch; (f) on ANY build/test/unexpected failure: systematic-debugging discipline — reproduce, read the actual error, form a hypothesis, find the root cause; **no source fix may be proposed before the root cause is identified**; (g) mid-build spec/design change: small edits inline, larger scope changes pause and go back through the design gate.
 3. **Blocking points**: GATE 3 plan-ready + execution config — pause after `plan.md` for user review and config choice; MAY be pre-authorized by an explicit user directive recorded verbatim under `decisions:` in state.yaml, in which case proceed with the recorded config but still surface the plan summary.
 4. **Exit checklist**: every `tasks.md` item checked; every task committed; no uncommitted changes; `phase: verify`; announce and hand off.
 
-- [ ] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; `grep -n "root cause" content/skills/onto-build/SKILL.md` → at least one hit.
+- [x] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; `grep -n "root cause" content/skills/onto-build/SKILL.md` → at least one hit.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto-build
@@ -470,7 +470,7 @@ git commit -m "feat: add onto-build skill"
 - Consumes: `design.md`, delta specs, checked `tasks.md`, `verify.mode`/`verify.result` state fields.
 - Produces: `verification.md` + `verify.result` — the precondition for `onto-close`.
 
-- [ ] **Step 1: Write frontmatter**
+- [x] **Step 1: Write frontmatter**
 
 ```yaml
 ---
@@ -479,16 +479,16 @@ description: onto phase 4 — verify. Use when an active change has phase verify
 ---
 ```
 
-- [ ] **Step 2: Write the body** with these required sections:
+- [x] **Step 2: Write the body** with these required sections:
 
 1. **Entry check**: `phase: verify` and all `tasks.md` items checked (if not, the dispatcher's derivation table sends this back to build — say so).
 2. **Steps**: (a) scale check → set `verify.mode`: `full` when `workflow: full` or an upgrade occurred or the diff is large (state the rule concretely: full = full workflow, upgraded preset, or >5 files / new capability touched; light = preset within its limits); (b) check the implementation against `design.md` and **every scenario in every delta spec** — for each: run the command(s) that demonstrate the behavior, capture the actual output; (c) run the project's regression suite; (d) write `docs/changes/<name>/verification.md`: table of requirement scenario → verdict (pass/fail) → evidence (the literal command + output), plus regression results; every claim needs fresh evidence — no "should work", no stale output; (e) set `verify.result: pass|fail`.
 3. **Blocking points**: GATE 4 on failure — list the failing items and ask the user: fix (→ back to build, phase reset) or accept deviation (record the deviation + rationale in `verification.md`, then result may be pass-with-deviations). Always fresh input.
 4. **Exit checklist**: `verification.md` written with evidence for every scenario; `verify.result: pass` (or accepted deviations recorded); `phase: close`; announce and hand off.
 
-- [ ] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; `grep -n "evidence" content/skills/onto-verify/SKILL.md` → multiple hits.
+- [x] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; `grep -n "evidence" content/skills/onto-verify/SKILL.md` → multiple hits.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto-verify
@@ -505,7 +505,7 @@ git commit -m "feat: add onto-verify skill"
 - Consumes: delta specs, ADR drafts, `guides` state field, `verification.md`.
 - Produces: merged `docs/specs/`, numbered `docs/adr/NNNN-*.md`, updated `docs/guides/`, archived workspace.
 
-- [ ] **Step 1: Write frontmatter**
+- [x] **Step 1: Write frontmatter**
 
 ```yaml
 ---
@@ -514,16 +514,16 @@ description: onto phase 5 — close. Use when an active change has phase close (
 ---
 ```
 
-- [ ] **Step 2: Write the body** with these required sections:
+- [x] **Step 2: Write the body** with these required sections:
 
 1. **Entry check**: `phase: close`, `verification.md` exists, `verify.result: pass` (or pass-with-recorded-deviations). Otherwise route back through `/onto`.
 2. **Steps**: (a) merge each `docs/changes/<name>/specs/<capability>.md` delta into `docs/specs/<capability>.md` per the merge semantics in `docs/specs/README.md` (ADDED appends, MODIFIED replaces same-named requirement, REMOVED deletes; new capability → create the file); (b) for each ADR draft in the workspace `adr/`: assign the next free number (highest in `docs/adr/` + 1), move to `docs/adr/NNNN-<slug>.md`, set `Status: Accepted`; (c) guides obligation: write/update the affected `docs/guides/<topic>.md`, set `guides: updated` — or record `guides: waived: <reason>` with the user's explicit reason; archiving with `guides: pending` is prohibited; (d) final confirmation gate; (e) archive: `git mv docs/changes/<name> docs/changes/archive/YYYY-MM-DD-<name>` (today's date), set `archived: true` in the moved `state.yaml`, commit.
 3. **Blocking points**: GATE 5 final confirmation before archive — summarize what was merged/numbered/documented and ask; MAY be pre-authorized by a verbatim recorded directive (still surface the summary). The guides obligation is its own hard block (design §Error Handling): close cannot complete while `guides: pending`.
 4. **Exit checklist**: specs merged, ADRs numbered+accepted, guides updated or waived with reason, workspace under `archive/` with `archived: true`, everything committed; announce completion.
 
-- [ ] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; `grep -n "guides" content/skills/onto-close/SKILL.md` → hits covering the obligation.
+- [x] **Step 3: Verify** — forbidden-strings grep (no matches); four sections present; `grep -n "guides" content/skills/onto-close/SKILL.md` → hits covering the obligation.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto-close
@@ -541,7 +541,7 @@ git commit -m "feat: add onto-close skill"
 - Consumes: onto-open/build/verify/close section contracts (presets orchestrate those phases in lite form).
 - Produces: `workflow: fix|tweak` lifecycles the dispatcher routes to.
 
-- [ ] **Step 1: Write `content/skills/onto-fix/SKILL.md`**
+- [x] **Step 1: Write `content/skills/onto-fix/SKILL.md`**
 
 Frontmatter:
 
@@ -559,7 +559,7 @@ Required sections:
 3. **Upgrade rules (GATE 6)**: pause, explain the trigger, and require fresh user confirmation to upgrade to the full workflow (backfilling the design phase) when ANY of: **3+ files touched, architecture/schema changes, new public API**. On upgrade: set `workflow: full`, `phase: design`, route through `/onto`.
 4. **Exit checklist** per phase (mirroring the corresponding full-skill checklists in lite form).
 
-- [ ] **Step 2: Write `content/skills/onto-tweak/SKILL.md`**
+- [x] **Step 2: Write `content/skills/onto-tweak/SKILL.md`**
 
 Frontmatter:
 
@@ -577,14 +577,14 @@ Required sections:
 3. **Upgrade rules (GATE 6)**: pause + fresh confirmation to upgrade when ANY of: **5+ files, cross-module coordination, 5+ new tests, config key additions/removals, a new capability, or spec-affecting changes**.
 4. **Exit checklist** per phase.
 
-- [ ] **Step 3: Verify both**
+- [x] **Step 3: Verify both**
 
 ```bash
 grep -rn "openspec\|comet\|docs/superpowers" content/skills/onto-fix content/skills/onto-tweak
 ```
 Expected: no matches. Also `grep -n "3+ files" content/skills/onto-fix/SKILL.md` and `grep -n "5+ files" content/skills/onto-tweak/SKILL.md` each → one hit (thresholds present exactly).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add content/skills/onto-fix content/skills/onto-tweak
@@ -605,7 +605,7 @@ git commit -m "feat: add onto-fix and onto-tweak preset skills"
 - Consumes: the eight `content/skills/onto*/SKILL.md` files (Tasks 4–10); the existing `homonto` CLI (`[skills] own` → `~/.claude/skills/<name>` symlinks, per `internal/adapter/claude/claude.go:151-152`).
 - Produces: live symlinks that Task 19 and the comet verify phase re-check.
 
-- [ ] **Step 1: Write `homonto.toml`**
+- [x] **Step 1: Write `homonto.toml`**
 
 ```toml
 [skills]
@@ -621,12 +621,12 @@ own = [
 ]
 ```
 
-- [ ] **Step 2: Pre-check for clobber risk** (the linker never clobbers — resolve conflicts before apply)
+- [x] **Step 2: Pre-check for clobber risk** (the linker never clobbers — resolve conflicts before apply)
 
 Run: `ls -ld ~/.claude/skills/onto* 2>/dev/null`
 Expected: no output (nothing exists yet). If entries exist and are NOT symlinks into this repo, STOP and ask the user before proceeding.
 
-- [ ] **Step 3: Build and plan**
+- [x] **Step 3: Build and plan**
 
 ```bash
 go build -o homonto .
@@ -634,7 +634,7 @@ go build -o homonto .
 ```
 Expected: plan lists a link creation for each of the eight onto skills (`~/.claude/skills/<name>` → `<repo>/content/skills/<name>`), no destructive changes, exit 0.
 
-- [ ] **Step 4: Apply and verify symlinks**
+- [x] **Step 4: Apply and verify symlinks**
 
 ```bash
 ./homonto apply --yes
@@ -642,14 +642,14 @@ ls -l ~/.claude/skills/onto*
 ```
 Expected: apply succeeds; `ls -l` shows eight symlinks, each resolving into `/home/mg/homonto/content/skills/<name>`.
 
-- [ ] **Step 5: Capture evidence** — create `openspec/changes/add-onto-workflow/validation-notes.md` with a `## Dogfood` section containing the literal output of: `./homonto plan` (from Step 3), `./homonto apply --yes`, `ls -l ~/.claude/skills/onto*`, **`./homonto status`** (expected: no drift), and **`./homonto doctor`** (expected: all checks healthy). These two command outputs are required evidence for the verify phase — do not skip them.
+- [x] **Step 5: Capture evidence** — create `openspec/changes/add-onto-workflow/validation-notes.md` with a `## Dogfood` section containing the literal output of: `./homonto plan` (from Step 3), `./homonto apply --yes`, `ls -l ~/.claude/skills/onto*`, **`./homonto status`** (expected: no drift), and **`./homonto doctor`** (expected: all checks healthy). These two command outputs are required evidence for the verify phase — do not skip them.
 
-- [ ] **Step 6: Regression**
+- [x] **Step 6: Regression**
 
 Run: `go test ./...`
 Expected: all packages pass (no Go changes were made; this proves it).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add homonto.toml openspec/changes/add-onto-workflow/validation-notes.md
@@ -665,7 +665,7 @@ git commit -m "feat: dogfood onto skills via homonto.toml (apply evidence captur
 - Consumes: dispatcher contract (Task 4), layout contracts (Tasks 1–3).
 - Produces: the user-facing guide; also satisfies this change's own `guides` obligation.
 
-- [ ] **Step 1: Write `docs/guides/onto-workflow.md`** covering, in this order (each section is a summary that links to the authoritative file — do not duplicate contracts):
+- [x] **Step 1: Write `docs/guides/onto-workflow.md`** covering, in this order (each section is a summary that links to the authoritative file — do not duplicate contracts):
 
 1. **What onto is** — five phases + two presets, one paragraph.
 2. **Quick start** — invoke `/onto <description>` (or `/onto-fix`, `/onto-tweak`); what the dispatcher does (preflight → discovery → derive phase → route).
@@ -675,9 +675,9 @@ git commit -m "feat: dogfood onto skills via homonto.toml (apply evidence captur
 6. **GitHub entry points** — resolve-issue → seeds a new change (fix preset for bugs, full otherwise, worktree isolation); continue-pr → resumes the matching change's build phase or opens a fix change referencing the PR; PR creation/review remain in their own skills.
 7. **Required tooling** — rtk + graphify are hard requirements; what happens when missing.
 
-- [ ] **Step 2: Verify** — `grep -n "resolve-issue\|continue-pr" docs/guides/onto-workflow.md` → hits in section 6; every relative link in the file resolves (`ls` each linked path).
+- [x] **Step 2: Verify** — `grep -n "resolve-issue\|continue-pr" docs/guides/onto-workflow.md` → hits in section 6; every relative link in the file resolves (`ls` each linked path).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/guides/onto-workflow.md
@@ -692,7 +692,7 @@ git commit -m "docs: add onto workflow guide with GitHub entry points"
 **Interfaces:**
 - Consumes: `docs/guides/onto-workflow.md` (Task 12).
 
-- [ ] **Step 1: Append to `README.md`**
+- [x] **Step 1: Append to `README.md`**
 
 ```markdown
 ## Development workflow
@@ -710,9 +710,9 @@ shipped from this very repo (`content/skills/onto*` — dogfooded via
 Start with `/onto`. Full guide: [docs/guides/onto-workflow.md](docs/guides/onto-workflow.md).
 ```
 
-- [ ] **Step 2: Verify** — `grep -n "Development workflow" README.md` → one hit; the link target exists.
+- [x] **Step 2: Verify** — `grep -n "Development workflow" README.md` → one hit; the link target exists.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md
@@ -741,7 +741,7 @@ git commit -m "docs: add development-workflow section to README"
 - Consumes: `docs/specs/README.md` (Task 1) — migrated files must already satisfy its format (they do; the OpenSpec block format was kept on purpose).
 - Produces: `docs/specs/<capability>.md` files that `onto-verify`/`onto-close` operate on from now on.
 
-- [ ] **Step 1: Move the five spec files with `git mv`** (flatten `<cap>/spec.md` → `<cap>.md`)
+- [x] **Step 1: Move the five spec files with `git mv`** (flatten `<cap>/spec.md` → `<cap>.md`)
 
 ```bash
 git mv openspec/specs/apply-pipeline/spec.md     docs/specs/apply-pipeline.md
@@ -753,7 +753,7 @@ git mv openspec/specs/tool-adapters/spec.md      docs/specs/tool-adapters.md
 
 Do NOT delete `openspec/specs/` even though it is now empty in git — the archive step will create `openspec/specs/onto-workflow/spec.md` there when it merges this change's delta (moved to `docs/` by Task 16).
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 ```bash
 ls docs/specs/            # expected: README.md + the five .md files
@@ -761,7 +761,7 @@ git log --follow --oneline docs/specs/apply-pipeline.md | tail -3
 ```
 Expected: history predates this change (follow works → `git mv` preserved it).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A
@@ -788,7 +788,7 @@ git commit -m "chore: migrate living specs from openspec/specs to docs/specs"
 **Interfaces:**
 - Consumes: ADR template (`docs/adr/README.md`, Task 3); source decisions in `docs/changes/archive/2026-07-03-homonto-v1-core/design-doc.md` (post-move) and the repo `README.md`.
 
-- [ ] **Step 1: Move the v1-core archive and its superpowers artifacts**
+- [x] **Step 1: Move the v1-core archive and its superpowers artifacts**
 
 ```bash
 git mv openspec/changes/archive/2026-07-03-homonto-v1-core docs/changes/archive/2026-07-03-homonto-v1-core
@@ -797,7 +797,7 @@ git mv docs/superpowers/plans/2026-07-03-homonto-v1-core.md docs/changes/archive
 git mv docs/superpowers/reports/2026-07-03-homonto-v1-core-verify.md docs/changes/archive/2026-07-03-homonto-v1-core/verification.md
 ```
 
-- [ ] **Step 2: Move the 2026-06-24 change artifacts and the roadmap**
+- [x] **Step 2: Move the 2026-06-24 change artifacts and the roadmap**
 
 ```bash
 mkdir -p docs/changes/archive/2026-06-24-homonto
@@ -808,16 +808,16 @@ git mv docs/superpowers/specs/2026-07-03-homonto-roadmap.md docs/roadmap.md
 
 After this, `docs/superpowers/` contains ONLY this change's design doc (`specs/2026-07-04-onto-workflow-design.md`) and this plan (`plans/2026-07-04-add-onto-workflow.md`) — both deferred to Task 16. Verify: `find docs/superpowers -type f` → exactly those two files.
 
-- [ ] **Step 3: Write ADRs 0001–0004** (extracted decisions, per design doc §Key Decisions items 2–5). Use the Task 3 template; `Status: Accepted`; `Change: homonto-v1-core`; date `2026-07-03`. Source the Context/Decision/Consequences content from `docs/changes/archive/2026-07-03-homonto-v1-core/design-doc.md` and `README.md` (§Secrets, §the symlink/merge and atomic-write paragraphs):
+- [x] **Step 3: Write ADRs 0001–0004** (extracted decisions, per design doc §Key Decisions items 2–5). Use the Task 3 template; `Status: Accepted`; `Change: homonto-v1-core`; date `2026-07-03`. Source the Context/Decision/Consequences content from `docs/changes/archive/2026-07-03-homonto-v1-core/design-doc.md` and `README.md` (§Secrets, §the symlink/merge and atomic-write paragraphs):
 
 - `0001-plan-confirm-apply-pipeline.md` — terraform-style plan → confirm → apply with tool adapters translating one desired-state model per tool.
 - `0002-secrets-referenced-never-stored.md` — `${pass:...}`/`${ENV}` tokens; plan never resolves; apply resolves after confirm, all-before-any-write; state stores token + sha256 hash only.
 - `0003-owned-content-symlinked-surgical-merge.md` — owned content symlinked into tools (never copied, never clobbered); non-owned keys merged surgically.
 - `0004-atomic-writes-state-last.md` — temp-file+rename atomic writes; state written last so an interrupted apply leaves every file valid.
 
-- [ ] **Step 4: Write `docs/adr/0005-adopt-onto-workflow.md`** — `Status: Accepted`; `Change: add-onto-workflow`; date `2026-07-04`. Context: comet+openspec machinery (external CLI, bash guard/state scripts) vs. self-containment; Decision: markdown-only skills + agent-managed state.yaml with file-state-wins recovery (summarize design doc §Summary); Consequences: no hard guard enforcement (mitigated by exit checklists + evidence discipline), state drift possible (mitigated by derivation cross-check), portable to any repo via `homonto apply`.
+- [x] **Step 4: Write `docs/adr/0005-adopt-onto-workflow.md`** — `Status: Accepted`; `Change: add-onto-workflow`; date `2026-07-04`. Context: comet+openspec machinery (external CLI, bash guard/state scripts) vs. self-containment; Decision: markdown-only skills + agent-managed state.yaml with file-state-wins recovery (summarize design doc §Summary); Consequences: no hard guard enforcement (mitigated by exit checklists + evidence discipline), state drift possible (mitigated by derivation cross-check), portable to any repo via `homonto apply`.
 
-- [ ] **Step 5: Verify migration audit**
+- [x] **Step 5: Verify migration audit**
 
 ```bash
 ls docs/adr/                                   # README.md + 0001..0005
@@ -826,7 +826,7 @@ find openspec -type f | grep -v add-onto-workflow   # expected: nothing
 git log --follow --oneline docs/roadmap.md | tail -3  # history preserved
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -840,7 +840,8 @@ git commit -m "chore: migrate archives and roadmap to docs/, extract ADRs 0001-0
 > moved `openspec/changes/add-onto-workflow/` to
 > `openspec/changes/archive/2026-07-04-add-onto-workflow/` and (b) merged the
 > delta spec into `openspec/specs/onto-workflow/spec.md`. During build, mark
-> this task as deferred in tasks.md (note "runs at close") — the build exit
+> this task as deferred in tasks.md (note "runs at close"; its steps below use
+> the `- [>]` deferred marker) — the build exit
 > checklist must not treat it as skipped.
 
 **Files:**
@@ -851,9 +852,9 @@ git commit -m "chore: migrate archives and roadmap to docs/, extract ADRs 0001-0
 - Move: this change's verify report (written by the verify phase under `docs/superpowers/reports/`) → `docs/changes/archive/2026-07-04-add-onto-workflow/verification.md`
 - Delete: `openspec/` and `docs/superpowers/` (empty after the moves)
 
-- [ ] **Step 1: Confirm the archive script has run** — `ls openspec/changes/archive/ | grep add-onto-workflow` and `test -f openspec/specs/onto-workflow/spec.md`. If either fails, STOP — the ordering constraint is violated.
+- [>] **Step 1: Confirm the archive script has run** — `ls openspec/changes/archive/ | grep add-onto-workflow` and `test -f openspec/specs/onto-workflow/spec.md`. If either fails, STOP — the ordering constraint is violated.
 
-- [ ] **Step 2: Move everything with `git mv`** (adjust the verify-report filename to whatever the verify phase actually produced under `docs/superpowers/reports/`)
+- [>] **Step 2: Move everything with `git mv`** (adjust the verify-report filename to whatever the verify phase actually produced under `docs/superpowers/reports/`)
 
 ```bash
 git mv openspec/specs/onto-workflow/spec.md docs/specs/onto-workflow.md
@@ -863,21 +864,21 @@ git mv docs/superpowers/plans/2026-07-04-add-onto-workflow.md docs/changes/archi
 git mv docs/superpowers/reports/<verify-report>.md docs/changes/archive/2026-07-04-add-onto-workflow/verification.md
 ```
 
-- [ ] **Step 3: Remove the now-empty trees**
+- [>] **Step 3: Remove the now-empty trees**
 
 ```bash
 find openspec docs/superpowers -type f     # expected: nothing (git-tracked)
 rm -rf openspec docs/superpowers
 ```
 
-- [ ] **Step 4: Dangling-reference audit**
+- [>] **Step 4: Dangling-reference audit**
 
 ```bash
 grep -rn "openspec/\|docs/superpowers" README.md docs/ content/ .claude/ 2>/dev/null
 ```
 Expected: no matches outside `docs/changes/archive/` (archived history may mention old paths; live files must not). Fix any live hits.
 
-- [ ] **Step 5: Commit**
+- [>] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -894,7 +895,7 @@ git commit -m "chore: retire openspec/ and docs/superpowers/ (onto workflow live
 - Create + delete: `docs/changes/dryrun-sample/` (scratch workspace, NEVER committed)
 - Modify: `openspec/changes/add-onto-workflow/validation-notes.md` (append results)
 
-- [ ] **Step 1: Simulate a full lifecycle** on a scratch change `dryrun-sample` by following the eight SKILL.md files literally (agent-simulated: play both agent and user; the "user" answers each gate). Walk open → design → build → verify → close and check off each item of this checklist as it is observed:
+- [x] **Step 1: Simulate a full lifecycle** on a scratch change `dryrun-sample` by following the eight SKILL.md files literally (agent-simulated: play both agent and user; the "user" answers each gate). Walk open → design → build → verify → close and check off each item of this checklist as it is observed:
 
 1. dispatcher preflight runs first (`rtk --version` succeeds; graphify present);
 2. zero-active-changes → routed to `onto-open`;
@@ -908,11 +909,11 @@ git commit -m "chore: retire openspec/ and docs/superpowers/ (onto workflow live
 
 Any step where a skill is ambiguous or contradicts the design doc → fix that SKILL.md now (that is the point of the dry run) and note the fix.
 
-- [ ] **Step 2: Record results** — append a `## Dry-run: full lifecycle` section to `openspec/changes/add-onto-workflow/validation-notes.md`: the checklist above with pass marks, plus any skill fixes made.
+- [x] **Step 2: Record results** — append a `## Dry-run: full lifecycle` section to `openspec/changes/add-onto-workflow/validation-notes.md`: the checklist above with pass marks, plus any skill fixes made.
 
-- [ ] **Step 3: Clean up** — `rm -rf docs/changes/dryrun-sample` and `git status` must show no trace of the scratch workspace.
+- [x] **Step 3: Clean up** — `rm -rf docs/changes/dryrun-sample` and `git status` must show no trace of the scratch workspace.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add openspec/changes/add-onto-workflow/validation-notes.md content/skills
@@ -925,15 +926,15 @@ git commit -m "test: full-lifecycle dry-run walkthrough of onto skills"
 - Create + delete: `docs/changes/dryrun-fix/`, `docs/changes/dryrun-tweak/` (scratch, never committed)
 - Modify: `openspec/changes/add-onto-workflow/validation-notes.md` (append results)
 
-- [ ] **Step 1: `/onto-fix` walkthrough** on scratch change `dryrun-fix`: open-lite skips design; failing-test-first is demanded before any fix; then simulate the fix growing to touch **four files** → the skill must hit GATE 6, explain the "3+ files" trigger, and require fresh confirmation; on confirmed upgrade, `workflow: full` + `phase: design` backfill is prescribed.
+- [x] **Step 1: `/onto-fix` walkthrough** on scratch change `dryrun-fix`: open-lite skips design; failing-test-first is demanded before any fix; then simulate the fix growing to touch **four files** → the skill must hit GATE 6, explain the "3+ files" trigger, and require fresh confirmation; on confirmed upgrade, `workflow: full` + `phase: design` backfill is prescribed.
 
-- [ ] **Step 2: `/onto-tweak` walkthrough** on scratch change `dryrun-tweak`: lightweight build without `plan.md`; light verify still produces `verification.md`; close still enforces the guides obligation. Confirm at least one tweak upgrade trigger fires correctly when simulated (e.g. a config key addition).
+- [x] **Step 2: `/onto-tweak` walkthrough** on scratch change `dryrun-tweak`: lightweight build without `plan.md`; light verify still produces `verification.md`; close still enforces the guides obligation. Confirm at least one tweak upgrade trigger fires correctly when simulated (e.g. a config key addition).
 
-- [ ] **Step 3: Drift recovery**: in `dryrun-tweak`, hand-corrupt `state.yaml` to `phase: verify` while `tasks.md` has unchecked tasks, then simulate a fresh `/onto` dispatch — the dispatcher's derivation table must reset the phase to build, announce the correction, and resume. Also delete `state.yaml` entirely and dispatch again — it must be rebuilt from the table, not fail.
+- [x] **Step 3: Drift recovery**: in `dryrun-tweak`, hand-corrupt `state.yaml` to `phase: verify` while `tasks.md` has unchecked tasks, then simulate a fresh `/onto` dispatch — the dispatcher's derivation table must reset the phase to build, announce the correction, and resume. Also delete `state.yaml` entirely and dispatch again — it must be rebuilt from the table, not fail.
 
-- [ ] **Step 4: Record + clean up** — append `## Dry-run: presets + drift` results to validation-notes.md; `rm -rf docs/changes/dryrun-fix docs/changes/dryrun-tweak`; `git status` clean of scratch dirs.
+- [x] **Step 4: Record + clean up** — append `## Dry-run: presets + drift` results to validation-notes.md; `rm -rf docs/changes/dryrun-fix docs/changes/dryrun-tweak`; `git status` clean of scratch dirs.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add openspec/changes/add-onto-workflow/validation-notes.md content/skills
@@ -945,14 +946,14 @@ git commit -m "test: preset and drift-recovery dry-runs for onto skills"
 **Files:**
 - Modify: `openspec/changes/add-onto-workflow/validation-notes.md` (append results)
 
-- [ ] **Step 1: Self-containment grep**
+- [x] **Step 1: Self-containment grep**
 
 ```bash
 grep -rn "openspec\|comet\|docs/superpowers" content/skills/
 ```
 Expected: **no matches** (exit code 1). Any hit is a defect — fix the skill and re-run.
 
-- [ ] **Step 2: Symlink load check**
+- [x] **Step 2: Symlink load check**
 
 ```bash
 ls -l ~/.claude/skills/onto*
@@ -961,7 +962,7 @@ head -5 ~/.claude/skills/onto/SKILL.md
 ```
 Expected: eight symlinks into `/home/mg/homonto/content/skills/`; `RESOLVES`; the dispatcher frontmatter prints. (Human check, note for the user: in a fresh Claude Code session `/onto` should appear in the available-skills list.)
 
-- [ ] **Step 3: Status/doctor re-check + regression**
+- [x] **Step 3: Status/doctor re-check + regression**
 
 ```bash
 ./homonto status    # expected: no drift
@@ -970,14 +971,14 @@ go test ./...       # expected: all pass
 ```
 Capture all three outputs verbatim into validation-notes.md under `## Final checks` (fresh evidence for the verify phase).
 
-- [ ] **Step 4: Migration audit (build-scope)**
+- [x] **Step 4: Migration audit (build-scope)**
 
 ```bash
 grep -rn "openspec/specs\|docs/superpowers" README.md docs/guides docs/specs docs/adr content/
 ```
 Expected: no matches (live docs reference only new paths; the deferred Task 16 paths live only in this plan and the change workspace).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add openspec/changes/add-onto-workflow/validation-notes.md
