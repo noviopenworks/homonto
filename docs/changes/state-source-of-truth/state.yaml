@@ -1,0 +1,21 @@
+change: state-source-of-truth
+workflow: full
+phase: build
+created: 2026-07-05
+base_ref: a72e535526b0e457916323307be32449352b209b
+deps: []
+decisions:
+  isolation: worktree
+  execution: subagent
+  tdd: tdd
+  directive: null
+verify:
+  mode: null
+  result: pending
+guides: pending
+metrics:
+  phases: {open: 2026-07-05, design: 2026-07-05}
+  tasks_total: 0
+  verify_rounds: 0
+  upgraded: false
+archived: false
