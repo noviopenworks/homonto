@@ -115,28 +115,30 @@ proven by the final validation task.
 - Verify (TDD): failing tests — recorded key matching disk → hash == `Applied`;
   edited on disk → differs; absent → omitted. `rtk go test ./internal/adapter/...`.
 
-## Task 7 — engine.Status (drift = disk-vs-Applied, pending separate)  (risk: high)
+## Task 7 — engine.Status (drift = disk-vs-Applied, pending separate) + status.go CLI  (risk: high)
 
-- [ ] done
-- Files: `internal/engine/status.go`, `internal/engine/status_test.go`
-- Do: rewrite drift as `Status() (drift []string, pending int, err error)`.
-  For each tool: `observed = adapter.ObserveHashes(state)`; per recorded key
-  → absent = "<tool> <key> missing (deleted out of band)", hash≠`Applied` =
-  "<tool> <key> drifted"; collect drifted keys. `pending` = count of `Plan()`
-  visible changes (create/update/delete) whose (tool,key) ∉ drifted. Preserve
-  adapter-skip warnings. Keep/replace the `Drift` name per design note.
-- Verify (TDD): the gap test — recorded key, `homonto.toml` desired edited,
-  disk unchanged → drift empty, pending == 1. Plus true-positive drift and
-  missing. `rtk go test ./internal/engine/...`.
+- [ ] done  <!-- absorbs former Task 8 (CLI): removing Drift() would break cli/status.go, so wire both in one green commit -->
+- Files: `internal/engine/status.go`, `internal/engine/status_test.go`,
+  `internal/cli/status.go`, `internal/cli/*_test.go`
+- Do: replace `engine.Drift()` with `Status() (drift []string, pending int,
+  err error)`. Call `e.Plan()` (sets + warnings). For each adapter: `observed
+  = adapter.ObserveHashes(e.State)` (on error → warn, skip that tool). Per
+  recorded key `st.Keys(tool)`: absent from `observed` → "<tool> <key> missing
+  (deleted out of band)"; `observed[key] != Entry.Applied` → "<tool> <key>
+  drifted"; add BOTH to the drifted set. `pending` = count of `sets` visible
+  changes (create/update/delete) whose (tool,key) ∉ drifted set. Update the
+  existing engine `Drift` tests to `Status`. Then rewrite `cli/status.go`:
+  print warnings, drift lines; if `pending > 0` print "N config change(s)
+  awaiting apply (run `homonto apply`)"; if drift and pending both empty print
+  "No drift." Update cli status tests.
+- Verify (TDD): the GAP test — recorded key, `homonto.toml` desired edited,
+  disk unchanged → drift empty, pending == 1. Plus true-positive drift, missing,
+  and no-drift-no-pending. `rtk go test ./internal/engine/... ./internal/cli/...`.
 
-## Task 8 — status.go CLI prints drift + pending
+## Task 8 — (merged into Task 7)
 
-- [ ] done
-- Files: `internal/cli/status.go`, `internal/cli/*_test.go`
-- Do: call `e.Status()`; print warnings, then drift lines; when `pending > 0`
-  print "N config change(s) awaiting apply (run `homonto apply`)"; when both
-  empty print "No drift."
-- Verify: `rtk go test ./internal/cli/...`.
+- [x] 8 merged into Task 7 (CLI status wiring committed together to keep the
+  build green when `Drift` is replaced).
 
 ## Task 9 — Validation (the change proves itself)
 
