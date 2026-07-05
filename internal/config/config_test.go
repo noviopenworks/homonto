@@ -203,11 +203,13 @@ func TestLoadRejectsReservedSettingKeys(t *testing.T) {
 		}
 	}
 	// Exact collisions only: the same names are fine in the OTHER tool, and
-	// non-colliding keys load normally.
+	// non-colliding keys load normally. (Note: settings.claude.mcpServers also
+	// loads, but is deliberately NOT asserted here — claude's current() skips
+	// reading it back from settings.json, so it is non-idempotent at apply; it
+	// is a separate pre-existing adapter concern, not a "harmless" key.)
 	for _, ok := range []string{
-		"[settings.claude]\nmcpServers={}\n",       // claude MCPs live in .claude.json, not settings.json
-		"[settings.claude]\nmcp={}\n",              // not a claude-managed settings key
-		"[settings.opencode]\nenabledPlugins={}\n", // claude-only reserved name
+		"[settings.claude]\nmcp={}\n",              // read back by current(); idempotent
+		"[settings.opencode]\nenabledPlugins={}\n", // reserved for claude only, fine for opencode
 		"[settings.claude]\nmodel=\"opus\"\n",
 	} {
 		if err := loadDoc(t, ok); err != nil {
