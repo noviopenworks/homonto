@@ -16,7 +16,7 @@ const SecretRedaction = "«secret»"
 // Deletes (a key in state but no longer declared) always redact Old — a
 // removed key's provenance is stale by definition — and carry no New.
 type Change struct {
-	Action string // "create" | "update" | "delete" | "noop"
+	Action string // "create" | "update" | "delete" | "noop" | "adopt"
 	Key    string
 	Old    string
 	New    string

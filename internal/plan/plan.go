@@ -19,6 +19,18 @@ func HasChanges(sets []adapter.ChangeSet) bool {
 	return false
 }
 
+// HasAdoptions reports whether any change is an adopt.
+func HasAdoptions(sets []adapter.ChangeSet) bool {
+	for _, s := range sets {
+		for _, c := range s.Changes {
+			if c.Action == "adopt" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Render produces a terraform-style plan. It never resolves secrets: values are
 // printed verbatim (New carries unresolved tokens; secret Old is pre-redacted).
 func Render(sets []adapter.ChangeSet) string {

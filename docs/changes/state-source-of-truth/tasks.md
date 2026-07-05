@@ -4,7 +4,7 @@
 
 ## 1. `adopt` action foundation
 
-- [ ] 1.1 Add `adopt` to the `Change.Action` enum comment
+- [x] 1.1 Add `adopt` to the `Change.Action` enum comment
       (`internal/adapter/adapter.go`) and `plan.HasAdoptions(sets)` in
       `internal/plan/plan.go` (Render already omits unknown actions — assert
       `adopt` renders no line).

@@ -6,7 +6,7 @@ proven by the final validation task.
 
 ## Task 1 — Add the `adopt` action + `plan.HasAdoptions`
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/adapter.go`, `internal/plan/plan.go`,
   `internal/plan/plan_test.go`
 - Do: extend the `Change.Action` enum comment (adapter.go:18-23) to include
