@@ -4,7 +4,7 @@ Design: `design.md` (Status: Confirmed 2026-07-04). One commit per task.
 
 ## Task 1 — MCP schema + import (risk: high)
 
-- [ ] done
+- [x] done
 - Files: internal/adapter/claude/claude.go (+_test), internal/importer/
   importer.go (+_test), internal/adapter/claude/testdata/ (new fixtures)
 - Do: design §"Claude MCP schema" + §"Import" — failing tests first

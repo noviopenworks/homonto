@@ -45,7 +45,15 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		if !contains(m.TargetsOrAll(), "claude") {
 			continue
 		}
-		obj := map[string]any{"command": m.Command}
+		if len(m.Command) == 0 {
+			continue
+		}
+		// Claude Code's real schema: command is a string with a separate args
+		// array (matching `claude mcp add` output; empty keys omitted).
+		obj := map[string]any{"type": "stdio", "command": m.Command[0]}
+		if len(m.Command) > 1 {
+			obj["args"] = m.Command[1:]
+		}
 		if len(m.Env) > 0 {
 			obj["env"] = m.Env
 		}

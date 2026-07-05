@@ -13,7 +13,10 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-var secretLike = regexp.MustCompile(`^(sk-|github_pat_|ghp_|xox)`)
+var (
+	secretValueLike = regexp.MustCompile(`^(sk-|github_pat_|ghp_|xox|glpat-|npm_|AIza|Bearer )`)
+	secretKeyLike   = regexp.MustCompile(`(_KEY|_TOKEN|_SECRET|_PASSWORD|_CREDENTIALS)$|^DATABASE_URL$`)
+)
 
 // Import reads existing tool config into a homonto Config, redacting any value
 // that looks like a literal secret into a ${pass:...} reference. Returns the
@@ -22,13 +25,26 @@ func Import(home string) (*config.Config, []string, error) {
 	c := &config.Config{MCPs: map[string]config.MCP{}}
 	var warnings []string
 
-	mj, err := os.ReadFile(filepath.Join(home, ".claude.json"))
+	path := filepath.Join(home, ".claude.json")
+	mj, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		warnings = append(warnings, fmt.Sprintf("skipped %s: %v", path, err))
+	}
 	if err == nil {
 		doc, _ := jsonutil.Standardize(mj)
 		gjson.GetBytes(doc, "mcpServers").ForEach(func(name, server gjson.Result) bool {
 			var cmd []string
-			for _, v := range server.Get("command").Array() {
-				cmd = append(cmd, v.String())
+			// Real Claude Code schema: command is a string, args a separate
+			// array. Legacy homonto exports used a single command array.
+			if command := server.Get("command"); command.Type == gjson.String {
+				cmd = append(cmd, command.String())
+				for _, v := range server.Get("args").Array() {
+					cmd = append(cmd, v.String())
+				}
+			} else {
+				for _, v := range command.Array() {
+					cmd = append(cmd, v.String())
+				}
 			}
 			env := map[string]string{}
 			server.Get("env").ForEach(func(k, v gjson.Result) bool {
@@ -55,7 +71,7 @@ func redact(server, key, val string) (string, bool) {
 	if strings.HasPrefix(val, "${") {
 		return val, false
 	}
-	if secretLike.MatchString(val) || strings.HasSuffix(key, "_KEY") || strings.HasSuffix(key, "_TOKEN") {
+	if secretValueLike.MatchString(val) || secretKeyLike.MatchString(key) {
 		return fmt.Sprintf("${pass:imported/%s/%s}", server, key), true
 	}
 	return val, false

@@ -49,7 +49,8 @@ func TestEndToEndApplyIsIdempotent(t *testing.T) {
 
 	// codegraph projected into both tools
 	cj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
-	if gjson.GetBytes(cj, "mcpServers.codegraph.command.0").String() != "codegraph" {
+	if gjson.GetBytes(cj, "mcpServers.codegraph.command").String() != "codegraph" ||
+		gjson.GetBytes(cj, "mcpServers.codegraph.args.0").String() != "serve" {
 		t.Fatal("claude mcp missing")
 	}
 	oc, _ := os.ReadFile(filepath.Join(home, ".config", "opencode", "opencode.jsonc"))

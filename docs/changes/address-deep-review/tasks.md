@@ -2,7 +2,7 @@
 
 ## 1. Product code (TDD: failing test first per bug)
 
-- [ ] 1.1 Claude MCP schema fix + conformance fixtures from real tool
+- [x] 1.1 Claude MCP schema fix + conformance fixtures from real tool
       output; import reads string+args (legacy array tolerated) with
       expanded redaction
 - [ ] 1.2 Secret safety: unknown-provenance redaction in plan; shared
