@@ -35,10 +35,10 @@
 - [x] 4.1 Add `ObserveHashes(st) (map[string]string, error)` to the `Adapter`
       interface and both adapters (secret-safe: only hashes escape; opencode
       plugins map array-presence to `hash(canonical(mustJSON(name)))`).
-- [ ] 4.2 Rewrite `engine` drift as `Status() (drift []string, pending int,
+- [x] 4.2 Rewrite `engine` drift as `Status() (drift []string, pending int,
       err error)`: drift = disk hash ≠ `Applied` (or missing); pending = Plan
       visible changes whose key is not drifted. Preserve warning-on-skip.
-- [ ] 4.3 `internal/cli/status.go`: call `Status`, print drift lines + "N
+- [x] 4.3 `internal/cli/status.go`: call `Status`, print drift lines + "N
       config change(s) awaiting apply" when pending > 0.
 
 ## 5. Specs (delta — merged at close)

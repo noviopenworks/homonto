@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/noviopenworks/homonto/internal/engine"
@@ -18,19 +19,21 @@ func statusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			lines, err := e.Drift()
+			drift, pending, err := e.Status()
 			if err != nil {
 				return err
 			}
 			for _, w := range e.Warnings {
 				cmd.Println("warn:", w)
 			}
-			if len(lines) == 0 {
-				cmd.Println("No drift.")
-				return nil
-			}
-			for _, l := range lines {
+			for _, l := range drift {
 				cmd.Println(l)
+			}
+			if pending > 0 {
+				cmd.Println(fmt.Sprintf("%d config change(s) awaiting apply (run `homonto apply`)", pending))
+			}
+			if len(drift) == 0 && pending == 0 {
+				cmd.Println("No drift.")
 			}
 			return nil
 		},

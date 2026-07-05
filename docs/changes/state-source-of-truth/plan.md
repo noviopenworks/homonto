@@ -117,7 +117,7 @@ proven by the final validation task.
 
 ## Task 7 — engine.Status (drift = disk-vs-Applied, pending separate) + status.go CLI  (risk: high)
 
-- [ ] done  <!-- absorbs former Task 8 (CLI): removing Drift() would break cli/status.go, so wire both in one green commit -->
+- [x] done  <!-- absorbs former Task 8 (CLI): removing Drift() would break cli/status.go, so wire both in one green commit -->
 - Files: `internal/engine/status.go`, `internal/engine/status_test.go`,
   `internal/cli/status.go`, `internal/cli/*_test.go`
 - Do: replace `engine.Drift()` with `Status() (drift []string, pending int,

@@ -77,77 +77,128 @@ func TestDoctorChecksToolConfigLocations(t *testing.T) {
 	}
 }
 
-func TestDriftDetectedAfterOutOfBandChange(t *testing.T) {
+// buildStatusEngine wires an engine over the given repo/home with a stubbed
+// resolver so secret-free config applies without touching `pass`.
+func buildStatusEngine(t *testing.T, repo, home string) *Engine {
+	t.Helper()
+	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	return e
+}
+
+func TestStatusDetectsDriftAfterOutOfBandChange(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
 	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"opus\"\n"), 0o644)
 
-	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
-		return e
-	}
-
-	e := build()
+	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
 	if err := e.Apply(sets); err != nil {
 		t.Fatal(err)
 	}
 
 	// no drift right after apply
-	e2 := build()
-	if d, _ := e2.Drift(); len(d) != 0 {
-		t.Fatalf("unexpected drift after clean apply: %v", d)
+	if d, pending, _ := buildStatusEngine(t, repo, home).Status(); len(d) != 0 || pending != 0 {
+		t.Fatalf("unexpected status after clean apply: drift=%v pending=%d", d, pending)
 	}
 
-	// change the managed key out of band
+	// change the managed key ON DISK, out of band
 	sj := filepath.Join(home, ".claude", "settings.json")
 	os.WriteFile(sj, []byte(`{"model":"sonnet"}`), 0o644)
 
-	e3 := build()
-	d, _ := e3.Drift()
-	if len(d) == 0 || !strings.Contains(strings.Join(d, "\n"), "model") {
-		t.Fatalf("expected drift on model, got %v", d)
+	drift, pending, err := buildStatusEngine(t, repo, home).Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(drift, "\n")
+	if len(drift) == 0 || !strings.Contains(joined, "model") || !strings.Contains(joined, "drifted") {
+		t.Fatalf("expected drift on model, got %v", drift)
+	}
+	// The drifted key is reported as drift, not as pending config work.
+	if pending != 0 {
+		t.Fatalf("a disk-drifted key must not also count as pending, got pending=%d", pending)
 	}
 }
 
-// TestDriftReportsDeletedManagedKey reproduces the verify round's finding: a
-// state-recorded key deleted from disk plans as a create, which Drift ignored
-// — "No drift" for a value someone removed out of band. A create whose key is
-// in state is drift too.
-func TestDriftReportsDeletedManagedKey(t *testing.T) {
+// TestStatusConfigEditIsPendingNotDrift is the load-bearing negative: a pure
+// CONFIG edit (desired changes, disk unchanged) must NOT be reported as disk
+// drift — it is a pending config change awaiting apply. The old Plan-based
+// Drift mis-reported this as drift; this proves the fix.
+func TestStatusConfigEditIsPendingNotDrift(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
 	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"opus\"\n"), 0o644)
 
-	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
-		return e
-	}
-
-	e := build()
+	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
 	if err := e.Apply(sets); err != nil {
 		t.Fatal(err)
 	}
 
-	// delete the managed key out of band
-	sj := filepath.Join(home, ".claude", "settings.json")
-	os.WriteFile(sj, []byte(`{}`), 0o644)
+	// Edit ONLY the config (desired), leaving the on-disk value untouched.
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"sonnet\"\n"), 0o644)
 
-	d, err := build().Drift()
+	drift, pending, err := buildStatusEngine(t, repo, home).Status()
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined := strings.Join(d, "\n")
-	if !strings.Contains(joined, "model") || !strings.Contains(joined, "missing (will recreate on apply)") {
-		t.Fatalf("deleted managed key must report as drift, got %v", d)
+	if len(drift) != 0 {
+		t.Fatalf("a pure config edit must not be reported as disk drift, got %v", drift)
+	}
+	if pending != 1 {
+		t.Fatalf("a pure config edit must count as one pending change, got pending=%d", pending)
+	}
+}
+
+// TestStatusReportsMissingManagedKey: a state-recorded key removed from disk out
+// of band is reported as missing (and does not count toward pending).
+func TestStatusReportsMissingManagedKey(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"opus\"\n"), 0o644)
+
+	e := buildStatusEngine(t, repo, home)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+
+	// remove the managed key from disk out of band
+	sj := filepath.Join(home, ".claude", "settings.json")
+	os.WriteFile(sj, []byte(`{}`), 0o644)
+
+	drift, pending, err := buildStatusEngine(t, repo, home).Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(drift, "\n")
+	if !strings.Contains(joined, "model") || !strings.Contains(joined, "missing") {
+		t.Fatalf("deleted managed key must report as missing, got %v", drift)
+	}
+	if pending != 0 {
+		t.Fatalf("a missing (drifted) key must not count as pending, got pending=%d", pending)
+	}
+}
+
+func TestStatusCleanAfterApply(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"opus\"\n"), 0o644)
+
+	e := buildStatusEngine(t, repo, home)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+
+	drift, pending, err := buildStatusEngine(t, repo, home).Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drift) != 0 || pending != 0 {
+		t.Fatalf("clean apply must yield no drift and no pending, got drift=%v pending=%d", drift, pending)
 	}
 }
