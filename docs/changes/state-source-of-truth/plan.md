@@ -68,6 +68,22 @@ proven by the final validation task.
   incidental file creation/standardization on a no-key-change apply).
   `rtk go test ./...`.
 
+## Task 3c — adopt also refreshes a stale/absent Applied (fix phantom drift)  (risk: high)
+
+- [ ] done
+- Files: `internal/adapter/claude/claude.go`, `internal/adapter/opencode/opencode.go`,
+  adapter `*_test.go`
+- Do: broaden the non-secret "disk == desired" branch in both adapters so true
+  `noop` requires `inState && e.Applied == secret.Hash(jsonutil.Canonical(disk))`;
+  otherwise emit `adopt` (covers unrecorded keys AND recorded keys with an
+  absent/stale `Applied`). This mirrors the secret branch's noop condition.
+  Fixes the reviewer's MAJOR: a key whose disk was reconciled out of band to
+  the desired value otherwise drifts forever (noop never refreshes `Applied`).
+- Verify (TDD): failing test first — apply a key; edit its disk value out of
+  band to equal a NEW desired (so `Applied` is stale); `Status` reports drift;
+  `Plan` now yields `adopt` (not noop); after `Apply`, `Status` drift clears and
+  the tool file is byte-unchanged. Both adapters. `rtk go test ./...`.
+
 ## Task 4 — engine.Apply skips `adopt` in the resolve loop
 
 - [x] done

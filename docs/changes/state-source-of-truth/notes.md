@@ -40,6 +40,14 @@ marked *pending*.
 - Mid-build refinement: added **Task 3b** (conditional tool-file writes) —
   adopt/noop-only apply must not rewrite the file (opencode comment-strip);
   design.md + tool-adapters delta updated.
+- Drift reviewer (after risk:high T6/T7): **no CRITICAL**; core gap closed
+  (drift from ObserveHashes-vs-Applied only, config edit → pending not drift),
+  secret-safe, deterministic, parity clean. One **MAJOR**: phantom
+  non-clearable drift when a recorded key's disk is reconciled out of band to
+  the desired value (noop never refreshes stale `Applied`). Fix = **Task 3c**
+  (broaden noop→adopt: true noop only when `inState && Applied==hash(disk)`,
+  mirroring the secret branch). Design/ADR/apply-pipeline delta updated + new
+  stale-Applied scenario. Two minor test-coverage gaps folded into Task 3c/9.
 - Adapter reviewer (after risk:high T2/T3/T3b), commits 60c095b..0281087:
   **no CRITICAL**; adopt logic secret-safe, hash-correct, parity clean,
   conditional-write flags complete. Findings map to upcoming tasks — Major#1

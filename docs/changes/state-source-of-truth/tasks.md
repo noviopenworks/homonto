@@ -22,6 +22,10 @@
 - [x] 2.4 Both adapters: `Apply` writes a tool file only when a managed key in
       it changed (create/update/delete); `adopt`/`noop`-only apply leaves the
       file byte-unchanged (comments preserved). Retrofits claude from 2.1.
+- [ ] 2.5 Both adapters: true `noop` only when `inState && Applied ==
+      hash(disk)`; else `adopt` — so a recorded key with a stale/absent
+      `Applied` (disk reconciled out of band to desired) is refreshed, clearing
+      phantom disk-vs-state drift.
 
 ## 3. apply.go reconcile flow
 

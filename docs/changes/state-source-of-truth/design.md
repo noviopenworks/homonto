@@ -51,10 +51,16 @@ literal; the enum comment updates). It flows through the four action-literal
 sites:
 
 - **Plan** (`claude.go` inline non-secret branch; `opencode.go` `planKey` and
-  the plugin branch): the non-secret "disk == desired" case splits —
-  `inState → noop` (unchanged), `!inState → adopt`. `adopt` carries `New =
-  want` (unresolved desired) so apply can record `Entry.Desired`. Secret keys
-  are never adopted (only `!secret.ContainsRef(want)` reaches this branch).
+  the plugin branch): the non-secret "disk == desired" case splits — true
+  `noop` **only when** `inState && Entry.Applied == secret.Hash(canonical(disk))`
+  (state already records this exact on-disk value); otherwise `adopt` (the key
+  is unrecorded, or recorded with an absent/stale `Applied` hash — e.g. its
+  disk was reconciled out of band to a value that now equals desired). This
+  mirrors the secret branch's existing noop condition exactly, so both branches
+  consult `Entry.Applied`. `adopt` carries `New = want` (unresolved desired) so
+  apply can record `Entry.Desired`. Secret keys are never adopted (only
+  `!secret.ContainsRef(want)` reaches this branch). Refreshing a stale `Applied`
+  is what clears otherwise non-actionable disk-vs-state drift on the next apply.
 - **`plan.Render`**: `adopt` produces no line (like `noop`) — plan stays
   silent about adoption.
 - **`plan.HasChanges`**: means "visible change" (create/update/delete) — it

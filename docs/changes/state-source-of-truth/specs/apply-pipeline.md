@@ -5,13 +5,13 @@
 ### Requirement: State adoption on apply
 
 `homonto apply` SHALL adopt a declared, non-secret managed key that is present
-on disk, equal to its desired value, and absent from state by recording it in
-state (an `Applied` hash equal to the on-disk value) **without writing the
-tool file and without printing a plan diff line**. Apply SHALL perform this
-adoption even when adopting pre-existing keys is the only pending work, in
-which case it SHALL NOT prompt for confirmation (only `state.json` is touched)
-and SHALL report how many resources were reconciled. Secret-bearing keys SHALL
-never be adopted.
+on disk and equal to its desired value but whose recorded applied-value hash is
+absent or stale, by recording (or refreshing) its state entry with an `Applied`
+hash equal to the on-disk value — **without writing the tool file and without
+printing a plan diff line**. Apply SHALL perform this adoption even when
+adopting such keys is the only pending work, in which case it SHALL NOT prompt
+for confirmation (only `state.json` is touched) and SHALL report how many
+resources were reconciled. Secret-bearing keys SHALL never be adopted.
 
 #### Scenario: Pre-existing matching key adopted on apply
 
@@ -30,6 +30,15 @@ never be adopted.
 - **THEN** apply reconciles state without asking for `[y/N]` confirmation,
   reports the number of pre-existing resources reconciled, and a second apply
   reports `No changes`
+
+#### Scenario: Stale applied hash is refreshed, clearing phantom drift
+
+- **GIVEN** a recorded key whose on-disk value was changed out of band to a
+  value that now equals the desired value (so its `Applied` hash is stale)
+- **WHEN** the user runs `homonto apply`
+- **THEN** the key's state `Applied` hash is refreshed to the on-disk value
+  with no tool-file write, and a subsequent `status` no longer reports it as
+  drifted
 
 #### Scenario: Adopted key becomes pruneable
 

@@ -29,7 +29,11 @@ primary scenario, since a key must be adopted while still declared+matching).
 
 We will add a first-class `adopt` action to `adapter.Change`. Plan emits
 `adopt` (instead of `noop`) for a declared, non-secret key that is present on
-disk, equals desired, and is absent from state. `adopt` renders no plan diff
+disk and equals desired but whose recorded `Entry.Applied` hash is absent
+(never applied / imported / pre-existing) or stale (the on-disk value was
+reconciled out of band to a value that now equals desired). A true `noop`
+requires `inState && Entry.Applied == secret.Hash(canonical(disk))` — the same
+condition the secret branch already uses, making the two branches symmetric. `adopt` renders no plan diff
 line. On apply the adapter records the key in state
 (`Applied = hash(canonical(resolve(desired)))`, equal to `hash(canonical(disk))`
 by construction) **without writing any tool file**. `apply` runs this
@@ -43,6 +47,10 @@ today.
 
 - Imported/pre-existing declared resources become visible to pruning and drift
   after the next apply — closing NEXT_AGENT gap #1.
+- A recorded key whose disk was reconciled out of band to the desired value
+  gets its stale `Applied` refreshed on apply, so disk-vs-state drift for it
+  clears instead of repeating forever (the alternative — a `noop` that never
+  refreshes `Applied` — leaves permanent, non-actionable phantom drift).
 - The `[y/N]` prompt and the terraform diff remain reserved for tool-file
   changes; adoption never prompts and never renders, matching its "converge
   quietly" intent.
