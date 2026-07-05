@@ -15,7 +15,7 @@
       disk == desired but absent from state (split the non-secret match branch
       `inState → noop` / `!inState → adopt`); Apply records state for `adopt`
       without writing the tool file.
-- [ ] 2.2 opencode: same in `planKey` and the plugin branch; Apply `adopt`
+- [x] 2.2 opencode: same in `planKey` and the plugin branch; Apply `adopt`
       state-only write. Keep claude/opencode in lockstep.
 - [ ] 2.3 `engine.Apply` resolve loop skips `adopt` (non-secret; nothing to
       resolve).

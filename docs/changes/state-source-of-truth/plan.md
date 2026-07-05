@@ -35,7 +35,7 @@ proven by the final validation task.
 
 ## Task 3 — opencode adapter: emit and apply `adopt`  (risk: high)
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/opencode/opencode.go`,
   `internal/adapter/opencode/*_test.go`
 - Do: in `planKey` (opencode.go:136-137) split non-secret match branch as in
