@@ -43,7 +43,7 @@ Design: `design.md` (Status: Confirmed 2026-07-04). One commit per task.
 
 ## Task 5 — hygiene
 
-- [ ] done
+- [x] done
 - Files: LICENSE (new), .github/workflows/ci.yml (new),
   internal/cli/root.go, README.md
 - Do: design §"Hygiene"

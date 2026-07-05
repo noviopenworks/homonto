@@ -52,8 +52,15 @@ func (e *Engine) Doctor() []string {
 		p := filepath.Join(e.ContentDir, "skills", name)
 		if _, err := os.Stat(p); err != nil {
 			out = append(out, fmt.Sprintf("warn: skill %q missing from %s", name, p))
+			continue
+		}
+		// Content alone is not enough — the tool only sees the skill through
+		// its symlink, so verify the link exists and points at the content.
+		dst := filepath.Join(e.Home, ".claude", "skills", name)
+		if target, err := os.Readlink(dst); err == nil && target == p {
+			out = append(out, fmt.Sprintf("ok: skill %q linked", name))
 		} else {
-			out = append(out, fmt.Sprintf("ok: skill %q present", name))
+			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked (run apply)", name))
 		}
 	}
 	return out

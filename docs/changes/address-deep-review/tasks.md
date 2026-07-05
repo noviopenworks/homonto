@@ -16,7 +16,7 @@
 
 ## 2. Hygiene
 
-- [ ] 2.1 MIT LICENSE, GitHub Actions CI (vet+test), var Version,
+- [x] 2.1 MIT LICENSE, GitHub Actions CI (vet+test), var Version,
       README honesty pass
 
 ## 3. onto v2.1

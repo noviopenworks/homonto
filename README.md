@@ -11,6 +11,9 @@ pipeline. Secrets are **referenced, never stored** — resolved only at apply ti
 go install github.com/noviopenworks/homonto@latest
 ```
 
+homonto is pre-release: there are no version tags yet, so `@latest` installs
+from the tip of `main`.
+
 ## Quickstart
 
 ```bash
@@ -25,8 +28,9 @@ Other commands:
 | Command | What it does |
 |---|---|
 | `homonto status` | Show drift: tool files vs. last-applied state |
-| `homonto doctor` | Health check: `pass` present? owned skills present? |
+| `homonto doctor` | Health check: `pass` present? owned skills present and linked? |
 | `homonto import` | Bootstrap `homonto.toml` from your current setup (redacts secrets) |
+| `homonto --version` | Print the build version |
 
 `--config <path>` selects a different config file for any command.
 
@@ -74,7 +78,7 @@ Guarantees:
 
 ## Owned content is symlinked
 
-Skills/commands/rules/agents you author live in `content/` and are **symlinked**
+Skills you author live in `content/` and are **symlinked**
 into each tool, so editing `content/...` is instantly live everywhere. `apply`
 just ensures the links exist and point correctly; it never clobbers a file that
 isn't its own symlink (reported as a conflict instead).
@@ -82,10 +86,13 @@ isn't its own symlink (reported as a conflict instead).
 ## Surgical merge & the JSONC caveat
 
 homonto writes **only the keys it manages** and preserves every unmanaged key in
-each tool's file. Claude's files are plain JSON. OpenCode's `opencode.jsonc`
-supports comments: all keys (managed and unmanaged) are preserved on merge, but
-**inline comments inside rewritten regions may not survive** — this is a known,
-documented limitation.
+each tool's file. Removal is declarative too: keys you remove from
+`homonto.toml` are deleted from the tool files on the next apply (and
+owned-skill links removed) — state tracks what homonto manages. Claude's files
+are plain JSON. OpenCode's `opencode.jsonc` supports comments, but homonto does
+not preserve them: any apply that touches the file rewrites it as normalized
+JSON, so **all comments in `opencode.jsonc` are removed** — a known, documented
+limitation.
 
 ## How it works
 

@@ -24,7 +24,7 @@ type Adapter struct {
 }
 
 // New builds a Claude adapter. home is the $HOME root; content holds owned
-// skills/commands/rules/agents.
+// skills.
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
 
 func (a *Adapter) Name() string { return "claude" }

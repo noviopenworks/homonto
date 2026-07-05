@@ -24,6 +24,39 @@ func TestDoctorFlagsMissingSkillContent(t *testing.T) {
 	}
 }
 
+func TestDoctorReportsSkillLinkState(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"graphify\"]\n"), 0o644)
+	content := filepath.Join(repo, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
+
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+
+	// content present but no symlink yet -> not linked
+	lines := strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `skill "graphify" content present, not linked`) {
+		t.Fatalf("doctor should report unlinked skill:\n%s", lines)
+	}
+
+	// correct symlink -> linked
+	dst := filepath.Join(home, ".claude", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(filepath.Join(content, "skills", "graphify"), dst); err != nil {
+		t.Fatal(err)
+	}
+	lines = strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `ok: skill "graphify" linked`) {
+		t.Fatalf("doctor should report linked skill:\n%s", lines)
+	}
+}
+
 func TestDoctorChecksToolConfigLocations(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
