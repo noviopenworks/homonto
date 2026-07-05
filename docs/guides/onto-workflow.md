@@ -20,7 +20,8 @@ deviation from a template is a close-phase lint finding.
 - Resume anything (including after context loss): just `/onto`
 
 The dispatcher always runs the same four steps: **preflight** (rtk +
-graphify must be installed — see Required tooling), **discovery** (find
+graphify recommended — warns and proceeds when missing, see Recommended
+tooling), **discovery** (find
 active changes under `docs/changes/`), **derivation** (compute the real
 phase from files, correcting `state.yaml` if it drifted), and **routing**
 (load the matching phase skill).
@@ -86,10 +87,12 @@ upgrades) are stamped along the way, purely observational.
 ## Presets and upgrade rules
 
 - `/onto-fix` — broken behavior. Failing test reproducing the bug comes
-  first, always. Upgrades to full workflow (with design backfill) on: 3+
-  files, architecture/schema changes, new public API, or scope beyond one
-  function/module.
-- `/onto-tweak` — copy/config/docs/prompt changes. Upgrades on: 5+ files,
+  first, always. Upgrades to full workflow (with design backfill) on: more
+  than 5 non-test files, architecture/schema changes, new public API, or
+  scope beyond one function/module.
+- `/onto-tweak` — copy/config/docs/prompt changes, plus small features
+  within tweak limits: ≤5 files (tests excluded), no new capability, no
+  existing-spec requirement change. Upgrades on: more than 5 files,
   cross-module coordination, 5+ new tests, config key add/remove, a new
   capability, or spec-affecting changes.
 - When in doubt, start full (`/onto`): presets exist for speed, not for
@@ -105,16 +108,17 @@ upgrades) are stamped along the way, purely observational.
 - PR creation and PR review are separate skills, not onto phases — onto ends
   at a verified, closed change on a branch.
 
-## Required tooling
+## Recommended tooling
 
-onto hard-requires two tools and halts with install instructions when
-either is missing:
+onto recommends two tools; when either is missing the dispatcher warns and
+proceeds — a degraded session still works:
 
-- **rtk** — token-optimized CLI proxy; all workflow shell operations go
-  through it.
+- **rtk** — token-optimized CLI proxy; workflow shell operations go through
+  it when installed. Missing rtk means higher token costs, never a stop.
 - **graphify** (https://graphify.net) — codebase understanding; the open and
-  design phases must ground claims in graphify/codegraph queries instead of
-  guesswork.
+  design phases ground claims in graphify/codegraph queries when available.
+  Without the skill and without an existing index, grounding falls back to
+  direct file reading and the fallback is recorded in the change's notes.
 
 ## This repo eats it first
 

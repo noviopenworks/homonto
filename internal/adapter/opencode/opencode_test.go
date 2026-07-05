@@ -3,8 +3,10 @@ package opencode
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/secret"
@@ -81,6 +83,48 @@ func TestOpenCodeSecretMCPIsIdempotent(t *testing.T) {
 		if ch.Action != "noop" {
 			t.Fatalf("secret-backed MCP not idempotent: %+v", ch)
 		}
+	}
+}
+
+// TestOpenCodeStateAbsentDiskValueIsRedacted covers unknown provenance: the
+// key is not in state (fresh/lost state.json) but the on-disk value may be a
+// previously applied resolved secret — plan must never print it as Old.
+func TestOpenCodeStateAbsentDiskValueIsRedacted(t *testing.T) {
+	home := t.TempDir()
+	dir := filepath.Join(home, ".config", "opencode")
+	os.MkdirAll(dir, 0o755)
+	disk := `{"mcp":{"brave":{"type":"local","command":["npx","server-brave"],"enabled":true,"environment":{"K":"sk-previously-applied-secret"}}}}`
+	os.WriteFile(filepath.Join(dir, "opencode.jsonc"), []byte(disk), 0o600)
+
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir()) // empty state: provenance unknown
+	c := &config.Config{
+		MCPs: map[string]config.MCP{
+			"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "literal"}, Targets: []string{"opencode"}},
+		},
+	}
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, ch := range cs.Changes {
+		if ch.Key != "mcp.brave" {
+			continue
+		}
+		found = true
+		if ch.Action != "update" {
+			t.Fatalf("expected update, got %s", ch.Action)
+		}
+		if strings.Contains(ch.Old, "sk-previously-applied-secret") {
+			t.Fatalf("state-absent plan leaked the on-disk value in Old: %q", ch.Old)
+		}
+		if ch.Old != adapter.SecretRedaction {
+			t.Fatalf("unknown-provenance Old should be redacted, got %q", ch.Old)
+		}
+	}
+	if !found {
+		t.Fatal("expected an mcp.brave change")
 	}
 }
 

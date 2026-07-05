@@ -14,8 +14,8 @@ obligation: fix them or stop.
       SHALL or MUST in its first non-empty line after the heading
       (REMOVED bodies are removal rationales; RENAMED has no bodies —
       neither is subject to this rule)
-- [ ] **Every** `#### Scenario:` block has GIVEN/WHEN/THEN bullets, and
-      each ADDED/MODIFIED requirement has ≥1 scenario
+- [ ] **Every** `#### Scenario:` block has WHEN and THEN bullets (GIVEN
+      optional), and each ADDED/MODIFIED requirement has ≥1 scenario
 - [ ] MODIFIED/REMOVED/RENAMED names match the living spec **exactly**
       (grep the living file for each name) — except a MODIFIED name may
       instead match the TO name of a RENAMED entry in the same delta

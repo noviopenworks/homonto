@@ -5,6 +5,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
+
+	"github.com/noviopenworks/homonto/internal/fsutil"
 )
 
 // Entry is the last-applied record for one managed key. Desired holds the
@@ -44,20 +47,15 @@ func Load(dir string) (*State, error) {
 	return s, nil
 }
 
-// Save writes the state atomically (temp + rename), creating dir if needed.
+// Save writes the state atomically (temp + fsync + rename), creating dir if
+// needed. fsutil.WriteAtomic creates new files 0600 and preserves existing
+// modes.
 func (s *State) Save(dir string) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	tmp := file(dir) + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, file(dir))
+	return fsutil.WriteAtomic(file(dir), data)
 }
 
 // Set records the unresolved desired value and the applied-value hash for a key.
@@ -72,4 +70,19 @@ func (s *State) Set(tool, key, desired, appliedHash string) {
 func (s *State) Get(tool, key string) (Entry, bool) {
 	e, ok := s.Managed[tool][key]
 	return e, ok
+}
+
+// Keys returns the sorted managed keys recorded for a tool.
+func (s *State) Keys(tool string) []string {
+	keys := make([]string, 0, len(s.Managed[tool]))
+	for k := range s.Managed[tool] {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Delete drops the record for a key (after its on-disk value was pruned).
+func (s *State) Delete(tool, key string) {
+	delete(s.Managed[tool], key)
 }

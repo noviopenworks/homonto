@@ -33,8 +33,10 @@ the full workflow exists.
 ### 1. Explore ground truth
 
 Before proposing anything, read the real system: graphify/codegraph queries
-for structure and call paths, then the actual files. Map the integration
-points the proposal touches. Never design against an imagined codebase.
+for structure and call paths when available (the preflight may have
+recorded a direct-file-reading fallback), then the actual files. Map the
+integration points the proposal touches. Never design against an imagined
+codebase.
 
 ### 2. Question until clear
 

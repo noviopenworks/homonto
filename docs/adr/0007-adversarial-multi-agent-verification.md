@@ -20,8 +20,8 @@ mode, two parallel fresh-context skeptics — conformance (refute each
 scenario claim) and robustness (edge cases, drift/recovery paths) — whose
 findings are triaged into verification.md; light mode uses one optional
 skeptic with skips recorded. Skeptics are prompted to refute, never to
-approve. Absent subagent capability, the skipped pass is a recorded
-deviation.
+approve. Absent subagent capability, the skipped pass is recorded in the
+report's Adversarial section (no acceptor needed).
 
 ## Consequences
 
@@ -30,3 +30,6 @@ deviation.
 - Verification claims become falsifiable by construction: a refuted claim
   fails its scenario and routes through the existing fix-vs-accept gate.
 - `verify_rounds` in metrics makes repeated failed rounds visible.
+
+*Errata 2026-07-04: skip-recording location corrected to match the
+verification protocol (was: "recorded deviation").*

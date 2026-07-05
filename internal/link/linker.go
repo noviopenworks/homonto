@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-// Link ensures dst is a symlink to src, returning whether it changed. It never
-// clobbers: if dst exists and is not our symlink, it returns a "conflict" error.
+// Link ensures dst is a symlink to src, returning whether it changed. A
+// regular file (or dir) at dst is never clobbered — that is a "conflict"
+// error. A symlink pointing elsewhere is relinked in place: replacing a
+// symlink destroys no data, and status already promises "will reset on apply".
 func Link(src, dst string) (bool, error) {
 	if fi, err := os.Lstat(dst); err == nil {
 		if fi.Mode()&os.ModeSymlink == 0 {
@@ -17,7 +20,13 @@ func Link(src, dst string) (bool, error) {
 		if cur == src {
 			return false, nil
 		}
-		return false, fmt.Errorf("conflict: %s links to %s, not %s", dst, cur, src)
+		if err := os.Remove(dst); err != nil {
+			return false, err
+		}
+		if err := os.Symlink(src, dst); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return false, err
@@ -26,6 +35,30 @@ func Link(src, dst string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// Remove deletes dst only when it is a symlink pointing into contentRoot.
+// A user's own file or a foreign link is a conflict error — pruning must never
+// destroy anything homonto does not own. A missing dst is fine (already gone).
+func Remove(dst, contentRoot string) error {
+	fi, err := os.Lstat(dst)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("conflict: %s exists and is not a symlink; not removing", dst)
+	}
+	target, err := os.Readlink(dst)
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(target, contentRoot+string(os.PathSeparator)) {
+		return fmt.Errorf("conflict: %s links to %s, outside managed content %s; not removing", dst, target, contentRoot)
+	}
+	return os.Remove(dst)
 }
 
 // Op is a pending link change for dst -> src. Cur is the current symlink

@@ -41,7 +41,7 @@ targets = ["claude"]
 		t.Fatalf("apply should proceed for the healthy tool: %v", err)
 	}
 	cj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
-	if gjson.GetBytes(cj, "mcpServers.codegraph.command.0").String() != "codegraph" {
+	if gjson.GetBytes(cj, "mcpServers.codegraph.command").String() != "codegraph" {
 		t.Fatalf("claude was blocked by the broken opencode file: %s", cj)
 	}
 }

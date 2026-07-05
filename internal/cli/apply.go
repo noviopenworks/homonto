@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 
@@ -29,9 +30,18 @@ func applyCmd() *cobra.Command {
 			for _, w := range e.Warnings {
 				cmd.Println("warn:", w)
 			}
+			// A skipped adapter means one tool was never written. Apply still
+			// proceeds for the healthy tools, but the run must exit non-zero so
+			// automation notices (plan/status keep exit 0 with warnings).
+			skipped := func() error {
+				if len(e.Warnings) == 0 {
+					return nil
+				}
+				return fmt.Errorf("completed with skipped adapters: %s", strings.Join(e.Warnings, "; "))
+			}
 			if !plan.HasChanges(sets) {
 				cmd.Println("No changes. Everything up to date.")
-				return nil
+				return skipped()
 			}
 			cmd.Print(plan.Render(sets))
 			if !yes {
@@ -47,7 +57,7 @@ func applyCmd() *cobra.Command {
 				return err
 			}
 			cmd.Println("Applied.")
-			return nil
+			return skipped()
 		},
 	}
 	cmd.Flags().Bool("yes", false, "skip confirmation")

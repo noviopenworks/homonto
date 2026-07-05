@@ -51,9 +51,10 @@ scenarios included; first line MUST contain SHALL or MUST>
 - Every ADDED/MODIFIED requirement's **first non-empty line after the
   heading** contains SHALL or MUST (REMOVED bodies are removal rationales,
   RENAMED entries have no bodies — neither is subject to this rule).
-- **Every** `#### Scenario:` block has GIVEN/WHEN/THEN bullets, and each
-  ADDED/MODIFIED requirement has ≥1 — scenarios are what verify demands
-  evidence for; an unverifiable requirement is a lint finding.
+- **Every** `#### Scenario:` block has WHEN and THEN bullets (GIVEN
+  optional), and each ADDED/MODIFIED requirement has ≥1 — scenarios are
+  what verify demands evidence for; an unverifiable requirement is a lint
+  finding.
 - MODIFIED/REMOVED/RENAMED names must match the living spec exactly — a
   MODIFIED name may instead match the TO name of a RENAMED entry in the
   same delta (rename applies first at merge).

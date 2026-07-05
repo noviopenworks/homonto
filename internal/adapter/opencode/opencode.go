@@ -2,9 +2,11 @@ package opencode
 
 import (
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
 	"github.com/noviopenworks/homonto/internal/secret"
@@ -33,6 +35,11 @@ func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 		if !contains(m.TargetsOrAll(), "opencode") {
 			continue
 		}
+		// No command means nothing runnable to project (matches claude's
+		// adapter); writing `command: []` would just break the tool.
+		if len(m.Command) == 0 {
+			continue
+		}
 		obj := map[string]any{"type": "local", "command": m.Command, "enabled": true}
 		if len(m.Env) > 0 {
 			obj["environment"] = m.Env
@@ -50,14 +57,17 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	cs := adapter.ChangeSet{Tool: "opencode"}
 
-	for key, want := range a.desiredMCPs(c) {
-		disk, hasDisk := jsonutil.GetJSON(doc, "mcp."+trim(key, "mcp."))
+	// Config-supplied names are escaped so reads (and Apply's writes, which
+	// escape the same way) address the literal key, not gjson path syntax.
+	des := a.desiredMCPs(c)
+	for key, want := range des {
+		disk, hasDisk := jsonutil.GetJSON(doc, "mcp."+jsonutil.EscapePath(trim(key, "mcp.")))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
 	for k, v := range c.Settings.OpenCode {
 		key := "setting." + k
 		want := mustJSON(v)
-		disk, hasDisk := jsonutil.GetJSON(doc, k)
+		disk, hasDisk := jsonutil.GetJSON(doc, jsonutil.EscapePath(k))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
 	for _, p := range c.Plugins.OpenCode {
@@ -78,6 +88,31 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + filepath.Base(op.Dst), Old: op.Cur, New: op.Src})
 		}
 	}
+	// Orphans: a state key no longer declared in config is de-declared — plan a
+	// delete. (A declared key missing from disk is drift, handled above.) Old is
+	// always redacted: a removed key's provenance is stale by definition.
+	declared := map[string]bool{}
+	for k := range des {
+		declared[k] = true
+	}
+	for k := range c.Settings.OpenCode {
+		declared["setting."+k] = true
+	}
+	for _, p := range c.Plugins.OpenCode {
+		declared["plugin."+p] = true
+	}
+	for _, n := range c.Skills.Own {
+		declared["skill."+n] = true
+	}
+	for _, k := range st.Keys("opencode") {
+		if declared[k] || !managedPrefix(k) {
+			continue
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
+	}
+	// Keys come from map iteration (random order); a plan must render the
+	// same way every run. Keys are unique within a changeset.
+	sort.SliceStable(cs.Changes, func(i, j int) bool { return cs.Changes[i].Key < cs.Changes[j].Key })
 	return cs, nil
 }
 
@@ -102,9 +137,10 @@ func planKey(st *state.State, key, want, disk string, hasDisk bool) adapter.Chan
 			return adapter.Change{Action: "noop", Key: key}
 		}
 		old := disk
-		// If the key was previously a secret, the on-disk value is a resolved
-		// secret — never print it, even though `want` is now a literal.
-		if inState && secret.ContainsRef(e.Desired) {
+		// Never print the on-disk value when it may be a resolved secret: either
+		// the key was previously a secret, or it is not in state at all (unknown
+		// provenance — a lost state.json must not cause leaks).
+		if !inState || secret.ContainsRef(e.Desired) {
 			old = adapter.SecretRedaction
 		}
 		return adapter.Change{Action: "update", Key: key, Old: old, New: want}
@@ -122,19 +158,42 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		return err
 	}
 	for _, c := range cs.Changes {
+		if c.Action == "noop" {
+			continue
+		}
+		if c.Action == "delete" {
+			switch {
+			case hasPrefix(c.Key, "mcp."):
+				doc, err = jsonutil.DeleteJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
+			case hasPrefix(c.Key, "setting."):
+				doc, err = jsonutil.DeleteJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")))
+			case hasPrefix(c.Key, "plugin."):
+				doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
+			case hasPrefix(c.Key, "skill."):
+				// Only a symlink into our content dir is removed; anything else
+				// is a conflict error inside link.Remove.
+				err = link.Remove(filepath.Join(a.home, ".config", "opencode", "skills", trim(c.Key, "skill.")), a.content)
+			}
+			if err != nil {
+				return err
+			}
+			st.Delete("opencode", c.Key)
+			continue
+		}
 		// skill.* changes are symlink work, handled below — not JSON keys.
-		if c.Action == "noop" || hasPrefix(c.Key, "skill.") {
+		if hasPrefix(c.Key, "skill.") {
 			continue
 		}
 		val, err := res.ResolveJSON(c.New)
 		if err != nil {
 			return err
 		}
+		// Escaped like Plan's reads: the write must land on the literal key.
 		switch {
 		case hasPrefix(c.Key, "mcp."):
-			doc, err = jsonutil.SetJSON(doc, "mcp."+trim(c.Key, "mcp."), val)
+			doc, err = jsonutil.SetJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
 		case hasPrefix(c.Key, "setting."):
-			doc, err = jsonutil.SetJSON(doc, trim(c.Key, "setting."), val)
+			doc, err = jsonutil.SetJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
 		case hasPrefix(c.Key, "plugin."):
 			doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin."))
 		}
@@ -148,13 +207,15 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(links); err != nil {
 		return err
 	}
-	if err := writeAtomic(a.cfgFile(), doc); err != nil {
+	if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
 		return err
 	}
 	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {
 			return err
 		}
+		// Record the link in state so pruning sees de-declared skills later.
+		st.Set("opencode", "skill."+filepath.Base(dst), dst+" -> "+src, secret.Hash(dst+" -> "+src))
 	}
 	return nil
 }

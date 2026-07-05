@@ -1,0 +1,21 @@
+change: address-deep-review
+workflow: full
+phase: close
+created: 2026-07-04
+base_ref: bf2203e01c2ac6d045640c5a57612911386458da
+deps: []
+decisions:
+  isolation: branch
+  execution: subagent
+  tdd: tdd
+  directive: "implentation of things is finished (goal hook, 2026-07-04) — user directive to implement the deep-review fix list to completion without pausing; review doc docs/reviews/2026-07-04-deep-review.md endorsed via 'write it down'; pre-answers clarification/artifact-review/approach/plan-ready/close gates for this change (the review prescribes the approaches); verify-fail and scope-expansion gates still stop"
+verify:
+  mode: full
+  result: pass
+guides: updated
+metrics:
+  phases: {open: 2026-07-04, design: 2026-07-04, build: 2026-07-04, verify: 2026-07-04, close: 2026-07-04}
+  tasks_total: 8
+  verify_rounds: 2
+  upgraded: false
+archived: true

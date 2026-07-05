@@ -27,6 +27,34 @@ func TestLinkCreatesAndIsIdempotent(t *testing.T) {
 	}
 }
 
+// TestLinkRelinksWrongTargetSymlink reproduces the verify round's dead end:
+// status promised "will reset on apply" but Link returned a conflict for a
+// symlink pointing elsewhere. Relinking a symlink destroys no data, so it
+// must be repaired in place. (A regular file at dst stays a conflict.)
+func TestLinkRelinksWrongTargetSymlink(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "content", "skills", "graphify")
+	other := filepath.Join(dir, "elsewhere")
+	os.MkdirAll(src, 0o755)
+	os.MkdirAll(other, 0o755)
+	dst := filepath.Join(dir, "claude", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(other, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := Link(src, dst)
+	if err != nil {
+		t.Fatalf("wrong-target symlink must be relinked, got error: %v", err)
+	}
+	if !changed {
+		t.Fatal("relink must report changed=true")
+	}
+	if got, _ := os.Readlink(dst); got != src {
+		t.Fatalf("symlink points to %q, want %q", got, src)
+	}
+}
+
 func TestLinkConflictDoesNotClobber(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "src")

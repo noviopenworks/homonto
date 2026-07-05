@@ -2,22 +2,16 @@ package opencode
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
-	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/tidwall/gjson"
 )
 
-func contains(ss []string, x string) bool {
-	for _, s := range ss {
-		if s == x {
-			return true
-		}
-	}
-	return false
-}
+func contains(ss []string, x string) bool { return slices.Contains(ss, x) }
 
 func arrayHas(doc []byte, path, elem string) bool {
 	for _, v := range gjson.GetBytes(doc, path).Array() {
@@ -33,6 +27,17 @@ func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 func hasPrefix(s, p string) bool { return strings.HasPrefix(s, p) }
 func trim(s, p string) string    { return strings.TrimPrefix(s, p) }
 
+// managedPrefix reports whether a state key is in a namespace this adapter
+// manages — only those are eligible for pruning.
+func managedPrefix(k string) bool {
+	for _, p := range []string{"mcp.", "setting.", "plugin.", "skill."} {
+		if strings.HasPrefix(k, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func readStandardized(path string) ([]byte, error) {
 	b, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -41,16 +46,12 @@ func readStandardized(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return jsonutil.Standardize(b)
-}
-
-func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+	doc, err := jsonutil.Standardize(b)
+	if err != nil {
+		return nil, err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
+	if err := jsonutil.ObjectRoot(doc); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	return os.Rename(tmp, path)
+	return doc, nil
 }

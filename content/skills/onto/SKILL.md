@@ -16,36 +16,34 @@ are the machinery.
 The dispatcher does exactly four things, in order: preflight → discover →
 derive → route. It never performs phase work itself.
 
-## 1. Tooling preflight (hard requirement — runs first, every dispatch)
+## 1. Tooling preflight (runs first, every dispatch — warns, never halts)
 
-Run these checks before anything else. If either fails, HALT the workflow
-and print the install instructions — do not continue in a degraded mode.
+Run these checks before anything else. A missing tool produces a WARNING
+and the workflow proceeds — degraded is still working; the warning tells
+the user what they are missing and how to fix it.
 
 1. **rtk** — run `rtk --version`. On success, all subsequent shell
    operations in every onto phase go through rtk (or the rtk hook rewrites
-   them transparently). On failure, HALT and print:
-
-   > onto requires **rtk** (token-optimized CLI proxy) and it was not found
-   > on PATH. Install it, verify with `rtk --version`, then re-run `/onto`.
+   them transparently). On failure, WARN and proceed: rtk (token-optimized
+   CLI proxy) was not found on PATH — token costs will be higher; install
+   rtk to reduce them.
 
 2. **graphify** — confirm codebase-understanding tooling is available: the
    `graphify` skill is loadable, or a `graphify-out/` directory or
    `.codegraph/` index exists at the repo root. The open and design phases
-   MUST ground every codebase claim in graphify/codegraph queries rather
-   than guesswork. Indexing is the user's decision: if only the skill is
-   available and no index exists, ask the user whether to build one before
-   open/design proceeds; if they decline, grounding falls back to direct
-   file reading and that fallback is recorded in the proposal/design.
+   ground every codebase claim in graphify/codegraph queries when they are
+   available, rather than guesswork. Indexing is the user's decision: if
+   only the skill is available and no index exists, ask the user whether to
+   build one before open/design proceeds; if they decline, grounding falls
+   back to direct file reading and that fallback is recorded in the
+   proposal/design.
    **Staleness counts as absence**: an index older than the recent work
    (rule of thumb: predates the last ~20 commits or is weeks old) gets the
-   same ask-to-reindex treatment, and the Grounding section records the
-   index's age either way — a confidently stale graph is worse than none.
-   On failure (neither skill nor index), HALT and print:
-
-   > onto requires **graphify** (https://graphify.net) for codebase
-   > understanding and neither the skill nor an existing index
-   > (`graphify-out/`, `.codegraph/`) was found. Install/enable graphify,
-   > then re-run `/onto`.
+   same ask-to-reindex treatment — ask or proceed, never a halt — and the
+   Grounding section records the index's age either way — a confidently
+   stale graph is worse than none. If neither the skill nor an index
+   exists, WARN, record `grounding: direct file reading (graphify
+   unavailable)` in the change's notes.md Grounding section, and proceed.
 
 ## 2. Active-change discovery
 
@@ -160,9 +158,11 @@ proceed to `onto-open`.
 | done | Report that the change is archived; ask what's next |
 
 New work routes by intent: bug fix with clear reproduction → `onto-fix`;
-copy/config/docs/prompt touch-up → `onto-tweak`; anything needing design →
-`onto-open` (full). Preset skills contain upgrade rules that force the full
-path when scope grows — never talk a change *down* from full to a preset.
+copy/config/docs/prompt touch-up or a small feature within tweak limits
+(≤5 files excluding tests, no new capability, no existing-spec requirement
+change) → `onto-tweak`; anything needing design → `onto-open` (full).
+Preset skills contain upgrade rules that force the full path when scope
+grows — never talk a change *down* from full to a preset.
 
 ## 5. GitHub entry points (contract)
 

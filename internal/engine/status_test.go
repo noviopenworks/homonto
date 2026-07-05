@@ -24,6 +24,39 @@ func TestDoctorFlagsMissingSkillContent(t *testing.T) {
 	}
 }
 
+func TestDoctorReportsSkillLinkState(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"graphify\"]\n"), 0o644)
+	content := filepath.Join(repo, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
+
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+
+	// content present but no symlink yet -> not linked
+	lines := strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `skill "graphify" content present, not linked`) {
+		t.Fatalf("doctor should report unlinked skill:\n%s", lines)
+	}
+
+	// correct symlink -> linked
+	dst := filepath.Join(home, ".claude", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(filepath.Join(content, "skills", "graphify"), dst); err != nil {
+		t.Fatal(err)
+	}
+	lines = strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `ok: skill "graphify" linked`) {
+		t.Fatalf("doctor should report linked skill:\n%s", lines)
+	}
+}
+
 func TestDoctorChecksToolConfigLocations(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
@@ -78,5 +111,43 @@ func TestDriftDetectedAfterOutOfBandChange(t *testing.T) {
 	d, _ := e3.Drift()
 	if len(d) == 0 || !strings.Contains(strings.Join(d, "\n"), "model") {
 		t.Fatalf("expected drift on model, got %v", d)
+	}
+}
+
+// TestDriftReportsDeletedManagedKey reproduces the verify round's finding: a
+// state-recorded key deleted from disk plans as a create, which Drift ignored
+// — "No drift" for a value someone removed out of band. A create whose key is
+// in state is drift too.
+func TestDriftReportsDeletedManagedKey(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"opus\"\n"), 0o644)
+
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+		return e
+	}
+
+	e := build()
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+
+	// delete the managed key out of band
+	sj := filepath.Join(home, ".claude", "settings.json")
+	os.WriteFile(sj, []byte(`{}`), 0o644)
+
+	d, err := build().Drift()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(d, "\n")
+	if !strings.Contains(joined, "model") || !strings.Contains(joined, "missing (will recreate on apply)") {
+		t.Fatalf("deleted managed key must report as drift, got %v", d)
 	}
 }

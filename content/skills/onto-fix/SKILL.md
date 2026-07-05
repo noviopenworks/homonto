@@ -74,8 +74,9 @@ handoff offered.
 > **GATE (upgrade):** the moment ANY of these becomes true, pause, explain
 > the trigger, and require fresh user confirmation to upgrade:
 >
-> - the fix touches **3+ non-test files** (the mandatory failing test never
->   counts toward the trigger)
+> - the fix touches **more than 5 non-test files** (the mandatory failing
+>   test never counts toward the trigger; aligned with tweak's limit so a
+>   fix never carries more ceremony than a same-sized feature)
 > - architecture or schema changes (new modules, interfaces, dependencies)
 > - the fix introduces a **new public API**
 > - the fix scope exceeds a single function/module

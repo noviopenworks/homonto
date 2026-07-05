@@ -19,11 +19,16 @@ func (e *Engine) Drift() ([]string, error) {
 	var lines []string
 	for _, cs := range sets {
 		for _, c := range cs.Changes {
-			if c.Action != "update" {
+			if _, ok := e.State.Get(cs.Tool, c.Key); !ok {
 				continue
 			}
-			if _, ok := e.State.Get(cs.Tool, c.Key); ok {
+			switch c.Action {
+			case "update":
 				lines = append(lines, fmt.Sprintf("%s %s drifted (will reset on apply)", cs.Tool, c.Key))
+			case "create":
+				// A create on a state-recorded key means the managed value was
+				// deleted out of band — that is drift too, not "No drift".
+				lines = append(lines, fmt.Sprintf("%s %s missing (will recreate on apply)", cs.Tool, c.Key))
 			}
 		}
 	}
@@ -52,8 +57,15 @@ func (e *Engine) Doctor() []string {
 		p := filepath.Join(e.ContentDir, "skills", name)
 		if _, err := os.Stat(p); err != nil {
 			out = append(out, fmt.Sprintf("warn: skill %q missing from %s", name, p))
+			continue
+		}
+		// Content alone is not enough — the tool only sees the skill through
+		// its symlink, so verify the link exists and points at the content.
+		dst := filepath.Join(e.Home, ".claude", "skills", name)
+		if target, err := os.Readlink(dst); err == nil && target == p {
+			out = append(out, fmt.Sprintf("ok: skill %q linked", name))
 		} else {
-			out = append(out, fmt.Sprintf("ok: skill %q present", name))
+			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked (run apply)", name))
 		}
 	}
 	return out

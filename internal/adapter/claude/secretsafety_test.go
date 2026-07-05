@@ -49,6 +49,46 @@ func TestRenderedPlanNeverLeaksSecret(t *testing.T) {
 	}
 }
 
+// TestStateAbsentDiskValueIsRedacted covers unknown provenance: the key is not
+// in state (fresh/lost state.json) but the on-disk value may be a previously
+// applied resolved secret — plan must never print it as Old.
+func TestStateAbsentDiskValueIsRedacted(t *testing.T) {
+	home := t.TempDir()
+	disk := `{"mcpServers":{"brave":{"type":"stdio","command":"npx","args":["server-brave"],"env":{"K":"sk-previously-applied-secret"}}}}`
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(disk), 0o600)
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir()) // empty state: provenance unknown
+
+	literalCfg := &config.Config{
+		MCPs: map[string]config.MCP{
+			"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "literal"}, Targets: []string{"claude"}},
+		},
+	}
+	cs, err := a.Plan(literalCfg, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, c := range cs.Changes {
+		if c.Key != "mcp.brave" {
+			continue
+		}
+		found = true
+		if c.Action != "update" {
+			t.Fatalf("expected update, got %s", c.Action)
+		}
+		if strings.Contains(c.Old, "sk-previously-applied-secret") {
+			t.Fatalf("state-absent plan leaked the on-disk value in Old: %q", c.Old)
+		}
+		if c.Old != adapter.SecretRedaction {
+			t.Fatalf("unknown-provenance Old should be redacted, got %q", c.Old)
+		}
+	}
+	if !found {
+		t.Fatal("expected an mcp.brave change")
+	}
+}
+
 // TestSecretToLiteralTransitionRedacts covers the case where a key that was a
 // secret reference is edited to a literal: the on-disk value is still a resolved
 // secret, so plan output must not print it.

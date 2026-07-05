@@ -40,6 +40,18 @@ func TestRenderNeverResolvesSecrets(t *testing.T) {
 	}
 }
 
+func TestRenderShowsDeletesAndHasChangesCountsThem(t *testing.T) {
+	sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{
+		{Action: "delete", Key: "mcp.brave", Old: adapter.SecretRedaction},
+	}}}
+	if out := Render(sets); !strings.Contains(out, "- mcp.brave") {
+		t.Fatalf("delete line missing:\n%s", out)
+	}
+	if !HasChanges(sets) {
+		t.Fatal("HasChanges must be true for a delete-only set")
+	}
+}
+
 func TestHasChangesFalseWhenAllNoop(t *testing.T) {
 	sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{{Action: "noop", Key: "x"}}}}
 	if HasChanges(sets) {

@@ -2,26 +2,29 @@ package claude
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
 )
 
-func contains(ss []string, x string) bool {
-	for _, s := range ss {
-		if s == x {
-			return true
-		}
-	}
-	return false
-}
+func contains(ss []string, x string) bool { return slices.Contains(ss, x) }
 
 func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 
 func hasPrefix(s, p string) bool { return strings.HasPrefix(s, p) }
 func trim(s, p string) string    { return strings.TrimPrefix(s, p) }
+
+// managedPrefix reports whether a state key is in a namespace this adapter
+// manages — only those are eligible for pruning.
+func managedPrefix(k string) bool {
+	for _, p := range []string{"mcp.", "setting.", "plugin.", "skill."} {
+		if strings.HasPrefix(k, p) {
+			return true
+		}
+	}
+	return false
+}
 
 // objMembers returns the immediate members of the object at root as key -> raw JSON.
 func objMembers(doc []byte, root string) map[string]string {
@@ -31,15 +34,4 @@ func objMembers(doc []byte, root string) map[string]string {
 		return true
 	})
 	return out
-}
-
-func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }

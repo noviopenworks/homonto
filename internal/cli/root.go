@@ -2,14 +2,16 @@ package cli
 
 import "github.com/spf13/cobra"
 
-// Version is the homonto build version.
-const Version = "0.1.0-dev"
+// Version is the homonto build version. Release builds stamp it via
+// -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=...".
+var Version = "0.1.0-dev"
 
 // NewRootCmd builds the root cobra command and registers subcommands.
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "homonto",
 		Short:         "Declarative config for AI coding tools",
+		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

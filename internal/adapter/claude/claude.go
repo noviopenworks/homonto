@@ -2,11 +2,14 @@ package claude
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
 	"github.com/noviopenworks/homonto/internal/secret"
@@ -21,7 +24,7 @@ type Adapter struct {
 }
 
 // New builds a Claude adapter. home is the $HOME root; content holds owned
-// skills/commands/rules/agents.
+// skills.
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
 
 func (a *Adapter) Name() string { return "claude" }
@@ -45,7 +48,15 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		if !contains(m.TargetsOrAll(), "claude") {
 			continue
 		}
-		obj := map[string]any{"command": m.Command}
+		if len(m.Command) == 0 {
+			continue
+		}
+		// Claude Code's real schema: command is a string with a separate args
+		// array (matching `claude mcp add` output; empty keys omitted).
+		obj := map[string]any{"type": "stdio", "command": m.Command[0]}
+		if len(m.Command) > 1 {
+			obj["args"] = m.Command[1:]
+		}
 		if len(m.Env) > 0 {
 			obj["env"] = m.Env
 		}
@@ -67,7 +78,8 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		return adapter.ChangeSet{}, err
 	}
 	cs := adapter.ChangeSet{Tool: "claude"}
-	for key, want := range a.desired(c) {
+	des := a.desired(c)
+	for key, want := range des {
 		disk, hasDisk := cur[key]
 		e, inState := st.Get("claude", key)
 		switch {
@@ -78,9 +90,10 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
 			} else {
 				old := disk
-				// If the key was previously a secret, the on-disk value is a
-				// resolved secret — never print it, even though `want` is now literal.
-				if inState && secret.ContainsRef(e.Desired) {
+				// Never print the on-disk value when it may be a resolved secret:
+				// either the key was previously a secret, or it is not in state at
+				// all (unknown provenance — a lost state.json must not cause leaks).
+				if !inState || secret.ContainsRef(e.Desired) {
 					old = adapter.SecretRedaction
 				}
 				cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: key, Old: old, New: want})
@@ -104,6 +117,25 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + filepath.Base(op.Dst), Old: op.Cur, New: op.Src})
 		}
 	}
+	// Orphans: a state key no longer declared in config is de-declared — plan a
+	// delete. (A declared key missing from disk is drift, handled above.) Old is
+	// always redacted: a removed key's provenance is stale by definition.
+	declared := map[string]bool{}
+	for k := range des {
+		declared[k] = true
+	}
+	for _, n := range c.Skills.Own {
+		declared["skill."+n] = true
+	}
+	for _, k := range st.Keys("claude") {
+		if declared[k] || !managedPrefix(k) {
+			continue
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
+	}
+	// Keys come from map iteration (random order); a plan must render the
+	// same way every run. Keys are unique within a changeset.
+	sort.SliceStable(cs.Changes, func(i, j int) bool { return cs.Changes[i].Key < cs.Changes[j].Key })
 	return cs, nil
 }
 
@@ -145,21 +177,46 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		return err
 	}
 	for _, c := range cs.Changes {
+		if c.Action == "noop" {
+			continue
+		}
+		if c.Action == "delete" {
+			switch {
+			case hasPrefix(c.Key, "mcp."):
+				mj, err = jsonutil.DeleteJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
+			case hasPrefix(c.Key, "setting."):
+				sj, err = jsonutil.DeleteJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")))
+			case hasPrefix(c.Key, "plugin."):
+				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
+			case hasPrefix(c.Key, "skill."):
+				// Only a symlink into our content dir is removed; anything else
+				// is a conflict error inside link.Remove.
+				err = link.Remove(filepath.Join(a.home, ".claude", "skills", trim(c.Key, "skill.")), a.content)
+			}
+			if err != nil {
+				return err
+			}
+			st.Delete("claude", c.Key)
+			continue
+		}
 		// skill.* changes are symlink work, handled below — not JSON keys.
-		if c.Action == "noop" || hasPrefix(c.Key, "skill.") {
+		if hasPrefix(c.Key, "skill.") {
 			continue
 		}
 		val, err := res.ResolveJSON(c.New)
 		if err != nil {
 			return err
 		}
+		// Config-supplied names are escaped so sjson writes the literal key
+		// (matching current()'s literal reads) instead of nesting on dots or
+		// silently dropping the write on @, | or #.
 		switch {
 		case hasPrefix(c.Key, "mcp."):
-			mj, err = jsonutil.SetJSON(mj, "mcpServers."+trim(c.Key, "mcp."), val)
+			mj, err = jsonutil.SetJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
 		case hasPrefix(c.Key, "setting."):
-			sj, err = jsonutil.SetJSON(sj, trim(c.Key, "setting."), val)
+			sj, err = jsonutil.SetJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
 		case hasPrefix(c.Key, "plugin."):
-			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+trim(c.Key, "plugin."), val)
+			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
 		}
 		if err != nil {
 			return err
@@ -172,16 +229,18 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(links); err != nil {
 		return err
 	}
-	if err := writeAtomic(a.claudeJSON(), mj); err != nil {
+	if err := fsutil.WriteAtomic(a.claudeJSON(), mj); err != nil {
 		return err
 	}
-	if err := writeAtomic(a.settingsJSON(), sj); err != nil {
+	if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
 		return err
 	}
 	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {
 			return err
 		}
+		// Record the link in state so pruning sees de-declared skills later.
+		st.Set("claude", "skill."+filepath.Base(dst), dst+" -> "+src, secret.Hash(dst+" -> "+src))
 	}
 	return nil
 }
@@ -194,5 +253,12 @@ func readStandardized(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return jsonutil.Standardize(b)
+	doc, err := jsonutil.Standardize(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := jsonutil.ObjectRoot(doc); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return doc, nil
 }

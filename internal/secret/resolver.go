@@ -12,9 +12,14 @@ import (
 var refRe = regexp.MustCompile(`\$\{([^}]+)\}`)
 
 // Resolver replaces ${...} references with values from pass or the environment.
+// Resolved tokens are memoized for the Resolver's lifetime (one `pass`
+// invocation per distinct token per run; the CLI is single-threaded, so a
+// plain map suffices).
 type Resolver struct {
 	Getenv func(string) string
 	Pass   func(path string) (string, error)
+
+	cache map[string]string // token body (e.g. "pass:ai/brave") -> value
 }
 
 // NewResolver returns a Resolver backed by os.Getenv and `pass show`.
@@ -78,6 +83,9 @@ func (r *Resolver) Resolve(s string) (string, error) {
 	var firstErr error
 	out := refRe.ReplaceAllStringFunc(s, func(tok string) string {
 		inner := tok[2 : len(tok)-1] // strip ${ }
+		if val, ok := r.cache[inner]; ok {
+			return val
+		}
 		var val string
 		var err error
 		if strings.HasPrefix(inner, "pass:") {
@@ -88,9 +96,16 @@ func (r *Resolver) Resolve(s string) (string, error) {
 				err = fmt.Errorf("env var %s is not set", inner)
 			}
 		}
-		if err != nil && firstErr == nil {
-			firstErr = err
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return val // failures are not cached: a retry re-resolves
 		}
+		if r.cache == nil {
+			r.cache = map[string]string{}
+		}
+		r.cache[inner] = val
 		return val
 	})
 	if firstErr != nil {
