@@ -12,10 +12,10 @@ decisions:
 verify:
   mode: light
   result: pass
-guides: pending
+guides: "waived: validation errors are self-describing and captured in the config-model spec; config-authoring guide deferred to the core user guide (gap #8)"
 metrics:
-  phases: {open: 2026-07-05, build: 2026-07-05, verify: 2026-07-05}
+  phases: {open: 2026-07-05, build: 2026-07-05, verify: 2026-07-05, close: 2026-07-05}
   tasks_total: 6
   verify_rounds: 1
   upgraded: false
-archived: false
+archived: true
