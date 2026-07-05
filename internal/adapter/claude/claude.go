@@ -87,7 +87,16 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: key, New: want})
 		case !secret.ContainsRef(want):
 			if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
+				// Disk already matches desired. A true noop requires state to also
+				// already record this exact on-disk value; otherwise adopt it so
+				// pruning and drift can see it and the stale/absent Applied hash is
+				// refreshed (mirrors the secret branch below; secret keys never
+				// reach this branch).
+				if inState && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
+					cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
+				} else {
+					cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: key, New: want})
+				}
 			} else {
 				old := disk
 				// Never print the on-disk value when it may be a resolved secret:
@@ -167,6 +176,37 @@ func (a *Adapter) current() (map[string]string, error) {
 	return out, nil
 }
 
+// ObserveHashes hashes the current on-disk value of every recorded key still
+// present, so an unchanged key reproduces its Entry.Applied (see the plan's
+// noop identity: Applied == secret.Hash(jsonutil.Canonical(disk))). Only hashes
+// escape — raw values (possibly resolved secrets) never leave the adapter.
+func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
+	cur, err := a.current()
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, key := range st.Keys("claude") {
+		if hasPrefix(key, "skill.") {
+			// skill.* lives on disk as a symlink, not a JSON value. Its Applied
+			// was stored as Hash(dst + " -> " + src); reproduce it from readlink.
+			dst := filepath.Join(a.home, ".claude", "skills", trim(key, "skill."))
+			target, err := os.Readlink(dst)
+			if err != nil {
+				continue // missing or not a symlink → omit (engine infers missing)
+			}
+			out[key] = secret.Hash(dst + " -> " + target)
+			continue
+		}
+		// mcp.*, setting.*, plugin.* all live in current() as JSON values.
+		if v, ok := cur[key]; ok {
+			out[key] = secret.Hash(jsonutil.Canonical(v))
+		}
+		// absent from disk → omit
+	}
+	return out, nil
+}
+
 func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
 	mj, err := readStandardized(a.claudeJSON())
 	if err != nil {
@@ -176,18 +216,36 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if err != nil {
 		return err
 	}
+	// Write a tool file only when a managed key living in it actually changed.
+	// adopt/noop are state-only and must leave the file byte-for-byte untouched
+	// (comments/formatting preserved); skill.* is symlink work, not JSON.
+	mjChanged, sjChanged := false, false
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
+			continue
+		}
+		if c.Action == "adopt" {
+			// Adoption records a pre-existing matching key into state without
+			// touching the tool file. The on-disk value already equals want, so
+			// the recorded Applied hash equals the hash of the on-disk value.
+			val, err := res.ResolveJSON(c.New)
+			if err != nil {
+				return err
+			}
+			st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 			continue
 		}
 		if c.Action == "delete" {
 			switch {
 			case hasPrefix(c.Key, "mcp."):
 				mj, err = jsonutil.DeleteJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
+				mjChanged = true
 			case hasPrefix(c.Key, "setting."):
 				sj, err = jsonutil.DeleteJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")))
+				sjChanged = true
 			case hasPrefix(c.Key, "plugin."):
 				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
+				sjChanged = true
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
 				// is a conflict error inside link.Remove.
@@ -213,10 +271,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		switch {
 		case hasPrefix(c.Key, "mcp."):
 			mj, err = jsonutil.SetJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
+			mjChanged = true
 		case hasPrefix(c.Key, "setting."):
 			sj, err = jsonutil.SetJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
+			sjChanged = true
 		case hasPrefix(c.Key, "plugin."):
 			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
+			sjChanged = true
 		}
 		if err != nil {
 			return err
@@ -229,11 +290,15 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(links); err != nil {
 		return err
 	}
-	if err := fsutil.WriteAtomic(a.claudeJSON(), mj); err != nil {
-		return err
+	if mjChanged {
+		if err := fsutil.WriteAtomic(a.claudeJSON(), mj); err != nil {
+			return err
+		}
 	}
-	if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
-		return err
+	if sjChanged {
+		if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
+			return err
+		}
 	}
 	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {

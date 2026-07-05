@@ -5,34 +5,74 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 )
 
-// Drift returns lines describing on-disk managed values that diverge from the
-// last-applied snapshot. It re-uses each adapter's Plan: an update on a key the
-// state already recorded is drift. Secret-key drift is reported without printing
-// the value (Plan already redacts it).
-func (e *Engine) Drift() ([]string, error) {
+// Status reports two independent facts about the managed surface:
+//
+//   - drift: state-recorded keys whose CURRENT on-disk value diverges from the
+//     value last written by apply (Entry.Applied), or that are missing from disk
+//     entirely. Drift comes ONLY from each adapter's ObserveHashes vs Applied —
+//     never from the desired-vs-disk Plan comparison — so a pure homonto.toml
+//     edit is never mistaken for disk drift.
+//   - pending: visible config changes (create/update/delete) that Plan derived
+//     from the current desired config and are still awaiting apply, EXCLUDING
+//     any key already accounted for as drift.
+//
+// Plan also populates e.Warnings; a per-adapter ObserveHashes failure is
+// appended there and that tool's keys are skipped rather than failing the run.
+func (e *Engine) Status() (drift []string, pending int, err error) {
 	sets, err := e.Plan()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	var lines []string
-	for _, cs := range sets {
-		for _, c := range cs.Changes {
-			if _, ok := e.State.Get(cs.Tool, c.Key); !ok {
+
+	// drifted tracks tool -> key -> true for every key reported as drift, so the
+	// pending count can exclude them (a drifted key's Plan change is a reset, not
+	// pending config work).
+	drifted := map[string]map[string]bool{}
+	mark := func(tool, key string) {
+		if drifted[tool] == nil {
+			drifted[tool] = map[string]bool{}
+		}
+		drifted[tool][key] = true
+	}
+
+	for _, a := range e.Adapters {
+		observed, oerr := a.ObserveHashes(e.State)
+		if oerr != nil {
+			e.Warnings = append(e.Warnings, fmt.Sprintf("%s drift skipped: %v", a.Name(), oerr))
+			continue
+		}
+		for _, key := range e.State.Keys(a.Name()) {
+			h, ok := observed[key]
+			if !ok {
+				drift = append(drift, fmt.Sprintf("%s %s missing (deleted out of band)", a.Name(), key))
+				mark(a.Name(), key)
 				continue
 			}
-			switch c.Action {
-			case "update":
-				lines = append(lines, fmt.Sprintf("%s %s drifted (will reset on apply)", cs.Tool, c.Key))
-			case "create":
-				// A create on a state-recorded key means the managed value was
-				// deleted out of band — that is drift too, not "No drift".
-				lines = append(lines, fmt.Sprintf("%s %s missing (will recreate on apply)", cs.Tool, c.Key))
+			entry, _ := e.State.Get(a.Name(), key)
+			if h != entry.Applied {
+				drift = append(drift, fmt.Sprintf("%s %s drifted (will reset on apply)", a.Name(), key))
+				mark(a.Name(), key)
 			}
 		}
 	}
-	return lines, nil
+
+	for _, cs := range sets {
+		for _, c := range cs.Changes {
+			switch c.Action {
+			case "create", "update", "delete":
+				if drifted[cs.Tool][c.Key] {
+					continue
+				}
+				pending++
+			}
+		}
+	}
+
+	sort.Strings(drift)
+	return drift, pending, nil
 }
 
 // Doctor runs environment health checks.

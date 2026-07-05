@@ -7,11 +7,26 @@ import (
 	"github.com/noviopenworks/homonto/internal/adapter"
 )
 
-// HasChanges reports whether any change is not a noop.
+// HasChanges reports whether any change is a visible change — a create, update,
+// or delete. It excludes both noop and adopt: adopt renders no line and is a
+// state-only reconciliation, so an adopt-only plan must read as "No changes".
 func HasChanges(sets []adapter.ChangeSet) bool {
 	for _, s := range sets {
 		for _, c := range s.Changes {
-			if c.Action != "noop" {
+			switch c.Action {
+			case "create", "update", "delete":
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// HasAdoptions reports whether any change is an adopt.
+func HasAdoptions(sets []adapter.ChangeSet) bool {
+	for _, s := range sets {
+		for _, c := range s.Changes {
+			if c.Action == "adopt" {
 				return true
 			}
 		}

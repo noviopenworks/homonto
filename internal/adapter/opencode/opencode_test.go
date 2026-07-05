@@ -128,6 +128,72 @@ func TestOpenCodeStateAbsentDiskValueIsRedacted(t *testing.T) {
 	}
 }
 
+// TestOpenCodeAdoptOnlyApplyLeavesFileByteIdentical proves the conditional
+// write: an apply whose only changes are adoptions (disk already matches, state
+// empty) must not touch opencode.jsonc — hand-written JSONC comments survive.
+func TestOpenCodeAdoptOnlyApplyLeavesFileByteIdentical(t *testing.T) {
+	home := t.TempDir()
+	dir := filepath.Join(home, ".config", "opencode")
+	os.MkdirAll(dir, 0o755)
+	cfgPath := filepath.Join(dir, "opencode.jsonc")
+	original := "{\n  // keep me: a real JSONC comment\n  \"theme\": \"x\",\n  \"plugin\": [\"existing\"]\n}\n"
+	os.WriteFile(cfgPath, []byte(original), 0o644)
+
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir()) // empty state → declared matches yield adopt
+	c := &config.Config{
+		Settings: config.Settings{OpenCode: map[string]any{"theme": "x"}},
+		Plugins:  config.Plugins{OpenCode: []string{"existing"}},
+	}
+
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	sawAdopt := false
+	for _, ch := range cs.Changes {
+		if ch.Action != "adopt" && ch.Action != "noop" {
+			t.Fatalf("expected only adopt/noop, got %s %s", ch.Action, ch.Key)
+		}
+		if ch.Action == "adopt" {
+			sawAdopt = true
+		}
+	}
+	if !sawAdopt {
+		t.Fatal("expected at least one adopt change")
+	}
+	if err := a.Apply(cs, noSecret(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	got, _ := os.ReadFile(cfgPath)
+	if string(got) != original {
+		t.Fatalf("adopt-only apply rewrote the file.\nwant: %q\ngot:  %q", original, string(got))
+	}
+}
+
+// TestOpenCodeCreateStillWritesFile guards against over-suppression: a real
+// create must still write opencode.jsonc.
+func TestOpenCodeCreateStillWritesFile(t *testing.T) {
+	home := t.TempDir()
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{
+		MCPs: map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"opencode"}}},
+	}
+	cs, _ := a.Plan(c, st)
+	if err := a.Apply(cs, noSecret(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	raw, err := os.ReadFile(a.cfgFile())
+	if err != nil {
+		t.Fatalf("create did not write the config file: %v", err)
+	}
+	if gjson.GetBytes(raw, "mcp.codegraph.type").String() != "local" {
+		t.Fatalf("mcp not written: %s", raw)
+	}
+}
+
 func TestOpenCodeLinksOwnedSkill(t *testing.T) {
 	home := t.TempDir()
 	content := t.TempDir()
