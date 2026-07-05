@@ -32,5 +32,5 @@
 
 ## 5. Validation
 
-- [ ] 5.1 Full suite green + every review reproduction re-run and
+- [x] 5.1 Full suite green + every review reproduction re-run and
       shown fixed; fresh-context skeptics at verify (full mode)
