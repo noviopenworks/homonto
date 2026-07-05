@@ -87,7 +87,14 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: key, New: want})
 		case !secret.ContainsRef(want):
 			if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
+				// Disk already matches desired. If the key is recorded, this is a
+				// steady-state noop; otherwise adopt it into state so pruning and
+				// drift can see it (secret keys never reach this branch).
+				if inState {
+					cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
+				} else {
+					cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: key, New: want})
+				}
 			} else {
 				old := disk
 				// Never print the on-disk value when it may be a resolved secret:
@@ -178,6 +185,17 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	}
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
+			continue
+		}
+		if c.Action == "adopt" {
+			// Adoption records a pre-existing matching key into state without
+			// touching the tool file. The on-disk value already equals want, so
+			// the recorded Applied hash equals the hash of the on-disk value.
+			val, err := res.ResolveJSON(c.New)
+			if err != nil {
+				return err
+			}
+			st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 			continue
 		}
 		if c.Action == "delete" {

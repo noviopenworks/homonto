@@ -11,7 +11,7 @@
 
 ## 2. Adoption in the adapters
 
-- [ ] 2.1 claude: Plan emits `adopt` for a declared non-secret key present on
+- [x] 2.1 claude: Plan emits `adopt` for a declared non-secret key present on
       disk == desired but absent from state (split the non-secret match branch
       `inState → noop` / `!inState → adopt`); Apply records state for `adopt`
       without writing the tool file.

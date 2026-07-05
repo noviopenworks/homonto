@@ -19,7 +19,7 @@ proven by the final validation task.
 
 ## Task 2 — claude adapter: emit and apply `adopt`  (risk: high)
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/claude/claude.go`,
   `internal/adapter/claude/*_test.go`
 - Do: in `Plan` (claude.go:88-90), split the non-secret match branch —
