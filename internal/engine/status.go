@@ -99,13 +99,17 @@ func (e *Engine) Doctor() []string {
 			out = append(out, fmt.Sprintf("warn: skill %q missing from %s", name, p))
 			continue
 		}
-		// Content alone is not enough — the tool only sees the skill through
-		// its symlink, so verify the link exists and points at the content.
-		dst := filepath.Join(e.Home, ".claude", "skills", name)
-		if target, err := os.Readlink(dst); err == nil && target == p {
-			out = append(out, fmt.Sprintf("ok: skill %q linked", name))
-		} else {
-			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked (run apply)", name))
+		// Content alone is not enough — each tool only sees the skill through
+		// its own symlink, so verify both links exist and point at the content.
+		for _, l := range []struct{ tool, dst string }{
+			{"claude", filepath.Join(e.Home, ".claude", "skills", name)},
+			{"opencode", filepath.Join(e.Home, ".config", "opencode", "skills", name)},
+		} {
+			if target, err := os.Readlink(l.dst); err == nil && target == p {
+				out = append(out, fmt.Sprintf("ok: skill %q linked (%s)", name, l.tool))
+			} else {
+				out = append(out, fmt.Sprintf("warn: skill %q content present, not linked for %s (run apply)", name, l.tool))
+			}
 		}
 	}
 	return out
