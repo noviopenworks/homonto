@@ -47,11 +47,11 @@
 
 ## 5. Specs (delta — merged at close)
 
-- [ ] 5.1 `specs/apply-pipeline.md` delta already drafted (ADDED "State
-      adoption on apply", MODIFIED "Drift detection") — keep in sync if build
-      diverges.
-- [ ] 5.2 `specs/tool-adapters.md` delta already drafted (ADDED "Adapters
-      adopt pre-existing matching keys") — keep in sync if build diverges.
+- [x] 5.1 `specs/apply-pipeline.md` delta drafted and kept in sync through
+      build (ADDED "State adoption on apply" incl. stale-Applied scenario,
+      MODIFIED "Drift detection" with pending-vs-drift scenarios).
+- [x] 5.2 `specs/tool-adapters.md` delta drafted and kept in sync (ADDED
+      "Adapters adopt pre-existing matching keys", byte-unchanged wording).
 
 ## 6. Validation
 

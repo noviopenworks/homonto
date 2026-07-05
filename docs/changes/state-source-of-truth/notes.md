@@ -102,6 +102,28 @@ marked *pending*.
   out of band; none cover the gap (config edit, disk unchanged, must NOT be
   drift).
 
+## Build outcome (2026-07-05)
+
+- All tasks done (1, 2, 3, 3b, 3c, 4, 5, 6, 7[+8 merged], 9). 12 code/doc
+  commits on `feature/20260705/state-source-of-truth`.
+- Validation: `go build`, `go vet`, `go test ./...` (125), `go test -race`
+  (125), `gofmt -l internal/` (empty) — all green.
+- Manual smoke (real binary, temp HOME): adoption "Reconciled 1..." +
+  settings.json byte-identical + state records key; config edit → "1 config
+  change(s) awaiting apply" (pending, not drift); disk edit → drifted;
+  adopt-only plan → "No changes".
+- **Final holistic reviewer**: change is correct and spec-complete — all 10
+  delta-spec scenarios backed by code + tests; no CRITICAL/major. Accepted
+  minors (non-blocking, for verify to note/accept):
+  1. status.go:50/56 wording: a key that is BOTH de-declared AND drifted/missing
+     says "will reset"/"deleted out of band" though apply will actually prune it
+     — cosmetic edge combo only.
+  2. A broken adapter emits two warnings (Plan "skipped" + ObserveHashes "drift
+     skipped") — redundant, harmless; drift correctly excludes it.
+  3. Coverage nits: CLI-level "second apply No changes" after adoption, env-
+     bearing MCP steady-state noop, and brand-new create counted as pending are
+     each proven at another layer but not their own dedicated test.
+
 ## Approaches  <!-- design phase -->
 
 Two coupled sub-decisions (adoption mechanism, drift mechanism) bundled into
