@@ -12,10 +12,10 @@ decisions:
 verify:
   mode: full
   result: pass
-guides: pending
+guides: updated
 metrics:
-  phases: {open: 2026-07-04, design: 2026-07-04, build: 2026-07-04, verify: 2026-07-04}
-  tasks_total: 0
+  phases: {open: 2026-07-04, design: 2026-07-04, build: 2026-07-04, verify: 2026-07-04, close: 2026-07-04}
+  tasks_total: 8
   verify_rounds: 2
   upgraded: false
 archived: false

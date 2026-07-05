@@ -126,7 +126,7 @@ repo status honestly.
 2. **Unknown-provenance = redacted** — plan output loses old-value
    detail for unknown keys; safety beats diff aesthetics. (In delta
    spec, no ADR.)
-3. **Preflight warns, never halts** (→ adr/preflight-warns-not-halts.md)
+3. **Preflight warns, never halts** (→ docs/adr/0008-preflight-warns-not-halts.md)
    — reverses part of ADR 0005's hard-requirement stance; deserves its
    own accepted record.
 

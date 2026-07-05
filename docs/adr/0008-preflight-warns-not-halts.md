@@ -1,6 +1,6 @@
 # Make the tooling preflight warn and proceed, never halt
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-04
 - **Change:** address-deep-review
 
