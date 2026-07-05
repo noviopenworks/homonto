@@ -142,10 +142,12 @@ func planKey(st *state.State, key, want, disk string, hasDisk bool) adapter.Chan
 		return adapter.Change{Action: "create", Key: key, New: want}
 	case !secret.ContainsRef(want):
 		if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
-			// Disk already matches desired. If the key is recorded, this is a
-			// steady-state noop; otherwise adopt it into state so pruning and
-			// drift can see it (secret keys never reach this branch).
-			if inState {
+			// Disk already matches desired. A true noop requires state to also
+			// already record this exact on-disk value; otherwise adopt it so
+			// pruning and drift can see it and the stale/absent Applied hash is
+			// refreshed (mirrors the secret branch below; secret keys never reach
+			// this branch).
+			if inState && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
 				return adapter.Change{Action: "noop", Key: key}
 			}
 			return adapter.Change{Action: "adopt", Key: key, New: want}

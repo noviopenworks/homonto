@@ -70,7 +70,7 @@ proven by the final validation task.
 
 ## Task 3c — adopt also refreshes a stale/absent Applied (fix phantom drift)  (risk: high)
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/claude/claude.go`, `internal/adapter/opencode/opencode.go`,
   adapter `*_test.go`
 - Do: broaden the non-secret "disk == desired" branch in both adapters so true
