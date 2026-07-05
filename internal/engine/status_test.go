@@ -57,6 +57,50 @@ func TestDoctorReportsSkillLinkState(t *testing.T) {
 	}
 }
 
+// TestDoctorChecksOpenCodeSkillLink reproduces NEXT_AGENT gap #6: doctor
+// verified only the Claude skill link, so a missing OpenCode link went
+// unreported. Both tools' links must be checked, reported per tool.
+func TestDoctorChecksOpenCodeSkillLink(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"graphify\"]\n"), 0o644)
+	content := filepath.Join(repo, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
+	src := filepath.Join(content, "skills", "graphify")
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+
+	// Only the Claude link exists; the OpenCode link is missing.
+	cl := filepath.Join(home, ".claude", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(cl), 0o755)
+	if err := os.Symlink(src, cl); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `ok: skill "graphify" linked (claude)`) {
+		t.Fatalf("claude link should be reported ok per tool:\n%s", lines)
+	}
+	if !strings.Contains(lines, `skill "graphify" content present, not linked for opencode`) {
+		t.Fatalf("doctor should warn about the missing opencode link:\n%s", lines)
+	}
+
+	// Add the OpenCode link too -> both report ok.
+	ol := filepath.Join(home, ".config", "opencode", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(ol), 0o755)
+	if err := os.Symlink(src, ol); err != nil {
+		t.Fatal(err)
+	}
+	lines = strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `ok: skill "graphify" linked (opencode)`) {
+		t.Fatalf("opencode link should be reported ok after linking:\n%s", lines)
+	}
+}
+
 func TestDoctorChecksToolConfigLocations(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
