@@ -1,0 +1,21 @@
+change: expand-ci
+workflow: tweak
+phase: close
+created: 2026-07-06
+base_ref: f509f08be24aaae21339118eaa72370d8d9f442b
+deps: []
+decisions:
+  isolation: branch
+  execution: direct
+  tdd: direct
+  directive: "do 6 7 and 8"
+verify:
+  mode: light
+  result: pass
+guides: "waived: CI-configuration change with no user-facing surface; nothing to document in a usage guide"
+metrics:
+  phases: {open: 2026-07-06, build: 2026-07-06, verify: 2026-07-06, close: 2026-07-06}
+  tasks_total: 2
+  verify_rounds: 1
+  upgraded: false
+archived: false
