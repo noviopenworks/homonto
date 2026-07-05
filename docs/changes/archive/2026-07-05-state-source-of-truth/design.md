@@ -162,13 +162,13 @@ Status() (drift []string, pending int, err error)
 ## Key decisions
 
 1. **Adopt as a first-class silent apply-time action** (ADR draft
-   `adr/adopt-preexisting-resources-into-state.md`). Why not overload `noop`:
+   `docs/adr/0009-adopt-preexisting-resources-into-state.md`). Why not overload `noop`:
    apply short-circuits on `!HasChanges`, so a plain-`noop` adoption would
    never run when it is the only work — the primary adoption scenario. A
    distinct action lets `HasAdoptions` drive a state-only reconcile while the
    plan diff and the `[y/N]` prompt stay reserved for tool-file changes.
 2. **Compute drift from disk-vs-state, not from the desired plan** (ADR draft
-   `adr/drift-from-disk-vs-state.md`). Why a new observation method rather
+   `docs/adr/0010-drift-from-disk-vs-state.md`). Why a new observation method rather
    than reusing `Plan()`: reusing Plan is the root cause of gap #2 (Plan is
    desired-centric). A narrow hash-only method decouples drift, keeps disk
    values (incl. resolved secrets) inside the adapter, and lets the engine own
