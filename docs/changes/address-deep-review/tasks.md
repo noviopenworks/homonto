@@ -5,7 +5,7 @@
 - [x] 1.1 Claude MCP schema fix + conformance fixtures from real tool
       output; import reads string+args (legacy array tolerated) with
       expanded redaction
-- [ ] 1.2 Secret safety: unknown-provenance redaction in plan; shared
+- [x] 1.2 Secret safety: unknown-provenance redaction in plan; shared
       mode-preserving fsync'd writeAtomic (0600 default, unique temps);
       memoized resolver
 - [ ] 1.3 Pruning: delete action end-to-end (plan/apply/state/render/

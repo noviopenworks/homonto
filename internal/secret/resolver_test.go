@@ -43,6 +43,28 @@ func TestContainsRef(t *testing.T) {
 	}
 }
 
+// TestResolveJSONMemoizesPassLookups: engine pre-resolves for validation and
+// adapters resolve again on apply — each distinct token must hit pass once.
+func TestResolveJSONMemoizesPassLookups(t *testing.T) {
+	calls := 0
+	r := &Resolver{
+		Getenv: func(string) string { return "" },
+		Pass: func(p string) (string, error) {
+			calls++
+			return "v", nil
+		},
+	}
+	if _, err := r.ResolveJSON(`{"a":"${pass:ai/brave}","b":"${pass:ai/brave}"}`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.ResolveJSON(`"${pass:ai/brave}"`); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("pass invoked %d times for one token across two resolves, want 1 (memoized)", calls)
+	}
+}
+
 type notFound struct{ p string }
 
 func (e *notFound) Error() string { return "not found: " + e.p }

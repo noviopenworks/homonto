@@ -3,7 +3,6 @@ package opencode
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/jsonutil"
@@ -42,15 +41,4 @@ func readStandardized(path string) ([]byte, error) {
 		return nil, err
 	}
 	return jsonutil.Standardize(b)
-}
-
-func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }

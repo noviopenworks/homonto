@@ -2,8 +2,6 @@ package claude
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -31,15 +29,4 @@ func objMembers(doc []byte, root string) map[string]string {
 		return true
 	})
 	return out
-}
-
-func writeAtomic(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }

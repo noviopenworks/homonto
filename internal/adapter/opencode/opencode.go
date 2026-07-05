@@ -5,6 +5,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
 	"github.com/noviopenworks/homonto/internal/secret"
@@ -102,9 +103,10 @@ func planKey(st *state.State, key, want, disk string, hasDisk bool) adapter.Chan
 			return adapter.Change{Action: "noop", Key: key}
 		}
 		old := disk
-		// If the key was previously a secret, the on-disk value is a resolved
-		// secret — never print it, even though `want` is now a literal.
-		if inState && secret.ContainsRef(e.Desired) {
+		// Never print the on-disk value when it may be a resolved secret: either
+		// the key was previously a secret, or it is not in state at all (unknown
+		// provenance — a lost state.json must not cause leaks).
+		if !inState || secret.ContainsRef(e.Desired) {
 			old = adapter.SecretRedaction
 		}
 		return adapter.Change{Action: "update", Key: key, Old: old, New: want}
@@ -148,7 +150,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(links); err != nil {
 		return err
 	}
-	if err := writeAtomic(a.cfgFile(), doc); err != nil {
+	if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
 		return err
 	}
 	for dst, src := range links {

@@ -14,7 +14,7 @@ Design: `design.md` (Status: Confirmed 2026-07-04). One commit per task.
 
 ## Task 2 — secret safety
 
-- [ ] done
+- [x] done
 - Files: internal/adapter/claude/claude.go, internal/adapter/opencode/
   opencode.go, internal/adapter/*/util.go → shared fs helper,
   internal/secret/resolver.go, tests
