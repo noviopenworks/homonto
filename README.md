@@ -7,11 +7,15 @@ pipeline. Secrets are **referenced, never stored** — resolved only at apply ti
 
 ## Install
 
+homonto is pre-release: there are no version tags or release artifacts yet. From
+a checked-out repo, install the current source with:
+
 ```bash
-go install github.com/noviopenworks/homonto@latest
+go install .
 ```
 
-homonto is pre-release: no version tags or releases yet.
+If the repository is accessible remotely, `go install
+github.com/noviopenworks/homonto@main` installs the current main branch.
 
 ## Quickstart
 
@@ -26,12 +30,14 @@ Other commands:
 
 | Command | What it does |
 |---|---|
-| `homonto status` | Show drift: tool files vs. last-applied state |
-| `homonto doctor` | Health check: `pass` present? owned skills present and linked? |
-| `homonto import` | Bootstrap `homonto.toml` from your current setup (redacts secrets) |
+| `homonto status` | Show managed values that would be reset or recreated on apply |
+| `homonto doctor` | Health check: `pass` present? tool dirs present? owned skill content and Claude links present? |
+| `homonto import` | Bootstrap Claude global MCP servers into `homonto.toml` (best-effort env redaction) |
 | `homonto --version` | Print the build version |
 
-`--config <path>` selects a different config file for any command.
+`--config <path>` selects a different config file for plan/apply/status/doctor/import.
+`init` instead takes an optional target directory and always writes
+`homonto.toml` inside that directory.
 
 ## `homonto.toml`
 
@@ -79,8 +85,10 @@ Guarantees:
 
 Skills you author live in `content/` and are **symlinked**
 into each tool, so editing `content/...` is instantly live everywhere. `apply`
-just ensures the links exist and point correctly; it never clobbers a file that
-isn't its own symlink (reported as a conflict instead).
+ensures the links exist and point correctly; it never clobbers a file that isn't
+its own symlink (reported as a conflict instead). Current adapters still read
+and may rewrite tool config files during a skills-only apply, so OpenCode JSONC
+comments can be normalized even when the requested change is only links.
 
 ## Surgical merge & the JSONC caveat
 
@@ -96,9 +104,10 @@ limitation.
 ## How it works
 
 `homonto.toml` is parsed into one tool-agnostic desired-state model; each tool is
-an adapter (`Read` → `Plan` → `Apply`). Adding a new tool later is one adapter,
-no engine changes. Writes are atomic (temp + rename); `state.json` is written
-last so an interrupted apply always leaves each file valid.
+an adapter (`Read` → `Plan` → `Apply`) wired by the engine. Adding a new tool
+requires a new adapter plus engine/config wiring. Writes are atomic (temp +
+rename); state is persisted after each successful adapter so a later adapter
+failure does not lose earlier records.
 
 ## Development workflow
 
@@ -113,3 +122,6 @@ shipped from this very repo (`content/skills/onto*` — dogfooded via
 - `docs/guides/` — user-facing guides
 
 Start with `/onto`. Full guide: [docs/guides/onto-workflow.md](docs/guides/onto-workflow.md).
+
+Future agents should start with [docs/NEXT_AGENT.md](docs/NEXT_AGENT.md) before
+trusting older reviews or archived change artifacts.

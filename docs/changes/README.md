@@ -33,6 +33,12 @@ edited afterwards, with exactly one sanctioned exception: an accepted
 ship handoff adds `ship.md` — the exception is the file itself, not its
 timing (a later user request may still produce it).
 
+Archived artifacts are not living truth. They may contain requirements,
+implementation notes, review findings, or install instructions that were correct
+when written but later superseded. Future agents must treat `docs/specs/`,
+`docs/adr/`, `docs/guides/`, `docs/roadmap.md`, and `docs/NEXT_AGENT.md` as the
+current documentation surfaces, using archive files only for historical context.
+
 ## state.yaml schema
 
 Canonical schema, template, and per-field rebuild rules live with the

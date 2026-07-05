@@ -21,8 +21,9 @@ homonto-owned content and dogfooded via `homonto apply`. All artifacts live
 in one `docs/` tree (adr/, specs/, changes/, guides/). Phase state is an
 agent-managed `state.yaml` per change; verifiable file state is the source
 of truth and the dispatcher re-derives the phase on every invocation.
-rtk and graphify are hard-required tooling; issue/PR intake skills act as
-entry points, while PR creation/review stay outside the workflow.
+rtk and graphify are recommended preflight tools, but ADR 0008 changed their
+absence from a hard halt into a warn-and-proceed condition. Issue/PR intake
+skills act as entry points, while PR creation/review stay outside the workflow.
 
 ## Consequences
 

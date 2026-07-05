@@ -1,7 +1,9 @@
 # onto-workflow Specification
 
 ## Purpose
-TBD - created by archiving change add-onto-workflow. Update Purpose after archive.
+Defines the onto markdown development workflow shipped by this repo: phase
+dispatch, artifact layout, verification, close/archive obligations, preset paths,
+tooling preflight behavior, and dogfood distribution through homonto-owned skills.
 ## Requirements
 
 ### Requirement: Phase model and dispatch

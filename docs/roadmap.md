@@ -1,13 +1,15 @@
 # homonto — Post-v1 Roadmap
 
 **Date:** 2026-07-03
-**Status:** Draft for review
+**Status:** Current roadmap with v1 gap list
 
 ## Summary
 
 `homonto` v1 remains focused on the safe core: one declarative
 `homonto.toml`, a plan/confirm/apply pipeline, reference-only secrets,
-surgical writes, and Claude Code/OpenCode adapters.
+surgical writes, and Claude Code/OpenCode adapters. The core is implemented and
+testable, but several state, validation, import, status, and release-readiness
+gaps remain before v1 should be treated as dependable.
 
 Post-v1 expands Homonto from a config projector into a manager for the AI
 coding-tool ecosystem around those configs: built-in content templates, richer
@@ -35,7 +37,7 @@ Phases:
 
 ## v1 Core
 
-The current v1 plan remains the foundation:
+The current v1 implementation remains the foundation:
 
 - `homonto.toml` is the source of truth.
 - `homonto plan` shows safe diffs without resolving secret values.
@@ -46,11 +48,36 @@ The current v1 plan remains the foundation:
 - Claude Code and OpenCode adapters project MCPs, owned content, plugins, and
   settings into each tool.
 
-Required pre-implementation adjustment: secret-backed values must remain
-idempotent after apply without storing plaintext secrets. The state model should
-store unresolved desired values plus a non-secret representation of the applied
-resolved value, such as a hash, so a second plan can be no-op while plan output
-and state files remain safe to share.
+Implemented and verified since the original v1 review:
+
+- Claude MCPs project with the real schema (`command` string plus `args`).
+- Import preserves Claude `command` plus `args`.
+- Plans redact missing-state or unknown-provenance old values.
+- State stores unresolved desired values plus non-secret applied hashes.
+- State-recorded pruning exists for MCPs, settings, plugins, and skills.
+- JSON path segments are escaped for dotted and special keys.
+- Skill path traversal is rejected.
+- Atomic writes preserve existing modes and create new files as `0600`.
+- State is persisted after each successful adapter.
+- Plan output is deterministic, and non-object JSON roots are rejected.
+
+Remaining v1 blockers, in recommended order:
+
+1. **State adoption:** declared values that already match disk must be adopted
+   into state so later pruning/status treat them as managed.
+2. **True status semantics:** `homonto status` should compare disk to
+   `.homonto/state.json`, not reuse current desired-state planning.
+3. **Validation:** reject unsupported targets, empty MCP commands, and settings
+   keys that collide with adapter-owned namespaces.
+4. **Import scope/redaction:** either expand import or keep it explicitly scoped;
+   redact obvious secrets in command arguments if those are preserved.
+5. **Skills-only apply side effects:** avoid rewriting JSON files for link-only
+   changes, or keep the side effect documented everywhere.
+6. **Doctor parity:** check OpenCode skill links, not just Claude links.
+7. **CI/release readiness:** add build, race, formatting, tidy, stamped-version,
+   and CLI smoke checks.
+
+Future agents should read `docs/NEXT_AGENT.md` before starting v1 work.
 
 ## v1.1 Built-In Templates
 
@@ -199,14 +226,18 @@ Every phase must preserve the v1 safety rules:
 - Unmanaged keys survive.
 - Existing user-owned content is never overwritten without explicit force or
   backup behavior.
-- Tool config comments may be normalized only where explicitly documented.
+- OpenCode JSONC comments are removed whenever homonto rewrites
+  `opencode.jsonc`; this is explicitly documented until comment preservation is
+  implemented.
 - Adapter behavior must be idempotent: a second plan after apply is no-op unless
   user-visible state changed.
 
 ## Testing Strategy
 
 - **v1 Core:** parser, resolver, state, adapters, secret safety, idempotency,
-  drift, and end-to-end apply tests.
+  status/drift, import, validation, pruning, and end-to-end apply tests. CI
+  should run `go test`, `go test -race`, `go vet`, `go build`, `gofmt`,
+  `go mod tidy -diff`, stamped-version smoke, and temp-HOME CLI smoke tests.
 - **v1.1 Templates:** catalog parsing, copy/no-overwrite behavior, template
   validation, and target compatibility tests.
 - **v1.2 Plugin Configuration:** plugin config projection tests per tool,
@@ -222,5 +253,9 @@ Every phase must preserve the v1 safety rules:
 - Which built-in templates should ship first.
 - Whether remote template and agent sources should share one registry model.
 - Whether v2 agent lifecycle should use a lockfile separate from `.homonto/state.json`.
-- How much JSONC comment preservation is worth supporting beyond documented
-  rewritten regions.
+- Whether OpenCode JSONC comments should be preserved at all, or whether
+  whole-file comment removal remains an accepted limitation.
+- Whether import should become a full migration tool or stay a narrow Claude MCP
+  bootstrap command.
+- Whether status should retain a separate "pending config change" view after true
+  disk-vs-state drift is implemented.

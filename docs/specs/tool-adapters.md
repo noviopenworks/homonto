@@ -1,7 +1,9 @@
 # tool-adapters Specification
 
 ## Purpose
-TBD - created by archiving change homonto-v1-core. Update Purpose after archive.
+Defines how Claude Code and OpenCode adapters project the shared config model
+into tool-specific files, symlink owned skills, preserve unmanaged values, prune
+state-recorded removals, and handle real tool schemas safely.
 ## Requirements
 
 ### Requirement: Surgical merge preserves unmanaged keys
@@ -12,7 +14,8 @@ SHALL cause that adapter to abort and report, never to overwrite.
 
 #### Scenario: Unmanaged keys survive apply
 - **WHEN** a tool file contains keys homonto does not manage
-- **THEN** those keys are byte-preserved (values intact) after apply
+- **THEN** those keys remain present with their values intact after apply;
+  formatting and comments may be normalized by JSON/JSONC rewriting
 
 #### Scenario: Unparseable file is not clobbered
 - **WHEN** an existing tool file cannot be parsed
@@ -36,8 +39,8 @@ The OpenCode adapter SHALL project MCP servers into `opencode.jsonc`
 (`mcp.<name>` with `type:"local"`, `command`, `enabled`, and `environment` when
 env is set), settings as top-level keys, plugins appended to the `plugin` array,
 and owned skills as symlinks under `~/.config/opencode/skills/`. JSONC input SHALL
-be normalized before editing; loss of inline comments in rewritten regions is a
-documented caveat.
+be normalized before editing; when homonto writes `opencode.jsonc`, all comments
+in that file are removed by whole-document JSONC standardization.
 
 #### Scenario: MCP projected with local shape and plugin appended
 - **WHEN** apply runs with an MCP targeting opencode and an opencode plugin
@@ -46,7 +49,8 @@ documented caveat.
 
 #### Scenario: Existing JSONC keys preserved
 - **WHEN** `opencode.jsonc` has an unmanaged key and a comment
-- **THEN** the unmanaged key survives after apply
+- **THEN** the unmanaged key survives after apply, but the comment is removed if
+  the file is rewritten
 
 ### Requirement: Owned content linked by symlink with conflict detection
 

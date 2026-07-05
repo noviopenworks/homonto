@@ -1,7 +1,8 @@
 # secret-references Specification
 
 ## Purpose
-TBD - created by archiving change homonto-v1-core. Update Purpose after archive.
+Defines how secret references are represented, resolved, redacted in plans, and
+recorded in state without storing plaintext secret values.
 ## Requirements
 
 ### Requirement: Secrets are referenced, never stored

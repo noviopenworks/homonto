@@ -1,7 +1,9 @@
 # cli-commands Specification
 
 ## Purpose
-TBD - created by archiving change homonto-v1-core. Update Purpose after archive.
+Defines the user-facing command surface and each command's safety behavior,
+including initialization, import, plan/apply/status, health checks, and version
+reporting.
 ## Requirements
 
 ### Requirement: Command surface
@@ -26,20 +28,19 @@ changes happen by editing `homonto.toml`; there SHALL be no imperative
 
 ### Requirement: import bootstraps with secret redaction
 
-`homonto import` SHALL read the current Claude Code setup (`~/.claude.json`
-MCP servers) into a starter `homonto.toml`, reading each MCP entry in the
-real schema — `command` as a string plus an `args` array — while tolerating
-the legacy all-in-`command` array form, and preserving the full argv into
-the generated config; OpenCode import is not implemented and MUST NOT be
-claimed. Non-stdio servers (url/http) SHALL be skipped with a warning,
-never imported as empty commands. Any value that looks like a literal secret SHALL be replaced with a
-`${pass:…}` reference and reported as a warning; the redaction heuristics
-SHALL cover at least the value prefixes `sk-`, `ghp_`, `github_pat_`, `xox`,
-`glpat-`, `npm_`, `AIza`, `Bearer ` and the key patterns `*_KEY`, `*_TOKEN`,
-`*_SECRET`, `*_PASSWORD`, `*_CREDENTIALS`, `DATABASE_URL`. A tool file that
-exists but cannot be read or parsed SHALL produce a warning, never silent
-omission. It SHALL refuse to overwrite an existing config unless `--force`
-is given. No literal secret SHALL be written to the generated config.
+`homonto import` SHALL read Claude Code global MCP servers (`~/.claude.json`
+`mcpServers`) into a starter `homonto.toml`, reading each MCP entry in the real
+schema — `command` as a string plus an `args` array — while tolerating the legacy
+all-in-`command` array form, and preserving the full argv into the generated
+config. OpenCode import, Claude settings/plugins/skills import, and non-stdio
+servers are not implemented and MUST NOT be claimed. Non-stdio servers
+(url/http) SHALL be skipped with a warning, never imported as empty commands.
+Env values that look like literal secrets SHALL be replaced with a `${pass:…}`
+reference and reported as a warning; command and args values are currently
+preserved as-is, so users SHOULD review generated config before sharing it. A
+tool file that exists but cannot be read or parsed SHALL produce a warning,
+never silent omission. Import SHALL refuse to overwrite an existing config
+unless `--force` is given.
 
 #### Scenario: Real schema imported with args preserved
 
@@ -57,6 +58,12 @@ is given. No literal secret SHALL be written to the generated config.
 - **THEN** it is replaced with a `${pass:…}` reference, a warning is emitted, and
   the literal secret never appears in the output
 
+#### Scenario: Command arguments are not redacted
+
+- **WHEN** an imported MCP command or args entry contains a literal secret
+- **THEN** import preserves it verbatim in the generated config; this is a known
+  limitation and the user must review the file before sharing it
+
 #### Scenario: Unreadable tool file warns
 
 - **GIVEN** a tool config file that exists but cannot be read or parsed
@@ -73,7 +80,8 @@ is given. No literal secret SHALL be written to the generated config.
 
 `homonto doctor` SHALL check that `pass` is on `PATH`, that each target tool's
 config location is present, and that each owned skill exists under
-`content/skills/`, reporting `ok`/`warn` lines.
+`content/skills/`. It also checks the Claude skill symlink state; OpenCode skill
+symlink checking is a known gap. All findings are reported as `ok`/`warn` lines.
 
 #### Scenario: Missing owned skill is flagged
 - **WHEN** a skill listed in `[skills] own` has no directory under

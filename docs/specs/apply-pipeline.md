@@ -1,7 +1,9 @@
 # apply-pipeline Specification
 
 ## Purpose
-TBD - created by archiving change homonto-v1-core. Update Purpose after archive.
+Defines the plan/confirm/apply pipeline, including dry-run planning, confirmed
+secret resolution, atomic writes, per-adapter state persistence, idempotency,
+and the current status/drift behavior.
 ## Requirements
 
 ### Requirement: Plan is a pure dry run
@@ -89,8 +91,10 @@ for secret-backed values.
 
 ### Requirement: Drift detection
 
-`homonto status` SHALL report managed keys whose on-disk value diverges from the
-last-applied snapshot recorded in state.
+`homonto status` SHALL report state-recorded managed keys that the current plan
+would update or recreate. This catches common out-of-band changes, but it is not
+yet a strict disk-vs-last-applied-state comparator: edits to `homonto.toml` can
+also surface as "drift" until status is split from desired-state planning.
 
 #### Scenario: Out-of-band change surfaces
 - **WHEN** a managed key is changed on disk outside homonto after an apply
@@ -99,6 +103,13 @@ last-applied snapshot recorded in state.
 #### Scenario: No drift after clean apply
 - **WHEN** no on-disk managed value has changed since the last apply
 - **THEN** `status` reports no drift
+
+#### Scenario: Config edit can surface as status output
+- **GIVEN** a key recorded in state and a later `homonto.toml` edit changing
+  that key's desired value
+- **WHEN** `status` runs before `apply`
+- **THEN** the key may be reported as drifted because status currently reuses
+  the same plan comparison used by `apply`
 
 ### Requirement: Single secret resolution per run
 
