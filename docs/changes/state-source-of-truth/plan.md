@@ -102,7 +102,7 @@ proven by the final validation task.
 
 ## Task 6 — ObserveHashes on the interface + both adapters
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/adapter.go`, `internal/adapter/claude/claude.go`,
   `internal/adapter/opencode/opencode.go`, adapter `*_test.go`
 - Do: add `ObserveHashes(st *state.State) (map[string]string, error)` to the

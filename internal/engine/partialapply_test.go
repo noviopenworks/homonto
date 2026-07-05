@@ -23,6 +23,9 @@ func (failingAdapter) Apply(adapter.ChangeSet, *secret.Resolver, *state.State) e
 	// Deliberately does NOT contain the tool name: the engine must add it.
 	return errors.New("adapter exploded")
 }
+func (failingAdapter) ObserveHashes(*state.State) (map[string]string, error) {
+	return map[string]string{}, nil
+}
 
 // Deep review: state was saved only after ALL adapters succeeded, so a partial
 // apply left no record at all — the next run treated already-written values as

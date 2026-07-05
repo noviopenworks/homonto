@@ -33,4 +33,11 @@ type Adapter interface {
 	Name() string
 	Plan(c *config.Config, st *state.State) (ChangeSet, error)
 	Apply(cs ChangeSet, res *secret.Resolver, st *state.State) error
+	// ObserveHashes returns, for each state-recorded key of this tool still
+	// present on disk, a hash of the CURRENT on-disk value computed the same way
+	// the key's Entry.Applied was stored at apply — so an unchanged key hashes
+	// back to its Entry.Applied. Recorded keys absent from disk are omitted (the
+	// engine infers "missing"). Only hashes escape the adapter: raw on-disk
+	// values (which may include resolved secrets) never leave it.
+	ObserveHashes(st *state.State) (map[string]string, error)
 }

@@ -1,6 +1,7 @@
 package opencode
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -163,6 +164,48 @@ func planKey(st *state.State, key, want, disk string, hasDisk bool) adapter.Chan
 		}
 		return adapter.Change{Action: "update", Key: key, Old: adapter.SecretRedaction, New: want}
 	}
+}
+
+// ObserveHashes hashes the current on-disk value of every recorded key still
+// present, so an unchanged key reproduces its Entry.Applied (mirroring claude,
+// as far as opencode's data model allows). Only hashes escape — raw values
+// (possibly resolved secrets) never leave the adapter.
+func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
+	doc, err := readStandardized(a.cfgFile())
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, key := range st.Keys("opencode") {
+		switch {
+		case hasPrefix(key, "mcp."):
+			if v, ok := jsonutil.GetJSON(doc, "mcp."+jsonutil.EscapePath(trim(key, "mcp."))); ok {
+				out[key] = secret.Hash(jsonutil.Canonical(v))
+			}
+		case hasPrefix(key, "setting."):
+			if v, ok := jsonutil.GetJSON(doc, jsonutil.EscapePath(trim(key, "setting."))); ok {
+				out[key] = secret.Hash(jsonutil.Canonical(v))
+			}
+		case hasPrefix(key, "plugin."):
+			// Plugins are array membership with no scalar to re-hash: presence
+			// means unchanged by definition, so return the key's own Applied.
+			if arrayHas(doc, "plugin", trim(key, "plugin.")) {
+				if e, ok := st.Get("opencode", key); ok {
+					out[key] = e.Applied
+				}
+			}
+		case hasPrefix(key, "skill."):
+			// skill.* is a symlink; its Applied was Hash(dst + " -> " + src).
+			dst := filepath.Join(a.home, ".config", "opencode", "skills", trim(key, "skill."))
+			target, err := os.Readlink(dst)
+			if err != nil {
+				continue // missing or not a symlink → omit
+			}
+			out[key] = secret.Hash(dst + " -> " + target)
+		}
+		// absent from disk → omit
+	}
+	return out, nil
 }
 
 func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {

@@ -174,6 +174,37 @@ func (a *Adapter) current() (map[string]string, error) {
 	return out, nil
 }
 
+// ObserveHashes hashes the current on-disk value of every recorded key still
+// present, so an unchanged key reproduces its Entry.Applied (see the plan's
+// noop identity: Applied == secret.Hash(jsonutil.Canonical(disk))). Only hashes
+// escape — raw values (possibly resolved secrets) never leave the adapter.
+func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
+	cur, err := a.current()
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, key := range st.Keys("claude") {
+		if hasPrefix(key, "skill.") {
+			// skill.* lives on disk as a symlink, not a JSON value. Its Applied
+			// was stored as Hash(dst + " -> " + src); reproduce it from readlink.
+			dst := filepath.Join(a.home, ".claude", "skills", trim(key, "skill."))
+			target, err := os.Readlink(dst)
+			if err != nil {
+				continue // missing or not a symlink → omit (engine infers missing)
+			}
+			out[key] = secret.Hash(dst + " -> " + target)
+			continue
+		}
+		// mcp.*, setting.*, plugin.* all live in current() as JSON values.
+		if v, ok := cur[key]; ok {
+			out[key] = secret.Hash(jsonutil.Canonical(v))
+		}
+		// absent from disk → omit
+	}
+	return out, nil
+}
+
 func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
 	mj, err := readStandardized(a.claudeJSON())
 	if err != nil {
