@@ -24,7 +24,7 @@ Design: `design.md` (Status: Confirmed 2026-07-04). One commit per task.
 
 ## Task 3 — pruning (risk: high)
 
-- [ ] done
+- [x] done
 - Files: internal/adapter/adapter.go, both adapters, internal/plan/
   plan.go, internal/state/state.go, internal/engine/engine.go, tests
 - Do: design §"Pruning" + per-adapter state save — failing test first

@@ -13,8 +13,10 @@ const SecretRedaction = "«secret»"
 // Change is a single planned modification. Old/New hold JSON-encoded values.
 // New may contain unresolved ${...} secret tokens; for secret-bearing keys Old
 // is redacted to SecretRedaction and never carries the on-disk resolved value.
+// Deletes (a key in state but no longer declared) always redact Old — a
+// removed key's provenance is stale by definition — and carry no New.
 type Change struct {
-	Action string // "create" | "update" | "noop"
+	Action string // "create" | "update" | "delete" | "noop"
 	Key    string
 	Old    string
 	New    string

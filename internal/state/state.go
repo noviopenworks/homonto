@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/fsutil"
 )
@@ -69,4 +70,19 @@ func (s *State) Set(tool, key, desired, appliedHash string) {
 func (s *State) Get(tool, key string) (Entry, bool) {
 	e, ok := s.Managed[tool][key]
 	return e, ok
+}
+
+// Keys returns the sorted managed keys recorded for a tool.
+func (s *State) Keys(tool string) []string {
+	keys := make([]string, 0, len(s.Managed[tool]))
+	for k := range s.Managed[tool] {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// Delete drops the record for a key (after its on-disk value was pruned).
+func (s *State) Delete(tool, key string) {
+	delete(s.Managed[tool], key)
 }

@@ -8,7 +8,7 @@
 - [x] 1.2 Secret safety: unknown-provenance redaction in plan; shared
       mode-preserving fsync'd writeAtomic (0600 default, unique temps);
       memoized resolver
-- [ ] 1.3 Pruning: delete action end-to-end (plan/apply/state/render/
+- [x] 1.3 Pruning: delete action end-to-end (plan/apply/state/render/
       HasChanges), skill links recorded in state and pruned safely
 - [ ] 1.4 Robustness: sjson path escaping everywhere, skill-name
       validation at config load, sorted deterministic plans, non-object

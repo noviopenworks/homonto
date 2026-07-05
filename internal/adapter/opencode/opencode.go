@@ -51,7 +51,8 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	cs := adapter.ChangeSet{Tool: "opencode"}
 
-	for key, want := range a.desiredMCPs(c) {
+	des := a.desiredMCPs(c)
+	for key, want := range des {
 		disk, hasDisk := jsonutil.GetJSON(doc, "mcp."+trim(key, "mcp."))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
@@ -78,6 +79,28 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		} else {
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + filepath.Base(op.Dst), Old: op.Cur, New: op.Src})
 		}
+	}
+	// Orphans: a state key no longer declared in config is de-declared — plan a
+	// delete. (A declared key missing from disk is drift, handled above.) Old is
+	// always redacted: a removed key's provenance is stale by definition.
+	declared := map[string]bool{}
+	for k := range des {
+		declared[k] = true
+	}
+	for k := range c.Settings.OpenCode {
+		declared["setting."+k] = true
+	}
+	for _, p := range c.Plugins.OpenCode {
+		declared["plugin."+p] = true
+	}
+	for _, n := range c.Skills.Own {
+		declared["skill."+n] = true
+	}
+	for _, k := range st.Keys("opencode") {
+		if declared[k] || !managedPrefix(k) {
+			continue
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
 	}
 	return cs, nil
 }
@@ -124,8 +147,30 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		return err
 	}
 	for _, c := range cs.Changes {
+		if c.Action == "noop" {
+			continue
+		}
+		if c.Action == "delete" {
+			switch {
+			case hasPrefix(c.Key, "mcp."):
+				doc, err = jsonutil.DeleteJSON(doc, "mcp."+trim(c.Key, "mcp."))
+			case hasPrefix(c.Key, "setting."):
+				doc, err = jsonutil.DeleteJSON(doc, trim(c.Key, "setting."))
+			case hasPrefix(c.Key, "plugin."):
+				doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
+			case hasPrefix(c.Key, "skill."):
+				// Only a symlink into our content dir is removed; anything else
+				// is a conflict error inside link.Remove.
+				err = link.Remove(filepath.Join(a.home, ".config", "opencode", "skills", trim(c.Key, "skill.")), a.content)
+			}
+			if err != nil {
+				return err
+			}
+			st.Delete("opencode", c.Key)
+			continue
+		}
 		// skill.* changes are symlink work, handled below — not JSON keys.
-		if c.Action == "noop" || hasPrefix(c.Key, "skill.") {
+		if hasPrefix(c.Key, "skill.") {
 			continue
 		}
 		val, err := res.ResolveJSON(c.New)
@@ -157,6 +202,8 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if _, err := link.Link(src, dst); err != nil {
 			return err
 		}
+		// Record the link in state so pruning sees de-declared skills later.
+		st.Set("opencode", "skill."+filepath.Base(dst), dst+" -> "+src, secret.Hash(dst+" -> "+src))
 	}
 	return nil
 }

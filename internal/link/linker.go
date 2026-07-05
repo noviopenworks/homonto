@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Link ensures dst is a symlink to src, returning whether it changed. It never
@@ -26,6 +27,30 @@ func Link(src, dst string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// Remove deletes dst only when it is a symlink pointing into contentRoot.
+// A user's own file or a foreign link is a conflict error — pruning must never
+// destroy anything homonto does not own. A missing dst is fine (already gone).
+func Remove(dst, contentRoot string) error {
+	fi, err := os.Lstat(dst)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("conflict: %s exists and is not a symlink; not removing", dst)
+	}
+	target, err := os.Readlink(dst)
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(target, contentRoot+string(os.PathSeparator)) {
+		return fmt.Errorf("conflict: %s links to %s, outside managed content %s; not removing", dst, target, contentRoot)
+	}
+	return os.Remove(dst)
 }
 
 // Op is a pending link change for dst -> src. Cur is the current symlink

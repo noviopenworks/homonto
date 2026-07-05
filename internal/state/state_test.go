@@ -34,6 +34,27 @@ func TestSaveAndReloadEntry(t *testing.T) {
 	}
 }
 
+func TestKeysSortedAndDelete(t *testing.T) {
+	s, _ := Load(t.TempDir())
+	s.Set("claude", "mcp.b", "x", "h")
+	s.Set("claude", "mcp.a", "x", "h")
+	s.Set("opencode", "mcp.c", "x", "h")
+	got := s.Keys("claude")
+	if len(got) != 2 || got[0] != "mcp.a" || got[1] != "mcp.b" {
+		t.Fatalf("Keys = %v, want sorted [mcp.a mcp.b]", got)
+	}
+	if len(s.Keys("unknown-tool")) != 0 {
+		t.Fatal("Keys for an unknown tool must be empty")
+	}
+	s.Delete("claude", "mcp.a")
+	if _, ok := s.Get("claude", "mcp.a"); ok {
+		t.Fatal("entry survives Delete")
+	}
+	if _, ok := s.Get("claude", "mcp.b"); !ok {
+		t.Fatal("Delete removed the wrong entry")
+	}
+}
+
 func TestSaveIsAtomicJSON(t *testing.T) {
 	dir := t.TempDir()
 	s, _ := Load(dir)

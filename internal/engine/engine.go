@@ -76,11 +76,13 @@ func (e *Engine) Plan() ([]adapter.ChangeSet, error) {
 }
 
 // Apply is two-phase: resolve every non-noop change's secrets first (abort
-// before any write on error), then apply each adapter, then save state last.
+// before any write on error), then apply each adapter, saving state after each
+// successful adapter so a later failure never loses an earlier one's record.
 func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 	for _, cs := range sets {
 		for _, c := range cs.Changes {
-			if c.Action == "noop" {
+			// Deletes carry no New value; nothing to resolve.
+			if c.Action == "noop" || c.Action == "delete" {
 				continue
 			}
 			if _, err := e.Resolver.Resolve(c.New); err != nil {
@@ -100,6 +102,11 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 			continue
 		}
 		if err := a.Apply(cs, e.Resolver, e.State); err != nil {
+			return err
+		}
+		// Persist immediately: a partial apply must keep the record of every
+		// adapter that already wrote its files.
+		if err := e.State.Save(e.StateDir); err != nil {
 			return err
 		}
 	}

@@ -31,6 +31,8 @@ func Render(sets []adapter.ChangeSet) string {
 				lines = append(lines, fmt.Sprintf("  + %s = %s", c.Key, c.New))
 			case "update":
 				lines = append(lines, fmt.Sprintf("  ~ %s: %s -> %s", c.Key, c.Old, c.New))
+			case "delete":
+				lines = append(lines, fmt.Sprintf("  - %s", c.Key))
 			}
 		}
 		if len(lines) == 0 {
