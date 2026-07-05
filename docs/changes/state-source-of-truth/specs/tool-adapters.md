@@ -26,5 +26,6 @@ secret-bearing keys.
   `opencode.jsonc` matching desired, both absent from state
 - **WHEN** apply runs
 - **THEN** state gains `setting.<key>` and `plugin.<name>` records for opencode,
-  `opencode.jsonc` is left unchanged apart from JSONC standardization, and both
-  become pruneable on later removal from config
+  `opencode.jsonc` is left byte-unchanged (its comments preserved, because
+  adoption writes no tool file), and both become pruneable on later removal
+  from config

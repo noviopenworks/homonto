@@ -44,9 +44,29 @@ proven by the final validation task.
   `adopt` state-only (mirror Task 2; plugin `New = mustJSON(name)`). Keep
   claude/opencode in lockstep.
 - Verify (TDD): failing tests first — pre-existing opencode setting AND plugin
-  matching desired, absent from state → `adopt`; Apply records both, file
-  unchanged apart from JSONC standardization; pruneable after removal.
-  `rtk go test ./internal/adapter/opencode/...`.
+  matching desired, absent from state → `adopt`; Apply records both; pruneable
+  after removal. `rtk go test ./internal/adapter/opencode/...`. (Byte-unchanged
+  file guarantee is proven in Task 3b, which adds the conditional write.)
+
+## Task 3b — Apply writes a tool file only when a key in it changed (both adapters)  (risk: high)
+
+- [ ] done
+- Files: `internal/adapter/claude/claude.go`, `internal/adapter/opencode/opencode.go`,
+  adapter `*_test.go`
+- Do: per design "Conditional tool-file writes". Track per-file "changed"
+  (claude: `mjChanged` for `mcp.*`, `sjChanged` for `setting.*`/`plugin.*`;
+  opencode: `docChanged` for `mcp.*`/`setting.*`/`plugin.*`) set on
+  create/update/delete; `adopt`/`noop` never set it. Call `WriteAtomic` for a
+  file only when its flag is set. `skill.*` symlink work is unaffected. This
+  makes adoption literally write no tool file, and stops adopt/noop-only
+  applies from reformatting/comment-stripping. Retrofits the claude adopt from
+  Task 2.
+- Verify (TDD): failing tests first — an adopt-only apply against
+  `opencode.jsonc` containing a COMMENT leaves the file byte-identical
+  (comment preserved); against a non-standard-formatted `.claude.json` leaves
+  it byte-identical. Full suite green (root-cause any test that relied on
+  incidental file creation/standardization on a no-key-change apply).
+  `rtk go test ./...`.
 
 ## Task 4 — engine.Apply skips `adopt` in the resolve loop
 

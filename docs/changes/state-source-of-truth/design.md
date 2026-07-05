@@ -70,6 +70,21 @@ sites:
   matching what a real write would have recorded (and what drift compares
   against). No disk read needed at apply.
 
+### Conditional tool-file writes (adopt writes only `state.json`)
+
+Today each adapter's `Apply` rewrites its tool file(s) unconditionally at the
+end, even when no managed key changed — which for opencode strips JSONC
+comments and for claude reformats. For adoption to literally "not modify the
+tool file" (as the delta spec requires), each adapter tracks whether a
+managed key **in a given file** actually changed (create/update/delete) and
+calls `WriteAtomic` for that file only when it did. `adopt` and `noop` never
+mark a file changed. Mapping: claude `mcp.*` → `.claude.json`; claude
+`setting.*`/`plugin.*` → `settings.json`; opencode `mcp.*`/`setting.*`/
+`plugin.*` → `opencode.jsonc`; `skill.*` is symlink work (separate).
+Consequence: an adopt-only (or noop-only) apply leaves every tool file
+byte-identical and writes only `state.json`; a skills-only apply no longer
+reformats the JSON files either (a welcome side effect, not the goal).
+
 ### apply.go flow
 
 Replace the single short-circuit with a three-way branch:
