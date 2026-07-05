@@ -105,13 +105,21 @@ New adapter method on the `Adapter` interface:
 ObserveHashes(st *state.State) (map[string]string, error)
 ```
 
-Returns `key -> sha256(canonical(on-disk value))` for every key recorded in
-state for that tool **that is still present on disk**; recorded keys absent
-from disk are omitted (the engine infers "missing"). All disk reads and
-hashing happen inside the adapter, so only hashes escape — secret-safe.
-claude reads via its existing `current()`; opencode reads its file once and
-extracts each recorded key (plugins map to `hash(canonical(mustJSON(name)))`
-on array presence, matching how plugin `Applied` is stored).
+Returns `key -> observed hash` for every key recorded in state for that tool
+**that is still present on disk**; recorded keys absent from disk are omitted
+(the engine infers "missing"). All disk reads and hashing happen inside the
+adapter, so only hashes escape — secret-safe. The observed hash is computed
+the same way the key's `Applied` was stored, per prefix:
+- `mcp.*`/`setting.*`: `secret.Hash(canonical(on-disk JSON value))` — claude
+  reads via its existing `current()`; opencode reads its file once and
+  extracts each recorded key.
+- `plugin.*`: present in the array/object → `secret.Hash(canonical(mustJSON(
+  name)))` (claude stores plugins as `enabledPlugins` object → value `true`;
+  match its stored form); absent → omit.
+- `skill.*`: `readlink` the destination; present → `secret.Hash(dst + " -> " +
+  target)` (matching how a link's `Applied` is stored at apply); absent or not
+  a symlink → omit. This keeps the existing "status reports drift if a link is
+  changed out-of-band" requirement working under the new drift computation.
 
 `engine.Drift` is rewritten (and wrapped by a new `engine.Status()`):
 
