@@ -21,13 +21,13 @@
 
 ## 3. onto v2.1
 
-- [ ] 3.1 tweak covers small features; preflight warns not halts;
+- [x] 3.1 tweak covers small features; preflight warns not halts;
       close rewrites ADR links pre-archive; ADR 0007 errata; guide +
       dispatcher table sync; ADR draft for preflight decision
 
 ## 4. Specs
 
-- [ ] 4.1 Delta specs: tool-adapters, apply-pipeline, cli-commands,
+- [x] 4.1 Delta specs: tool-adapters, apply-pipeline, cli-commands,
       secret-references, onto-workflow
 
 ## 5. Validation

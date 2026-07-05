@@ -52,7 +52,7 @@ Design: `design.md` (Status: Confirmed 2026-07-04). One commit per task.
 
 ## Task 6 — onto v2.1 + specs (risk: high)
 
-- [ ] done
+- [x] done
 - Files: content/skills/onto/SKILL.md, onto-tweak/SKILL.md,
   onto-close/SKILL.md, docs/guides/onto-workflow.md, docs/adr/0007-*.md,
   docs/changes/address-deep-review/specs/*.md (5 deltas),

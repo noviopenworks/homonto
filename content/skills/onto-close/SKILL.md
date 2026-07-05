@@ -61,6 +61,11 @@ For each draft in the workspace `adr/`:
 3. Set `Status: Accepted`. If it supersedes an existing ADR, set that one's
    status to `Superseded by NNNN`.
 
+Then rewrite the workspace's references: in the change's `design.md` and
+`notes.md`, replace every reference to `adr/<slug>.md` with the final
+`docs/adr/NNNN-<slug>.md` path. The drafts have just moved — without this
+rewrite every archive ships dangling ADR references.
+
 ### 3. Guides obligation (hard block)
 
 Check `guides:` in `state.yaml`. Archiving with `guides: pending` is

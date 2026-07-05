@@ -1,11 +1,12 @@
 ---
 name: onto-tweak
-description: onto preset — small non-bug change. Use for copy, configuration, documentation, or prompt tweaks — open-lite, lightweight build, light verify, close; upgrades to the full workflow when scope grows.
+description: onto preset — small non-bug change. Use for copy, configuration, documentation, or prompt tweaks, and for small features within tweak limits (≤5 files, no new capability, no existing-spec requirement change) — open-lite, lightweight build, light verify, close; upgrades to the full workflow when scope grows.
 ---
 
 # onto-tweak — Preset: Small Change
 
-Fast path for small non-bug changes (copy, config values, docs, prompts):
+Fast path for small non-bug changes (copy, config values, docs, prompts)
+and for small features that stay within the tweak limits:
 **open-lite → lightweight build → light verify → close**. Skips design and
 the full plan — bounded by strict upgrade rules.
 
@@ -13,8 +14,11 @@ the full plan — bounded by strict upgrade rules.
 
 - A small, local, non-bug change request, or an active change with
   `workflow: tweak`. This preset owns the change's whole lifecycle.
-- Broken behavior → `onto-fix`. New behavior or anything structural →
-  full workflow via `onto-open`.
+- Broken behavior → `onto-fix`. **Small features are tweak territory** when
+  ALL of: ≤5 files touched (test files excluded), no new capability (no new
+  `docs/specs/` file), and no existing spec's requirements change.
+  Structural work or anything introducing a new capability → full workflow
+  via `onto-open`.
 - Read `notes.md` at entry when present (recommended for any tweak that
   spans sittings). If any skill's `references/` directory is missing,
   degrade per the dispatcher rule: reconstruct from the `docs/` contract
