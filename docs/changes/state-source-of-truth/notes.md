@@ -32,8 +32,20 @@ marked *pending*.
 ## Build
 
 - 2026-07-05 — plan-ready gate answered: **isolation: worktree, execution:
-  subagent, tdd: tdd**. plan.md has 9 tasks (T2/T3/T7 risk: high). No blanket
-  directive — each gate answered fresh.
+  subagent, tdd: tdd**. No blanket directive — each gate answered fresh.
+- Worktree: `/home/mg/homonto-wt/state-source-of-truth`, branch
+  `feature/20260705/state-source-of-truth`, base commit 60c095b (workspace),
+  parent a72e535 (= base_ref). Workspace removed from main tree; worktree is
+  the single source of truth for this change until merge.
+- Mid-build refinement: added **Task 3b** (conditional tool-file writes) —
+  adopt/noop-only apply must not rewrite the file (opencode comment-strip);
+  design.md + tool-adapters delta updated.
+- Adapter reviewer (after risk:high T2/T3/T3b), commits 60c095b..0281087:
+  **no CRITICAL**; adopt logic secret-safe, hash-correct, parity clean,
+  conditional-write flags complete. Findings map to upcoming tasks — Major#1
+  (CLI empty output for adopt-only) → Task 5 (also fix `HasChanges` to
+  visible-only so `plan` stays silent); Minor#2 (engine resolves adopt) →
+  Task 4. Both accepted as pending-task work, not defects.
 
 ## Design ground-truth (verified 2026-07-05, direct reads)
 

@@ -78,17 +78,27 @@ proven by the final validation task.
 - Verify: `rtk go test ./internal/engine/...` (adoption-through-engine test:
   Apply on an all-matching-but-unrecorded config persists adopted state).
 
-## Task 5 — apply.go three-way reconcile flow
+## Task 5 — CLI wiring: HasChanges = visible-only + apply.go three-way flow
 
 - [ ] done
-- Files: `internal/cli/apply.go`, `internal/cli/*_test.go`
-- Do: replace the single `!HasChanges` short-circuit (apply.go:42-45) with:
-  no work → "No changes. Everything up to date."; only adoptions
-  (`!HasChanges && HasAdoptions`) → `e.Apply(sets)` with no prompt, then
-  "Reconciled N pre-existing resource(s) into state." (N = count of adopt
-  changes); else render + prompt + apply. Per design "apply.go flow".
-- Verify: `rtk go test ./internal/cli/...` — adoption-only run applies without
-  prompt and prints the reconcile summary; mixed run still prompts.
+- Files: `internal/plan/plan.go`, `internal/plan/plan_test.go`,
+  `internal/cli/apply.go`, `internal/cli/*_test.go`
+- Do:
+  1. Fix `plan.HasChanges` to mean **visible change only** — true iff any
+     action is create/update/delete (exclude `adopt` as well as `noop`). Its
+     "!= noop" form silently started counting `adopt` when the action was
+     added; restore the contract. With this, `internal/cli/plan.go` needs no
+     change (adopt-only → `!HasChanges` → "No changes", matching the gate:
+     plan stays silent about adoption). Update/confirm plan_test.
+  2. Replace the single `!HasChanges` short-circuit in `internal/cli/apply.go`
+     (apply.go:42-45) with a three-way branch: `!HasChanges && !HasAdoptions`
+     → "No changes. Everything up to date."; `!HasChanges && HasAdoptions` →
+     `e.Apply(sets)` with NO prompt, then "Reconciled N pre-existing
+     resource(s) into state." (N = count of adopt changes across sets); else
+     render + prompt + apply (adoptions ride along). Per design "apply.go flow".
+- Verify: `rtk go test ./internal/plan/... ./internal/cli/...` — adoption-only
+  `apply` applies without prompt and prints the reconcile summary; adoption-only
+  `plan` prints "No changes"; a mixed run still renders + prompts.
 
 ## Task 6 — ObserveHashes on the interface + both adapters
 

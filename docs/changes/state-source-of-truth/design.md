@@ -57,9 +57,10 @@ sites:
   are never adopted (only `!secret.ContainsRef(want)` reaches this branch).
 - **`plan.Render`**: `adopt` produces no line (like `noop`) — plan stays
   silent about adoption.
-- **`plan.HasChanges`**: unchanged — still means "visible change"
-  (create/update/delete). A new helper `plan.HasAdoptions(sets)` reports
-  whether any `adopt` is pending.
+- **`plan.HasChanges`**: means "visible change" (create/update/delete) — it
+  must **exclude** `adopt` (its `!= noop` form silently began counting `adopt`
+  when the action was added; restore the contract). A new helper
+  `plan.HasAdoptions(sets)` reports whether any `adopt` is pending.
 - **`engine.Apply` resolve loop**: `adopt` is skipped alongside `noop`/`delete`
   (non-secret by construction — nothing to resolve).
 - **adapter `Apply`**: before the file-write switch, `adopt` does
