@@ -9,6 +9,6 @@
       per owned skill, reporting `ok`/`warn` per tool.
 
 ## 3. Spec + regression
-- [ ] 3.1 Delta `specs/cli-commands.md` — MODIFIED doctor requirement (both
+- [x] 3.1 Delta `specs/cli-commands.md` — MODIFIED doctor requirement (both
       tools' links; drop "known gap").
-- [ ] 3.2 Regression: full suite + existing doctor tests still pass.
+- [x] 3.2 Regression: full suite + existing doctor tests still pass.
