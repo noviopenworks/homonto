@@ -66,7 +66,8 @@ archive, ship handoff offered.
 > **GATE (upgrade):** pause, explain the trigger, and require fresh user
 > confirmation to upgrade to the full workflow when ANY of:
 >
-> - the change touches **5+ files** (test files excluded)
+> - the change touches **more than 5 files** (test files excluded — the
+>   entry limit is ≤5, so exactly 5 is still a tweak)
 > - cross-module coordination is required
 > - **5+ new test cases** are needed
 > - config **keys are added or removed** (value changes are fine)

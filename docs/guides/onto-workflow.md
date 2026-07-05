@@ -87,14 +87,14 @@ upgrades) are stamped along the way, purely observational.
 ## Presets and upgrade rules
 
 - `/onto-fix` — broken behavior. Failing test reproducing the bug comes
-  first, always. Upgrades to full workflow (with design backfill) on: 3+
-  files, architecture/schema changes, new public API, or scope beyond one
-  function/module.
+  first, always. Upgrades to full workflow (with design backfill) on: more
+  than 5 non-test files, architecture/schema changes, new public API, or
+  scope beyond one function/module.
 - `/onto-tweak` — copy/config/docs/prompt changes, plus small features
   within tweak limits: ≤5 files (tests excluded), no new capability, no
-  existing-spec requirement change. Upgrades on: 5+ files, cross-module
-  coordination, 5+ new tests, config key add/remove, a new capability, or
-  spec-affecting changes.
+  existing-spec requirement change. Upgrades on: more than 5 files,
+  cross-module coordination, 5+ new tests, config key add/remove, a new
+  capability, or spec-affecting changes.
 - When in doubt, start full (`/onto`): presets exist for speed, not for
   dodging design.
 

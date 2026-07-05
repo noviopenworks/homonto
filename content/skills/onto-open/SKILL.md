@@ -26,8 +26,9 @@ with an unambiguous proposal. Nothing is designed and nothing is built here.
 Ask questions until the requirement is unambiguous — one topic at a time,
 multiple-choice where possible. Do not treat a single Q&A round as enough
 for anything non-trivial. Ground every claim about the existing codebase in
-graphify/codegraph queries (never guesswork; the dispatcher's preflight
-guarantees the tooling exists).
+graphify/codegraph queries when available — the preflight may have
+recorded a direct-file-reading fallback in notes.md Grounding; grounding
+in real file reads is required either way, guesswork never is.
 
 The clarification must end in a summary covering:
 

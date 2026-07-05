@@ -11,8 +11,7 @@ pipeline. Secrets are **referenced, never stored** — resolved only at apply ti
 go install github.com/noviopenworks/homonto@latest
 ```
 
-homonto is pre-release: there are no version tags yet, so `@latest` installs
-from the tip of `main`.
+homonto is pre-release: no version tags or releases yet.
 
 ## Quickstart
 

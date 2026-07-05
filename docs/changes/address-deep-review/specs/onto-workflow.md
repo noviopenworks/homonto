@@ -37,15 +37,16 @@ test reproducing the bug required first) and `/onto-tweak`
 ≤5 files with test files excluded, no new capability, no existing-spec
 requirement change) — that skip the design phase but keep verify and
 close. The workflow SHALL force an upgrade confirmation
-to the full path when scope grows: fix — 3+ files, architecture/schema
-changes, new public API; tweak — 5+ files, cross-module coordination, 5+ new
-tests, config key additions/removals, new capability, or spec-affecting
-changes.
+to the full path when scope grows: fix — more than 5 non-test files,
+architecture/schema changes, new public API; tweak — more than 5 files,
+cross-module coordination, 5+ new tests, config key additions/removals,
+new capability, or spec-affecting changes (the entry limit is ≤5 files,
+so exactly 5 never both qualifies and triggers).
 
 #### Scenario: Upgrade trigger
 
 - **GIVEN** an active `/onto-fix` change
-- **WHEN** the fix grows to touch four files
+- **WHEN** the fix grows to touch seven non-test files
 - **THEN** the skill pauses, explains the trigger, and asks the user to
   confirm upgrading to the full workflow before continuing
 

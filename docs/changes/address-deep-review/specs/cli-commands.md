@@ -24,11 +24,13 @@
 
 ### Requirement: import bootstraps with secret redaction
 
-`homonto import` SHALL read the current Claude/OpenCode setup into a starter
-`homonto.toml`, reading each Claude MCP entry in the real schema — `command`
-as a string plus an `args` array — while tolerating the legacy
-all-in-`command` array form, and preserving the full argv into the generated
-config. Any value that looks like a literal secret SHALL be replaced with a
+`homonto import` SHALL read the current Claude Code setup (`~/.claude.json`
+MCP servers) into a starter `homonto.toml`, reading each MCP entry in the
+real schema — `command` as a string plus an `args` array — while tolerating
+the legacy all-in-`command` array form, and preserving the full argv into
+the generated config; OpenCode import is not implemented and MUST NOT be
+claimed. Non-stdio servers (url/http) SHALL be skipped with a warning,
+never imported as empty commands. Any value that looks like a literal secret SHALL be replaced with a
 `${pass:…}` reference and reported as a warning; the redaction heuristics
 SHALL cover at least the value prefixes `sk-`, `ghp_`, `github_pat_`, `xox`,
 `glpat-`, `npm_`, `AIza`, `Bearer ` and the key patterns `*_KEY`, `*_TOKEN`,

@@ -47,3 +47,16 @@ marked *pending*.
 - Review-prescribed fixes — **CONFIRMED 2026-07-04 via directive** (the
   review contains the alternatives analysis; re-deriving them would be
   ceremony).
+
+## Verify round 1 (2026-07-04) — FAIL → fixed per directive triage
+
+Conformance: core fixes held empirically (schema, pruning, escaping,
+redaction, modes, memoization, per-adapter state); REFUTED: import parse
+silence, import Claude/OpenCode over-claim, adapter-naming-by-accident.
+Robustness: 10 findings — HIGH: numeric/empty names corrupt to arrays;
+mediums: url-server import loss, symlink-replaced-by-file writes, tweak
+off-by-one + fix/tweak ceremony inversion, stale "preflight guarantees"
+lines; lows: deleted-link drift, plugin scalar guard, relink dead-end.
+All fixed (Go commit e0ea17c + markdown round); accepted deviations:
+two-phase token equivalence for quote/backslash env names (exotic),
+kill-9 temp-file stranding (pre-existing).
