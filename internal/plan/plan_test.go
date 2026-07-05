@@ -79,6 +79,28 @@ func TestHasAdoptionsFalseWithoutAdopt(t *testing.T) {
 	}
 }
 
+func TestHasChangesFalseForAdoptOnly(t *testing.T) {
+	sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{
+		{Action: "noop", Key: "x"},
+		{Action: "adopt", Key: "mcp.brave", New: `{"command":["npx"]}`},
+	}}}
+	if HasChanges(sets) {
+		t.Fatal("HasChanges must be false for an adopt-only set (adopt is state-only, renders nothing)")
+	}
+}
+
+func TestHasChangesTrueForEachVisibleAction(t *testing.T) {
+	for _, action := range []string{"create", "update", "delete"} {
+		sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{
+			{Action: "adopt", Key: "mcp.brave"},
+			{Action: action, Key: "mcp.other"},
+		}}}
+		if !HasChanges(sets) {
+			t.Fatalf("HasChanges must be true when a %q change is present", action)
+		}
+	}
+}
+
 func TestRenderAdoptProducesNoLine(t *testing.T) {
 	sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{
 		{Action: "adopt", Key: "mcp.brave"},

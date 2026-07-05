@@ -25,7 +25,7 @@
 
 ## 3. apply.go reconcile flow
 
-- [ ] 3.1 Three-way branch in `internal/cli/apply.go`: no work → "No changes";
+- [x] 3.1 Three-way branch in `internal/cli/apply.go`: no work → "No changes";
       only adoptions → state-only apply, no prompt, "Reconciled N pre-existing
       resource(s) into state."; else render + prompt + apply (adoptions ride
       along).

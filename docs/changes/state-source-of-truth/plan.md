@@ -80,7 +80,7 @@ proven by the final validation task.
 
 ## Task 5 — CLI wiring: HasChanges = visible-only + apply.go three-way flow
 
-- [ ] done
+- [x] done
 - Files: `internal/plan/plan.go`, `internal/plan/plan_test.go`,
   `internal/cli/apply.go`, `internal/cli/*_test.go`
 - Do:
