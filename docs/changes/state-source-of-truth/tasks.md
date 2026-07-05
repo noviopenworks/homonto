@@ -19,7 +19,7 @@
       state-only write. Keep claude/opencode in lockstep.
 - [ ] 2.3 `engine.Apply` resolve loop skips `adopt` (non-secret; nothing to
       resolve).
-- [ ] 2.4 Both adapters: `Apply` writes a tool file only when a managed key in
+- [x] 2.4 Both adapters: `Apply` writes a tool file only when a managed key in
       it changed (create/update/delete); `adopt`/`noop`-only apply leaves the
       file byte-unchanged (comments preserved). Retrofits claude from 2.1.
 

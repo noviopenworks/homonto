@@ -183,6 +183,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if err != nil {
 		return err
 	}
+	// Write a tool file only when a managed key living in it actually changed.
+	// adopt/noop are state-only and must leave the file byte-for-byte untouched
+	// (comments/formatting preserved); skill.* is symlink work, not JSON.
+	mjChanged, sjChanged := false, false
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
 			continue
@@ -202,10 +206,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			switch {
 			case hasPrefix(c.Key, "mcp."):
 				mj, err = jsonutil.DeleteJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
+				mjChanged = true
 			case hasPrefix(c.Key, "setting."):
 				sj, err = jsonutil.DeleteJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")))
+				sjChanged = true
 			case hasPrefix(c.Key, "plugin."):
 				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
+				sjChanged = true
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
 				// is a conflict error inside link.Remove.
@@ -231,10 +238,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		switch {
 		case hasPrefix(c.Key, "mcp."):
 			mj, err = jsonutil.SetJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
+			mjChanged = true
 		case hasPrefix(c.Key, "setting."):
 			sj, err = jsonutil.SetJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
+			sjChanged = true
 		case hasPrefix(c.Key, "plugin."):
 			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
+			sjChanged = true
 		}
 		if err != nil {
 			return err
@@ -247,11 +257,15 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(links); err != nil {
 		return err
 	}
-	if err := fsutil.WriteAtomic(a.claudeJSON(), mj); err != nil {
-		return err
+	if mjChanged {
+		if err := fsutil.WriteAtomic(a.claudeJSON(), mj); err != nil {
+			return err
+		}
 	}
-	if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
-		return err
+	if sjChanged {
+		if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
+			return err
+		}
 	}
 	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {

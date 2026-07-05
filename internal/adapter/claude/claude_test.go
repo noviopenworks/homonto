@@ -162,6 +162,56 @@ func TestSecretDriftPlanIsRedacted(t *testing.T) {
 	}
 }
 
+// TestClaudeAdoptOnlyApplyLeavesFileByteIdentical proves the conditional write:
+// an adopt-only apply (disk already matches desired, state empty) must not
+// rewrite .claude.json, so non-standard-but-valid formatting survives verbatim.
+func TestClaudeAdoptOnlyApplyLeavesFileByteIdentical(t *testing.T) {
+	home := t.TempDir()
+	// Unusual whitespace + key order AND a JSONC comment: hujson standardization
+	// preserves whitespace but blanks comments, so an unconditional rewrite would
+	// change these bytes — the conditional write must skip it entirely.
+	mjOriginal := "{\n    // hand-maintained mcp block\n    \"mcpServers\"  :  {\n        \"codegraph\": { \"command\":\"codegraph\",\n              \"type\"  : \"stdio\",\n            \"args\": [   \"serve\"   ] }\n    } ,\n    \"keep\":   true\n}\n"
+	sjOriginal := "{\n   // keep my theme\n   \"theme\" :  \"dark\"\n}\n"
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(mjOriginal), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(sjOriginal), 0o644)
+
+	a := New(home, t.TempDir())
+	st, _ := state.Load(t.TempDir()) // empty state → matching declared key adopts
+	c := &config.Config{
+		MCPs: map[string]config.MCP{
+			"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"claude"}},
+		},
+	}
+
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	sawAdopt := false
+	for _, ch := range cs.Changes {
+		if ch.Action != "adopt" && ch.Action != "noop" {
+			t.Fatalf("expected only adopt/noop, got %s %s", ch.Action, ch.Key)
+		}
+		if ch.Action == "adopt" {
+			sawAdopt = true
+		}
+	}
+	if !sawAdopt {
+		t.Fatal("expected at least one adopt change")
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if got, _ := os.ReadFile(filepath.Join(home, ".claude.json")); string(got) != mjOriginal {
+		t.Fatalf("adopt-only apply rewrote .claude.json.\nwant: %q\ngot:  %q", mjOriginal, string(got))
+	}
+	if got, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json")); string(got) != sjOriginal {
+		t.Fatalf("adopt-only apply rewrote settings.json.\nwant: %q\ngot:  %q", sjOriginal, string(got))
+	}
+}
+
 func TestSkillsOnlyConfigPlansAndAppliesLinks(t *testing.T) {
 	home := t.TempDir()
 	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)

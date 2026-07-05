@@ -170,6 +170,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if err != nil {
 		return err
 	}
+	// Write opencode.jsonc only when a managed key in it actually changed.
+	// adopt/noop are state-only and must leave the file byte-for-byte untouched
+	// (JSONC comments preserved); skill.* is symlink work, not JSON.
+	docChanged := false
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
 			continue
@@ -189,10 +193,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			switch {
 			case hasPrefix(c.Key, "mcp."):
 				doc, err = jsonutil.DeleteJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
+				docChanged = true
 			case hasPrefix(c.Key, "setting."):
 				doc, err = jsonutil.DeleteJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")))
+				docChanged = true
 			case hasPrefix(c.Key, "plugin."):
 				doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
+				docChanged = true
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
 				// is a conflict error inside link.Remove.
@@ -216,10 +223,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		switch {
 		case hasPrefix(c.Key, "mcp."):
 			doc, err = jsonutil.SetJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
+			docChanged = true
 		case hasPrefix(c.Key, "setting."):
 			doc, err = jsonutil.SetJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
+			docChanged = true
 		case hasPrefix(c.Key, "plugin."):
 			doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin."))
+			docChanged = true
 		}
 		if err != nil {
 			return err
@@ -231,8 +241,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(links); err != nil {
 		return err
 	}
-	if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
-		return err
+	if docChanged {
+		if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
+			return err
+		}
 	}
 	for dst, src := range links {
 		if _, err := link.Link(src, dst); err != nil {

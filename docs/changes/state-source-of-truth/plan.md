@@ -50,7 +50,7 @@ proven by the final validation task.
 
 ## Task 3b — Apply writes a tool file only when a key in it changed (both adapters)  (risk: high)
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/claude/claude.go`, `internal/adapter/opencode/opencode.go`,
   adapter `*_test.go`
 - Do: per design "Conditional tool-file writes". Track per-file "changed"
