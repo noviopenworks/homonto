@@ -12,5 +12,38 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-      - run: go vet ./...
-      - run: go test ./...
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go mod tidy -diff
+        run: go mod tidy -diff
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: go test -race
+        run: go test -race ./...
+
+      - name: version stamp smoke
+        run: |
+          go build -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=ci-smoke" -o /tmp/homonto .
+          # homonto prints via cobra's Print* (stderr), so capture both streams.
+          /tmp/homonto version 2>&1 | tee /dev/stderr | grep -q "ci-smoke" || { echo "version not stamped"; exit 1; }
+
+      - name: cli smoke
+        run: |
+          printf '[skills]\nown=[]\n' > /tmp/homonto.toml
+          /tmp/homonto --config /tmp/homonto.toml plan
