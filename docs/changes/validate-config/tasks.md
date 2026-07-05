@@ -19,8 +19,8 @@
 
 ## 3. Spec + regression
 
-- [ ] 3.1 Delta spec `specs/config-model.md` — ADDED input-validation
+- [x] 3.1 Delta spec `specs/config-model.md` — ADDED input-validation
       requirements with scenarios for each rule.
-- [ ] 3.2 Regression: a valid multi-target, multi-setting, multi-plugin config
+- [x] 3.2 Regression: a valid multi-target, multi-setting, multi-plugin config
       still loads; `go test ./...`, `go vet ./...`, `go build`, `go test -race`
       all pass.
