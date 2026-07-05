@@ -1,0 +1,21 @@
+change: core-user-guide
+workflow: tweak
+phase: close
+created: 2026-07-06
+base_ref: 01626adfee8420575040f7aed7b3945267d5814e
+deps: []
+decisions:
+  isolation: branch
+  execution: direct
+  tdd: direct
+  directive: "do 6 7 and 8"
+verify:
+  mode: light
+  result: pass
+guides: updated
+metrics:
+  phases: {open: 2026-07-06, build: 2026-07-06, verify: 2026-07-06, close: 2026-07-06}
+  tasks_total: 2
+  verify_rounds: 1
+  upgraded: false
+archived: true
