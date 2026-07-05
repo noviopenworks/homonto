@@ -70,7 +70,7 @@ proven by the final validation task.
 
 ## Task 4 — engine.Apply skips `adopt` in the resolve loop
 
-- [ ] done
+- [x] done
 - Files: `internal/engine/engine.go`, `internal/engine/*_test.go`
 - Do: extend the resolve-loop skip (engine.go:85) to
   `noop || delete || adopt` (adopt is non-secret; nothing to resolve). Confirm

@@ -81,8 +81,11 @@ func (e *Engine) Plan() ([]adapter.ChangeSet, error) {
 func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 	for _, cs := range sets {
 		for _, c := range cs.Changes {
-			// Deletes carry no New value; nothing to resolve.
-			if c.Action == "noop" || c.Action == "delete" {
+			// Deletes carry no New value; nothing to resolve. Adopt is non-secret
+			// by construction (Plan only emits it for a value without a ${...} ref),
+			// so it too has nothing to resolve — the adapter's Apply records its
+			// state hash directly from the already-matching on-disk value.
+			if c.Action == "noop" || c.Action == "delete" || c.Action == "adopt" {
 				continue
 			}
 			if _, err := e.Resolver.Resolve(c.New); err != nil {
