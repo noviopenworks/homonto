@@ -31,7 +31,13 @@ func Import(home string) (*config.Config, []string, error) {
 		warnings = append(warnings, fmt.Sprintf("skipped %s: %v", path, err))
 	}
 	if err == nil {
-		doc, _ := jsonutil.Standardize(mj)
+		// A parse failure must be surfaced, not swallowed: `doc, _ :=` here
+		// silently imported an existing file as "nothing".
+		doc, serr := jsonutil.Standardize(mj)
+		if serr != nil {
+			warnings = append(warnings, fmt.Sprintf("skipped %s: %v", path, serr))
+			return c, warnings, nil
+		}
 		gjson.GetBytes(doc, "mcpServers").ForEach(func(name, server gjson.Result) bool {
 			var cmd []string
 			// Real Claude Code schema: command is a string, args a separate
@@ -45,6 +51,17 @@ func Import(home string) (*config.Config, []string, error) {
 				for _, v := range command.Array() {
 					cmd = append(cmd, v.String())
 				}
+			}
+			// url-type servers (http/sse) have no command; homonto has no
+			// representation for url+headers yet, and importing them as
+			// command = [] would lose both silently.
+			if len(cmd) == 0 {
+				typ := server.Get("type").String()
+				if typ == "" {
+					typ = "unknown"
+				}
+				warnings = append(warnings, fmt.Sprintf("skipped %s: non-stdio server (type=%s) — not yet supported", name.String(), typ))
+				return true
 			}
 			env := map[string]string{}
 			server.Get("env").ForEach(func(k, v gjson.Result) bool {

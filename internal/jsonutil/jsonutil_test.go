@@ -49,6 +49,43 @@ func TestEnsureArrayElemIdempotent(t *testing.T) {
 	}
 }
 
+// TestEnsureArrayElemRejectsNonArray reproduces the verify round's plugin
+// scalar finding: appending to `{"plugin":"foo"}` produced
+// `{"plugin":{"-1":"bar"}}` — silent corruption. A non-array, non-absent
+// value must be a clear error.
+func TestEnsureArrayElemRejectsNonArray(t *testing.T) {
+	for _, doc := range []string{`{"plugin":"foo"}`, `{"plugin":{"a":1}}`, `{"plugin":42}`} {
+		_, err := EnsureArrayElem([]byte(doc), "plugin", "bar")
+		if err == nil || !strings.Contains(err.Error(), "not an array") {
+			t.Fatalf("EnsureArrayElem on %s: want not-an-array error, got %v", doc, err)
+		}
+	}
+	// absent path is fine: the array is created
+	out, err := EnsureArrayElem([]byte(`{}`), "plugin", "a")
+	if err != nil {
+		t.Fatalf("absent path must create the array: %v", err)
+	}
+	if gjson.GetBytes(out, "plugin.0").String() != "a" {
+		t.Fatalf("array not created: %s", out)
+	}
+}
+
+// TestRemoveArrayElemRejectsNonArray: the removal silently no-opped on a
+// scalar, leaving the corrupt value in place. It must error like Ensure.
+func TestRemoveArrayElemRejectsNonArray(t *testing.T) {
+	for _, doc := range []string{`{"plugin":"foo"}`, `{"plugin":{"a":1}}`} {
+		_, err := RemoveArrayElem([]byte(doc), "plugin", "foo")
+		if err == nil || !strings.Contains(err.Error(), "not an array") {
+			t.Fatalf("RemoveArrayElem on %s: want not-an-array error, got %v", doc, err)
+		}
+	}
+	// absent path stays a no-op — the delete is already done
+	out, err := RemoveArrayElem([]byte(`{}`), "plugin", "x")
+	if err != nil || strings.TrimSpace(string(out)) != `{}` {
+		t.Fatalf("absent path must no-op: %s, %v", out, err)
+	}
+}
+
 func TestCanonicalIsOrderIndependent(t *testing.T) {
 	a := Canonical(`{"b":2,"a":1}`)
 	b := Canonical(`{"a":1,"b":2}`)

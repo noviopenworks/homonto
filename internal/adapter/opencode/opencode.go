@@ -35,6 +35,11 @@ func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 		if !contains(m.TargetsOrAll(), "opencode") {
 			continue
 		}
+		// No command means nothing runnable to project (matches claude's
+		// adapter); writing `command: []` would just break the tool.
+		if len(m.Command) == 0 {
+			continue
+		}
 		obj := map[string]any{"type": "local", "command": m.Command, "enabled": true}
 		if len(m.Env) > 0 {
 			obj["environment"] = m.Env

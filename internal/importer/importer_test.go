@@ -143,6 +143,55 @@ func TestImportWarnsOnUnreadableClaudeJSON(t *testing.T) {
 	}
 }
 
+// TestImportWarnsOnMalformedClaudeJSON reproduces the verify round's silent
+// empty-import finding: a parse error was discarded (`doc, _ :=`), so a
+// corrupt .claude.json imported as "nothing" with no explanation.
+func TestImportWarnsOnMalformedClaudeJSON(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, ".claude.json")
+	os.WriteFile(path, []byte(`{"mcpServers": {"brave": `), 0o644)
+	c, warnings, err := Import(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) == 0 {
+		t.Fatal("malformed .claude.json must produce a warning, got none")
+	}
+	if !strings.Contains(strings.Join(warnings, "\n"), path) {
+		t.Fatalf("warning does not name the file %s: %v", path, warnings)
+	}
+	if len(c.MCPs) != 0 {
+		t.Fatalf("malformed file must import nothing, got %v", c.MCPs)
+	}
+}
+
+// TestImportSkipsURLServers: non-stdio servers (type http/sse, url instead of
+// command) have no representation yet; importing them as command = [] loses
+// url+headers silently. They must be skipped with a warning instead.
+func TestImportSkipsURLServers(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{
+	  "mcpServers": {
+	    "linear": {"type":"http","url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer x"}},
+	    "cg": {"type":"stdio","command":"codegraph","args":["serve"]}
+	  }
+	}`), 0o644)
+	c, warnings, err := Import(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := c.MCPs["linear"]; ok {
+		t.Fatalf("url server imported (as %+v); must be skipped", c.MCPs["linear"])
+	}
+	joined := strings.Join(warnings, "\n")
+	if !strings.Contains(joined, "linear") || !strings.Contains(joined, "non-stdio") {
+		t.Fatalf("expected a skip warning naming linear, got %v", warnings)
+	}
+	if got := c.MCPs["cg"].Command; len(got) != 2 || got[0] != "codegraph" {
+		t.Fatalf("stdio sibling lost: %v", got)
+	}
+}
+
 func TestImportSilentWhenClaudeJSONAbsent(t *testing.T) {
 	_, warnings, err := Import(t.TempDir())
 	if err != nil {

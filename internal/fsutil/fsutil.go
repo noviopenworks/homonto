@@ -12,6 +12,13 @@ import (
 // never loosened); new files default to 0600 because managed configs may
 // receive resolved secrets.
 func WriteAtomic(path string, data []byte) error {
+	// A symlinked target (e.g. ~/.claude.json -> dotfiles/claude.json) must be
+	// written through, not replaced: renaming over the link path would swap it
+	// for a regular file that silently diverges from the dotfiles copy. Write
+	// at the resolved location instead; a missing file resolves to path as-is.
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		path = resolved
+	}
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err

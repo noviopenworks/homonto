@@ -28,6 +28,38 @@ func TestWriteAtomicPreservesExistingMode(t *testing.T) {
 	}
 }
 
+// TestWriteAtomicWritesThroughSymlink reproduces the verify round's dotfiles
+// finding: rename-over-path replaces a symlinked target (~/.claude.json ->
+// dotfiles/claude.json) with a regular file, silently diverging from the
+// dotfiles copy. The write must land in the link's target, keeping the link.
+func TestWriteAtomicWritesThroughSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "dotfiles", "claude.json")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte(`{"old":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lnk := filepath.Join(dir, ".claude.json")
+	if err := os.Symlink(target, lnk); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteAtomic(lnk, []byte(`{"new":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Lstat(lnk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("symlink was replaced by a regular file")
+	}
+	if b, _ := os.ReadFile(target); string(b) != `{"new":true}` {
+		t.Fatalf("link target content = %s, want the new content", b)
+	}
+}
+
 // TestWriteAtomicNewFileIs0600: files we create may receive resolved secrets
 // on a later apply, so the safe default is owner-only.
 func TestWriteAtomicNewFileIs0600(t *testing.T) {

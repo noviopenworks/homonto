@@ -113,3 +113,41 @@ func TestDriftDetectedAfterOutOfBandChange(t *testing.T) {
 		t.Fatalf("expected drift on model, got %v", d)
 	}
 }
+
+// TestDriftReportsDeletedManagedKey reproduces the verify round's finding: a
+// state-recorded key deleted from disk plans as a create, which Drift ignored
+// — "No drift" for a value someone removed out of band. A create whose key is
+// in state is drift too.
+func TestDriftReportsDeletedManagedKey(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[settings.claude]\nmodel=\"opus\"\n"), 0o644)
+
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+		return e
+	}
+
+	e := build()
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+
+	// delete the managed key out of band
+	sj := filepath.Join(home, ".claude", "settings.json")
+	os.WriteFile(sj, []byte(`{}`), 0o644)
+
+	d, err := build().Drift()
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(d, "\n")
+	if !strings.Contains(joined, "model") || !strings.Contains(joined, "missing (will recreate on apply)") {
+		t.Fatalf("deleted managed key must report as drift, got %v", d)
+	}
+}

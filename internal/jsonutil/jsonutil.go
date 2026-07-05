@@ -130,9 +130,15 @@ func rootKind(t []byte) string {
 	}
 }
 
-// EnsureArrayElem appends string elem to the array at path if absent.
+// EnsureArrayElem appends string elem to the array at path if absent. An
+// existing non-array value at path is an error: the ".-1" append would turn
+// it into `{"-1": elem}` — silent corruption.
 func EnsureArrayElem(existing []byte, path, elem string) ([]byte, error) {
-	for _, v := range gjson.GetBytes(existing, path).Array() {
+	cur := gjson.GetBytes(existing, path)
+	if cur.Exists() && !cur.IsArray() {
+		return nil, fmt.Errorf("%s is not an array", path)
+	}
+	for _, v := range cur.Array() {
 		if v.String() == elem {
 			return existing, nil
 		}
@@ -145,9 +151,15 @@ func EnsureArrayElem(existing []byte, path, elem string) ([]byte, error) {
 }
 
 // RemoveArrayElem deletes every occurrence of string elem from the array at
-// path; an absent elem (or array) leaves the document untouched.
+// path; an absent elem (or array) leaves the document untouched. An existing
+// non-array value is an error, matching EnsureArrayElem — a silent no-op
+// would leave a corrupt value in place unnoticed.
 func RemoveArrayElem(existing []byte, path, elem string) ([]byte, error) {
-	arr := gjson.GetBytes(existing, path).Array()
+	cur := gjson.GetBytes(existing, path)
+	if cur.Exists() && !cur.IsArray() {
+		return nil, fmt.Errorf("%s is not an array", path)
+	}
+	arr := cur.Array()
 	out, changed := existing, false
 	// Walk backwards so earlier indexes stay valid after each removal.
 	for i := len(arr) - 1; i >= 0; i-- {

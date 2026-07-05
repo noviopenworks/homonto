@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
@@ -19,7 +20,8 @@ func (failingAdapter) Plan(*config.Config, *state.State) (adapter.ChangeSet, err
 	return adapter.ChangeSet{Tool: "boom"}, nil
 }
 func (failingAdapter) Apply(adapter.ChangeSet, *secret.Resolver, *state.State) error {
-	return errors.New("boom: apply failed")
+	// Deliberately does NOT contain the tool name: the engine must add it.
+	return errors.New("adapter exploded")
 }
 
 // Deep review: state was saved only after ALL adapters succeeded, so a partial
@@ -43,8 +45,15 @@ func TestPartialApplyPersistsEarlierAdapterState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err == nil {
+	err = e.Apply(sets)
+	if err == nil {
 		t.Fatal("expected apply to fail on the failing adapter")
+	}
+	// Verify round 1: with several adapters, an unwrapped error ("adapter
+	// exploded") leaves the user guessing which tool broke. The engine must
+	// name it.
+	if !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("apply error does not name the failing adapter: %v", err)
 	}
 	st, err := state.Load(filepath.Join(repo, ".homonto"))
 	if err != nil {

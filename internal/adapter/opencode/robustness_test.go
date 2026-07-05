@@ -119,6 +119,35 @@ func TestOpenCodePlanRenderIsDeterministic(t *testing.T) {
 	}
 }
 
+// TestOpenCodeSkipsEmptyCommandMCP: an MCP with no command (e.g. a url-type
+// server a future config might carry) must not be projected as a broken
+// `command: []` entry — claude's adapter already skips these; opencode must
+// match.
+func TestOpenCodeSkipsEmptyCommandMCP(t *testing.T) {
+	a := New(t.TempDir(), t.TempDir())
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{MCPs: map[string]config.MCP{
+		"remote": {Targets: []string{"opencode"}}, // no command
+		"local":  {Command: []string{"srv"}, Targets: []string{"opencode"}},
+	}}
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	var sawLocal bool
+	for _, ch := range cs.Changes {
+		if ch.Key == "mcp.remote" {
+			t.Fatalf("empty-command MCP planned as %s %s (New=%s)", ch.Action, ch.Key, ch.New)
+		}
+		if ch.Key == "mcp.local" {
+			sawLocal = true
+		}
+	}
+	if !sawLocal {
+		t.Fatal("valid sibling MCP missing from plan")
+	}
+}
+
 // TestOpenCodeNonObjectRootIsAnError reproduces the review's finding: a
 // managed file whose root is valid JSON but not an object (here an array)
 // must be a clear error naming the file, not silent downstream corruption.

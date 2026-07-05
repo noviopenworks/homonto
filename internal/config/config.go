@@ -63,5 +63,61 @@ func Load(path string) (*Config, error) {
 			return nil, fmt.Errorf("parse config: skills.own entry %q is not a plain directory name", n)
 		}
 	}
+	// Every other name becomes a key written into a tool's JSON file. sjson
+	// treats index-like segments ("0", "-1") as array positions, silently
+	// turning the containing object into a JSON ARRAY; empty names address
+	// nothing. Reject both up front with the offending entry named.
+	for name := range c.MCPs {
+		if err := validateKey("mcps", name); err != nil {
+			return nil, err
+		}
+	}
+	for _, p := range c.Plugins.Claude {
+		if err := validateKey("plugins.claude", p); err != nil {
+			return nil, err
+		}
+	}
+	for _, p := range c.Plugins.OpenCode {
+		if err := validateKey("plugins.opencode", p); err != nil {
+			return nil, err
+		}
+	}
+	for k := range c.Settings.Claude {
+		if err := validateKey("settings.claude", k); err != nil {
+			return nil, err
+		}
+	}
+	for k := range c.Settings.OpenCode {
+		if err := validateKey("settings.opencode", k); err != nil {
+			return nil, err
+		}
+	}
 	return &c, nil
+}
+
+// validateKey rejects names unusable as literal JSON object keys: empty, or
+// index-like (all digits, or "-" followed by digits — sjson array semantics).
+func validateKey(kind, name string) error {
+	if name == "" {
+		return fmt.Errorf("parse config: %s entry %q is empty", kind, name)
+	}
+	if indexLike(name) {
+		return fmt.Errorf("parse config: %s entry %q would be treated as a JSON array index and corrupt the target file; rename it", kind, name)
+	}
+	return nil
+}
+
+// indexLike reports whether sjson would treat name as an array index:
+// all-digit ("0", "42") or "-" followed by digits ("-1", the append form).
+func indexLike(name string) bool {
+	t := strings.TrimPrefix(name, "-")
+	if t == "" {
+		return false // "-" alone is a plain key
+	}
+	for i := 0; i < len(t); i++ {
+		if t[i] < '0' || t[i] > '9' {
+			return false
+		}
+	}
+	return true
 }

@@ -67,6 +67,47 @@ func TestLoadMissingFile(t *testing.T) {
 	}
 }
 
+// TestLoadRejectsIndexLikeNames reproduces the verify round's corruption
+// finding: sjson treats all-digit keys ("0") and "-" + digits ("-1") as array
+// indices, so [mcps."0"] silently turns mcpServers into a JSON ARRAY. Empty
+// names address nothing. All such names must be a clear load-time error for
+// every key homonto writes into a tool file.
+func TestLoadRejectsIndexLikeNames(t *testing.T) {
+	bad := []struct{ label, doc, name string }{
+		{"mcp empty", "[mcps.\"\"]\ncommand = [\"x\"]\n", ""},
+		{"mcp zero", "[mcps.\"0\"]\ncommand = [\"x\"]\n", "0"},
+		{"mcp minus-one", "[mcps.\"-1\"]\ncommand = [\"x\"]\n", "-1"},
+		{"claude setting", "[settings.claude]\n\"0\" = \"x\"\n", "0"},
+		{"opencode setting", "[settings.opencode]\n\"-1\" = \"x\"\n", "-1"},
+		{"claude plugin", "[plugins]\nclaude = [\"7\"]\n", "7"},
+		{"opencode plugin", "[plugins]\nopencode = [\"\"]\n", ""},
+	}
+	for _, tc := range bad {
+		p := filepath.Join(t.TempDir(), "homonto.toml")
+		if err := os.WriteFile(p, []byte(tc.doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(p)
+		if err == nil {
+			t.Fatalf("%s: name %q accepted; want load error", tc.label, tc.name)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.name)) {
+			t.Fatalf("%s: error does not name the entry %q: %v", tc.label, tc.name, err)
+		}
+	}
+	good := []string{"corp.internal", "a0", "0a", "v2", "-x1"}
+	for _, name := range good {
+		p := filepath.Join(t.TempDir(), "homonto.toml")
+		doc := "[mcps." + strconv.Quote(name) + "]\ncommand = [\"x\"]\n"
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load(p); err != nil {
+			t.Fatalf("valid name %q rejected: %v", name, err)
+		}
+	}
+}
+
 // TestLoadRejectsBadSkillNames reproduces the review's traversal finding:
 // own = ["../../../escaped"] must be a load-time error, not a symlink
 // planted outside $HOME. Every non-bare-directory-name entry is rejected.
