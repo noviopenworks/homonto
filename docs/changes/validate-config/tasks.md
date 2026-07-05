@@ -2,18 +2,18 @@
 
 ## 1. Reproduce
 
-- [ ] 1.1 Failing tests first: a config with an unknown MCP target, one with an
+- [x] 1.1 Failing tests first: a config with an unknown MCP target, one with an
       empty command, and one each for reserved `settings.claude.enabledPlugins`
       / `settings.opencode.mcp` / `settings.opencode.plugin` all currently load
       without error (demonstrating the silent-accept bug).
 
 ## 2. Fix
 
-- [ ] 2.1 In `config.Load`, validate MCP target names ∈ {claude, opencode};
+- [x] 2.1 In `config.Load`, validate MCP target names ∈ {claude, opencode};
       fail fast naming the unknown target and the valid set.
-- [ ] 2.2 In `config.Load`, reject an MCP with an empty/missing command; fail
+- [x] 2.2 In `config.Load`, reject an MCP with an empty/missing command; fail
       fast naming the MCP.
-- [ ] 2.3 In `config.Load`, reject reserved settings keys
+- [x] 2.3 In `config.Load`, reject reserved settings keys
       (`settings.claude.enabledPlugins`, `settings.opencode.mcp`,
       `settings.opencode.plugin`); fail fast naming the key.
 

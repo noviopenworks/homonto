@@ -67,9 +67,21 @@ func Load(path string) (*Config, error) {
 	// treats index-like segments ("0", "-1") as array positions, silently
 	// turning the containing object into a JSON ARRAY; empty names address
 	// nothing. Reject both up front with the offending entry named.
-	for name := range c.MCPs {
+	for name, m := range c.MCPs {
 		if err := validateKey("mcps", name); err != nil {
 			return nil, err
+		}
+		// An MCP with no command cannot project — both adapters would skip it,
+		// so a declared server would silently do nothing. Fail fast instead.
+		if len(m.Command) == 0 {
+			return nil, fmt.Errorf("parse config: mcps entry %q has no command; an MCP server needs a command to run", name)
+		}
+		// A target that names no known tool matches no adapter, so the MCP is
+		// projected nowhere — a silent typo. Only claude and opencode exist.
+		for _, target := range m.Targets {
+			if target != "claude" && target != "opencode" {
+				return nil, fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", name, target)
+			}
 		}
 	}
 	for _, p := range c.Plugins.Claude {
@@ -82,14 +94,24 @@ func Load(path string) (*Config, error) {
 			return nil, err
 		}
 	}
+	// Settings keys that homonto itself manages in the same tool file would
+	// collide with its own writes: claude projects plugins as `enabledPlugins`
+	// into settings.json; opencode projects MCPs and plugins as the `mcp` and
+	// `plugin` structures in opencode.jsonc. Reject those reserved names.
 	for k := range c.Settings.Claude {
 		if err := validateKey("settings.claude", k); err != nil {
 			return nil, err
+		}
+		if k == "enabledPlugins" {
+			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages plugins there); rename it", k)
 		}
 	}
 	for k := range c.Settings.OpenCode {
 		if err := validateKey("settings.opencode", k); err != nil {
 			return nil, err
+		}
+		if k == "mcp" || k == "plugin" {
+			return nil, fmt.Errorf("parse config: settings.opencode key %q is reserved (homonto manages %s there); rename it", k, k)
 		}
 	}
 	return &c, nil

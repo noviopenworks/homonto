@@ -128,3 +128,90 @@ func TestLoadRejectsBadSkillNames(t *testing.T) {
 		}
 	}
 }
+
+func loadDoc(t *testing.T, doc string) error {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(p)
+	return err
+}
+
+// TestLoadRejectsUnknownTargets reproduces NEXT_AGENT gap #3: an MCP whose
+// targets name a tool that is not claude/opencode matches no adapter and is
+// silently projected nowhere. Load must fail naming the unknown target.
+func TestLoadRejectsUnknownTargets(t *testing.T) {
+	bad := []struct{ label, doc, offender string }{
+		{"typo", "[mcps.x]\ncommand=[\"c\"]\ntargets=[\"claud\"]\n", "claud"},
+		{"unknown tool", "[mcps.x]\ncommand=[\"c\"]\ntargets=[\"vscode\"]\n", "vscode"},
+		{"one good one bad", "[mcps.x]\ncommand=[\"c\"]\ntargets=[\"claude\",\"opencde\"]\n", "opencde"},
+	}
+	for _, tc := range bad {
+		err := loadDoc(t, tc.doc)
+		if err == nil {
+			t.Fatalf("%s: unknown target %q accepted; want load error", tc.label, tc.offender)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.offender)) {
+			t.Fatalf("%s: error does not name the offender %q: %v", tc.label, tc.offender, err)
+		}
+	}
+	if err := loadDoc(t, "[mcps.x]\ncommand=[\"c\"]\ntargets=[\"claude\",\"opencode\"]\n"); err != nil {
+		t.Fatalf("valid targets rejected: %v", err)
+	}
+	// No targets means all tools — still valid.
+	if err := loadDoc(t, "[mcps.x]\ncommand=[\"c\"]\n"); err != nil {
+		t.Fatalf("default targets rejected: %v", err)
+	}
+}
+
+// TestLoadRejectsEmptyCommand reproduces gap #3: an MCP with no runnable
+// command is skipped by both adapters (desired() len(Command)==0), a silent
+// no-op. Load must fail naming the MCP that cannot project.
+func TestLoadRejectsEmptyCommand(t *testing.T) {
+	for _, tc := range []struct{ label, doc string }{
+		{"missing command", "[mcps.foo]\ntargets=[\"claude\"]\n"},
+		{"empty command", "[mcps.foo]\ncommand=[]\n"},
+	} {
+		err := loadDoc(t, tc.doc)
+		if err == nil {
+			t.Fatalf("%s: accepted; want load error", tc.label)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote("foo")) {
+			t.Fatalf("%s: error does not name the MCP %q: %v", tc.label, "foo", err)
+		}
+	}
+}
+
+// TestLoadRejectsReservedSettingKeys reproduces gap #3: a settings key that
+// collides with a structure homonto itself manages in the same tool file
+// (claude enabledPlugins in settings.json; opencode mcp/plugin in
+// opencode.jsonc) must be a load error, not a silent fight at apply.
+func TestLoadRejectsReservedSettingKeys(t *testing.T) {
+	for _, tc := range []struct{ label, doc, key string }{
+		{"claude enabledPlugins", "[settings.claude]\nenabledPlugins={}\n", "enabledPlugins"},
+		{"opencode mcp", "[settings.opencode]\nmcp={}\n", "mcp"},
+		{"opencode plugin", "[settings.opencode]\nplugin=[]\n", "plugin"},
+	} {
+		err := loadDoc(t, tc.doc)
+		if err == nil {
+			t.Fatalf("%s: reserved key accepted; want load error", tc.label)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.key)) {
+			t.Fatalf("%s: error does not name the key %q: %v", tc.label, tc.key, err)
+		}
+	}
+	// Exact collisions only: the same names are fine in the OTHER tool, and
+	// non-colliding keys load normally.
+	for _, ok := range []string{
+		"[settings.claude]\nmcpServers={}\n",    // claude MCPs live in .claude.json, not settings.json
+		"[settings.claude]\nmcp={}\n",           // not a claude-managed settings key
+		"[settings.opencode]\nenabledPlugins={}\n", // claude-only reserved name
+		"[settings.claude]\nmodel=\"opus\"\n",
+	} {
+		if err := loadDoc(t, ok); err != nil {
+			t.Fatalf("non-reserved settings rejected: %v (doc %q)", err, ok)
+		}
+	}
+}
