@@ -183,6 +183,89 @@ func TestStatusReportsMissingManagedKey(t *testing.T) {
 	}
 }
 
+// TestStatusDriftedKeyExcludedFromPendingWhileOthersCount proves the pending
+// exclusion is specific to the drifted key: a key that is BOTH disk-drifted and
+// config-edited is reported once as drift and NOT counted in pending, while a
+// sibling key that is a pure config edit (disk == Applied) still counts. This
+// locks in that pending tallies only OTHER config work, never the drifted key.
+func TestStatusDriftedKeyExcludedFromPendingWhileOthersCount(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"),
+		[]byte("[settings.claude]\nmodel=\"opus\"\ntheme=\"dark\"\n"), 0o644)
+
+	e := buildStatusEngine(t, repo, home)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+
+	// model: change ON DISK to "sonnet" (disk drift) while editing desired to a
+	// DIFFERENT "haiku" — so desired != disk != Applied, both disk-drifted AND a
+	// config edit. theme: leave disk at "dark" (== Applied) but edit desired to
+	// "light" — a pure config edit that must count as pending.
+	sj := filepath.Join(home, ".claude", "settings.json")
+	os.WriteFile(sj, []byte(`{"model":"sonnet","theme":"dark"}`), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"),
+		[]byte("[settings.claude]\nmodel=\"haiku\"\ntheme=\"light\"\n"), 0o644)
+
+	drift, pending, err := buildStatusEngine(t, repo, home).Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// model appears exactly once as drift; the pure config edit on theme does not.
+	if len(drift) != 1 || !strings.Contains(drift[0], "model") || !strings.Contains(drift[0], "drifted") {
+		t.Fatalf("expected exactly one drift entry for model, got %v", drift)
+	}
+	if strings.Contains(strings.Join(drift, "\n"), "theme") {
+		t.Fatalf("a pure config edit on theme must not be reported as drift, got %v", drift)
+	}
+	// pending counts only the non-drifted config edit (theme); the drifted model
+	// key is excluded even though it is also a config change.
+	if pending != 1 {
+		t.Fatalf("pending must count only the non-drifted config edit, got pending=%d", pending)
+	}
+}
+
+// TestStatusSkipsErroredAdapterButReportsOther proves a per-adapter drift-scan
+// failure is isolated: a malformed ~/.claude.json makes the Claude adapter's
+// Plan and ObserveHashes both fail, so it is skipped with a warning, while a
+// genuine OpenCode drift is still reported — no false "No drift".
+func TestStatusSkipsErroredAdapterButReportsOther(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"),
+		[]byte("[settings.opencode]\ntheme=\"dark\"\n"), 0o644)
+
+	e := buildStatusEngine(t, repo, home)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+
+	// Drift the OpenCode setting on disk out of band.
+	oc := filepath.Join(home, ".config", "opencode", "opencode.jsonc")
+	os.WriteFile(oc, []byte(`{"theme":"light"}`), 0o644)
+	// Corrupt ~/.claude.json so the Claude adapter cannot parse it: both its Plan
+	// and ObserveHashes fail, exercising the skip-with-warning path.
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{ not json`), 0o644)
+
+	e2 := buildStatusEngine(t, repo, home)
+	drift, _, err := e2.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The broken Claude adapter is reported as a warning, not a hard failure.
+	if len(e2.Warnings) == 0 || !strings.Contains(strings.Join(e2.Warnings, "\n"), "claude") {
+		t.Fatalf("expected a warning naming the skipped claude adapter, got %v", e2.Warnings)
+	}
+	// The healthy OpenCode adapter still reports its drift.
+	joined := strings.Join(drift, "\n")
+	if !strings.Contains(joined, "opencode") || !strings.Contains(joined, "theme") {
+		t.Fatalf("opencode drift must still be reported despite the claude skip, got %v", drift)
+	}
+}
+
 func TestStatusCleanAfterApply(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()

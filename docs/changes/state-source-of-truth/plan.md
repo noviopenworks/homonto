@@ -158,7 +158,7 @@ proven by the final validation task.
 
 ## Task 9 — Validation (the change proves itself)
 
-- [ ] done
+- [x] done
 - Files: none (evidence only) — plus any test gaps found
 - Do: full suite + manual smoke. Manual: scratch config with a pre-existing
   matching resource → `apply` adopts silently ("Reconciled …"); edit config →

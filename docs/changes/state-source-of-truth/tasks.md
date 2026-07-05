@@ -55,11 +55,11 @@
 
 ## 6. Validation
 
-- [ ] 6.1 Tests: adoption records state + tool file unchanged + pruneable;
+- [x] 6.1 Tests: adoption records state + tool file unchanged + pruneable;
       adoption-only apply (no prompt, reconcile summary, second apply no-op);
       drift true positive (out-of-band disk edit); drift true negative (config
       edit, disk unchanged, NOT drift, pending=1); missing key; claude/opencode
       parity incl. opencode plugin; secret behavior unchanged.
-- [ ] 6.2 `go test ./...`, `go vet ./...`, `go build`, `go test -race ./...`
+- [x] 6.2 `go test ./...`, `go vet ./...`, `go build`, `go test -race ./...`
       pass; manual `status`/`apply` smoke on a scratch config demonstrating the
       pending-vs-drift distinction and silent adoption.
