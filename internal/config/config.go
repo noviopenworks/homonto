@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -53,6 +55,13 @@ func Load(path string) (*Config, error) {
 	var c Config
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	// Skill names become symlink path components under $HOME; anything but a
+	// bare directory name (traversal, separators, "..") is rejected up front.
+	for _, n := range c.Skills.Own {
+		if n == "" || n == "." || n == ".." || strings.ContainsAny(n, `/\`) || n != filepath.Base(n) {
+			return nil, fmt.Errorf("parse config: skills.own entry %q is not a plain directory name", n)
+		}
 	}
 	return &c, nil
 }

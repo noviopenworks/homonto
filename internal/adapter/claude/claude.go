@@ -2,8 +2,10 @@ package claude
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
@@ -131,6 +133,9 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		}
 		cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
 	}
+	// Keys come from map iteration (random order); a plan must render the
+	// same way every run. Keys are unique within a changeset.
+	sort.SliceStable(cs.Changes, func(i, j int) bool { return cs.Changes[i].Key < cs.Changes[j].Key })
 	return cs, nil
 }
 
@@ -178,11 +183,11 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if c.Action == "delete" {
 			switch {
 			case hasPrefix(c.Key, "mcp."):
-				mj, err = jsonutil.DeleteJSON(mj, "mcpServers."+trim(c.Key, "mcp."))
+				mj, err = jsonutil.DeleteJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
 			case hasPrefix(c.Key, "setting."):
-				sj, err = jsonutil.DeleteJSON(sj, trim(c.Key, "setting."))
+				sj, err = jsonutil.DeleteJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")))
 			case hasPrefix(c.Key, "plugin."):
-				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+trim(c.Key, "plugin."))
+				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
 				// is a conflict error inside link.Remove.
@@ -202,13 +207,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if err != nil {
 			return err
 		}
+		// Config-supplied names are escaped so sjson writes the literal key
+		// (matching current()'s literal reads) instead of nesting on dots or
+		// silently dropping the write on @, | or #.
 		switch {
 		case hasPrefix(c.Key, "mcp."):
-			mj, err = jsonutil.SetJSON(mj, "mcpServers."+trim(c.Key, "mcp."), val)
+			mj, err = jsonutil.SetJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
 		case hasPrefix(c.Key, "setting."):
-			sj, err = jsonutil.SetJSON(sj, trim(c.Key, "setting."), val)
+			sj, err = jsonutil.SetJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
 		case hasPrefix(c.Key, "plugin."):
-			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+trim(c.Key, "plugin."), val)
+			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
 		}
 		if err != nil {
 			return err
@@ -245,5 +253,12 @@ func readStandardized(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return jsonutil.Standardize(b)
+	doc, err := jsonutil.Standardize(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := jsonutil.ObjectRoot(doc); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return doc, nil
 }

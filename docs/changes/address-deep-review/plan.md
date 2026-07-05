@@ -34,7 +34,7 @@ Design: `design.md` (Status: Confirmed 2026-07-04). One commit per task.
 
 ## Task 4 — robustness
 
-- [ ] done
+- [x] done
 - Files: internal/jsonutil/jsonutil.go, internal/config/config.go,
   both adapters, tests
 - Do: design §"Injection/traversal robustness" + §"Determinism" —

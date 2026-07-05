@@ -10,7 +10,7 @@
       memoized resolver
 - [x] 1.3 Pruning: delete action end-to-end (plan/apply/state/render/
       HasChanges), skill links recorded in state and pruned safely
-- [ ] 1.4 Robustness: sjson path escaping everywhere, skill-name
+- [x] 1.4 Robustness: sjson path escaping everywhere, skill-name
       validation at config load, sorted deterministic plans, non-object
       root error
 

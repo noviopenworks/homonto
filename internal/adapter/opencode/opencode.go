@@ -2,6 +2,7 @@ package opencode
 
 import (
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
@@ -51,15 +52,17 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	cs := adapter.ChangeSet{Tool: "opencode"}
 
+	// Config-supplied names are escaped so reads (and Apply's writes, which
+	// escape the same way) address the literal key, not gjson path syntax.
 	des := a.desiredMCPs(c)
 	for key, want := range des {
-		disk, hasDisk := jsonutil.GetJSON(doc, "mcp."+trim(key, "mcp."))
+		disk, hasDisk := jsonutil.GetJSON(doc, "mcp."+jsonutil.EscapePath(trim(key, "mcp.")))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
 	for k, v := range c.Settings.OpenCode {
 		key := "setting." + k
 		want := mustJSON(v)
-		disk, hasDisk := jsonutil.GetJSON(doc, k)
+		disk, hasDisk := jsonutil.GetJSON(doc, jsonutil.EscapePath(k))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
 	for _, p := range c.Plugins.OpenCode {
@@ -102,6 +105,9 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		}
 		cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
 	}
+	// Keys come from map iteration (random order); a plan must render the
+	// same way every run. Keys are unique within a changeset.
+	sort.SliceStable(cs.Changes, func(i, j int) bool { return cs.Changes[i].Key < cs.Changes[j].Key })
 	return cs, nil
 }
 
@@ -153,9 +159,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if c.Action == "delete" {
 			switch {
 			case hasPrefix(c.Key, "mcp."):
-				doc, err = jsonutil.DeleteJSON(doc, "mcp."+trim(c.Key, "mcp."))
+				doc, err = jsonutil.DeleteJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
 			case hasPrefix(c.Key, "setting."):
-				doc, err = jsonutil.DeleteJSON(doc, trim(c.Key, "setting."))
+				doc, err = jsonutil.DeleteJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")))
 			case hasPrefix(c.Key, "plugin."):
 				doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
 			case hasPrefix(c.Key, "skill."):
@@ -177,11 +183,12 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		if err != nil {
 			return err
 		}
+		// Escaped like Plan's reads: the write must land on the literal key.
 		switch {
 		case hasPrefix(c.Key, "mcp."):
-			doc, err = jsonutil.SetJSON(doc, "mcp."+trim(c.Key, "mcp."), val)
+			doc, err = jsonutil.SetJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
 		case hasPrefix(c.Key, "setting."):
-			doc, err = jsonutil.SetJSON(doc, trim(c.Key, "setting."), val)
+			doc, err = jsonutil.SetJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
 		case hasPrefix(c.Key, "plugin."):
 			doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin."))
 		}

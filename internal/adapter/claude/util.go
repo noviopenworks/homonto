@@ -2,19 +2,13 @@ package claude
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
 )
 
-func contains(ss []string, x string) bool {
-	for _, s := range ss {
-		if s == x {
-			return true
-		}
-	}
-	return false
-}
+func contains(ss []string, x string) bool { return slices.Contains(ss, x) }
 
 func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 

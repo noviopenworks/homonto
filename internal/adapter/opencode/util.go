@@ -2,21 +2,16 @@ package opencode
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/tidwall/gjson"
 )
 
-func contains(ss []string, x string) bool {
-	for _, s := range ss {
-		if s == x {
-			return true
-		}
-	}
-	return false
-}
+func contains(ss []string, x string) bool { return slices.Contains(ss, x) }
 
 func arrayHas(doc []byte, path, elem string) bool {
 	for _, v := range gjson.GetBytes(doc, path).Array() {
@@ -51,5 +46,12 @@ func readStandardized(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return jsonutil.Standardize(b)
+	doc, err := jsonutil.Standardize(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := jsonutil.ObjectRoot(doc); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return doc, nil
 }

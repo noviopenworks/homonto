@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -62,5 +64,26 @@ func TestLoad(t *testing.T) {
 func TestLoadMissingFile(t *testing.T) {
 	if _, err := Load(filepath.Join(t.TempDir(), "nope.toml")); err == nil {
 		t.Fatal("expected error for missing file")
+	}
+}
+
+// TestLoadRejectsBadSkillNames reproduces the review's traversal finding:
+// own = ["../../../escaped"] must be a load-time error, not a symlink
+// planted outside $HOME. Every non-bare-directory-name entry is rejected.
+func TestLoadRejectsBadSkillNames(t *testing.T) {
+	for _, bad := range []string{"../evil", "..", ".", "", "a/b", `a\b`, "/abs"} {
+		dir := t.TempDir()
+		p := filepath.Join(dir, "homonto.toml")
+		doc := "[skills]\nown = [" + strconv.Quote(bad) + "]\n"
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(p)
+		if err == nil {
+			t.Fatalf("skill name %q accepted; want load error", bad)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(bad)) {
+			t.Fatalf("error for %q does not name the entry: %v", bad, err)
+		}
 	}
 }
