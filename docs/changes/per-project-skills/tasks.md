@@ -40,9 +40,9 @@
 
 ## 6. Specs & guides
 
-- [ ] 6.1 Write delta specs under this change's `specs/` for `config-model`,
+- [x] 6.1 Write delta specs under this change's `specs/` for `config-model`,
       `tool-adapters`, `cli-commands` (MODIFIED requirements + scenarios).
-- [ ] 6.2 Update `docs/guides/` / `README.md` for the new `scope` setting.
+- [x] 6.2 Update `docs/guides/` / `README.md` for the new `scope` setting.
 
 ## 7. Validation
 

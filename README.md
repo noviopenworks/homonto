@@ -51,6 +51,7 @@ command = ["npx", "-y", "@modelcontextprotocol/server-brave-search"]
 env = { BRAVE_API_KEY = "${pass:ai/brave}" }
 
 [skills]
+scope = "user"                            # user (default) or project — see below
 own = ["graphify"]                        # from content/skills/
 
 [plugins]
@@ -90,6 +91,22 @@ its own symlink (reported as a conflict instead). A skills-only apply leaves
 tool JSON files byte-for-byte untouched — adapters write a file only when a
 managed key inside it actually changes — so OpenCode JSONC comments survive
 link-only applies.
+
+### Skill scope — user or project
+
+`[skills] scope` chooses where owned skills are linked (it affects skills only;
+MCP servers and settings always project into your global tool files):
+
+- `scope = "user"` (default, and the behavior when omitted) — links into
+  `~/.claude/skills/` and `~/.config/opencode/skills/`.
+- `scope = "project"` — links into the project itself, next to `homonto.toml`:
+  `<repo>/.claude/skills/` and `<repo>/.opencode/skills/`. Use this to keep a
+  project's skills in-repo instead of your global tool config.
+
+Switching scope is clean: `plan` shows the link relocating from its old location
+to the new one, and `apply` removes the old link as it creates the new one, so no
+orphaned symlink is left behind. `status` and `doctor` report against whichever
+location the current scope selects.
 
 ## Surgical merge & the JSONC caveat
 

@@ -105,7 +105,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 10 — Docs: README + guide for `scope`
 
-- [ ] done
+- [x] done
 - Files: `README.md`, `docs/guides/` (the relevant using-homonto guide)
 - Do: document `[skills] scope = "user" | "project"`, the per-tool project locations, and the
   scope-switch relocate behavior.
