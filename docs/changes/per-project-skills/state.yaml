@@ -1,6 +1,6 @@
 change: per-project-skills
 workflow: full
-phase: build
+phase: close
 created: 2026-07-06
 base_ref: e14db90ea0f30c9797898911a59d3c5662c71ea0
 deps: []
@@ -11,14 +11,15 @@ decisions:
   directive: null
 verify:
   mode: full
-  result: pending
+  result: pass
 guides: pending
 metrics:
   phases:
     open: 2026-07-06
     design: 2026-07-06
     build: 2026-07-06
-  tasks_total: 11
-  verify_rounds: 1
+    verify: 2026-07-06
+  tasks_total: 13
+  verify_rounds: 2
   upgraded: false
 archived: false
