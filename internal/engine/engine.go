@@ -14,13 +14,14 @@ import (
 
 // Engine wires config, adapters, secret resolver, and state for plan/apply.
 type Engine struct {
-	Cfg        *config.Config
-	Adapters   []adapter.Adapter
-	State      *state.State
-	StateDir   string
-	ContentDir string
-	Home       string
-	Resolver   *secret.Resolver
+	Cfg         *config.Config
+	Adapters    []adapter.Adapter
+	State       *state.State
+	StateDir    string
+	ContentDir  string
+	Home        string
+	ProjectRoot string // directory of homonto.toml; skill-scope project root
+	Resolver    *secret.Resolver
 	// Warnings collects non-fatal per-adapter failures from the last Plan (e.g.
 	// an unparseable tool file); other tools still proceed.
 	Warnings []string
@@ -42,19 +43,30 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		}
 		contentDir = filepath.Join(base, contentDir)
 	}
+	// The project root anchors project-scope skill installs — the same directory
+	// that already anchors content/ and .homonto/ (the config file's directory).
+	projectRoot, err := filepath.Abs(filepath.Dir(configPath))
+	if err != nil {
+		return nil, err
+	}
 	stateDir := filepath.Join(filepath.Dir(configPath), ".homonto")
 	st, err := state.Load(stateDir)
 	if err != nil {
 		return nil, err
 	}
+	scope := cfg.Skills.Scope
 	return &Engine{
-		Cfg:        cfg,
-		Adapters:   []adapter.Adapter{claude.New(home, contentDir), opencode.New(home, contentDir)},
-		State:      st,
-		StateDir:   stateDir,
-		ContentDir: contentDir,
-		Home:       home,
-		Resolver:   secret.NewResolver(),
+		Cfg: cfg,
+		Adapters: []adapter.Adapter{
+			claude.New(home, contentDir).WithScope(scope, projectRoot),
+			opencode.New(home, contentDir).WithScope(scope, projectRoot),
+		},
+		State:       st,
+		StateDir:    stateDir,
+		ContentDir:  contentDir,
+		Home:        home,
+		ProjectRoot: projectRoot,
+		Resolver:    secret.NewResolver(),
 	}, nil
 }
 

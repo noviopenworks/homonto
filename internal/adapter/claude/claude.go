@@ -13,30 +13,47 @@ import (
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
 	"github.com/noviopenworks/homonto/internal/secret"
+	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/state"
 )
 
 // Adapter projects desired config into Claude Code's files under home.
 type Adapter struct {
-	home    string
-	content string
-	skills  []string
+	home        string
+	content     string
+	scope       string // "" or "user" → home layout; "project" → projectRoot layout
+	projectRoot string // directory of homonto.toml; used only for project scope
+	skills      []string
 }
 
-// New builds a Claude adapter. home is the $HOME root; content holds owned
-// skills.
+// New builds a Claude adapter at user scope. home is the $HOME root; content
+// holds owned skills. Use WithScope to install skills under a project root.
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
+
+// WithScope sets the skill install scope and project root (the homonto.toml
+// directory). It affects skill symlink placement only — MCP servers and
+// settings always project under home. Empty scope means user scope. Returns the
+// adapter for chaining.
+func (a *Adapter) WithScope(scope, projectRoot string) *Adapter {
+	a.scope, a.projectRoot = scope, projectRoot
+	return a
+}
 
 func (a *Adapter) Name() string { return "claude" }
 
 func (a *Adapter) claudeJSON() string   { return filepath.Join(a.home, ".claude.json") }
 func (a *Adapter) settingsJSON() string { return filepath.Join(a.home, ".claude", "settings.json") }
 
+// skillsDir is the directory owned-skill symlinks live in for the active scope.
+func (a *Adapter) skillsDir() string {
+	return skillpath.Dir("claude", a.scope, a.home, a.projectRoot)
+}
+
 // links maps each owned skill's destination to its content source.
 func (a *Adapter) links() map[string]string {
 	out := map[string]string{}
 	for _, name := range a.skills {
-		out[filepath.Join(a.home, ".claude", "skills", name)] = filepath.Join(a.content, "skills", name)
+		out[filepath.Join(a.skillsDir(), name)] = filepath.Join(a.content, "skills", name)
 	}
 	return out
 }
@@ -190,7 +207,7 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 		if hasPrefix(key, "skill.") {
 			// skill.* lives on disk as a symlink, not a JSON value. Its Applied
 			// was stored as Hash(dst + " -> " + src); reproduce it from readlink.
-			dst := filepath.Join(a.home, ".claude", "skills", trim(key, "skill."))
+			dst := filepath.Join(a.skillsDir(), trim(key, "skill."))
 			target, err := os.Readlink(dst)
 			if err != nil {
 				continue // missing or not a symlink → omit (engine infers missing)
@@ -249,7 +266,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
 				// is a conflict error inside link.Remove.
-				err = link.Remove(filepath.Join(a.home, ".claude", "skills", trim(c.Key, "skill.")), a.content)
+				err = link.Remove(filepath.Join(a.skillsDir(), trim(c.Key, "skill.")), a.content)
 			}
 			if err != nil {
 				return err

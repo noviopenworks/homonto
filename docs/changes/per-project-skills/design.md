@@ -47,14 +47,16 @@ New + changed pieces (no MCP/settings path touched anywhere):
 
 - **`internal/engine/engine.go`** — `Build` computes `projectRoot, _ := filepath.Abs(filepath.Dir(configPath))`
   (the same directory already used to anchor `content/` and `.homonto/`), reads
-  `scope := cfg.Skills.Scope`, constructs `claude.New(home, contentDir, scope, projectRoot)` and
-  `opencode.New(home, contentDir, scope, projectRoot)`, and stores `ProjectRoot` on `Engine`
-  (used by `Doctor`).
+  `scope := cfg.Skills.Scope`, constructs `claude.New(home, contentDir).WithScope(scope,
+  projectRoot)` and the opencode equivalent, and stores `ProjectRoot` on `Engine` (used by
+  `Doctor`). (Refinement during build: a `WithScope` builder rather than a 4-arg `New` keeps the
+  established `New(home, content)` signature intact, so the ~40 existing adapter-test call sites
+  remain untouched user-scope regression coverage; empty scope = user.)
 
 - **`internal/adapter/claude/claude.go` & `internal/adapter/opencode/opencode.go`** —
-  each adapter gains `scope` and `projectRoot` fields and two helpers:
+  each adapter gains `scope` and `projectRoot` fields (set via `WithScope`) and two helpers:
   `skillsDir()  = skillpath.Dir(<tool>, a.scope, a.home, a.projectRoot)` and
-  `inactiveSkillsDir() = skillpath.Dir(<tool>, otherScope(a.scope), a.home, a.projectRoot)`.
+  `inactiveSkillsDir() = skillpath.Dir(<tool>, skillpath.Other(a.scope), a.home, a.projectRoot)`.
   The three current join sites — `links()`, the `skill.` branch of `ObserveHashes`, and the
   `skill.` delete branch of `Apply` — all switch to `filepath.Join(a.skillsDir(), name)`.
   - **Plan (relocate)**: after `link.Plan(a.links())`, for each owned skill whose new-location

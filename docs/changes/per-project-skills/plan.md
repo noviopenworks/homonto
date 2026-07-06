@@ -26,7 +26,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 3 — Thread scope + projectRoot through the engine
 
-- [ ] done
+- [x] done
 - Files: `internal/engine/engine.go` (+ adjust any direct `engine.Build`/adapter `New`
   call sites and their tests as needed to compile)
 - Do: in `Build`, compute `projectRoot, _ := filepath.Abs(filepath.Dir(configPath))`, read
@@ -37,7 +37,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 4 — Make both adapters scope-aware (`skillsDir`, collapse join sites)  (risk: high)
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/claude/claude.go`, `internal/adapter/opencode/opencode.go`, and
   their `*_test.go` (constructor calls + new project-scope cases)
 - Do: add `scope`/`projectRoot` fields; `New(home, content, scope, projectRoot string)`;

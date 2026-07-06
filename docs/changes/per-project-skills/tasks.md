@@ -11,15 +11,15 @@
 - [x] 2.1 Add `internal/skillpath.Dir(tool, scope, home, projectRoot)` — the single source
       of truth (claude: `.claude/skills`; opencode: user `.config/opencode/skills`, project
       `.opencode/skills`), with tests for all four (tool × scope) mappings.
-- [ ] 2.2 `engine.Build`: resolve `projectRoot = dir(configPath)`, read `cfg.Skills.Scope`,
-      pass `scope`+`projectRoot` into both adapter constructors, store `Engine.ProjectRoot`;
+- [x] 2.2 `engine.Build`: resolve `projectRoot = dir(configPath)`, read `cfg.Skills.Scope`,
+      pass `scope`+`projectRoot` into both adapters (`.WithScope(...)`), store `Engine.ProjectRoot`;
       MCP/settings paths untouched.
 
 ## 3. Adapters
 
-- [ ] 3.1 Claude adapter: add `scope`/`projectRoot` fields + `skillsDir()`/`inactiveSkillsDir()`
+- [x] 3.1 Claude adapter: add `scope`/`projectRoot` fields + `WithScope` + `skillsDir()`
       (via `skillpath`); collapse the three join sites (`links`, `ObserveHashes`, Apply/remove).
-- [ ] 3.2 OpenCode adapter: same, using `.opencode/skills` for project scope.
+- [x] 3.2 OpenCode adapter: same, using `.opencode/skills` for project scope.
 - [ ] 3.3 Relocate + prune (both adapters): Plan renders a scope switch as a relocate
       (`skill.<name>` old→new); Apply prunes the inactive-scope link (`link.Remove`, no-op when
       absent, conflict-safe) before creating the active link — no orphan.
