@@ -7,9 +7,11 @@
 
 `homonto` v1 remains focused on the safe core: one declarative
 `homonto.toml`, a plan/confirm/apply pipeline, reference-only secrets,
-surgical writes, and Claude Code/OpenCode adapters. The core is implemented and
-testable, but several state, validation, import, status, and release-readiness
-gaps remain before v1 should be treated as dependable.
+surgical writes, and Claude Code/OpenCode adapters. The core is implemented,
+testable (129 tests across 15 packages), and the original v1 safety,
+idempotency, drift, validation, and CI gaps have been closed. What remains is
+either consciously accepted as a documented limitation or belongs to the
+post-v1 roadmap below.
 
 Post-v1 expands Homonto from a config projector into a manager for the AI
 coding-tool ecosystem around those configs: built-in content templates, richer
@@ -60,22 +62,32 @@ Implemented and verified since the original v1 review:
 - Atomic writes preserve existing modes and create new files as `0600`.
 - State is persisted after each successful adapter.
 - Plan output is deterministic, and non-object JSON roots are rejected.
+- **State adoption:** declared values already matching disk are adopted into
+  state via a silent `adopt` action, so pruning and drift see pre-existing
+  matching resources without rewriting user files.
+- **True drift in `status`:** `status` compares each adapter's on-disk hashes
+  (`ObserveHashes`) against the recorded last-applied hash, separate from
+  pending desired-vs-disk config changes; a pure `homonto.toml` edit is no longer
+  reported as drift.
+- **Input validation:** `config.Load` rejects unknown MCP targets, empty MCP
+  commands, reserved settings keys, and index-like/empty managed names.
+- **Skills-only apply is link-only:** tool JSON files are written only when a
+  managed key in them changes, so OpenCode JSONC comments survive link-only
+  applies.
+- **Doctor parity:** `doctor` checks both the Claude and OpenCode skill symlinks
+  for every owned skill.
+- **CI expanded:** gofmt, `go mod tidy -diff`, vet, build, test, race, stamped
+  version smoke, and a temp-HOME CLI smoke all run in CI.
 
-Remaining v1 blockers, in recommended order:
+Remaining v1 work, in recommended order:
 
-1. **State adoption:** declared values that already match disk must be adopted
-   into state so later pruning/status treat them as managed.
-2. **True status semantics:** `homonto status` should compare disk to
-   `.homonto/state.json`, not reuse current desired-state planning.
-3. **Validation:** reject unsupported targets, empty MCP commands, and settings
-   keys that collide with adapter-owned namespaces.
-4. **Import scope/redaction:** either expand import or keep it explicitly scoped;
-   redact obvious secrets in command arguments if those are preserved.
-5. **Skills-only apply side effects:** avoid rewriting JSON files for link-only
-   changes, or keep the side effect documented everywhere.
-6. **Doctor parity:** check OpenCode skill links, not just Claude links.
-7. **CI/release readiness:** add build, race, formatting, tidy, stamped-version,
-   and CLI smoke checks.
+1. **Import scope/redaction:** `import` is intentionally narrow (Claude global
+   MCP servers only; env-value redaction only; command/args preserved verbatim).
+   Either expand it into a fuller migration tool or keep it explicitly scoped;
+   the narrow behavior is already documented in `cli-commands.md`.
+2. **OpenCode JSONC comments:** any apply that touches `opencode.jsonc` rewrites
+   it as normalized JSON and removes all comments. This is an accepted,
+   documented limitation; comment preservation is an open question, not a bug.
 
 Future agents should read `docs/NEXT_AGENT.md` before starting v1 work.
 

@@ -86,9 +86,10 @@ Guarantees:
 Skills you author live in `content/` and are **symlinked**
 into each tool, so editing `content/...` is instantly live everywhere. `apply`
 ensures the links exist and point correctly; it never clobbers a file that isn't
-its own symlink (reported as a conflict instead). Current adapters still read
-and may rewrite tool config files during a skills-only apply, so OpenCode JSONC
-comments can be normalized even when the requested change is only links.
+its own symlink (reported as a conflict instead). A skills-only apply leaves
+tool JSON files byte-for-byte untouched — adapters write a file only when a
+managed key inside it actually changes — so OpenCode JSONC comments survive
+link-only applies.
 
 ## Surgical merge & the JSONC caveat
 

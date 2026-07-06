@@ -7,10 +7,11 @@ with this handoff and the current source.
 
 ## Current Verified State
 
-- `rtk go test ./...` passed: 92 tests in 15 packages.
+- `rtk go test ./...` passed: 129 tests in 15 packages.
 - `rtk go vet ./...` passed with no issues.
 - `rtk go build -o /tmp/opencode/homonto-analysis-build .` succeeded.
-- `rtk go test -race ./...` passed: 92 tests in 15 packages.
+- `rtk go test -race ./...` passed: 129 tests in 15 packages.
+- `rtk gofmt -l .` clean. `homonto version` prints the stamped version.
 
 ## Fixed Since The Original Deep Review
 
@@ -25,43 +26,51 @@ with this handoff and the current source.
   later adapter can fail.
 - Plan output is sorted for deterministic rendering.
 - Non-object JSON roots are rejected before writes.
+- **State adoption:** a declared value already matching disk is adopted into
+  state silently via an `adopt` action (no file rewrite), so pruning and drift
+  see pre-existing matching resources. See `internal/adapter/{claude,opencode}`
+  and `internal/plan` (`HasAdoptions`).
+- **True drift in `status`:** `engine.Status` compares each adapter's
+  `ObserveHashes` (hash of current on-disk value) against the recorded
+  `Entry.Applied`, separate from pending desired-vs-disk config changes; drifted
+  keys are excluded from the pending count. A pure `homonto.toml` edit is no
+  longer mistaken for disk drift.
+- **Input validation:** `config.Load` rejects unknown MCP targets, empty MCP
+  commands, reserved settings keys (`enabledPlugins`, `mcp`, `plugin`), and
+  index-like/empty managed names.
+- **Skills-only apply is link-only:** adapters write a tool JSON file only when
+  a managed key in it changed (`*Changed` guards); `adopt`/`noop`/`skill.*`
+  leave JSON byte-for-byte untouched, so OpenCode JSONC comments survive
+  link-only applies.
+- **Doctor parity:** `doctor` verifies both `~/.claude/skills/<name>` and
+  `~/.config/opencode/skills/<name>` links per owned skill.
+- **CI expanded:** the pipeline runs gofmt, `go mod tidy -diff`, vet, build,
+  test, race, a stamped-`--version` smoke, and a temp-HOME CLI smoke.
 
-## Current Highest-Priority Gaps
+## Current Remaining Work
 
-1. **State adoption for existing matching resources.** If disk already matches a
-   non-secret desired value, adapters emit `noop` and skip state writes. Imported
-   or manually pre-existing resources can therefore look managed while remaining
-   invisible to pruning and some drift checks.
-2. **`status` is not true disk-vs-state drift.** `engine.Drift` reuses the
-   current desired `Plan()`, so config edits can appear as drift even when disk
-   still matches the last apply.
-3. **Invalid targets and empty commands are silently ignored.** Validate target
-   names (`claude`, `opencode`) and fail fast on MCPs that cannot project.
-4. **Import is partial.** It reads Claude global MCP servers only, does not import
-   OpenCode/settings/plugins/skills, and redacts only env values, not secrets
-   passed in command arguments.
-5. **Skills-only apply still touches JSON config files.** The adapters currently
-   read and write their config files even when only skill links are pending,
-   which can create files or normalize OpenCode JSONC comments.
-6. **`doctor` checks only Claude skill links.** It verifies content and the
-   Claude link, but not the OpenCode skill symlink.
-7. **CI is too narrow.** It runs vet and tests only. Add build, stamped-version
-   smoke, `gofmt`, `go mod tidy -diff`, race tests, and CLI smoke coverage.
+The original "seven highest-priority gaps" are all resolved in source except
+where a gap was consciously accepted as a limitation. What genuinely remains:
 
-## Recommended Fix Order
+1. **`import` is narrow by design.** It reads Claude global MCP servers only,
+   redacts env values only, and preserves command/args verbatim. This is now
+   documented in `cli-commands.md` and the README. Expand scope (OpenCode,
+   settings/plugins/skills, non-stdio servers) or redact secret-looking command
+   args only if a fuller migration tool is wanted.
+2. **OpenCode JSONC comments are stripped** whenever an apply touches
+   `opencode.jsonc`. Whole-file comment removal is an accepted, documented
+   limitation; preserving comments is an open question, not a bug.
+3. **Roadmap v1.1+ not started:** built-in templates, plugin configuration,
+   TUI settings, and agent lifecycle (see `docs/roadmap.md`).
 
-1. Add state adoption for existing matching values and plugins/links.
-2. Redesign `status` to compare current disk against `.homonto/state.json` rather
-   than current desired config.
-3. Validate target names, empty commands, and reserved settings namespaces.
-4. Expand or explicitly constrain import; redact secrets in command args if they
-   remain importable.
-5. Avoid JSON writes for link-only changes, or document that side effect
-   everywhere.
-6. Add OpenCode skill-link checks to `doctor`.
-7. Expand CI and release smoke checks.
-8. Add a core user guide for homonto usage; the current guide coverage is mostly
-   onto workflow documentation.
+## Recommended Next Steps
+
+1. Keep `NEXT_AGENT.md` synchronized with source after each behavioral change —
+   the previous revision lagged behind six already-merged fixes.
+2. Decide whether `import` grows into a full migration tool or stays a Claude
+   MCP bootstrap; if it stays narrow, no code work is needed.
+3. Pick a v1.1+ roadmap item (templates is the natural first step) and open an
+   onto change workspace for it.
 
 ## Documentation Rules For Future Changes
 
