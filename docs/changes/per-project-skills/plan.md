@@ -84,7 +84,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 8 — Docker e2e apply smoke + wrapper
 
-- [ ] done
+- [x] done
 - Files: `test/docker/Dockerfile`, `test/docker/smoke.sh`, `scripts/docker-test.sh`
 - Do: `Dockerfile` on `golang:1.23` builds homonto to `/usr/local/bin/homonto` and runs
   `smoke.sh`. `smoke.sh` (with a throwaway `$HOME`): write a `homonto.toml` owning an existing

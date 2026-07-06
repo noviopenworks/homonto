@@ -32,10 +32,10 @@
 
 ## 5. Docker e2e apply smoke
 
-- [ ] 5.1 Add `test/docker/Dockerfile` (golang:1.23) that builds homonto and runs the smoke.
-- [ ] 5.2 Add `test/docker/smoke.sh`: apply against a disposable `$HOME`, assert user-scope
+- [x] 5.1 Add `test/docker/Dockerfile` (golang:1.23) that builds homonto and runs the smoke.
+- [x] 5.2 Add `test/docker/smoke.sh`: apply against a disposable `$HOME`, assert user-scope
       files/symlinks + idempotency, then project-scope links land in the repo (not `$HOME`).
-- [ ] 5.3 Add `scripts/docker-test.sh` wrapper (build image + run, non-zero on failure).
+- [x] 5.3 Add `scripts/docker-test.sh` wrapper (build image + run, non-zero on failure).
 - [ ] 5.4 Add an additive `docker-e2e` job to `.github/workflows/ci.yml`.
 
 ## 6. Specs & guides
