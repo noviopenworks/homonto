@@ -75,7 +75,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 7 — Engine e2e: project scope idempotency + clean switch
 
-- [ ] done
+- [x] done
 - Files: `internal/engine/e2e_test.go` (or a new `scope_e2e_test.go`)
 - Do: apply with `scope="project"` over a temp home + temp repo; assert links under the repo
   dir, `status` clean, second apply idempotent; then switch `project→user`, re-apply, assert
