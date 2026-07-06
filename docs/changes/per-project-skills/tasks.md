@@ -20,7 +20,7 @@
 - [x] 3.1 Claude adapter: add `scope`/`projectRoot` fields + `WithScope` + `skillsDir()`
       (via `skillpath`); collapse the three join sites (`links`, `ObserveHashes`, Apply/remove).
 - [x] 3.2 OpenCode adapter: same, using `.opencode/skills` for project scope.
-- [ ] 3.3 Relocate + prune (both adapters): Plan renders a scope switch as a relocate
+- [x] 3.3 Relocate + prune (both adapters): Plan renders a scope switch as a relocate
       (`skill.<name>` old→new); Apply prunes the inactive-scope link (`link.Remove`, no-op when
       absent, conflict-safe) before creating the active link — no orphan.
 

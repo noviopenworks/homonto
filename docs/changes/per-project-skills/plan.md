@@ -51,7 +51,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 5 — Scope-switch relocate (plan) + prune (apply), both adapters  (risk: high)
 
-- [ ] done
+- [x] done
 - Files: `internal/adapter/claude/claude.go`, `internal/adapter/opencode/opencode.go`, tests
 - Do: in `Plan`, when a skill's active-location link is a create AND
   `inactiveSkillsDir()/<name>` holds a managed symlink into `content/`, emit the change as a

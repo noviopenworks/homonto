@@ -48,6 +48,21 @@ func (a *Adapter) skillsDir() string {
 	return skillpath.Dir("opencode", a.scope, a.home, a.projectRoot)
 }
 
+// inactiveSkillsDir is the other scope's skills directory — where a link may
+// linger after a scope switch. It returns "" when there is nothing meaningful
+// to relocate from: no project root is known, or the two scopes resolve to the
+// same directory.
+func (a *Adapter) inactiveSkillsDir() string {
+	if a.projectRoot == "" {
+		return ""
+	}
+	d := skillpath.Dir("opencode", skillpath.Other(a.scope), a.home, a.projectRoot)
+	if d == a.skillsDir() {
+		return ""
+	}
+	return d
+}
+
 func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 	out := map[string]string{}
 	for name, m := range c.MCPs {
@@ -107,11 +122,18 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
+	inactive := a.inactiveSkillsDir()
 	for _, op := range ops {
-		if op.Cur == "" {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + filepath.Base(op.Dst), New: op.Dst + " -> " + op.Src})
+		name := filepath.Base(op.Dst)
+		// A create whose same-named link still exists (as our managed symlink) at
+		// the other scope is a scope switch: render it as a relocate so the move —
+		// and the prune of the old link Apply performs — is visible before confirm.
+		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name), a.content) {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: filepath.Join(inactive, name), New: op.Dst + " -> " + op.Src})
+		} else if op.Cur == "" {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + name, New: op.Dst + " -> " + op.Src})
 		} else {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + filepath.Base(op.Dst), Old: op.Cur, New: op.Src})
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: op.Cur, New: op.Src})
 		}
 	}
 	// Orphans: a state key no longer declared in config is de-declared — plan a
@@ -307,6 +329,19 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if docChanged {
 		if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
 			return err
+		}
+	}
+	// Prune a link left at the other scope after a scope switch, so no orphan
+	// remains. Only our own managed symlink is removed (IsManaged guards it); a
+	// foreign file or an absent path is left untouched — never an error.
+	if inactive := a.inactiveSkillsDir(); inactive != "" {
+		for _, name := range a.skills {
+			old := filepath.Join(inactive, name)
+			if link.IsManaged(old, a.content) {
+				if err := link.Remove(old, a.content); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	for dst, src := range links {

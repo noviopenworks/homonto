@@ -69,9 +69,9 @@ capability.
   project-location link and removes the home-location link, and a second plan reports no
   change
 
-#### Scenario: Relocation prune is conflict-safe
-- **GIVEN** a scope switch where the inactive-scope path holds a real file (not homonto's
-  symlink)
+#### Scenario: Relocation prune only touches homonto's own link
+- **GIVEN** a scope switch where the inactive-scope path holds a real file or a foreign
+  symlink (not homonto's link into managed content)
 - **WHEN** apply processes the relocation
-- **THEN** the real file is left untouched and a conflict is reported, exactly as ordinary
-  pruning behaves
+- **THEN** that path is left untouched and is not removed — the prune removes only a symlink
+  pointing into homonto's managed content directory, and an absent path is a no-op

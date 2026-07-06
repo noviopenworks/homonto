@@ -3,8 +3,10 @@ package claude
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/state"
 )
@@ -45,6 +47,76 @@ func TestProjectScopeLinksUnderProjectRoot(t *testing.T) {
 	for _, ch := range cs2.Changes {
 		if ch.Action != "noop" {
 			t.Fatalf("second plan must be all noop, got %s %s", ch.Action, ch.Key)
+		}
+	}
+}
+
+// TestScopeSwitchRelocatesLink: switching user -> project relocates the link —
+// plan shows a relocate (update) referencing the old location, apply creates the
+// new link and prunes the old one, and the result is idempotent (no orphan).
+func TestScopeSwitchRelocatesLink(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
+
+	proj := t.TempDir()
+	content := filepath.Join(proj, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
+	st, _ := state.Load(t.TempDir())
+
+	// 1. Apply at user scope.
+	aUser := New(home, content).WithScope("user", proj)
+	cUser := &config.Config{Skills: config.Skills{Scope: "user", Own: []string{"onto"}}}
+	cs, err := aUser.Plan(cUser, st)
+	if err != nil {
+		t.Fatalf("user plan: %v", err)
+	}
+	if err := aUser.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("user apply: %v", err)
+	}
+	homeDst := filepath.Join(home, ".claude", "skills", "onto")
+	if _, err := os.Readlink(homeDst); err != nil {
+		t.Fatalf("user link missing: %v", err)
+	}
+
+	// 2. Switch to project scope; plan must show a relocate referencing home.
+	aProj := New(home, content).WithScope("project", proj)
+	cProj := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{"onto"}}}
+	cs2, err := aProj.Plan(cProj, st)
+	if err != nil {
+		t.Fatalf("project plan: %v", err)
+	}
+	var reloc *adapter.Change
+	for i := range cs2.Changes {
+		if cs2.Changes[i].Key == "skill.onto" {
+			reloc = &cs2.Changes[i]
+		}
+	}
+	if reloc == nil || reloc.Action != "update" {
+		t.Fatalf("expected relocate (update) for skill.onto, got %+v", reloc)
+	}
+	if !strings.Contains(reloc.Old, homeDst) {
+		t.Fatalf("relocate Old should reference the home location %q, got %q", homeDst, reloc.Old)
+	}
+
+	// 3. Apply the switch: project link created, home link pruned (no orphan).
+	if err := aProj.Apply(cs2, resolver(), st); err != nil {
+		t.Fatalf("project apply: %v", err)
+	}
+	projDst := filepath.Join(proj, ".claude", "skills", "onto")
+	if _, err := os.Readlink(projDst); err != nil {
+		t.Fatalf("project link not created: %v", err)
+	}
+	if _, err := os.Lstat(homeDst); err == nil {
+		t.Fatal("home link must be pruned after switch — orphan left behind")
+	}
+
+	// 4. Idempotent.
+	cs3, _ := aProj.Plan(cProj, st)
+	for _, ch := range cs3.Changes {
+		if ch.Action != "noop" {
+			t.Fatalf("second plan after switch must be noop, got %s %s", ch.Action, ch.Key)
 		}
 	}
 }
