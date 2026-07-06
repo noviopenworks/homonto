@@ -2,7 +2,7 @@
 
 ## 1. Config model
 
-- [ ] 1.1 Add `scope` to the `Skills` struct and validate it in `config.Load`
+- [x] 1.1 Add `scope` to the `Skills` struct and validate it in `config.Load`
       (`user | project`, empty = `user`, else named error); keep the bare-name
       check on `skills.own`.
 

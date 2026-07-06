@@ -129,6 +129,49 @@ func TestLoadRejectsBadSkillNames(t *testing.T) {
 	}
 }
 
+// TestLoadSkillScope covers the per-project-skills capability: [skills] scope
+// selects where owned skills install. Absent/empty normalizes to "user"
+// (back-compat); "project" is honored; any other value is a named load error.
+func TestLoadSkillScope(t *testing.T) {
+	loadScope := func(doc string) (string, error) {
+		p := filepath.Join(t.TempDir(), "homonto.toml")
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		c, err := Load(p)
+		if err != nil {
+			return "", err
+		}
+		return c.Skills.Scope, nil
+	}
+
+	// Absent scope defaults to "user".
+	if got, err := loadScope("[skills]\nown = [\"a\"]\n"); err != nil || got != "user" {
+		t.Fatalf("absent scope = %q, %v; want \"user\", nil", got, err)
+	}
+	// Explicit empty also normalizes to "user".
+	if got, err := loadScope("[skills]\nscope = \"\"\nown = [\"a\"]\n"); err != nil || got != "user" {
+		t.Fatalf("empty scope = %q, %v; want \"user\", nil", got, err)
+	}
+	// Explicit user and project honored.
+	if got, err := loadScope("[skills]\nscope = \"user\"\n"); err != nil || got != "user" {
+		t.Fatalf("user scope = %q, %v", got, err)
+	}
+	if got, err := loadScope("[skills]\nscope = \"project\"\n"); err != nil || got != "project" {
+		t.Fatalf("project scope = %q, %v", got, err)
+	}
+	// Invalid value is rejected, naming the offending value and the valid set.
+	err := loadDoc(t, "[skills]\nscope = \"global\"\n")
+	if err == nil {
+		t.Fatal("scope \"global\" accepted; want load error")
+	}
+	for _, want := range []string{strconv.Quote("global"), "user", "project"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %v does not mention %q", err, want)
+		}
+	}
+}
+
 func loadDoc(t *testing.T, doc string) error {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "homonto.toml")

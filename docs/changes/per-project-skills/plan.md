@@ -4,7 +4,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 1 — Add `[skills] scope` to the config model with validation
 
-- [ ] done
+- [x] done
 - Files: `internal/config/config.go`, `internal/config/config_test.go`
 - Do: add `Scope string \`toml:"scope"\`` to the `Skills` struct (config.go:27-29). In
   `Load`, after parsing, normalize empty → `"user"` and reject any value other than
