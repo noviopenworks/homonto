@@ -1,5 +1,14 @@
 # Current Deep Review — homonto + onto (2026-07-04)
 
+> **Superseded as a current-state reference.** The "Open Findings" below were
+> the state of the tree on 2026-07-04. All of them have since been resolved by
+> the `state-source-of-truth` (adoption + true `status` drift + link-only JSON
+> writes), `validate-config` (target/command/reserved-key validation),
+> `doctor-opencode-link` (OpenCode skill-link checks), and `expand-ci` changes.
+> Treat `docs/NEXT_AGENT.md` as the authoritative current handoff; read this
+> file only as the 2026-07-04 point-in-time record. The test count has since
+> grown from 92 to 129.
+
 This document replaces the original harsh review with the current project state.
 The original review was useful, but several blockers it named have since been
 fixed. Future agents should use this file together with `docs/NEXT_AGENT.md`

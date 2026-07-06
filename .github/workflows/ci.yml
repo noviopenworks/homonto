@@ -47,3 +47,13 @@ jobs:
         run: |
           printf '[skills]\nown=[]\n' > /tmp/homonto.toml
           /tmp/homonto --config /tmp/homonto.toml plan
+
+  # End-to-end: run a real `apply` inside a throwaway container so mutating $HOME
+  # is safe. The `test` job's cli smoke only covers `plan` (a dry run); this is
+  # the only coverage of the compiled binary's apply against a real home.
+  docker-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker apply smoke
+        run: ./scripts/docker-test.sh

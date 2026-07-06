@@ -13,30 +13,62 @@ import (
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
 	"github.com/noviopenworks/homonto/internal/secret"
+	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/state"
 )
 
 // Adapter projects desired config into Claude Code's files under home.
 type Adapter struct {
-	home    string
-	content string
-	skills  []string
+	home        string
+	content     string
+	scope       string // "" or "user" → home layout; "project" → projectRoot layout
+	projectRoot string // directory of homonto.toml; used only for project scope
+	skills      []string
 }
 
-// New builds a Claude adapter. home is the $HOME root; content holds owned
-// skills.
+// New builds a Claude adapter at user scope. home is the $HOME root; content
+// holds owned skills. Use WithScope to install skills under a project root.
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
+
+// WithScope sets the skill install scope and project root (the homonto.toml
+// directory). It affects skill symlink placement only — MCP servers and
+// settings always project under home. Empty scope means user scope. Returns the
+// adapter for chaining.
+func (a *Adapter) WithScope(scope, projectRoot string) *Adapter {
+	a.scope, a.projectRoot = scope, projectRoot
+	return a
+}
 
 func (a *Adapter) Name() string { return "claude" }
 
 func (a *Adapter) claudeJSON() string   { return filepath.Join(a.home, ".claude.json") }
 func (a *Adapter) settingsJSON() string { return filepath.Join(a.home, ".claude", "settings.json") }
 
+// skillsDir is the directory owned-skill symlinks live in for the active scope.
+func (a *Adapter) skillsDir() string {
+	return skillpath.Dir("claude", a.scope, a.home, a.projectRoot)
+}
+
+// inactiveSkillsDir is the other scope's skills directory — where a link may
+// linger after a scope switch. It returns "" when there is nothing meaningful
+// to relocate from: no project root is known, or the two scopes resolve to the
+// same directory (a homonto.toml that sits in $HOME).
+func (a *Adapter) inactiveSkillsDir() string {
+	if a.projectRoot == "" {
+		return ""
+	}
+	d := skillpath.Dir("claude", skillpath.Other(a.scope), a.home, a.projectRoot)
+	if d == a.skillsDir() {
+		return ""
+	}
+	return d
+}
+
 // links maps each owned skill's destination to its content source.
 func (a *Adapter) links() map[string]string {
 	out := map[string]string{}
 	for _, name := range a.skills {
-		out[filepath.Join(a.home, ".claude", "skills", name)] = filepath.Join(a.content, "skills", name)
+		out[filepath.Join(a.skillsDir(), name)] = filepath.Join(a.content, "skills", name)
 	}
 	return out
 }
@@ -119,12 +151,42 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
+	inactive := a.inactiveSkillsDir()
 	for _, op := range ops {
-		if op.Cur == "" {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + filepath.Base(op.Dst), New: op.Dst + " -> " + op.Src})
+		name := filepath.Base(op.Dst)
+		// A create whose same-named link still exists (as our managed symlink) at
+		// the other scope is a scope switch: render it as a relocate so the move —
+		// and the prune of the old link Apply performs — is visible before confirm.
+		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name), a.content) {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: filepath.Join(inactive, name), New: op.Dst + " -> " + op.Src})
+		} else if op.Cur == "" {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + name, New: op.Dst + " -> " + op.Src})
 		} else {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + filepath.Base(op.Dst), Old: op.Cur, New: op.Src})
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: op.Cur, New: op.Src})
 		}
+	}
+	// Adopt a correct-but-unrecorded skill link — one already on disk pointing at
+	// its content, but absent from state (or stale). link.Plan omits a correct
+	// link, so without this a lost state.json for a skills-only config could never
+	// be rebuilt (apply short-circuits with no change). Mirrors mcp/setting/plugin
+	// adoption: state-only, the on-disk link is left untouched.
+	opDst := map[string]bool{}
+	for _, op := range ops {
+		opDst[op.Dst] = true
+	}
+	for _, name := range c.Skills.Own {
+		dst := filepath.Join(a.skillsDir(), name)
+		if opDst[dst] {
+			continue // a create/relink/relocate already covers it
+		}
+		src := filepath.Join(a.content, "skills", name)
+		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
+			continue // not a correct link into content
+		}
+		if e, ok := st.Get("claude", "skill."+name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
+			continue // already recorded → a true noop, nothing to do
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "skill." + name, New: dst + " -> " + src})
 	}
 	// Orphans: a state key no longer declared in config is de-declared — plan a
 	// delete. (A declared key missing from disk is drift, handled above.) Old is
@@ -190,7 +252,7 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 		if hasPrefix(key, "skill.") {
 			// skill.* lives on disk as a symlink, not a JSON value. Its Applied
 			// was stored as Hash(dst + " -> " + src); reproduce it from readlink.
-			dst := filepath.Join(a.home, ".claude", "skills", trim(key, "skill."))
+			dst := filepath.Join(a.skillsDir(), trim(key, "skill."))
 			target, err := os.Readlink(dst)
 			if err != nil {
 				continue // missing or not a symlink → omit (engine infers missing)
@@ -225,6 +287,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			continue
 		}
 		if c.Action == "adopt" {
+			// A skill adoption records a correct-but-unrecorded symlink into state
+			// without touching disk; its value is "dst -> src", not JSON, so it is
+			// recorded exactly like a freshly linked skill (Hash of "dst -> src").
+			if hasPrefix(c.Key, "skill.") {
+				st.Set("claude", c.Key, c.New, secret.Hash(c.New))
+				continue
+			}
 			// Adoption records a pre-existing matching key into state without
 			// touching the tool file. The on-disk value already equals want, so
 			// the recorded Applied hash equals the hash of the on-disk value.
@@ -248,8 +317,20 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 				sjChanged = true
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
-				// is a conflict error inside link.Remove.
-				err = link.Remove(filepath.Join(a.home, ".claude", "skills", trim(c.Key, "skill.")), a.content)
+				// is a conflict error inside link.Remove. A de-declared skill may
+				// physically sit at the inactive scope too (removal + scope switch
+				// in one apply), so prune that location as well — IsManaged-guarded
+				// so a foreign file there is left untouched, never an error.
+				name := trim(c.Key, "skill.")
+				err = link.Remove(filepath.Join(a.skillsDir(), name), a.content)
+				if err == nil {
+					if inactive := a.inactiveSkillsDir(); inactive != "" {
+						old := filepath.Join(inactive, name)
+						if link.IsManaged(old, a.content) {
+							err = link.Remove(old, a.content)
+						}
+					}
+				}
 			}
 			if err != nil {
 				return err
@@ -298,6 +379,19 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if sjChanged {
 		if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
 			return err
+		}
+	}
+	// Prune a link left at the other scope after a scope switch, so no orphan
+	// remains. Only our own managed symlink is removed (IsManaged guards it); a
+	// foreign file or an absent path is left untouched — never an error.
+	if inactive := a.inactiveSkillsDir(); inactive != "" {
+		for _, name := range a.skills {
+			old := filepath.Join(inactive, name)
+			if link.IsManaged(old, a.content) {
+				if err := link.Remove(old, a.content); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	for dst, src := range links {

@@ -25,7 +25,12 @@ func (m MCP) TargetsOrAll() []string {
 }
 
 type Skills struct {
-	Own []string `toml:"own"`
+	// Scope selects where owned skills install: "user" (default) links them
+	// under the user's home tool dirs; "project" links them under the project
+	// root (the directory of homonto.toml). It governs skill symlinks only —
+	// MCP servers and settings always project into the global tool files.
+	Scope string   `toml:"scope"`
+	Own   []string `toml:"own"`
 }
 
 type Plugins struct {
@@ -56,8 +61,19 @@ func Load(path string) (*Config, error) {
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-	// Skill names become symlink path components under $HOME; anything but a
-	// bare directory name (traversal, separators, "..") is rejected up front.
+	// Skill install scope selects the destination root; empty means "user"
+	// (back-compat). Any other value would silently fall back to a home install,
+	// so reject it up front, naming the offending value and the valid set.
+	switch c.Skills.Scope {
+	case "":
+		c.Skills.Scope = "user"
+	case "user", "project":
+		// ok
+	default:
+		return nil, fmt.Errorf("parse config: skills.scope %q is invalid; valid values are \"user\" and \"project\"", c.Skills.Scope)
+	}
+	// Skill names become symlink path components under the scope root; anything
+	// but a bare directory name (traversal, separators, "..") is rejected up front.
 	for _, n := range c.Skills.Own {
 		if n == "" || n == "." || n == ".." || strings.ContainsAny(n, `/\`) || n != filepath.Base(n) {
 			return nil, fmt.Errorf("parse config: skills.own entry %q is not a plain directory name", n)

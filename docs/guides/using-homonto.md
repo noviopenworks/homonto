@@ -61,6 +61,8 @@ targets = ["claude"]                                # default: both tools
 
 # Owned skills — directories under content/skills/, symlinked into each tool.
 [skills]
+scope = "user"                    # user (default): ~/.claude, ~/.config/opencode
+                                  # project: <repo>/.claude, <repo>/.opencode
 own = ["graphify", "onto"]
 
 # Per-tool plugins.
@@ -79,6 +81,15 @@ model = "anthropic/claude-opus-4-8"
 **Targets.** An MCP with no `targets` applies to both `claude` and `opencode`;
 an explicit list restricts it. Only `claude` and `opencode` are valid — a typo
 like `targets = ["claud"]` is rejected at load, not silently ignored.
+
+**Skill scope.** `[skills] scope` selects where owned skills are linked (skills
+only — MCPs and settings always stay global). `user` (the default when omitted)
+links into `~/.claude/skills/` and `~/.config/opencode/skills/`; `project` links
+into the repo itself, `<repo>/.claude/skills/` and `<repo>/.opencode/skills/`,
+to keep a project's skills in-repo. Switching scope relocates the links cleanly —
+`plan` shows the move, `apply` removes the old link as it makes the new one, and
+`status`/`doctor` follow the active scope. Any value other than `user`/`project`
+is rejected at load.
 
 **Validation is fail-fast.** `homonto` rejects, at load time and naming the
 offender: an MCP with no command; an unknown target; a settings key that

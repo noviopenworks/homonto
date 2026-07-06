@@ -61,6 +61,22 @@ func Remove(dst, contentRoot string) error {
 	return os.Remove(dst)
 }
 
+// IsManaged reports whether dst is a symlink pointing into contentRoot — a link
+// homonto created and may therefore safely relocate or prune. A missing path, a
+// real file, or a foreign symlink all return false (leave-it-alone), so callers
+// can prune only what is unambiguously theirs without risking a user's file.
+func IsManaged(dst, contentRoot string) bool {
+	fi, err := os.Lstat(dst)
+	if err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		return false
+	}
+	target, err := os.Readlink(dst)
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(target, contentRoot+string(os.PathSeparator))
+}
+
 // Op is a pending link change for dst -> src. Cur is the current symlink
 // target, empty when dst does not exist yet (a create).
 type Op struct {
