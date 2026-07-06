@@ -1,0 +1,23 @@
+change: per-project-skills
+workflow: full
+phase: build
+created: 2026-07-06
+base_ref: e14db90ea0f30c9797898911a59d3c5662c71ea0
+deps: []
+decisions:
+  isolation: branch
+  execution: direct
+  tdd: tdd
+  directive: null
+verify:
+  mode: null
+  result: pending
+guides: pending
+metrics:
+  phases:
+    open: 2026-07-06
+    design: 2026-07-06
+  tasks_total: 0
+  verify_rounds: 0
+  upgraded: false
+archived: false
