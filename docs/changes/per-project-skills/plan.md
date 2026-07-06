@@ -97,7 +97,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 9 — Additive `docker-e2e` CI job
 
-- [ ] done
+- [x] done
 - Files: `.github/workflows/ci.yml`
 - Do: add a `docker-e2e` job (ubuntu-latest) running `scripts/docker-test.sh`; leave the
   existing `test` job unchanged.
