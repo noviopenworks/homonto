@@ -113,7 +113,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 11 — Validation (the change proving itself)
 
-- [ ] done
+- [x] done
 - Files: — (runs the full suite + docker smoke)
 - Do: fresh `gofmt -l .` (clean), `go vet ./...`, `go mod tidy -diff`, `go build ./...`,
   `go test ./...`, `go test -race ./...`, then `scripts/docker-test.sh`. Confirm the host

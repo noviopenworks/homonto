@@ -46,9 +46,9 @@
 
 ## 7. Validation
 
-- [ ] 7.1 Go tests green: config scope parse/reject/default; adapter project-scope link
+- [x] 7.1 Go tests green: config scope parse/reject/default; adapter project-scope link
       locations (Claude + OpenCode) with user-scope regression; engine e2e apply with
       `scope="project"` idempotent + clean scope-switch (remove old, create new); `status`/
       `doctor` clean. Plus `gofmt`/`vet`/`go mod tidy -diff`/`-race`.
-- [ ] 7.2 `scripts/docker-test.sh` exits 0; manual confirmation that the host `~/.claude/`
+- [x] 7.2 `scripts/docker-test.sh` exits 0; manual confirmation that the host `~/.claude/`
       is untouched and project-scope links land in the repo copy inside the container.
