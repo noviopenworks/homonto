@@ -1,6 +1,6 @@
 # Adopt a configurable skill install scope (user vs project)
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-06
 - **Change:** per-project-skills
 

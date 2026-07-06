@@ -77,7 +77,7 @@ New + changed pieces (no MCP/settings path touched anywhere):
 ## Key decisions
 
 1. **Skill scope is config, skills-only** — `[skills] scope`, default `user`; MCP/settings
-   stay global. (ADR: `adopt-skill-install-scope`.)
+   stay global. (ADR: `docs/adr/0011-adopt-skill-install-scope.md`.)
 2. **A shared `skillpath` helper owns the path convention** — because OpenCode's project vs
    global subpaths differ, the mapping can't be a base swap and must not be duplicated across
    the three adapter sites + doctor. (Same ADR — architectural rationale.)

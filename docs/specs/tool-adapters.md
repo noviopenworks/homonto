@@ -25,22 +25,35 @@ SHALL cause that adapter to abort and report, never to overwrite.
 ### Requirement: Claude Code projection
 
 The Claude adapter SHALL project MCP servers into `~/.claude.json`
-(`mcpServers.<name>`), settings and plugins into `~/.claude/settings.json`, and
-owned skills as symlinks under `~/.claude/skills/`.
+(`mcpServers.<name>`) and settings and plugins into `~/.claude/settings.json` — always at
+the user's home, independent of skill scope. It SHALL link owned skills as symlinks under a
+skills directory selected by the config's skill scope: `~/.claude/skills/` for `user` scope
+and `<project>/.claude/skills/` for `project` scope, where `<project>` is the directory of
+`homonto.toml`.
 
 #### Scenario: MCP and setting projected surgically
 - **WHEN** apply runs with an MCP targeting claude and a claude setting
 - **THEN** `mcpServers.<name>` is written to `~/.claude.json` and the setting to
   `~/.claude/settings.json`, with pre-existing unmanaged keys in both files intact
 
+#### Scenario: Project scope links skills under the project root
+- **GIVEN** a config with `[skills] scope = "project"` owning a skill
+- **WHEN** apply runs
+- **THEN** the skill symlink is created under `<project>/.claude/skills/<name>` and nothing
+  is added under `~/.claude/skills/`, while `~/.claude.json` and `~/.claude/settings.json`
+  remain the projection targets for MCPs and settings
+
 ### Requirement: OpenCode projection
 
 The OpenCode adapter SHALL project MCP servers into `opencode.jsonc`
 (`mcp.<name>` with `type:"local"`, `command`, `enabled`, and `environment` when
-env is set), settings as top-level keys, plugins appended to the `plugin` array,
-and owned skills as symlinks under `~/.config/opencode/skills/`. JSONC input SHALL
-be normalized before editing; when homonto writes `opencode.jsonc`, all comments
-in that file are removed by whole-document JSONC standardization.
+env is set), settings as top-level keys, and plugins appended to the `plugin` array —
+always at the user's home, independent of skill scope. It SHALL link owned skills as
+symlinks under a skills directory selected by the config's skill scope:
+`~/.config/opencode/skills/` for `user` scope and `<project>/.opencode/skills/` for
+`project` scope, where `<project>` is the directory of `homonto.toml`. JSONC input SHALL be
+normalized before editing; when homonto writes `opencode.jsonc`, all comments in that file
+are removed by whole-document JSONC standardization.
 
 #### Scenario: MCP projected with local shape and plugin appended
 - **WHEN** apply runs with an MCP targeting opencode and an opencode plugin
@@ -51,6 +64,12 @@ in that file are removed by whole-document JSONC standardization.
 - **WHEN** `opencode.jsonc` has an unmanaged key and a comment
 - **THEN** the unmanaged key survives after apply, but the comment is removed if
   the file is rewritten
+
+#### Scenario: Project scope links skills under the project root
+- **GIVEN** a config with `[skills] scope = "project"` owning a skill
+- **WHEN** apply runs
+- **THEN** the skill symlink is created under `<project>/.opencode/skills/<name>` and
+  nothing is added under `~/.config/opencode/skills/`
 
 ### Requirement: Owned content linked by symlink with conflict detection
 
@@ -206,3 +225,58 @@ secret-bearing keys.
   `opencode.jsonc` is left byte-unchanged (its comments preserved, because
   adoption writes no tool file), and both become pruneable on later removal
   from config
+
+### Requirement: Skill install scope and relocation
+
+Each adapter's skill link destination SHALL be selected by the config's `[skills] scope`:
+`user` scope links under the user's home tool directory, `project` scope under the project
+root (the directory of `homonto.toml`). MCP servers and settings are unaffected by scope.
+When a skill's location changes because scope was switched, each adapter SHALL relocate the
+link rather than orphan it: `plan` renders the move as a single relocate change for
+`skill.<name>` (old location → new location), and `apply` removes the managed symlink at the
+now-inactive scope location and creates it at the active one. This inactive-location removal
+— including when a skill is de-declared and the scope switched in the same apply — SHALL
+follow the pruning conflict rule: only a symlink pointing into homonto's managed content
+directory is removed, an absent path is a no-op, and a real file or foreign link is left
+untouched. `user`-scope behavior with no scope change SHALL be identical to before this
+capability existed.
+
+#### Scenario: Switching scope relocates the link
+- **GIVEN** a skill applied under `user` scope (linked at the home location) whose config is
+  then changed to `[skills] scope = "project"`
+- **WHEN** the user runs plan and confirms apply
+- **THEN** plan shows a relocate for `skill.<name>` from the home location to
+  `<project>/.claude/skills/<name>` (and the OpenCode equivalent), apply creates the
+  project-location link and removes the home-location link, and a second plan reports no
+  change
+
+#### Scenario: Relocation prune only touches homonto's own link
+- **GIVEN** a scope switch where the inactive-scope path holds a real file or a foreign
+  symlink (not homonto's link into managed content)
+- **WHEN** apply processes the relocation
+- **THEN** that path is left untouched and is not removed — the prune removes only a symlink
+  pointing into homonto's managed content directory, and an absent path is a no-op
+
+#### Scenario: De-declaring a skill while switching scope leaves no orphan
+- **GIVEN** a skill applied at one scope that is then, in a single apply, both removed from
+  `[skills] own` and had `scope` switched (so its link physically sits at the now-inactive scope)
+- **WHEN** apply processes the delete
+- **THEN** the link is removed from the location it actually occupies — the delete prunes both
+  the active and the (managed) inactive scope location — leaving no orphan; a foreign file at
+  either location is left untouched
+
+### Requirement: Skill links are adopted like other managed keys
+
+Each adapter SHALL, on apply, record in state a correct-but-unrecorded skill link — one whose
+symlink already exists and points at the owned content but which is absent from state (or whose
+recorded hash is stale) — rather than leaving it untracked, mirroring MCP/setting/plugin
+adoption. Adoption SHALL NOT modify the link on disk, and it SHALL make apply run (via the
+adoption path) so that a lost `state.json` is rebuilt for a skills-only config and the link
+remains prunable and drift-detectable afterward.
+
+#### Scenario: Correct-but-unrecorded skill link is adopted
+- **GIVEN** an owned skill whose link is already correct on disk but whose `skill.<name>` state
+  record is missing (e.g. `.homonto/state.json` was deleted) — even in a skills-only config
+- **WHEN** the user runs apply
+- **THEN** the link is left unchanged on disk, state regains the `skill.<name>` record, and a
+  subsequent removal of that skill from config prunes the link

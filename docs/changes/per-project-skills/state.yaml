@@ -12,7 +12,7 @@ decisions:
 verify:
   mode: full
   result: pass
-guides: pending
+guides: updated
 metrics:
   phases:
     open: 2026-07-06
