@@ -87,6 +87,54 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	}
 }
 
+// TestSkillAdoptRebuildsState (verify round 1, FINDING 2): a correct-but-unrecorded
+// skill link (e.g. after .homonto/state.json was lost) is adopted into state on
+// apply without touching the link, so a skills-only config rebuilds state.
+func TestSkillAdoptRebuildsState(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
+	content := t.TempDir()
+	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
+	src := filepath.Join(content, "skills", "foo")
+	dst := filepath.Join(home, ".claude", "skills", "foo")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(src, dst); err != nil { // correct link already on disk
+		t.Fatal(err)
+	}
+
+	st, _ := state.Load(t.TempDir()) // empty state — simulates lost state.json
+	a := New(home, content)
+	c := &config.Config{Skills: config.Skills{Own: []string{"foo"}}}
+
+	cs, _ := a.Plan(c, st)
+	var found *adapter.Change
+	for i := range cs.Changes {
+		if cs.Changes[i].Key == "skill.foo" {
+			found = &cs.Changes[i]
+		}
+	}
+	if found == nil || found.Action != "adopt" {
+		t.Fatalf("expected adopt for skill.foo, got %+v", found)
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := st.Get("claude", "skill.foo"); !ok {
+		t.Fatal("skill.foo not recorded in state after adopt")
+	}
+	if tgt, _ := os.Readlink(dst); tgt != src {
+		t.Fatal("adopt must not change the on-disk link")
+	}
+	cs2, _ := a.Plan(c, st)
+	for _, ch := range cs2.Changes {
+		if ch.Action != "noop" {
+			t.Fatalf("second plan must be noop after adopt, got %s %s", ch.Action, ch.Key)
+		}
+	}
+}
+
 // TestScopeSwitchRelocatesLink: switching user -> project relocates the link —
 // plan shows a relocate (update) referencing the old location, apply creates the
 // new link and prunes the old one, and the result is idempotent (no orphan).

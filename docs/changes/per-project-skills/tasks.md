@@ -49,7 +49,7 @@
 - [x] 8.1 FINDING 1 — the `skill.` delete branch in both adapters also prunes the
       `inactiveSkillsDir()` location (IsManaged-guarded), so de-declare + scope-switch in one
       apply leaves no orphan. Regression test.
-- [ ] 8.2 FINDING 2 — add a skill `adopt` path: Plan emits `adopt` for a correct-but-unrecorded
+- [x] 8.2 FINDING 2 — add a skill `adopt` path: Plan emits `adopt` for a correct-but-unrecorded
       link; Apply records `skill.<name>` state from it without touching disk, so a lost
       `state.json` (skills-only) rebuilds and later prunes. Regression test.
 

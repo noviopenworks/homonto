@@ -7,6 +7,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/plan"
 	"github.com/noviopenworks/homonto/internal/secret"
+	"github.com/noviopenworks/homonto/internal/state"
 )
 
 // TestProjectScopeEndToEnd exercises the compiled apply path at project scope:
@@ -80,5 +81,64 @@ func TestProjectScopeEndToEnd(t *testing.T) {
 	}
 	if _, err := os.Lstat(projOpen); err == nil {
 		t.Fatal("project opencode link must be pruned after switch — orphan left behind")
+	}
+}
+
+// TestSkillsOnlyRebuildsLostState (verify round 1, FINDING 2): a skills-only
+// project-scope config whose .homonto/state.json is deleted rebuilds state via
+// adoption on the next apply, and the skill remains prunable afterward.
+func TestSkillsOnlyRebuildsLostState(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	content := filepath.Join(repo, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"),
+		[]byte("[skills]\nscope=\"project\"\nown=[\"foo\"]\n"), 0o644)
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+		return e
+	}
+
+	// Apply, then wipe state to simulate a lost .homonto/state.json.
+	e := build()
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatal(err)
+	}
+	stateFile := filepath.Join(repo, ".homonto", "state.json")
+	os.Remove(stateFile)
+
+	// Re-plan: the correct-but-unrecorded links must show as adoptions, and apply
+	// must rebuild state.
+	e2 := build()
+	sets2, _ := e2.Plan()
+	if !plan.HasAdoptions(sets2) {
+		t.Fatalf("expected adoptions to rebuild lost state, got: %s", plan.Render(sets2))
+	}
+	if err := e2.Apply(sets2); err != nil {
+		t.Fatal(err)
+	}
+	st, _ := state.Load(filepath.Join(repo, ".homonto"))
+	if _, ok := st.Get("claude", "skill.foo"); !ok {
+		t.Fatal("claude skill.foo not rebuilt into state")
+	}
+	if _, ok := st.Get("opencode", "skill.foo"); !ok {
+		t.Fatal("opencode skill.foo not rebuilt into state")
+	}
+
+	// With state rebuilt, removing the skill now prunes the links.
+	os.WriteFile(filepath.Join(repo, "homonto.toml"),
+		[]byte("[skills]\nscope=\"project\"\nown=[]\n"), 0o644)
+	e3 := build()
+	sets3, _ := e3.Plan()
+	if err := e3.Apply(sets3); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(repo, ".claude", "skills", "foo")); err == nil {
+		t.Fatal("skill link not pruned after removal (state rebuild failed to make it prunable)")
 	}
 }

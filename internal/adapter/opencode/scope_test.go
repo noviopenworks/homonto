@@ -137,6 +137,45 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	}
 }
 
+// TestSkillAdoptRebuildsState (verify round 1, FINDING 2): a correct-but-unrecorded
+// skill link is adopted into state on apply without touching the link.
+func TestSkillAdoptRebuildsState(t *testing.T) {
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755)
+	content := t.TempDir()
+	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
+	src := filepath.Join(content, "skills", "foo")
+	dst := filepath.Join(home, ".config", "opencode", "skills", "foo")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(src, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	st, _ := state.Load(t.TempDir()) // empty state — simulates lost state.json
+	a := New(home, content)
+	c := &config.Config{Skills: config.Skills{Own: []string{"foo"}}}
+
+	cs, _ := a.Plan(c, st)
+	var found *adapter.Change
+	for i := range cs.Changes {
+		if cs.Changes[i].Key == "skill.foo" {
+			found = &cs.Changes[i]
+		}
+	}
+	if found == nil || found.Action != "adopt" {
+		t.Fatalf("expected adopt for skill.foo, got %+v", found)
+	}
+	if err := a.Apply(cs, noSecret(), st); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := st.Get("opencode", "skill.foo"); !ok {
+		t.Fatal("skill.foo not recorded after adopt")
+	}
+	if tgt, _ := os.Readlink(dst); tgt != src {
+		t.Fatal("adopt must not change the on-disk link")
+	}
+}
+
 // TestRelocationPruneLeavesForeignFile: a real file at the inactive path is not
 // removed and does not error the apply.
 func TestRelocationPruneLeavesForeignFile(t *testing.T) {

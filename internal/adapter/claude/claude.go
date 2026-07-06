@@ -165,6 +165,29 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: op.Cur, New: op.Src})
 		}
 	}
+	// Adopt a correct-but-unrecorded skill link — one already on disk pointing at
+	// its content, but absent from state (or stale). link.Plan omits a correct
+	// link, so without this a lost state.json for a skills-only config could never
+	// be rebuilt (apply short-circuits with no change). Mirrors mcp/setting/plugin
+	// adoption: state-only, the on-disk link is left untouched.
+	opDst := map[string]bool{}
+	for _, op := range ops {
+		opDst[op.Dst] = true
+	}
+	for _, name := range c.Skills.Own {
+		dst := filepath.Join(a.skillsDir(), name)
+		if opDst[dst] {
+			continue // a create/relink/relocate already covers it
+		}
+		src := filepath.Join(a.content, "skills", name)
+		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
+			continue // not a correct link into content
+		}
+		if e, ok := st.Get("claude", "skill."+name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
+			continue // already recorded → a true noop, nothing to do
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "skill." + name, New: dst + " -> " + src})
+	}
 	// Orphans: a state key no longer declared in config is de-declared — plan a
 	// delete. (A declared key missing from disk is drift, handled above.) Old is
 	// always redacted: a removed key's provenance is stale by definition.
@@ -264,6 +287,13 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			continue
 		}
 		if c.Action == "adopt" {
+			// A skill adoption records a correct-but-unrecorded symlink into state
+			// without touching disk; its value is "dst -> src", not JSON, so it is
+			// recorded exactly like a freshly linked skill (Hash of "dst -> src").
+			if hasPrefix(c.Key, "skill.") {
+				st.Set("claude", c.Key, c.New, secret.Hash(c.New))
+				continue
+			}
 			// Adoption records a pre-existing matching key into state without
 			// touching the tool file. The on-disk value already equals want, so
 			// the recorded Applied hash equals the hash of the on-disk value.
