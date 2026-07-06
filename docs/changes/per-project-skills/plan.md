@@ -15,7 +15,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 2 — Add the `skillpath` helper (single source of path truth)
 
-- [ ] done
+- [x] done
 - Files: `internal/skillpath/skillpath.go`, `internal/skillpath/skillpath_test.go`
 - Do: `func Dir(tool, scope, home, projectRoot string) string` mapping per design:
   claude→`.claude/skills` (root = home for user, projectRoot for project);

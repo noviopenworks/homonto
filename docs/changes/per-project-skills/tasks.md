@@ -8,7 +8,7 @@
 
 ## 2. Scope threading
 
-- [ ] 2.1 Add `internal/skillpath.Dir(tool, scope, home, projectRoot)` — the single source
+- [x] 2.1 Add `internal/skillpath.Dir(tool, scope, home, projectRoot)` — the single source
       of truth (claude: `.claude/skills`; opencode: user `.config/opencode/skills`, project
       `.opencode/skills`), with tests for all four (tool × scope) mappings.
 - [ ] 2.2 `engine.Build`: resolve `projectRoot = dir(configPath)`, read `cfg.Skills.Scope`,
