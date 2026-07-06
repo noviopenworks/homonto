@@ -19,7 +19,8 @@ metrics:
     design: 2026-07-06
     build: 2026-07-06
     verify: 2026-07-06
+    close: 2026-07-06
   tasks_total: 13
   verify_rounds: 2
   upgraded: false
-archived: false
+archived: true
