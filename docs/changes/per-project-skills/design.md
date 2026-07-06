@@ -92,6 +92,14 @@ New + changed pieces (no MCP/settings path touched anywhere):
   `link.Remove` already report a conflict and never clobber; scope work inherits that safety.
 - Missing inactive-location link on a scope switch (e.g. first apply, or manual cleanup) →
   `link.Remove` returns nil (absent is fine); relocate degrades to a plain create.
+- **De-declare + scope switch in one apply** (verify round 1, FINDING 1): the `skill.`
+  delete branch prunes both the active AND the inactive-scope location (IsManaged-guarded),
+  because a removed skill's link may physically sit at the now-inactive scope — otherwise it
+  would orphan. A foreign file at either location is left untouched.
+- **Lost `state.json` for a skills-only config** (verify round 1, FINDING 2): a correct link
+  that link.Plan omits (nothing to change) but that state doesn't record is emitted as an
+  `adopt`, so apply runs and rebuilds state (mirroring mcp/setting/plugin adoption). Without
+  this a skills-only repo could never reconstruct state or prune a later orphan.
 
 ## Testing strategy
 
