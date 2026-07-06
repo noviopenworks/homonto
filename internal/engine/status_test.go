@@ -57,6 +57,47 @@ func TestDoctorReportsSkillLinkState(t *testing.T) {
 	}
 }
 
+// TestDoctorProjectScopeChecksProjectLocation: with scope=project, doctor must
+// verify both tool links at the project root, not the home locations.
+func TestDoctorProjectScopeChecksProjectLocation(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nscope=\"project\"\nown=[\"graphify\"]\n"), 0o644)
+	content := filepath.Join(repo, "content")
+	src := filepath.Join(content, "skills", "graphify")
+	os.MkdirAll(src, 0o755)
+	build := func() *Engine {
+		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+
+	// No links yet -> both tools reported unlinked.
+	lines := strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `skill "graphify" content present, not linked for claude`) ||
+		!strings.Contains(lines, `skill "graphify" content present, not linked for opencode`) {
+		t.Fatalf("project-scope doctor should report both links missing:\n%s", lines)
+	}
+
+	// Create project-location links for both tools.
+	for _, d := range []string{
+		filepath.Join(repo, ".claude", "skills", "graphify"),
+		filepath.Join(repo, ".opencode", "skills", "graphify"),
+	} {
+		os.MkdirAll(filepath.Dir(d), 0o755)
+		if err := os.Symlink(src, d); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lines = strings.Join(build().Doctor(), "\n")
+	if !strings.Contains(lines, `ok: skill "graphify" linked (claude)`) ||
+		!strings.Contains(lines, `ok: skill "graphify" linked (opencode)`) {
+		t.Fatalf("project-scope doctor should verify links at the project location:\n%s", lines)
+	}
+}
+
 // TestDoctorChecksOpenCodeSkillLink reproduces NEXT_AGENT gap #6: doctor
 // verified only the Claude skill link, so a missing OpenCode link went
 // unreported. Both tools' links must be checked, reported per tool.

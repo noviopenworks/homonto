@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+
+	"github.com/noviopenworks/homonto/internal/skillpath"
 )
 
 // Status reports two independent facts about the managed surface:
@@ -101,9 +103,10 @@ func (e *Engine) Doctor() []string {
 		}
 		// Content alone is not enough — each tool only sees the skill through
 		// its own symlink, so verify both links exist and point at the content.
+		// The link location depends on the skill scope (user home vs project root).
 		for _, l := range []struct{ tool, dst string }{
-			{"claude", filepath.Join(e.Home, ".claude", "skills", name)},
-			{"opencode", filepath.Join(e.Home, ".config", "opencode", "skills", name)},
+			{"claude", filepath.Join(skillpath.Dir("claude", e.Cfg.Skills.Scope, e.Home, e.ProjectRoot), name)},
+			{"opencode", filepath.Join(skillpath.Dir("opencode", e.Cfg.Skills.Scope, e.Home, e.ProjectRoot), name)},
 		} {
 			if target, err := os.Readlink(l.dst); err == nil && target == p {
 				out = append(out, fmt.Sprintf("ok: skill %q linked (%s)", name, l.tool))

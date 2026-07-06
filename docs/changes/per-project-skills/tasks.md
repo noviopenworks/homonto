@@ -26,7 +26,7 @@
 
 ## 4. Status / doctor
 
-- [ ] 4.1 `Doctor` (`internal/engine/status.go`): use `skillpath.Dir` for both tool skill
+- [x] 4.1 `Doctor` (`internal/engine/status.go`): use `skillpath.Dir` for both tool skill
       paths so a project-scoped install isn't reported missing. (Drift `Status()` needs no
       change — it flows through the now-scope-aware `ObserveHashes`.)
 

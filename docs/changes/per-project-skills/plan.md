@@ -65,7 +65,7 @@ Design: `design.md` (Status: Confirmed 2026-07-06). One commit per task.
 
 ## Task 6 — Scope-aware `doctor`
 
-- [ ] done
+- [x] done
 - Files: `internal/engine/status.go`, `internal/engine/status_test.go`
 - Do: replace the hardcoded skill paths in `Doctor` (lines 104-106) with
   `skillpath.Dir("claude"/"opencode", e.Cfg.Skills.Scope, e.Home, e.ProjectRoot)`. Leave the
