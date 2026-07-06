@@ -75,3 +75,27 @@ capability.
 - **WHEN** apply processes the relocation
 - **THEN** that path is left untouched and is not removed — the prune removes only a symlink
   pointing into homonto's managed content directory, and an absent path is a no-op
+
+#### Scenario: De-declaring a skill while switching scope leaves no orphan
+- **GIVEN** a skill applied at one scope that is then, in a single apply, both removed from
+  `[skills] own` and had `scope` switched (so its link physically sits at the now-inactive scope)
+- **WHEN** apply processes the delete
+- **THEN** the link is removed from the location it actually occupies — the delete prunes both
+  the active and the (IsManaged) inactive scope location — leaving no orphan; a foreign file at
+  either location is left untouched
+
+### Requirement: Skill links are adopted like other managed keys
+
+Each adapter SHALL, on apply, record in state a correct-but-unrecorded skill link — one whose
+symlink already exists and points at the owned content but which is absent from state (or whose
+recorded hash is stale) — rather than leaving it untracked, mirroring MCP/setting/plugin
+adoption. Adoption SHALL NOT modify the link on disk, and it SHALL make apply run (via the
+adoption path) so that a lost `state.json` is rebuilt for a skills-only config and the link
+remains prunable and drift-detectable afterward.
+
+#### Scenario: Correct-but-unrecorded skill link is adopted
+- **GIVEN** an owned skill whose link is already correct on disk but whose `skill.<name>` state
+  record is missing (e.g. `.homonto/state.json` was deleted) — even in a skills-only config
+- **WHEN** the user runs apply
+- **THEN** the link is left unchanged on disk, state regains the `skill.<name>` record, and a
+  subsequent removal of that skill from config prunes the link

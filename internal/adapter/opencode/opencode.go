@@ -287,8 +287,20 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 				docChanged = true
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
-				// is a conflict error inside link.Remove.
-				err = link.Remove(filepath.Join(a.skillsDir(), trim(c.Key, "skill.")), a.content)
+				// is a conflict error inside link.Remove. A de-declared skill may
+				// physically sit at the inactive scope too (removal + scope switch
+				// in one apply), so prune that location as well — IsManaged-guarded
+				// so a foreign file there is left untouched, never an error.
+				name := trim(c.Key, "skill.")
+				err = link.Remove(filepath.Join(a.skillsDir(), name), a.content)
+				if err == nil {
+					if inactive := a.inactiveSkillsDir(); inactive != "" {
+						old := filepath.Join(inactive, name)
+						if link.IsManaged(old, a.content) {
+							err = link.Remove(old, a.content)
+						}
+					}
+				}
 			}
 			if err != nil {
 				return err

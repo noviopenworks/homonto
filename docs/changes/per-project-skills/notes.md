@@ -73,6 +73,23 @@ Goals / non-goals / scope / unknowns / acceptance scenarios: see proposal.md.
   - No Dockerfile/Makefile/scripts exist; CI (`.github/workflows/ci.yml`) smoke-tests
     only `plan`, never `apply`.
 
+## Verify round 1 (2026-07-06) — findings → back to build
+
+Adversarial pass (two skeptics, full mode) found:
+- **FINDING 1 (real, confirmed, non-critical orphan leak — introduced here)**: switching
+  scope AND removing a skill in the same apply orphans the old-scope link. The `skill.`
+  delete branch removes only from `skillsDir()` (new/active scope), and the inactive-prune
+  loop iterates `a.skills` (still-declared), so a de-declared skill's old-location link is
+  never removed; state key deleted → status blind. **User: fix now.** Fix: delete branch
+  also `link.Remove` the `inactiveSkillsDir()` location, IsManaged-guarded.
+- **FINDING 2 (pre-existing gap)**: a skills-only config that loses `.homonto/state.json`
+  can't rebuild state — skills have no `adopt` action, so a correct-but-unrecorded link is
+  invisible to Plan and apply short-circuits. **User: fix now in this change.** Fix: add a
+  skill adopt path (mirror mcp/setting/plugin) so a correct-but-unrecorded link is adopted
+  into state, letting apply reconcile and rebuild.
+
+Both fixes get a spec scenario + regression test; re-verify as round 2.
+
 ## Approaches
 
 - **A — CONFIRMED 2026-07-06** (approach gate answered "Confirm Approach A"; switch-display

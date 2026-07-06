@@ -105,6 +105,38 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	}
 }
 
+// TestRemoveAndSwitchLeavesNoOrphan (verify round 1, FINDING 1): remove + scope
+// switch in one apply must prune the link at its actual (inactive-scope) location.
+func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755)
+	proj := t.TempDir()
+	content := filepath.Join(proj, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
+	st, _ := state.Load(t.TempDir())
+
+	aU := New(home, content).WithScope("user", proj)
+	cU := &config.Config{Skills: config.Skills{Scope: "user", Own: []string{"foo"}}}
+	cs, _ := aU.Plan(cU, st)
+	if err := aU.Apply(cs, noSecret(), st); err != nil {
+		t.Fatal(err)
+	}
+	homeDst := filepath.Join(home, ".config", "opencode", "skills", "foo")
+	if _, err := os.Lstat(homeDst); err != nil {
+		t.Fatalf("setup: user link missing: %v", err)
+	}
+
+	aP := New(home, content).WithScope("project", proj)
+	cP := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{}}}
+	cs2, _ := aP.Plan(cP, st)
+	if err := aP.Apply(cs2, noSecret(), st); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(homeDst); err == nil {
+		t.Fatal("orphan: user-location link survived remove+switch")
+	}
+}
+
 // TestRelocationPruneLeavesForeignFile: a real file at the inactive path is not
 // removed and does not error the apply.
 func TestRelocationPruneLeavesForeignFile(t *testing.T) {

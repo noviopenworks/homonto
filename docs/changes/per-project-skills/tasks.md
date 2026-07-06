@@ -44,6 +44,15 @@
       `tool-adapters`, `cli-commands` (MODIFIED requirements + scenarios).
 - [x] 6.2 Update `docs/guides/` / `README.md` for the new `scope` setting.
 
+## 8. Verify-round-1 fixes
+
+- [x] 8.1 FINDING 1 — the `skill.` delete branch in both adapters also prunes the
+      `inactiveSkillsDir()` location (IsManaged-guarded), so de-declare + scope-switch in one
+      apply leaves no orphan. Regression test.
+- [ ] 8.2 FINDING 2 — add a skill `adopt` path: Plan emits `adopt` for a correct-but-unrecorded
+      link; Apply records `skill.<name>` state from it without touching disk, so a lost
+      `state.json` (skills-only) rebuilds and later prunes. Regression test.
+
 ## 7. Validation
 
 - [x] 7.1 Go tests green: config scope parse/reject/default; adapter project-scope link

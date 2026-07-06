@@ -10,14 +10,15 @@ decisions:
   tdd: tdd
   directive: null
 verify:
-  mode: null
+  mode: full
   result: pending
 guides: pending
 metrics:
   phases:
     open: 2026-07-06
     design: 2026-07-06
-  tasks_total: 0
-  verify_rounds: 0
+    build: 2026-07-06
+  tasks_total: 11
+  verify_rounds: 1
   upgraded: false
 archived: false

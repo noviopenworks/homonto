@@ -51,6 +51,42 @@ func TestProjectScopeLinksUnderProjectRoot(t *testing.T) {
 	}
 }
 
+// TestRemoveAndSwitchLeavesNoOrphan (verify round 1, FINDING 1): removing a
+// skill AND switching scope in one apply must prune the link at the location it
+// actually occupies (the now-inactive scope), leaving no orphan.
+func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
+	proj := t.TempDir()
+	content := filepath.Join(proj, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
+	st, _ := state.Load(t.TempDir())
+
+	aU := New(home, content).WithScope("user", proj)
+	cU := &config.Config{Skills: config.Skills{Scope: "user", Own: []string{"foo"}}}
+	cs, _ := aU.Plan(cU, st)
+	if err := aU.Apply(cs, resolver(), st); err != nil {
+		t.Fatal(err)
+	}
+	homeDst := filepath.Join(home, ".claude", "skills", "foo")
+	if _, err := os.Lstat(homeDst); err != nil {
+		t.Fatalf("setup: user link missing: %v", err)
+	}
+
+	// Switch to project scope AND drop foo in the same apply.
+	aP := New(home, content).WithScope("project", proj)
+	cP := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{}}}
+	cs2, _ := aP.Plan(cP, st)
+	if err := aP.Apply(cs2, resolver(), st); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(homeDst); err == nil {
+		t.Fatal("orphan: user-location link survived remove+switch")
+	}
+}
+
 // TestScopeSwitchRelocatesLink: switching user -> project relocates the link —
 // plan shows a relocate (update) referencing the old location, apply creates the
 // new link and prunes the old one, and the result is idempotent (no orphan).
