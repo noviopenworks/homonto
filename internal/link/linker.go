@@ -25,7 +25,12 @@ func Link(src, dst, contentRoot string) (bool, error) {
 		if fi.Mode()&os.ModeSymlink == 0 {
 			return false, fmt.Errorf("conflict: %s exists and is not a symlink", dst)
 		}
-		cur, _ := os.Readlink(dst)
+		cur, err := os.Readlink(dst)
+		if err != nil {
+			// Symlink at Lstat but unreadable now (vanished/permission race).
+			// Surface the real IO error instead of an empty-target conflict.
+			return false, fmt.Errorf("read link %s: %w", dst, err)
+		}
 		if cur == src {
 			return false, nil
 		}
@@ -111,7 +116,15 @@ func Plan(srcs map[string]string, contentRoot string) ([]Op, error) {
 		if fi.Mode()&os.ModeSymlink == 0 {
 			return nil, fmt.Errorf("conflict: %s exists and is not a symlink", dst)
 		}
-		cur, _ := os.Readlink(dst)
+		cur, err := os.Readlink(dst)
+		if err != nil {
+			// It was a symlink at Lstat but is unreadable now — vanished between
+			// the two calls, or a permission race. Treat it as absent (a create)
+			// rather than feeding an empty target to managed() and reporting a
+			// confusing "symlink to , outside managed content" conflict.
+			out = append(out, Op{Dst: dst, Src: src})
+			continue
+		}
 		if cur == src {
 			continue
 		}
@@ -119,23 +132,6 @@ func Plan(srcs map[string]string, contentRoot string) ([]Op, error) {
 			return nil, fmt.Errorf("conflict: %s is a symlink to %s, outside managed content %s; not changing", dst, cur, contentRoot)
 		}
 		out = append(out, Op{Dst: dst, Src: src, Cur: cur})
-	}
-	return out, nil
-}
-
-// LinkPlan returns descriptions of links (dst->src) that would change.
-func LinkPlan(srcs map[string]string, contentRoot string) ([]string, error) {
-	ops, err := Plan(srcs, contentRoot)
-	if err != nil {
-		return nil, err
-	}
-	var out []string
-	for _, op := range ops {
-		if op.Cur == "" {
-			out = append(out, fmt.Sprintf("+ link %s -> %s", op.Dst, op.Src))
-		} else {
-			out = append(out, fmt.Sprintf("~ relink %s -> %s", op.Dst, op.Src))
-		}
 	}
 	return out, nil
 }

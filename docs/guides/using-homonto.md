@@ -177,4 +177,9 @@ When neither is present: `No drift.`
   sharing.
 - Writing `opencode.jsonc` removes comments (whole-document JSONC
   normalization).
+- Skill symlinks store an absolute target, so if you **move or rename your
+  homonto repo**, existing links point at the old path (now outside the content
+  root) and `apply`/`status` report a conflict instead of silently repointing —
+  homonto never changes a symlink it can't prove it owns. Delete the stale links
+  and re-run `apply` to relink at the new location.
 - CLI output is written to stderr; redirect with `2>&1` when scripting.
