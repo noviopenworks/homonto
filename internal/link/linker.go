@@ -7,11 +7,20 @@ import (
 	"strings"
 )
 
-// Link ensures dst is a symlink to src, returning whether it changed. A
-// regular file (or dir) at dst is never clobbered — that is a "conflict"
-// error. A symlink pointing elsewhere is relinked in place: replacing a
-// symlink destroys no data, and status already promises "will reset on apply".
-func Link(src, dst string) (bool, error) {
+// managed reports whether target points inside contentRoot — the content homonto
+// owns. A symlink pointing there is one of ours and may be relinked or pruned; a
+// symlink pointing anywhere else is user-owned and must never be touched.
+func managed(target, contentRoot string) bool {
+	return strings.HasPrefix(target, contentRoot+string(os.PathSeparator))
+}
+
+// Link ensures dst is a symlink to src, returning whether it changed. A regular
+// file (or dir) at dst is never clobbered — that is a "conflict" error. A
+// symlink already pointing at src is a no-op. A symlink pointing elsewhere is
+// relinked in place only when it is ours (its target sits inside contentRoot);
+// a symlink pointing outside contentRoot is a foreign, user-owned link and is a
+// conflict — homonto must never remove or repoint what it does not own.
+func Link(src, dst, contentRoot string) (bool, error) {
 	if fi, err := os.Lstat(dst); err == nil {
 		if fi.Mode()&os.ModeSymlink == 0 {
 			return false, fmt.Errorf("conflict: %s exists and is not a symlink", dst)
@@ -19,6 +28,9 @@ func Link(src, dst string) (bool, error) {
 		cur, _ := os.Readlink(dst)
 		if cur == src {
 			return false, nil
+		}
+		if !managed(cur, contentRoot) {
+			return false, fmt.Errorf("conflict: %s is a symlink to %s, outside managed content %s; not changing", dst, cur, contentRoot)
 		}
 		if err := os.Remove(dst); err != nil {
 			return false, err
@@ -55,7 +67,7 @@ func Remove(dst, contentRoot string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(target, contentRoot+string(os.PathSeparator)) {
+	if !managed(target, contentRoot) {
 		return fmt.Errorf("conflict: %s links to %s, outside managed content %s; not removing", dst, target, contentRoot)
 	}
 	return os.Remove(dst)
@@ -74,7 +86,7 @@ func IsManaged(dst, contentRoot string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.HasPrefix(target, contentRoot+string(os.PathSeparator))
+	return managed(target, contentRoot)
 }
 
 // Op is a pending link change for dst -> src. Cur is the current symlink
@@ -84,8 +96,11 @@ type Op struct {
 }
 
 // Plan returns the link changes (dst->src) that would be made. Links already
-// pointing at src are omitted; a non-symlink at dst is a conflict error.
-func Plan(srcs map[string]string) ([]Op, error) {
+// pointing at src are omitted. A non-symlink at dst is a conflict error, and so
+// is a symlink pointing outside contentRoot — a foreign, user-owned link that
+// Apply must never repoint. Only a symlink pointing inside contentRoot (one of
+// ours) is planned as a relink.
+func Plan(srcs map[string]string, contentRoot string) ([]Op, error) {
 	var out []Op
 	for dst, src := range srcs {
 		fi, err := os.Lstat(dst)
@@ -96,16 +111,21 @@ func Plan(srcs map[string]string) ([]Op, error) {
 		if fi.Mode()&os.ModeSymlink == 0 {
 			return nil, fmt.Errorf("conflict: %s exists and is not a symlink", dst)
 		}
-		if cur, _ := os.Readlink(dst); cur != src {
-			out = append(out, Op{Dst: dst, Src: src, Cur: cur})
+		cur, _ := os.Readlink(dst)
+		if cur == src {
+			continue
 		}
+		if !managed(cur, contentRoot) {
+			return nil, fmt.Errorf("conflict: %s is a symlink to %s, outside managed content %s; not changing", dst, cur, contentRoot)
+		}
+		out = append(out, Op{Dst: dst, Src: src, Cur: cur})
 	}
 	return out, nil
 }
 
 // LinkPlan returns descriptions of links (dst->src) that would change.
-func LinkPlan(srcs map[string]string) ([]string, error) {
-	ops, err := Plan(srcs)
+func LinkPlan(srcs map[string]string, contentRoot string) ([]string, error) {
+	ops, err := Plan(srcs, contentRoot)
 	if err != nil {
 		return nil, err
 	}

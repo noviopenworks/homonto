@@ -2,3 +2,6 @@
 /.homonto/
 .env
 graphify-out/
+# Project-scoped dogfood skill links (machine-specific absolute symlinks).
+/.claude/
+/.opencode/

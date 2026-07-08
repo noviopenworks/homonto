@@ -1,4 +1,8 @@
 [skills]
+# Project scope: link the onto dev skills under this repo's own .claude/.opencode
+# (dogfooding homonto on homonto) instead of the maintainer's global ~/.claude.
+# The links are machine-specific absolute symlinks, so .gitignore excludes them.
+scope = "project"
 own = [
   "onto",
   "onto-open",

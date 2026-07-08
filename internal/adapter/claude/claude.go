@@ -147,7 +147,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			}
 		}
 	}
-	ops, err := link.Plan(a.links())
+	ops, err := link.Plan(a.links(), a.content)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
@@ -250,9 +250,21 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	out := map[string]string{}
 	for _, key := range st.Keys("claude") {
 		if hasPrefix(key, "skill.") {
-			// skill.* lives on disk as a symlink, not a JSON value. Its Applied
-			// was stored as Hash(dst + " -> " + src); reproduce it from readlink.
-			dst := filepath.Join(a.skillsDir(), trim(key, "skill."))
+			// skill.* lives on disk as a symlink, not a JSON value. Its Applied was
+			// stored as Hash(dst + " -> " + src); reproduce it by reading the link at
+			// the dst state recorded — NOT at the current scope's skillsDir. A pending
+			// [skills] scope switch changes skillsDir but leaves the applied link in
+			// place; reading the new scope's (empty) location would make an intact old
+			// link look "missing" (false drift) instead of a pending relocation Plan
+			// already surfaces.
+			e, ok := st.Get("claude", key)
+			if !ok {
+				continue
+			}
+			dst, ok := recordedDst(e.Desired)
+			if !ok {
+				continue
+			}
 			target, err := os.Readlink(dst)
 			if err != nil {
 				continue // missing or not a symlink → omit (engine infers missing)
@@ -368,7 +380,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	}
 	// Fail fast on link conflicts before writing any file.
 	links := a.links()
-	if _, err := link.Plan(links); err != nil {
+	if _, err := link.Plan(links, a.content); err != nil {
 		return err
 	}
 	if mjChanged {
@@ -395,7 +407,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		}
 	}
 	for dst, src := range links {
-		if _, err := link.Link(src, dst); err != nil {
+		if _, err := link.Link(src, dst, a.content); err != nil {
 			return err
 		}
 		// Record the link in state so pruning sees de-declared skills later.

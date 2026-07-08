@@ -84,6 +84,72 @@ func TestProjectScopeEndToEnd(t *testing.T) {
 	}
 }
 
+// TestScopeSwitchStatusReportsPendingNotDrift is the release blocker guard: a
+// [skills] scope change that has NOT been applied yet must show as pending
+// relocation, not false drift. Skill Applied hashes encode the link's
+// destination path, so a naive ObserveHashes keyed on the new scope's dir would
+// find the (not-yet-created) link absent and cry "missing/drift" while the old
+// managed link is still perfectly intact. It covers both switch directions.
+func TestScopeSwitchStatusReportsPendingNotDrift(t *testing.T) {
+	for _, tc := range []struct{ from, to string }{
+		{"user", "project"},
+		{"project", "user"},
+	} {
+		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			home := t.TempDir()
+			repo := t.TempDir()
+			content := filepath.Join(repo, "content")
+			os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
+			writeTOML := func(scope string) {
+				os.WriteFile(filepath.Join(repo, "homonto.toml"),
+					[]byte("[skills]\nscope=\""+scope+"\"\nown=[\"graphify\"]\n"), 0o644)
+			}
+			build := func() *Engine {
+				e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+				if err != nil {
+					t.Fatal(err)
+				}
+				e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+				return e
+			}
+
+			// Apply at the origin scope, then confirm a clean baseline.
+			writeTOML(tc.from)
+			e := build()
+			sets, _ := e.Plan()
+			if err := e.Apply(sets); err != nil {
+				t.Fatal(err)
+			}
+			if drift, pending, err := build().Status(); err != nil || len(drift) != 0 || pending != 0 {
+				t.Fatalf("baseline not clean: drift=%v pending=%d err=%v", drift, pending, err)
+			}
+
+			// Switch scope in config but DO NOT apply. The old links are still intact.
+			writeTOML(tc.to)
+			drift, pending, err := build().Status()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(drift) != 0 {
+				t.Fatalf("pending scope switch reported as drift (old links are intact): %v", drift)
+			}
+			if pending == 0 {
+				t.Fatal("pending scope switch not reported as pending work")
+			}
+
+			// Applying the switch converges: relocation happens and status goes clean.
+			e2 := build()
+			sets2, _ := e2.Plan()
+			if err := e2.Apply(sets2); err != nil {
+				t.Fatal(err)
+			}
+			if drift, pending, err := build().Status(); err != nil || len(drift) != 0 || pending != 0 {
+				t.Fatalf("status not clean after applying switch: drift=%v pending=%d err=%v", drift, pending, err)
+			}
+		})
+	}
+}
+
 // TestSkillsOnlyRebuildsLostState (verify round 1, FINDING 2): a skills-only
 // project-scope config whose .homonto/state.json is deleted rebuilds state via
 // adoption on the next apply, and the skill remains prunable afterward.

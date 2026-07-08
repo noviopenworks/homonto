@@ -14,6 +14,35 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// TestForeignSkillSymlinkAborts is the adapter/apply-level guard for the
+// release blocker: a symlink in the skills dir pointing OUTSIDE managed content
+// is user-owned. Plan must report a conflict, leaving the foreign symlink
+// untouched — homonto never repoints or removes what it does not own.
+func TestForeignSkillSymlinkAborts(t *testing.T) {
+	home := t.TempDir()
+	content := t.TempDir()
+	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
+
+	foreign := filepath.Join(home, "dotfiles", "onto")
+	os.MkdirAll(foreign, 0o755)
+	dst := filepath.Join(home, ".config", "opencode", "skills", "onto")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(foreign, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	a := New(home, content)
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+
+	if _, err := a.Plan(c, st); err == nil || !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("plan must conflict on a foreign skill symlink, got %v", err)
+	}
+	if got, _ := os.Readlink(dst); got != foreign {
+		t.Fatalf("plan changed the foreign symlink: now points to %q, want %q", got, foreign)
+	}
+}
+
 // objKeys returns the immediate member names of the object at root.
 func objKeys(t *testing.T, path, root string) map[string]bool {
 	t.Helper()

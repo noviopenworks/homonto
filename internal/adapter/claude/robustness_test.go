@@ -110,6 +110,40 @@ func TestPluginNameWithSpecialsLandsAsLiteralKey(t *testing.T) {
 	}
 }
 
+// TestForeignSkillSymlinkAborts is the adapter/apply-level guard for the
+// release blocker: a symlink in the skills dir pointing OUTSIDE managed content
+// (a skill the user linked from their own dotfiles) is user-owned. Plan must
+// report a conflict and Apply must abort, leaving the foreign symlink untouched
+// — homonto never repoints or removes what it does not own.
+func TestForeignSkillSymlinkAborts(t *testing.T) {
+	home := t.TempDir()
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
+	content := t.TempDir()
+	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
+
+	// The user already linked "onto" to their own directory, outside content.
+	foreign := filepath.Join(home, "dotfiles", "onto")
+	os.MkdirAll(foreign, 0o755)
+	dst := filepath.Join(home, ".claude", "skills", "onto")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(foreign, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	a := New(home, content)
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+
+	if _, err := a.Plan(c, st); err == nil || !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("plan must conflict on a foreign skill symlink, got %v", err)
+	}
+	if got, _ := os.Readlink(dst); got != foreign {
+		t.Fatalf("plan changed the foreign symlink: now points to %q, want %q", got, foreign)
+	}
+}
+
 // TestPlanRenderIsDeterministic reproduces the review's map-iteration
 // finding: two plans over the same input must render identically.
 func TestPlanRenderIsDeterministic(t *testing.T) {

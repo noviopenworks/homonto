@@ -234,6 +234,7 @@ func TestLoadRejectsEmptyCommand(t *testing.T) {
 func TestLoadRejectsReservedSettingKeys(t *testing.T) {
 	for _, tc := range []struct{ label, doc, key string }{
 		{"claude enabledPlugins", "[settings.claude]\nenabledPlugins={}\n", "enabledPlugins"},
+		{"claude mcpServers", "[settings.claude]\nmcpServers={}\n", "mcpServers"},
 		{"opencode mcp", "[settings.opencode]\nmcp={}\n", "mcp"},
 		{"opencode plugin", "[settings.opencode]\nplugin=[]\n", "plugin"},
 	} {
@@ -246,13 +247,13 @@ func TestLoadRejectsReservedSettingKeys(t *testing.T) {
 		}
 	}
 	// Exact collisions only: the same names are fine in the OTHER tool, and
-	// non-colliding keys load normally. (Note: settings.claude.mcpServers also
-	// loads, but is deliberately NOT asserted here — claude's current() skips
-	// reading it back from settings.json, so it is non-idempotent at apply; it
-	// is a separate pre-existing adapter concern, not a "harmless" key.)
+	// non-colliding keys load normally. (settings.claude.mcpServers is now
+	// rejected above — claude's current() skips reading it back from
+	// settings.json, so it would be non-idempotent at apply.)
 	for _, ok := range []string{
 		"[settings.claude]\nmcp={}\n",              // read back by current(); idempotent
 		"[settings.opencode]\nenabledPlugins={}\n", // reserved for claude only, fine for opencode
+		"[settings.opencode]\nmcpServers={}\n",     // reserved for claude only, fine for opencode
 		"[settings.claude]\nmodel=\"opus\"\n",
 	} {
 		if err := loadDoc(t, ok); err != nil {

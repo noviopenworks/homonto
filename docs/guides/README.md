@@ -10,9 +10,13 @@ Every onto change carries a `guides` obligation in its `state.yaml`
 `onto-close` refuses to archive a change while `guides: pending` — either
 write/update the affected guide(s) or record an explicit waiver reason.
 
-## Current Gap
+## Current Guides
 
-The repo has an onto workflow guide but does not yet have a core homonto usage
-guide. Future docs work should add a guide covering config schema, import
-limitations, target names, pruning/state behavior, JSONC comment loss, and safe
-secret handling.
+- [`using-homonto.md`](using-homonto.md) covers the core CLI, config shape,
+  projection behavior, status/adoption, and known limitations.
+- [`status-and-adoption.md`](status-and-adoption.md) explains state adoption,
+  drift, pending changes, and pruning behavior.
+- [`onto-workflow.md`](onto-workflow.md) documents this repository's internal
+  development workflow.
+
+Release-readiness tasks live in [`../road-to-release.md`](../road-to-release.md).

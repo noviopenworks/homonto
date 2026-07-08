@@ -1,16 +1,18 @@
 # homonto — Post-v1 Roadmap
 
-**Date:** 2026-07-03
-**Status:** Current roadmap with v1 gap list
+**Date:** 2026-07-08
+**Status:** Product roadmap. Release-readiness tasks live in
+[`road-to-release.md`](road-to-release.md).
 
 ## Summary
 
 `homonto` v1 remains focused on the safe core: one declarative
 `homonto.toml`, a plan/confirm/apply pipeline, reference-only secrets,
-surgical writes, and Claude Code/OpenCode adapters. The core is implemented,
-testable (129 tests across 15 packages), and the original v1 safety,
-idempotency, drift, validation, and CI gaps have been closed. What remains is
-either consciously accepted as a documented limitation or belongs to the
+surgical writes, and Claude Code/OpenCode adapters. The core is implemented and
+testable (153 tests across 16 packages locally on 2026-07-08). Every engineering
+item in `docs/road-to-release.md` (Iterations 0–4) is closed; the release now
+waits only on the maintainer pushing the `v0.1.0-rc.1` tag. What remains beyond
+that is either consciously accepted as a documented limitation or belongs to the
 post-v1 roadmap below.
 
 Post-v1 expands Homonto from a config projector into a manager for the AI
@@ -77,9 +79,14 @@ Implemented and verified since the original v1 review:
 - **Doctor parity:** `doctor` checks both the Claude and OpenCode skill symlinks
   for every owned skill.
 - **CI expanded:** gofmt, `go mod tidy -diff`, vet, build, test, race, stamped
-  version smoke, and a temp-HOME CLI smoke all run in CI.
+  version smoke, temp-HOME CLI smoke, Docker apply smoke, and `govulncheck` all
+  run in CI; a tagged `release` workflow ships cross-platform binaries.
 
-Remaining v1 work, in recommended order:
+Known v1 product limitations, in recommended order:
+
+Operational release blockers and hardening tasks are tracked in
+[`road-to-release.md`](road-to-release.md). Do not treat this roadmap as the
+release checklist.
 
 1. **Import scope/redaction:** `import` is intentionally narrow (Claude global
    MCP servers only; env-value redaction only; command/args preserved verbatim).

@@ -9,11 +9,12 @@ import (
 
 func TestLinkCreatesAndIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
-	src := filepath.Join(dir, "content", "skills", "graphify")
+	content := filepath.Join(dir, "content")
+	src := filepath.Join(content, "skills", "graphify")
 	os.MkdirAll(src, 0o755)
 	dst := filepath.Join(dir, "claude", "skills", "graphify")
 
-	changed, err := Link(src, dst)
+	changed, err := Link(src, dst, content)
 	if err != nil || !changed {
 		t.Fatalf("first link changed=%v err=%v", changed, err)
 	}
@@ -21,31 +22,32 @@ func TestLinkCreatesAndIsIdempotent(t *testing.T) {
 	if got != src {
 		t.Fatalf("symlink points to %q", got)
 	}
-	changed, err = Link(src, dst)
+	changed, err = Link(src, dst, content)
 	if err != nil || changed {
 		t.Fatalf("second link should be no-op: changed=%v err=%v", changed, err)
 	}
 }
 
-// TestLinkRelinksWrongTargetSymlink reproduces the verify round's dead end:
-// status promised "will reset on apply" but Link returned a conflict for a
-// symlink pointing elsewhere. Relinking a symlink destroys no data, so it
-// must be repaired in place. (A regular file at dst stays a conflict.)
-func TestLinkRelinksWrongTargetSymlink(t *testing.T) {
+// TestLinkRelinksManagedWrongTarget: a symlink already pointing inside the
+// managed content root is one of ours (e.g. a stale target from an older
+// layout), so it is repaired in place — relinking one of our own symlinks
+// destroys no user data.
+func TestLinkRelinksManagedWrongTarget(t *testing.T) {
 	dir := t.TempDir()
-	src := filepath.Join(dir, "content", "skills", "graphify")
-	other := filepath.Join(dir, "elsewhere")
+	content := filepath.Join(dir, "content")
+	src := filepath.Join(content, "skills", "graphify")
+	stale := filepath.Join(content, "skills", "graphify-old")
 	os.MkdirAll(src, 0o755)
-	os.MkdirAll(other, 0o755)
+	os.MkdirAll(stale, 0o755)
 	dst := filepath.Join(dir, "claude", "skills", "graphify")
 	os.MkdirAll(filepath.Dir(dst), 0o755)
-	if err := os.Symlink(other, dst); err != nil {
+	if err := os.Symlink(stale, dst); err != nil {
 		t.Fatal(err)
 	}
 
-	changed, err := Link(src, dst)
+	changed, err := Link(src, dst, content)
 	if err != nil {
-		t.Fatalf("wrong-target symlink must be relinked, got error: %v", err)
+		t.Fatalf("managed wrong-target symlink must be relinked, got error: %v", err)
 	}
 	if !changed {
 		t.Fatal("relink must report changed=true")
@@ -55,18 +57,73 @@ func TestLinkRelinksWrongTargetSymlink(t *testing.T) {
 	}
 }
 
+// TestLinkForeignSymlinkIsConflict: a symlink pointing OUTSIDE the managed
+// content root is user-owned (e.g. a skill the user linked from their own
+// dotfiles). homonto must treat it as a conflict and leave it untouched — never
+// silently repoint or remove what it does not own.
+func TestLinkForeignSymlinkIsConflict(t *testing.T) {
+	dir := t.TempDir()
+	content := filepath.Join(dir, "content")
+	src := filepath.Join(content, "skills", "graphify")
+	foreign := filepath.Join(dir, "elsewhere")
+	os.MkdirAll(src, 0o755)
+	os.MkdirAll(foreign, 0o755)
+	dst := filepath.Join(dir, "claude", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(foreign, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := Link(src, dst, content)
+	if err == nil || !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("foreign symlink must be a conflict, got changed=%v err=%v", changed, err)
+	}
+	if changed {
+		t.Fatal("conflict must report changed=false")
+	}
+	if got, _ := os.Readlink(dst); got != foreign {
+		t.Fatalf("conflict changed the foreign symlink: now points to %q, want %q", got, foreign)
+	}
+}
+
 func TestLinkConflictDoesNotClobber(t *testing.T) {
 	dir := t.TempDir()
-	src := filepath.Join(dir, "src")
+	content := filepath.Join(dir, "content")
+	src := filepath.Join(content, "skills", "graphify")
 	os.MkdirAll(src, 0o755)
 	dst := filepath.Join(dir, "dst")
 	os.WriteFile(dst, []byte("real file"), 0o644) // not a symlink
 
-	_, err := Link(src, dst)
+	_, err := Link(src, dst, content)
 	if err == nil || !strings.Contains(err.Error(), "conflict") {
 		t.Fatalf("expected conflict error, got %v", err)
 	}
 	if b, _ := os.ReadFile(dst); string(b) != "real file" {
 		t.Fatal("conflict clobbered the real file")
+	}
+}
+
+// TestPlanForeignSymlinkIsConflict: Plan (used by status/plan rendering and the
+// fail-fast in Apply) must also reject a symlink pointing outside content,
+// rather than rendering it as a relink that Apply would refuse anyway.
+func TestPlanForeignSymlinkIsConflict(t *testing.T) {
+	dir := t.TempDir()
+	content := filepath.Join(dir, "content")
+	src := filepath.Join(content, "skills", "graphify")
+	foreign := filepath.Join(dir, "elsewhere")
+	os.MkdirAll(src, 0o755)
+	os.MkdirAll(foreign, 0o755)
+	dst := filepath.Join(dir, "claude", "skills", "graphify")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(foreign, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Plan(map[string]string{dst: src}, content)
+	if err == nil || !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("Plan must report conflict for foreign symlink, got %v", err)
+	}
+	if got, _ := os.Readlink(dst); got != foreign {
+		t.Fatalf("Plan changed the foreign symlink: now points to %q", got)
 	}
 }

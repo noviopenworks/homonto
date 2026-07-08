@@ -114,12 +114,21 @@ func Load(path string) (*Config, error) {
 	// collide with its own writes: claude projects plugins as `enabledPlugins`
 	// into settings.json; opencode projects MCPs and plugins as the `mcp` and
 	// `plugin` structures in opencode.jsonc. Reject those reserved names.
+	//
+	// `mcpServers` is reserved too: claude's current() deliberately skips that
+	// settings.json key when reading managed values back (MCP servers are owned
+	// via [mcps], projected into .claude.json). A settings.claude.mcpServers
+	// value would be written on apply but never read back, so every plan would
+	// re-propose it — a non-idempotent loop. Reject it up front instead.
 	for k := range c.Settings.Claude {
 		if err := validateKey("settings.claude", k); err != nil {
 			return nil, err
 		}
 		if k == "enabledPlugins" {
 			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages plugins there); rename it", k)
+		}
+		if k == "mcpServers" {
+			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages MCP servers via [mcps]); declare the server under [mcps] instead", k)
 		}
 	}
 	for k := range c.Settings.OpenCode {

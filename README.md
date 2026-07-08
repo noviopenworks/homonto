@@ -7,15 +7,21 @@ pipeline. Secrets are **referenced, never stored** — resolved only at apply ti
 
 ## Install
 
-homonto is pre-release: there are no version tags or release artifacts yet. From
-a checked-out repo, install the current source with:
+Once a release is tagged, install a specific version directly:
 
 ```bash
-go install .
+go install github.com/noviopenworks/homonto@v0.1.0-rc.1   # a tagged release
 ```
 
-If the repository is accessible remotely, `go install
-github.com/noviopenworks/homonto@main` installs the current main branch.
+Tagged releases also ship prebuilt binaries for Linux/macOS/Windows (amd64 and
+arm64) with a `SHA256SUMS` file, attached to the GitHub release.
+
+Until the first tag lands you can install the latest source instead:
+
+```bash
+go install github.com/noviopenworks/homonto@main   # current main branch
+go install .                                        # from a checked-out repo
+```
 
 ## Quickstart
 
@@ -108,18 +114,42 @@ to the new one, and `apply` removes the old link as it creates the new one, so n
 orphaned symlink is left behind. `status` and `doctor` report against whichever
 location the current scope selects.
 
-## Surgical merge & the JSONC caveat
+## Surgical merge
 
 homonto writes **only the keys it manages** and preserves every unmanaged key in
 each tool's file. Removal is declarative too: keys you remove from
 `homonto.toml` are deleted from the tool files on the next apply (and
-owned-skill links removed) — state tracks what homonto manages. Claude's files
-are plain JSON. OpenCode's `opencode.jsonc` supports comments, but homonto does
-not preserve them: any apply that touches the file rewrites it as normalized
-JSON, so **all comments in `opencode.jsonc` are removed** — a known, documented
-limitation.
+owned-skill links removed) — state tracks what homonto manages. A skills-only
+apply leaves tool JSON files byte-for-byte untouched, since adapters write a file
+only when a managed key inside it actually changes.
 
-## How it works
+## Known limitations
+
+homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
+
+- **OpenCode JSONC comments are not preserved.** Claude's files are plain JSON,
+  but OpenCode's `opencode.jsonc` supports comments. Any apply that *writes*
+  `opencode.jsonc` rewrites it as normalized JSON, so **all comments in that file
+  are removed**. (A skills-only or otherwise no-op apply does not write the file,
+  so comments survive those.) Accepted for beta.
+- **`import` is a narrow Claude MCP bootstrap.** It reads Claude's global MCP
+  servers only, redacts values that *look* like secrets into `${pass:...}`
+  references (best-effort, not exhaustive), and preserves `command`/`args`
+  verbatim. It does not import skills, plugins, settings, or OpenCode config.
+  Treat its output as a starting point to review, not a complete migration.
+- **Two tools only.** Claude Code and OpenCode are the only adapters today.
+- **Secrets need `pass` or an env var.** `${pass:...}` references require
+  [`pass`](https://www.passwordstore.org/) on `PATH`; `${ENV_VAR}` references
+  require the variable to be set at apply time. `homonto doctor` flags a missing
+  `pass`.
+
+---
+
+## For contributors
+
+Everything below is about developing homonto itself — users don't need it.
+
+### How it works
 
 `homonto.toml` is parsed into one tool-agnostic desired-state model; each tool is
 an adapter (`Read` → `Plan` → `Apply`) wired by the engine. Adding a new tool
@@ -127,17 +157,18 @@ requires a new adapter plus engine/config wiring. Writes are atomic (temp +
 rename); state is persisted after each successful adapter so a later adapter
 failure does not lose earlier records.
 
-## Development workflow
+### Development workflow
 
 This repo is developed with **onto**, a self-contained markdown workflow
 shipped from this very repo (`content/skills/onto*` — dogfooded via
-`homonto apply`). Five phases (open → design → build → verify → close) plus
-`/onto-fix` and `/onto-tweak` presets; artifacts live under `docs/`:
+`homonto apply` at project scope). Five phases (open → design → build → verify →
+close) plus `/onto-fix` and `/onto-tweak` presets; artifacts live under `docs/`:
 
 - `docs/adr/` — accepted architecture decisions
 - `docs/specs/` — living capability specs (SHALL + scenarios)
 - `docs/changes/` — active change workspaces (+ `archive/`)
 - `docs/guides/` — user-facing guides
+- `docs/road-to-release.md` — the release gate; `docs/release-checklist.md` — how to cut a release
 
 Start with `/onto`. Full guide: [docs/guides/onto-workflow.md](docs/guides/onto-workflow.md).
 

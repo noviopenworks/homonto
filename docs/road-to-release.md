@@ -1,0 +1,202 @@
+# Road to Release
+
+This is the hard release track for `homonto`. It is separate from
+`docs/roadmap.md`: the roadmap is feature direction, while this file is the
+gate for tagging and announcing a usable release.
+
+## Release Verdict
+
+Current state: **release-ready pending the maintainer's tag**.
+
+Every engineering item in Iterations 0–4 is done: safety blockers closed,
+release + govulncheck CI in place, binary-level coverage expanded, README and
+release notes polished, and the full local gate plus a disposable-home rehearsal
+pass. The repo dogfoods itself cleanly at project scope (`go run . status` →
+`No drift`).
+
+The only items left open are inherently human-owned and cannot be done
+autonomously: pushing the `v0.1.0-rc.1` tag (which triggers the release
+workflow), running the `go install <module>@<tag>` smoke from a clean
+environment against that tag, and promoting to `v0.1.0` after a dogfood cycle
+with the tagged binary. Follow `docs/release-checklist.md` to do them.
+
+## Iteration 0 - Safety Blockers
+
+Goal: make the tool safe enough to recommend to users who have real Claude and
+OpenCode config directories.
+
+- [x] Fix foreign skill symlink clobbering.
+  - Fixed: `link.Link`/`link.Plan` now take the content root and relink only a
+    symlink whose target sits inside it; a symlink pointing outside `content/` is
+    a user-owned conflict and is never removed or repointed.
+  - Regression tests: linker level (`TestLinkForeignSymlinkIsConflict`,
+    `TestPlanForeignSymlinkIsConflict`, `TestLinkRelinksManagedWrongTarget`) and
+    adapter/apply level (`TestForeignSkillSymlinkAborts` in both adapters).
+  - Acceptance met: an existing symlink to outside `content/` aborts without
+    being removed or changed.
+
+- [x] Fix or reject `settings.claude.mcpServers`.
+  - Fixed: `config.Load` reserves `settings.claude.mcpServers` alongside
+    `enabledPlugins` — claude's `current()` skips reading it back, so it would be
+    non-idempotent.
+  - Acceptance met: config load fails with a clear error; the regression case in
+    `TestLoadRejectsReservedSettingKeys` names the rejected key.
+
+- [x] Verify `status` behavior after `[skills] scope` changes.
+  - Fixed: `ObserveHashes` reads each skill link at the destination state
+    recorded (`recordedDst`), not the current scope's dir, so a pending scope
+    switch shows as a pending relocation while old links are intact.
+  - Acceptance met: `TestScopeSwitchStatusReportsPendingNotDrift` covers user ->
+    project and project -> user; status reports pending relocation, no false
+    drift.
+
+- [x] Make the repository's own dogfood state clean or intentionally waived.
+  - Resolved: `homonto.toml` sets `scope = "project"`, so the onto dev skills
+    link under this repo's own `.claude`/`.opencode` (gitignored) instead of the
+    maintainer's global home. `homonto apply --yes` was run and verified.
+  - Acceptance met: `go run . status` reports `No drift`; `doctor` shows all 8
+    skills linked for both tools; the global `~/.claude` is untouched.
+
+- [x] Sync stale docs that future agents rely on.
+  - Done: `docs/NEXT_AGENT.md` now records the closed blockers, the current
+    verified state, and the remaining release work. The guide index lists
+    `using-homonto.md` as the core usage guide.
+  - Acceptance met: no current-state doc contradicts source on known release
+    risks.
+
+## Iteration 1 - Release Plumbing
+
+Goal: make a tagged build installable and auditable.
+
+- [x] Add release CI for Linux/macOS/Windows builds.
+  - `.github/workflows/release.yml` triggers on `v*` tags, re-runs the CI gates,
+    and cross-compiles linux/darwin/windows for amd64+arm64 with the tag stamped
+    into `homonto version`. Build+archive logic was exercised locally.
+- [x] Produce checksums for release artifacts.
+  - The release job writes a single `SHA256SUMS` over every `.tar.gz`/`.zip`.
+- [~] Verify `go install github.com/noviopenworks/homonto@<tag>` works from a
+  clean environment.
+  - Installability is verified: `go install .` produces a working `homonto`
+    binary from the root package. The exact `@<tag>` smoke (from outside the
+    repo) is documented in the release checklist; it can only be run once a real
+    tag is pushed (Iteration 4), so this stays open until the first tag.
+- [x] Add `govulncheck` to CI.
+  - A `govulncheck` job runs `go run golang.org/x/vuln/cmd/govulncheck@latest
+    ./...`; verified locally as `No vulnerabilities found`.
+- [x] Add workflow `permissions:` explicitly and keep them least-privilege.
+  - `ci.yml` and `release.yml` default to `contents: read`; only the release
+    job opts up to `contents: write` for publishing.
+- [x] Decide whether to add CodeQL/dependency-review now or document why they
+  are deferred.
+  - Deferred for the v0.1.0 line, with rationale in the release checklist's
+    "Security scanning decision" section (govulncheck covers the high-signal
+    case for a tiny-dependency local CLI).
+- [x] Add a release checklist under `docs/` covering tag, build, checksums,
+  smoke install, and rollback.
+  - `docs/release-checklist.md`.
+
+## Iteration 2 - Binary-Level Coverage
+
+Goal: reduce the gap between unit-tested internals and real CLI behavior.
+
+- [x] Expand Docker smoke beyond skills-only apply.
+  - `test/docker/smoke.sh` now covers MCP projection for Claude and OpenCode,
+    settings projection, secret resolution via an env ref (asserting the value
+    lands resolved in the tool files but only as a `${ref}` in state, never
+    leaked), and `init` plus `import`/`import --force` command behavior.
+
+- [x] Add a conflict smoke for real files and foreign symlinks in skill dirs.
+  - The smoke pre-places a real file, then a foreign symlink, at a skill dst and
+    asserts apply aborts leaving each byte-for-byte / target unchanged.
+- [x] Add command-level tests for `import --force`, `init`, and error output.
+  - `internal/cli/command_test.go`: init scaffolds and skips existing;
+    import writes/refuses-without-force/forces; invalid and missing configs
+    surface clear errors.
+- [x] Stop relying only on exact human-output greps where behavior assertions can
+  be made against files/state instead.
+  - The new smoke sections assert against `.claude.json`, `settings.json`,
+    `opencode.jsonc`, and `state.json` contents (and symlink targets), reserving
+    stdout greps for genuinely output-shaped contracts (`No changes`, doctor).
+
+## Iteration 3 - Public Beta Polish
+
+Goal: make the first release understandable without reading internal process
+docs.
+
+- [x] Rewrite README around the user path: install, init, configure, plan,
+  apply, status, doctor, limitations.
+  - README leads with install → quickstart → config → secrets → scope, then a
+    dedicated "Known limitations" section; internal material is quarantined.
+- [x] Move or clearly quarantine internal workflow material so it does not look
+  like required user documentation.
+  - The "How it works" and onto "Development workflow" material now lives under a
+    `## For contributors` heading ("users don't need it").
+- [x] Add a short "known limitations" section to the release notes.
+  - `docs/release-notes.md` carries the accepted limitations and is prepended to
+    every release's auto-generated notes via the workflow's `--notes-file`.
+- [x] Decide whether OpenCode JSONC comment loss remains acceptable for beta.
+  - Decision: **accepted for beta**, kept loud in README, the using-homonto
+    guide, and release notes. Comment-preserving writes are post-beta.
+- [x] Decide whether `import` stays a narrow Claude MCP bootstrap for beta.
+  - Decision: **stays narrow** for beta, documented explicitly in the README
+    "Known limitations" and release notes. Expanding import is post-beta.
+
+## Iteration 4 - v0.1.0 Release Candidate
+
+Goal: tag only after the release surface survives a clean rehearsal.
+
+- [x] Run full local checks — all green on 2026-07-08:
+  - `gofmt -l .` clean
+  - `go mod tidy -diff` clean
+  - `go vet ./...` clean
+  - `go build ./...` ok
+  - `go test ./...` 153 passing (16 packages)
+  - `go test -race ./...` 153 passing
+  - `./scripts/docker-test.sh` SMOKE PASS (expanded coverage)
+
+- [x] Run install smoke from outside the repo.
+  - `go install .` produces a working `homonto` binary, and a binary copied to
+    `/tmp` ran the full flow against a disposable home. The `go install
+    <module>@<tag>` variant from a truly clean env is documented in the release
+    checklist and can only be exercised once a tag is pushed (see below).
+- [x] Run `homonto init`, edit a minimal config, `plan`, `apply --yes`,
+  `status`, and `doctor` in a disposable home.
+  - Rehearsed with the out-of-repo binary: init scaffolded, plan/apply projected
+    a skill + setting, `status` reported `No drift`, `doctor` confirmed both
+    links, and a second apply was idempotent.
+- [x] Check release notes mention every accepted limitation.
+  - `docs/release-notes.md` lists every accepted limitation and is prepended to
+    each release's notes by the workflow.
+- [ ] Tag `v0.1.0-rc.1` only after the above passes. **(Owner: maintainer.)**
+  - Everything above is green; this step is intentionally left to a human — it
+    pushes a public tag and triggers the release workflow. Follow
+    `docs/release-checklist.md`.
+- [ ] Promote to `v0.1.0` only after at least one clean dogfood cycle with the
+  tagged binary. **(Owner: maintainer.)**
+  - Requires the rc tag from the previous step, so it cannot precede it.
+
+## Non-Goals Before v0.1.0
+
+These are useful but should not block the first release unless they become safety
+issues:
+
+- Built-in templates.
+- Plugin-specific configuration beyond current projection.
+- TUI settings management.
+- Agent lifecycle/version management.
+- Full migration/import for every Claude/OpenCode surface.
+
+## Current Known Commands
+
+Last checked locally on 2026-07-08:
+
+- `gofmt -l .` clean.
+- `go mod tidy -diff` clean.
+- `go vet ./...` clean.
+- `go build ./...` passed.
+- `go test ./...` passed: 153 tests in 16 packages.
+- `go test -race ./...` passed: 153 tests in 16 packages.
+- `./scripts/docker-test.sh` passed.
+- `go run . status` reports `No drift` (repo dogfooded at project scope).
+- `go run . doctor` reports all 8 skills linked for both tools; only the
+  environmental `pass`-not-on-PATH warning remains.
