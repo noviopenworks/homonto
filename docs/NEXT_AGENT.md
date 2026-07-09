@@ -110,6 +110,14 @@ TUI settings, agent lifecycle) remains unstarted feature work. Two accepted beta
 limitations are documented, not bugs: OpenCode JSONC comment loss on writes, and
 `import` being a narrow Claude MCP bootstrap.
 
+> **Frameworks-projection gap (do not assume today):** declaring
+> `[frameworks.X]`/`[commands.X]`/`[subagents.X]` currently only VALIDATES
+> (scope/source/target/model routing) — it does NOT yet PROJECT or install
+> anything. Framework catalog expansion and resource projection are the next
+> subsystem plan (see
+> [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)).
+> A `[frameworks.onto]` block will not install the onto framework today.
+
 ## Recommended Next Steps
 
 1. Read

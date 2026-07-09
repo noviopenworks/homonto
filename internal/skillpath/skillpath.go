@@ -14,9 +14,9 @@ import "path/filepath"
 //	opencode + user     -> <home>/.config/opencode/skills
 //	opencode + project  -> <projectRoot>/.opencode/skills
 //
-// Any scope other than "project" is treated as "user" (config.Load already
-// normalizes empty to "user"; this guards against a misplacement if an
-// unnormalized value ever reaches here). An unknown tool returns "".
+// Any scope other than "project" is treated as "user" (config.Load rejects
+// empty/invalid scope; this fallback only guards against an unnormalized value
+// reaching here). An unknown tool returns "".
 func Dir(tool, scope, home, projectRoot string) string {
 	project := scope == "project"
 	switch tool {

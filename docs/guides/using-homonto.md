@@ -16,6 +16,11 @@ Build from source (Go 1.23+):
 go build -o homonto .
 ```
 
+> Note: a bare `go build .` (no `-o`) fails — its default output name `homonto`
+> collides with the `homonto/` content directory next to `main.go` (`go: build
+> output "homonto" already exists and is a directory`). For day-to-day work use
+> `go build ./...`, `go run .`, or `go install .`.
+
 Release builds stamp the version at link time:
 
 ```
