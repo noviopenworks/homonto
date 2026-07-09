@@ -34,6 +34,14 @@ Latest post-resource-model checks on 2026-07-09:
 - `go build ./...` succeeded.
 - `go run . status` reports `No drift`.
 
+Latest Comet migration checks on 2026-07-09:
+
+- `openspec list --json --no-color` works.
+- `go test ./... -count=1` passed.
+- `go vet ./...` passed.
+- `go build ./...` succeeded.
+- `go run . status` reported `No drift.`
+
 ## Fixed Since The Original Deep Review
 
 - Claude MCP projection now uses the real schema: `command` string plus `args`.
