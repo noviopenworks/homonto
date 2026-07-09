@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -379,6 +380,61 @@ func TestLoadDoesNotRequireModelsForSkillsOnly(t *testing.T) {
 	err := loadDoc(t, "[skills.graphify]\nsource=\"local:graphify\"\nscope=\"project\"\n")
 	if err != nil {
 		t.Fatalf("skills-only config required model routing: %v", err)
+	}
+}
+
+// TestEnabledModelTools locks the rule that model routing is derived only from
+// frameworks/commands/subagents — [skills.*] never counts, because skills-only
+// configs do not need models. Returns the sorted union of targeted tools.
+func TestEnabledModelTools(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		cfg  *Config
+		want []string
+	}{
+		{
+			name: "skills only does not enable any model tool",
+			cfg: &Config{Skills: map[string]Resource{
+				"x": {Source: "local:x", Scope: "user"},
+			}},
+			want: []string{},
+		},
+		{
+			name: "single command with one target",
+			cfg: &Config{Commands: map[string]Resource{
+				"x": {Source: "builtin:x", Scope: "project", Targets: []string{"claude"}},
+			}},
+			want: []string{"claude"},
+		},
+		{
+			name: "framework with no targets defaults to both",
+			cfg: &Config{Frameworks: map[string]Resource{
+				"x": {Source: "builtin:x", Scope: "project"},
+			}},
+			want: []string{"claude", "opencode"},
+		},
+		{
+			name: "mixed frameworks+subagents+skills union (skills ignored)",
+			cfg: &Config{
+				Frameworks: map[string]Resource{
+					"a": {Source: "builtin:a", Scope: "project"},
+				},
+				Subagents: map[string]Resource{
+					"b": {Source: "builtin:b", Scope: "project", Targets: []string{"opencode"}},
+				},
+				Skills: map[string]Resource{
+					"c": {Source: "local:c", Scope: "user"},
+				},
+			},
+			want: []string{"claude", "opencode"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.cfg.EnabledModelTools()
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("EnabledModelTools = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

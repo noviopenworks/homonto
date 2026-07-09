@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/state"
 )
 
@@ -202,5 +204,61 @@ func TestRelocationPruneLeavesForeignFile(t *testing.T) {
 	}
 	if b, err := os.ReadFile(foreign); err != nil || string(b) != "mine" {
 		t.Fatalf("foreign file was modified or removed: %v %q", err, string(b))
+	}
+}
+
+// TestMixedScopesProjectIndependently locks the headline per-resource-scope
+// capability: two skills declared with DIFFERENT scopes in a single apply (one
+// user, one project) must each link into their own scope's directory, with
+// neither clobbering the other's location. This is the regression-prone path —
+// a global per-config scope flag would route both to one place.
+func TestMixedScopesProjectIndependently(t *testing.T) {
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755)
+
+	proj := t.TempDir()
+	content := filepath.Join(proj, "content")
+	os.MkdirAll(filepath.Join(content, "skills", "a"), 0o755)
+	os.MkdirAll(filepath.Join(content, "skills", "b"), 0o755)
+
+	a := New(home, content).WithProjectRoot(proj)
+	st, _ := state.Load(t.TempDir())
+	c := &config.Config{Skills: map[string]config.Resource{
+		"a": {Source: "local:a", Scope: "user"},
+		"b": {Source: "local:b", Scope: "project"},
+	}}
+
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if err := a.Apply(cs, noSecret(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	userDir := skillpath.Dir("opencode", "user", home, proj)
+	projDir := skillpath.Dir("opencode", "project", home, proj)
+	linkA := filepath.Join(userDir, "a")
+	linkB := filepath.Join(projDir, "b")
+
+	if got, err := os.Readlink(linkA); err != nil || got != filepath.Join(content, "skills", "a") {
+		t.Fatalf("user-scope skill a not linked at %s: %v %s", linkA, err, got)
+	}
+	if got, err := os.Readlink(linkB); err != nil || got != filepath.Join(content, "skills", "b") {
+		t.Fatalf("project-scope skill b not linked at %s: %v %s", linkB, err, got)
+	}
+	if _, err := os.Lstat(filepath.Join(userDir, "b")); err == nil {
+		t.Fatal("user dir must NOT contain project-scope skill b")
+	}
+	if _, err := os.Lstat(filepath.Join(projDir, "a")); err == nil {
+		t.Fatal("project dir must NOT contain user-scope skill a")
+	}
+
+	// Idempotent.
+	cs2, _ := a.Plan(c, st)
+	for _, ch := range cs2.Changes {
+		if ch.Action != "noop" {
+			t.Fatalf("second plan must be all noop, got %s %s", ch.Action, ch.Key)
+		}
 	}
 }
