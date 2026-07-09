@@ -7,7 +7,7 @@ with this handoff and the current source.
 
 ## Current Verified State
 
-Last checked locally on 2026-07-08:
+Last complete pre-dual-binary audit was on 2026-07-08:
 
 - `gofmt -l .` clean.
 - `go mod tidy -diff` clean.
@@ -17,6 +17,13 @@ Last checked locally on 2026-07-08:
 - `go test -race ./...` passed: 153 tests in 16 packages.
 - `./scripts/docker-test.sh` passed.
 - `go run . status` reports `No drift` (repo dogfooded at project scope).
+
+Latest post-resource-model checks on 2026-07-09:
+
+- `go test ./... -count=1` passed: 168 tests in 16 packages.
+- `go vet ./...` passed with no issues.
+- `go build ./...` succeeded.
+- `go run . status` reports `No drift`.
 
 ## Fixed Since The Original Deep Review
 
@@ -54,9 +61,10 @@ Last checked locally on 2026-07-08:
   race, a stamped-`--version` smoke, a temp-HOME CLI smoke, the Docker apply
   smoke, and `govulncheck`; workflows are least-privilege (`contents: read`).
 - **Release plumbing (Iteration 1 closed):** `.github/workflows/release.yml`
-  builds/checksums/publishes cross-platform binaries on a `v*` tag;
+  builds/checksums/publishes the current `homonto` binary on a `v*` tag;
   `docs/release-checklist.md` documents tag/build/checksums/smoke/rollback and
-  the deferred-CodeQL decision.
+  the deferred-CodeQL decision. Dual-binary packaging for `homonto` + `onto` is
+  still release-gate work.
 - **Binary-level coverage (Iteration 2 closed):** the Docker smoke now covers MCP
   + settings projection, secret env-ref resolution (resolved in files, `${ref}`
   in state, never leaked), `init`, `import`/`--force`, and real-file/foreign-
@@ -91,24 +99,27 @@ The first public release gate has been **reopened** for a dual-binary
 `homonto` + `onto` product rather than the prior config-projector-only beta.
 The config-resource-model code work has landed (explicit per-resource tables,
 required `scope`, `homonto/` local provider root, per-tool model routing),
-the full test suite is green (161 tests), and `go run . status` reports
+the full test suite is green (168 tests), and `go run . status` reports
 `No drift` against the new model. The release design lives at
 [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
 and supersedes the prior "release-ready pending the maintainer's tag" verdict.
 
-1. **Ship the `onto` binary** alongside `homonto` and the dual-binary release
-   packaging per the design doc.
-2. **Tag `v0.1.0-rc.1`** once the dual-binary gate in the design doc passes;
+1. **Implement framework/catalog expansion and projection** for `[frameworks.X]`,
+   `[commands.X]`, and `[subagents.X]`, including the bundled `onto`, `comet`,
+   `superpowers`, and `openspec` set plus command/subagent model routing.
+2. **Ship the `onto` binary** alongside `homonto` once installed/shared framework
+   metadata exists for it to read.
+3. **Update dual-binary release packaging** so archives and smoke tests cover
+   both binaries.
+4. **Tag `v0.1.0-rc.1`** once the dual-binary gate in the design doc passes;
    follow `docs/release-checklist.md`.
-3. **Run the `go install github.com/noviopenworks/homonto@<tag>` smoke** from a
-   clean environment once the tag exists.
-4. **Promote to `v0.1.0`** after at least one clean dogfood cycle with the tagged
+5. **Promote to `v0.1.0`** after at least one clean dogfood cycle with the tagged
    binaries.
 
-Beyond release, the post-v1 roadmap (built-in templates, plugin configuration,
-TUI settings, agent lifecycle) remains unstarted feature work. Two accepted beta
-limitations are documented, not bugs: OpenCode JSONC comment loss on writes, and
-`import` being a narrow Claude MCP bootstrap.
+Beyond release, the post-v1 roadmap (framework/catalog maturity, plugin
+configuration, TUI settings, agent lifecycle) remains unstarted feature work. Two
+accepted beta limitations are documented, not bugs: OpenCode JSONC comment loss
+on writes, and `import` being a narrow Claude MCP bootstrap.
 
 > **Frameworks-projection gap (do not assume today):** declaring
 > `[frameworks.X]`/`[commands.X]`/`[subagents.X]` currently only VALIDATES
@@ -122,11 +133,11 @@ limitations are documented, not bugs: OpenCode JSONC comment loss on writes, and
 
 1. Read
    [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
-   for the reopened dual-binary release gate; ship the `onto` binary and its
-   release packaging before working toward the `v0.1.0-rc.1` tag.
+   for the reopened dual-binary release gate; next build the framework/catalog
+   expansion and resource projection subsystem before the `onto` binary.
 2. Keep `NEXT_AGENT.md` synchronized with source after each behavioral change.
-3. After v0.1.0 ships, pick a v1.1+ roadmap item (templates is the natural first
-   step) and open an onto change workspace for it.
+3. After v0.1.0 ships, pick the next v1.1+ roadmap item and open an onto change
+   workspace for it.
 
 ## Documentation Rules For Future Changes
 

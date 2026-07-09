@@ -1,5 +1,8 @@
 # Explicit Config Resource Model Implementation Plan
 
+Status: Executed on 2026-07-09. The unchecked boxes below are historical task
+text from the implementation plan, not the current work queue.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace Homonto's legacy list-style skill config with an explicit per-resource config model for frameworks, skills, commands, subagents, local provider content, scopes, targets, and model routing.

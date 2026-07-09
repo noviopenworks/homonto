@@ -15,6 +15,8 @@ homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
   `opencode.jsonc` (the file is rewritten as normalized JSON). Accepted for beta.
 - **`import` is a narrow Claude MCP bootstrap** — Claude global MCP servers only,
   best-effort secret redaction, no skills/plugins/settings/OpenCode import.
+- **No remote framework/resource fetching** in the v0.1 line; bundled and local
+  sources only.
 - **Two adapters only:** Claude Code and OpenCode.
 - **Secrets require `pass` or an env var** at apply time (`${pass:...}` /
   `${ENV_VAR}`).

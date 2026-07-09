@@ -9,7 +9,7 @@
 `homonto` v1 remains focused on the safe core: one declarative
 `homonto.toml`, a plan/confirm/apply pipeline, reference-only secrets,
 surgical writes, and Claude Code/OpenCode adapters. The core is implemented and
-testable (161 tests across 16 packages locally on 2026-07-09). The explicit
+testable (168 tests across 16 packages locally on 2026-07-09). The explicit
 per-resource config model — `[frameworks.X]`, `[skills.X]`, `[commands.X]`,
 `[subagents.X]`, `[models.<tool>.<level>]` with required `source` + `scope` and
 local provider content under `homonto/` — has landed. The first public release
@@ -20,9 +20,9 @@ What remains beyond that is either consciously accepted as a documented
 limitation or belongs to the post-v1 roadmap below.
 
 Post-v1 expands Homonto from a config projector into a manager for the AI
-coding-tool ecosystem around those configs: built-in content templates, richer
-plugin configuration, Claude/OpenCode TUI-related settings, and full lifecycle
-management for agents.
+coding-tool ecosystem around those configs: framework/catalog projection,
+workflow operation through `onto`, richer plugin configuration, Claude/OpenCode
+TUI-related settings, and full lifecycle management for agents.
 
 ## Roadmap Strategy
 
@@ -34,8 +34,8 @@ broader product surface area.
 Phases:
 
 1. **v1 Core** — existing implementation plan, with safety/idempotency fixes.
-2. **v1.1 Built-In Templates** — curated official skills, agents, commands,
-   and rules users can copy into their repo.
+2. **v1.1 Onto Framework And Catalog Projection** — curated bundled frameworks
+   and loose skills, commands, and subagents projected into supported tools.
 3. **v1.2 Plugin Configuration** — plugin install/enable declarations plus
    plugin-specific configuration.
 4. **v1.3 Tool TUI Configuration** — Claude/OpenCode TUI-related plugins,
@@ -84,7 +84,8 @@ Implemented and verified since the original v1 review:
   for every owned skill.
 - **CI expanded:** gofmt, `go mod tidy -diff`, vet, build, test, race, stamped
   version smoke, temp-HOME CLI smoke, Docker apply smoke, and `govulncheck` all
-  run in CI; a tagged `release` workflow ships cross-platform binaries.
+  run in CI; the current tagged `release` workflow ships cross-platform
+  `homonto` binaries, and dual-binary packaging remains release-gate work.
 
 Known v1 product limitations, in recommended order:
 
@@ -102,36 +103,49 @@ release checklist.
 
 Future agents should read `docs/NEXT_AGENT.md` before starting v1 work.
 
-## v1.1 Built-In Templates
+## v1.1 Onto Framework And Catalog Projection
 
-Homonto ships a curated catalog of official templates. Templates are source
-material, not hidden runtime behavior.
+Homonto ships a curated bundled catalog of official frameworks and loose
+resources. Frameworks are atomic bundles; loose resources can be local or
+builtin. Catalog projection is explicit install behavior, not hidden runtime
+magic.
 
 Scope:
 
-- Built-in skills, agents, commands, and rules packaged with Homonto releases.
-- `homonto templates list` shows available templates with type, description,
-  version, and target-tool compatibility.
-- `homonto templates add <name>` copies selected templates into `homonto/`.
-- Copied templates become user-owned content and may be edited freely.
-- Existing local content is not overwritten unless the user passes an explicit
-  force or backup option.
+- Bundled frameworks packaged with Homonto releases: `onto`, `comet`,
+  `superpowers`, and `openspec` first.
+- Dependency expansion for `[frameworks.X]`, including `comet` depending on
+  `superpowers` and `openspec`.
+- Projection for skills, commands, and subagents into Claude Code and OpenCode
+  using real tool layouts and compatibility metadata.
+- Grouped `homonto plan` output for frameworks, dependencies, models,
+  tool-specific projection, local/project files, conflicts, and warnings.
+- `onto` binary operations backed by installed/shared framework metadata.
 
 Non-goals:
 
 - No remote registry in v1.1.
-- No automatic template updates after copy.
-- No implicit template installation during `homonto init`.
+- No automatic updates of bundled resources after install.
+- No per-resource override of framework internals.
+- No implicit framework installation during `homonto init`; enabled frameworks
+  remain declared in `homonto.toml` and applied through the normal plan/apply
+  pipeline.
 
 Example:
 
 ```toml
-[templates]
-enabled = ["graphify-skill", "review-agent"]
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+
+[commands.review]
+source = "builtin:review"
+scope = "user"
+targets = ["opencode"]
 ```
 
-The `enabled` list records template origin for auditability. The actual content
-lives under `homonto/` and remains the user's copy.
+Bundled catalog entries carry origin/version metadata for auditability. Local
+adaptations live under `homonto/` and are declared with `source = "local:<name>"`.
 
 ## v1.2 Plugin Configuration
 
@@ -203,7 +217,7 @@ v2 manages source, version, compatibility, updates, and migration.
 Scope:
 
 - Local authored agents under `homonto/agents/`.
-- Built-in agent templates from the curated template catalog.
+- Built-in agent resources from the curated catalog.
 - Remote/community agent sources after local and built-in flows are stable.
 - Version pinning and lockfile/state tracking.
 - Compatibility checks per target tool.
@@ -223,7 +237,7 @@ mode = "copy"
 
 Design principle: lifecycle-managed agents need stronger ownership metadata than
 simple symlinked content. Homonto must be able to distinguish user-authored
-agents, copied built-in templates, and remotely sourced agents before it offers
+agents, bundled catalog resources, and remotely sourced agents before it offers
 updates or migrations.
 
 ## Data Model Principles
@@ -232,7 +246,8 @@ updates or migrations.
 - Add richer table syntax only when configuration or lifecycle metadata is
   needed.
 - Keep target-specific plugin schemas separate.
-- Store template origin for auditability, but treat copied content as user-owned.
+- Store catalog origin for auditability, but treat local provider content as
+  user-owned.
 - Treat full agent lifecycle as v2, not as an implicit extension of v1 symlinks.
 - Resolve paths relative to the selected config file, not the shell working
   directory, so `--config` works consistently.
@@ -261,8 +276,9 @@ Every phase must preserve the v1 safety rules:
   status/drift, import, validation, pruning, and end-to-end apply tests. CI
   should run `go test`, `go test -race`, `go vet`, `go build`, `gofmt`,
   `go mod tidy -diff`, stamped-version smoke, and temp-HOME CLI smoke tests.
-- **v1.1 Templates:** catalog parsing, copy/no-overwrite behavior, template
-  validation, and target compatibility tests.
+- **v1.1 Onto Framework And Catalog Projection:** catalog parsing, dependency
+  expansion, framework install/projection, command/subagent projection, model
+  routing, conflict safety, and target compatibility tests.
 - **v1.2 Plugin Configuration:** plugin config projection tests per tool,
   plugin setting diff tests, and unmanaged-key preservation tests.
 - **v1.3 Tool TUI Configuration:** fixture tests for Claude/OpenCode TUI-related
@@ -273,8 +289,10 @@ Every phase must preserve the v1 safety rules:
 
 ## Open Questions
 
-- Which built-in templates should ship first.
-- Whether remote template and agent sources should share one registry model.
+- Which bundled frameworks and loose resources should ship after the first set
+  (`onto`, `comet`, `superpowers`, `openspec`).
+- Whether remote framework, resource, and agent sources should share one registry
+  model.
 - Whether v2 agent lifecycle should use a lockfile separate from `.homonto/state.json`.
 - Whether OpenCode JSONC comments should be preserved at all, or whether
   whole-file comment removal remains an accepted limitation.

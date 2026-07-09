@@ -4,6 +4,8 @@ homonto declaratively manages the configuration of your AI CLI tools — today
 **Claude Code** and **OpenCode**. You describe the MCP servers, skills, plugins,
 and settings you want in one `homonto.toml`, and homonto projects that desired
 state into each tool's own config files, surgically and reversibly.
+The first public release is gated on adding a sibling `onto` binary for the
+spec-driven workflow; current source still exposes the `homonto` CLI only.
 
 It is Terraform-shaped: **edit config → `plan` → `apply`**. There are no
 imperative `add`/`remove` commands — the file is the source of truth.
@@ -41,17 +43,6 @@ $EDITOR homonto.toml    # declare what you want
 homonto plan            # preview the diff — writes nothing
 homonto apply           # review the plan, confirm, and project it
 ```
-
-Already have MCP servers configured in Claude Code? Bootstrap from them:
-
-```
-homonto import          # reads ~/.claude.json mcpServers into a starter homonto.toml
-```
-
-`import` refuses to overwrite an existing config unless you pass `--force`, and
-it redacts env values that look like secrets into `${pass:…}` references. It is
-deliberately partial — it imports Claude global MCP servers only; review the
-generated file before sharing (command/args are copied verbatim).
 
 ## The `homonto.toml` model
 
@@ -119,15 +110,15 @@ resolved value:
 
 `plan` never resolves secrets or contacts the backend; `apply` resolves **all**
 of them up front and aborts before writing anything if any resolution fails.
-The recorded state stores only a hash of the resolved value, so `.homonto/state.json`
-is safe to commit.
+The recorded state stores only a hash of the resolved value, so
+`.homonto/state.json` is safe to share; it is generated state and the scaffolded
+`.gitignore` excludes `.homonto/` by default.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `homonto init [dir]` | Scaffold a starter repo; never overwrites existing files. |
-| `homonto import` | Bootstrap `homonto.toml` from Claude global MCP servers (secret-redacting; `--force` to overwrite). |
 | `homonto plan` | Print the diff between desired and on-disk state. Writes nothing, resolves no secrets. |
 | `homonto apply` | Print the plan, confirm (`[y/N]`, or `--yes`), then write atomically. |
 | `homonto status` | Report drift and pending config changes (see below). |
@@ -135,6 +126,15 @@ is safe to commit.
 | `homonto version` | Print the build version. |
 
 A persistent `--config` flag (default `homonto.toml`) points at your file.
+
+### Experimental import
+
+Already have MCP servers configured in Claude Code? `homonto import` can
+bootstrap a starter `homonto.toml` from `~/.claude.json` `mcpServers`.
+It refuses to overwrite an existing config unless you pass `--force`, and it
+redacts env values that look like secrets into `${pass:…}` references. It is
+deliberately partial: Claude global MCP servers only, no OpenCode import, no
+skills/plugins/settings import, and command/args are copied verbatim for review.
 
 ### `plan` and `apply`
 
@@ -184,6 +184,11 @@ When neither is present: `No drift.`
   settings/plugins/skills, are not imported. Non-stdio (url/http) servers are
   skipped with a warning. Command/args are copied verbatim — review before
   sharing.
+- `[frameworks.X]`, `[commands.X]`, and `[subagents.X]` are parsed and validated,
+  including required model routes, but current adapters do not install or project
+  them yet.
+- The standalone `onto` binary is planned for the first public tag; current
+  source only ships the `homonto` CLI and dogfooded onto skills.
 - Writing `opencode.jsonc` removes comments (whole-document JSONC
   normalization).
 - Skill symlinks store an absolute target, so if you **move or rename your

@@ -4,19 +4,25 @@ Declarative config for your AI coding tools. Describe your MCP servers, skills,
 plugins, and settings once in `homonto.toml`; `homonto apply` projects them into
 **Claude Code** and **OpenCode** through a terraform-style plan/confirm/apply
 pipeline. Secrets are **referenced, never stored** — resolved only at apply time.
+The public v0.1 release gate is dual-binary: `homonto` remains the deterministic
+installer/projector, and `onto` will ship beside it as the spec-driven workflow
+operator.
 
 ## Install
 
+The first public tag is intentionally pending until both binaries are ready.
 Once a release is tagged, install a specific version directly:
 
 ```bash
 go install github.com/noviopenworks/homonto@v0.1.0-rc.1   # a tagged release
 ```
 
-Tagged releases also ship prebuilt binaries for Linux/macOS/Windows (amd64 and
-arm64) with a `SHA256SUMS` file, attached to the GitHub release.
+Tagged releases also ship prebuilt `homonto` and `onto` binaries for
+Linux/macOS/Windows (amd64 and arm64) with a `SHA256SUMS` file, attached to the
+GitHub release.
 
-Until the first tag lands you can install the latest source instead:
+Until the first tag lands you can install/run the current `homonto` source
+instead:
 
 ```bash
 go install github.com/noviopenworks/homonto@main   # current main branch
@@ -37,13 +43,16 @@ Other commands:
 | Command | What it does |
 |---|---|
 | `homonto status` | Show managed values that would be reset or recreated on apply |
-| `homonto doctor` | Health check: `pass` present? tool dirs present? owned skill content and Claude links present? |
-| `homonto import` | Bootstrap Claude global MCP servers into `homonto.toml` (best-effort env redaction) |
+| `homonto doctor` | Health check: `pass` present? tool dirs present? owned skill content and both tool links present? |
 | `homonto --version` | Print the build version |
 
 `--config <path>` selects a different config file for plan/apply/status/doctor/import.
 `init` instead takes an optional target directory and always writes
 `homonto.toml` inside that directory.
+
+Experimental adoption helper: `homonto import` bootstraps Claude global MCP
+servers into `homonto.toml` with best-effort env redaction. It is deliberately
+narrow and is not part of the main quickstart path.
 
 ## `homonto.toml`
 
@@ -136,6 +145,13 @@ only when a managed key inside it actually changes.
 
 homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
 
+- **`onto` is release-blocking, not shipped in current source yet.** The repo
+  dogfoods the markdown skills today; the separate `onto` binary is planned for
+  the first public tag.
+- **Frameworks, commands, and subagents validate but do not project yet.** The
+  explicit `[frameworks.X]`, `[commands.X]`, and `[subagents.X]` tables are in
+  the config model, including model-route validation, but `apply` does not yet
+  install framework/catalog resources.
 - **OpenCode JSONC comments are not preserved.** Claude's files are plain JSON,
   but OpenCode's `opencode.jsonc` supports comments. Any apply that *writes*
   `opencode.jsonc` rewrites it as normalized JSON, so **all comments in that file

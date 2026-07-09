@@ -1,7 +1,7 @@
 # Dual-Binary Release Design
 
 Date: 2026-07-09
-Status: Draft for user review
+Status: Accepted direction; implementation partial
 
 ## Summary
 
@@ -34,10 +34,11 @@ release. Current skills must not mention or depend on LXC behavior.
 
 ## Config Model
 
-The current list-style `[skills] scope` plus `[skills] own` model should be
-replaced before public release. New resource types use explicit per-resource
-tables. Scope is always required; there are no hidden `user` or `project`
-defaults.
+The previous list-style `[skills] scope` plus `[skills] own` model has been
+replaced in the config loader before public release. New resource types use
+explicit per-resource tables. Scope is always required; there are no hidden
+`user` or `project` defaults. Framework expansion and command/subagent
+projection are still pending.
 
 Example shape:
 
@@ -323,8 +324,9 @@ Required coverage:
 - Exact Claude Code command and subagent file formats need fixture confirmation.
 - Exact OpenCode command and subagent file formats need fixture confirmation.
 - Release build packaging must be updated to ship both `homonto` and `onto`.
-- Current docs and tests that mention `state.yaml` must be updated to
-  `onto-state.yaml`.
-- The existing config loader and adapters must be replaced or migrated from
-  list-style skills to explicit framework/resource tables before the first public
-  release.
+- Current docs, skills, and tests that mention `state.yaml` must be updated to
+  `onto-state.yaml` as part of the future `onto` binary implementation, not as a
+  claim about current behavior.
+- The config loader has migrated to explicit framework/resource tables; remaining
+  work is framework/catalog expansion, command/subagent projection, and release
+  packaging for both binaries.

@@ -1,13 +1,14 @@
 # Release Checklist
 
-The repeatable steps for cutting a `homonto` release. This is the operational
-companion to [`road-to-release.md`](road-to-release.md): the road-to-release file
-is the gate for *whether* to release; this file is *how*.
+The repeatable steps for cutting a dual-binary `homonto` + `onto` release. This
+is the operational companion to [`road-to-release.md`](road-to-release.md): the
+road-to-release file is the gate for *whether* to release; this file is *how*.
 
 Releases are driven by the `release` GitHub workflow
-(`.github/workflows/release.yml`), which triggers on any pushed `v*` tag. It
-re-runs the CI gates, cross-compiles every target, checksums the archives, and
-publishes a GitHub release.
+(`.github/workflows/release.yml`), which triggers on any pushed `v*` tag. For the
+first public tag, do not push until that workflow packages both binaries. The
+workflow must re-run the CI gates, cross-compile every target, write checksums
+for the archives, and publish a GitHub release.
 
 ## Pre-tag verification
 
@@ -31,6 +32,16 @@ go run . status       # expect: No drift
 go run . doctor       # expect all skills linked (a missing `pass` warning is fine)
 ```
 
+Before `v0.1.0-rc.1`, also confirm the dual-binary gate from the design doc:
+
+- `homonto` and `onto` both have stamped version output.
+- The release archives contain both binaries for every target platform.
+- `homonto init`/`plan`/`apply --yes`/`status`/`doctor` pass in a disposable home.
+- `onto status` and `onto doctor` pass against a disposable or dogfood `docs/`
+  workflow layout.
+- Framework/catalog projection for `onto`, `comet`, `superpowers`, and
+  `openspec` has passing unit, CLI, and Docker smoke evidence.
+
 ## Tag and publish
 
 1. Pick the version. Pre-releases use a suffix (`v0.1.0-rc.1`); a bare
@@ -44,34 +55,44 @@ go run . doctor       # expect all skills linked (a missing `pass` warning is fi
    ```
 
 3. The `release` workflow then:
-   - re-runs gofmt/vet/test as a guard,
-   - builds `linux`, `darwin`, and `windows` for `amd64` and `arm64`,
-     stamping the tag into `homonto version` via `-ldflags`,
-   - archives each target (`.tar.gz`, or `.zip` for Windows) with `LICENSE`
-     and `README.md`,
-   - writes a single `SHA256SUMS` over every archive,
-   - creates the GitHub release with generated notes and all assets attached.
+    - re-runs gofmt/vet/test as a guard,
+    - builds both `homonto` and `onto` for `linux`, `darwin`, and `windows` on
+      `amd64` and `arm64`, stamping the tag into both version commands via
+      `-ldflags`,
+    - archives each target (`.tar.gz`, or `.zip` for Windows) with `LICENSE`
+      and `README.md`,
+    - writes a single `SHA256SUMS` over every archive,
+    - creates the GitHub release with generated notes and all assets attached.
 
 ## Post-tag smoke install
 
-From **outside** the repo, in a clean environment, verify the module installs
-at the tag:
+From **outside** the repo, in a clean environment, verify the command packages
+install at the tag. Keep the concrete import paths matched to the release commit
+layout, and do not tag while this smoke only covers one binary:
 
 ```sh
-GOBIN=$(mktemp -d) go install github.com/noviopenworks/homonto@v0.1.0-rc.1
+GOBIN=$(mktemp -d)
+export GOBIN
+go install github.com/noviopenworks/homonto@v0.1.0-rc.1
+go install github.com/noviopenworks/homonto/cmd/onto@v0.1.0-rc.1  # update if final path differs
+export PATH="$GOBIN:$PATH"
 "$GOBIN"/homonto version    # expect the tagged version string
+"$GOBIN"/onto version       # expect the tagged version string
 ```
 
-Then exercise the binary against a disposable home:
+Then exercise the binaries against a disposable home:
 
 ```sh
 HOME=$(mktemp -d) # (or run in a container)
+export HOME
 homonto init
 # edit the generated homonto.toml minimally
 homonto plan
 homonto apply --yes
 homonto status              # expect: No drift
 homonto doctor
+onto status
+onto doctor
 ```
 
 Verify a downloaded archive's checksum matches `SHA256SUMS`:
@@ -119,4 +140,5 @@ intentional rather than an oversight:
   dependency list its overhead outweighs its signal today.
 
 Revisit both when the dependency surface grows or the tool starts handling
-untrusted remote input (e.g. fetching templates or remote config).
+untrusted remote input (e.g. fetching remote frameworks/resources or remote
+config).

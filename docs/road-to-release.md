@@ -19,7 +19,7 @@ behind the explicit per-resource config model (`[frameworks.X]`, `[skills.X]`,
 `[commands.X]`, `[subagents.X]`, `[models.<tool>.<level>]` with required
 `source` + `scope`, local provider content under `homonto/`).
 
-The config-resource-model code work has landed: 161/161 tests green and
+The config-resource-model code work has landed: 168/168 tests green and
 `go run . status` → `No drift` against the new model. The remaining gate is
 delivering the `onto` binary, the dual-binary release packaging, and the new
 coverage in the design doc's "Testing And Release Gate" section, followed by the
@@ -191,7 +191,9 @@ Goal: tag only after the release surface survives a clean rehearsal.
 These are useful but should not block the first release unless they become safety
 issues:
 
-- Built-in templates.
+- Remote framework/resource registries or marketplaces beyond the bundled
+  first-release catalog.
+- Per-resource overrides of framework internals.
 - Plugin-specific configuration beyond current projection.
 - TUI settings management.
 - Agent lifecycle/version management.
@@ -199,14 +201,15 @@ issues:
 
 ## Current Known Commands
 
-Last checked locally on 2026-07-08:
+Last complete release rehearsal checked locally on 2026-07-08; latest
+post-resource-model checks ran on 2026-07-09:
 
 - `gofmt -l .` clean.
 - `go mod tidy -diff` clean.
 - `go vet ./...` clean.
 - `go build ./...` passed.
-- `go test ./...` passed: 153 tests in 16 packages.
-- `go test -race ./...` passed: 153 tests in 16 packages.
+- `go test ./... -count=1` passed: 168 tests in 16 packages.
+- `go test -race ./...` passed in the 2026-07-08 rehearsal; rerun before tagging.
 - `./scripts/docker-test.sh` passed.
 - `go run . status` reports `No drift` (repo dogfooded at project scope).
 - `go run . doctor` reports all 8 skills linked for both tools; only the

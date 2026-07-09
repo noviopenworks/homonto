@@ -2,22 +2,24 @@
 
 ## Purpose
 Defines the `homonto.toml` desired-state model shared by adapters: MCP servers,
-owned skills, per-tool plugins, per-tool settings, target selection, and
-unresolved secret references.
+explicit framework/skill/command/subagent resources, per-tool plugins, per-tool
+settings, target selection, model routing, and unresolved secret references.
 ## Requirements
 ### Requirement: Declarative config as single source of truth
 
 `homonto` SHALL parse a single `homonto.toml` file into one tool-agnostic
-desired-state model covering MCP servers, owned skills, per-tool plugins, and
-per-tool settings. All downstream stages SHALL operate on this model, never on
-raw TOML.
+desired-state model covering MCP servers, explicit framework/skill/command/
+subagent resources, per-tool plugins, per-tool settings, and model routing. All
+downstream stages SHALL operate on this model, never on raw TOML.
 
 #### Scenario: Parse a complete config
-- **WHEN** `homonto.toml` declares MCP servers, owned skills as explicit
-  `[skills.<name>]` resources, per-tool `[plugins]`, and per-tool `[settings]`
+- **WHEN** `homonto.toml` declares MCP servers, explicit resource tables
+  (`[frameworks.<name>]`, `[skills.<name>]`, `[commands.<name>]`,
+  `[subagents.<name>]`), per-tool `[plugins]`, per-tool `[settings]`, and needed
+  `[models.<tool>.<level>]` routes
 - **THEN** the loader returns a model exposing each MCP's command/env/targets,
-  the owned skill resources (each with source and scope), the per-tool plugin
-  lists, and the per-tool settings maps
+  the resources (each with source, scope, and targets), the per-tool plugin
+  lists, the per-tool settings maps, and model routes
 
 #### Scenario: Missing config file is an error
 - **WHEN** the config path does not exist
@@ -114,7 +116,10 @@ validate provider-specific model names or effort values beyond presence.
 
 ### Requirement: Local provider content root
 
-Local-source resources (`source = "local:<name>"`) SHALL resolve from
-`homonto/<kind>/<name>` relative to the directory containing `homonto.toml`.
-Generated state and cache SHALL live under `.homonto/` only; the loader SHALL
-NOT read owned source content from any other root.
+Local provider content SHALL live under `homonto/` relative to the directory
+containing `homonto.toml`; generated state and cache SHALL live under
+`.homonto/` only. Current adapters resolve local-source skills
+(`source = "local:<name>"`) from `homonto/skills/<name>`. Local command,
+subagent, and framework content resolution is part of the future
+framework/catalog projection work and MUST NOT be claimed as installed behavior
+yet.

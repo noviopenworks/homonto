@@ -79,18 +79,19 @@ unless `--force` is given.
 ### Requirement: doctor health checks
 
 `homonto doctor` SHALL check that `pass` is on `PATH`, that each target tool's
-config location is present, and that each owned skill exists under
-`homonto/skills/<local-name>` for local-source skills (or the bundled catalog
-path for builtin-source skills). For every owned skill it SHALL verify BOTH tool
-symlinks at the location selected by that skill resource's `scope` — for `user`
-scope `~/.claude/skills/<name>` and `~/.config/opencode/skills/<name>`, and for
-`project` scope `<project>/.claude/skills/<name>` and
+config location is present, and that each local-source owned skill exists under
+`homonto/skills/<local-name>`. Builtin catalog lookup for skills is not
+implemented in the current command and MUST NOT be claimed as installed behavior.
+For every owned skill it SHALL verify BOTH tool symlinks at the location selected
+by that skill resource's `scope` — for `user` scope `~/.claude/skills/<name>` and
+`~/.config/opencode/skills/<name>`, and for `project` scope
+`<project>/.claude/skills/<name>` and
 `<project>/.opencode/skills/<name>` — reporting the link state per tool. All
 findings are reported as `ok`/`warn` lines.
 
 #### Scenario: Missing owned skill is flagged
-- **WHEN** a declared skill resource has no directory under `homonto/skills/`
-  (for local-source skills) or no bundled catalog entry (for builtin-source)
+- **WHEN** a declared local-source skill resource has no directory under
+  `homonto/skills/`
 - **THEN** `doctor` reports a warning naming that skill
 
 #### Scenario: Missing OpenCode link is flagged

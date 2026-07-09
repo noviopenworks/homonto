@@ -29,9 +29,11 @@ The Claude adapter SHALL project MCP servers into `~/.claude.json`
 the user's home, independent of skill scope. It SHALL link each owned skill as a symlink
 under a skills directory selected by that skill resource's `scope`: `~/.claude/skills/`
 for `user` scope and `<project>/.claude/skills/` for `project` scope, where `<project>` is
-the directory of `homonto.toml`. Local-source skills (`source = "local:<name>"`) SHALL be
-linked from `homonto/skills/<name>`; builtin-source skills SHALL be linked from the
-bundled catalog path for that source.
+the directory of `homonto.toml`. Current adapters link skill content from the
+local provider root: `source = "local:<name>"` resolves to
+`homonto/skills/<name>`. Builtin catalog lookup is not implemented in the current
+adapter layer and MUST NOT be documented as installed behavior until the
+framework/catalog projection work lands.
 
 #### Scenario: MCP and setting projected surgically
 - **WHEN** apply runs with an MCP targeting claude and a claude setting
@@ -80,15 +82,15 @@ skills directory at the location chosen by the skill resource's `scope`, and
 pending link work SHALL be visible as plan changes: a missing link appears as a
 create, a link pointing at the wrong target appears as an update, and a correct
 link is a no-op. Local-source skills (`source = "local:<name>"`) SHALL be
-linked from `homonto/skills/<name>`; builtin-source skills SHALL be linked from
-the bundled catalog path for that source. `apply` SHALL create the links even
-when they are the only pending changes, and SHALL record each applied link in
-state (`skill.<name>`: desired target path plus applied hash) so drift detection
-and pruning both see it. A skill removed from the config SHALL have its link
-pruned only when the existing path is a symlink pointing into homonto's managed
-content directory. If the target already exists and is not homonto's link, the
-adapter SHALL report a conflict and SHALL NOT clobber it — for creation and for
-pruning alike.
+linked from `homonto/skills/<name>`. Builtin-source skill catalog projection is
+future work. `apply` SHALL create local-source skill links even when they are the
+only pending changes, and SHALL record each applied link in state
+(`skill.<name>`: desired target path plus applied hash) so drift detection and
+pruning both see it. A skill removed from the config SHALL have its link pruned
+only when the existing path is a symlink pointing into homonto's managed content
+directory. If the target already exists and is not homonto's link, the adapter
+SHALL report a conflict and SHALL NOT clobber it — for creation and for pruning
+alike.
 
 #### Scenario: Idempotent link creation
 
