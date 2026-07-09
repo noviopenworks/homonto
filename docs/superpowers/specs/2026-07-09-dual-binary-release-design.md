@@ -32,6 +32,10 @@ reasoning, asking questions, filling substantive content, and judging quality.
 The future LXC isolation connector is intentionally out of scope for this
 release. Current skills must not mention or depend on LXC behavior.
 
+Internal development workflow and bundled user framework scope are separate
+decisions: this repo develops with Comet, while the `onto` binary and framework
+remain product decisions governed by this design doc.
+
 ## Config Model
 
 The previous list-style `[skills] scope` plus `[skills] own` model has been

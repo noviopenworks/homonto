@@ -1,6 +1,12 @@
 # onto-workflow Specification
 
 ## Purpose
+
+> Legacy/internal note: this spec describes the previous Onto workflow. Homonto
+> development now uses the Comet workflow described in `comet-workflow.md`. Keep
+> this spec only as historical context or product-framework reference until an
+> explicit product decision removes or rewrites Onto.
+
 Defines the onto markdown development workflow shipped by this repo: phase
 dispatch, artifact layout, verification, close/archive obligations, preset paths,
 tooling preflight behavior, and dogfood distribution through homonto-owned skills.
