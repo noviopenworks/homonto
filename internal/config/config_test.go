@@ -254,3 +254,153 @@ func TestLoadRejectsReservedSettingKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadRejectsBadResourceNames(t *testing.T) {
+	for _, tc := range []struct{ kind, table, name string }{
+		{"framework", "frameworks", "../evil"},
+		{"skill", "skills", ".."},
+		{"command", "commands", ""},
+		{"subagent", "subagents", "a/b"},
+		{"subagent", "subagents", `a\b`},
+		{"skill", "skills", "0"},
+	} {
+		doc := "[" + tc.table + "." + strconv.Quote(tc.name) + "]\nsource=\"local:x\"\nscope=\"project\"\n" + validModelsBothTools()
+		err := loadDoc(t, doc)
+		if err == nil {
+			t.Fatalf("%s name %q accepted; want load error", tc.kind, tc.name)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.name)) {
+			t.Fatalf("error for %q does not name the entry: %v", tc.name, err)
+		}
+	}
+}
+
+func TestLoadRejectsResourceWithoutExplicitScope(t *testing.T) {
+	err := loadDoc(t, "[skills.graphify]\nsource=\"local:graphify\"\n"+validModelsBothTools())
+	if err == nil {
+		t.Fatal("resource without scope accepted; want load error")
+	}
+	for _, want := range []string{"skills.graphify", "scope"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %v does not mention %q", err, want)
+		}
+	}
+}
+
+func TestLoadRejectsInvalidResourceScope(t *testing.T) {
+	err := loadDoc(t, "[commands.review]\nsource=\"builtin:review\"\nscope=\"global\"\n"+validModelsBothTools())
+	if err == nil {
+		t.Fatal("scope global accepted; want load error")
+	}
+	for _, want := range []string{`"global"`, "user", "project"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %v does not mention %q", err, want)
+		}
+	}
+}
+
+func TestLoadRejectsInvalidResourceSource(t *testing.T) {
+	for _, source := range []string{"", "https://example.com/x", "github:owner/repo", "builtin:", "local:"} {
+		doc := "[skills.graphify]\nsource=" + strconv.Quote(source) + "\nscope=\"project\"\n" + validModelsBothTools()
+		err := loadDoc(t, doc)
+		if err == nil {
+			t.Fatalf("source %q accepted; want load error", source)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(source)) {
+			t.Fatalf("error %v does not name source %q", source, err)
+		}
+	}
+}
+
+func TestLoadRejectsUnknownResourceTargets(t *testing.T) {
+	err := loadDoc(t, "[subagents.architect]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claud\"]\n"+validModelsBothTools())
+	if err == nil {
+		t.Fatal("unknown target accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), strconv.Quote("claud")) {
+		t.Fatalf("error does not name unknown target: %v", err)
+	}
+}
+
+func TestLoadRequiresAllModelLevelsForEnabledTools(t *testing.T) {
+	doc := `
+[commands.review]
+source = "builtin:review"
+scope = "project"
+targets = ["opencode"]
+
+[models.opencode.architectural]
+model = "anthropic/claude-opus-4-8"
+effort = "high"
+
+[models.opencode.coding]
+model = "anthropic/claude-sonnet-4"
+effort = "medium"
+`
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("missing opencode trivial model accepted; want load error")
+	}
+	for _, want := range []string{"models.opencode.trivial", "model"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %v does not mention %q", err, want)
+		}
+	}
+}
+
+func TestLoadRequiresModelAndEffortOrVariant(t *testing.T) {
+	doc := `
+[commands.review]
+source = "builtin:review"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+
+[models.claude.coding]
+model = "sonnet"
+
+[models.claude.trivial]
+model = "haiku"
+effort = "fast"
+`
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("model without effort or variant accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "models.claude.coding") {
+		t.Fatalf("error does not name route: %v", err)
+	}
+}
+
+func TestLoadDoesNotRequireModelsForSkillsOnly(t *testing.T) {
+	err := loadDoc(t, "[skills.graphify]\nsource=\"local:graphify\"\nscope=\"project\"\n")
+	if err != nil {
+		t.Fatalf("skills-only config required model routing: %v", err)
+	}
+}
+
+func validModelsBothTools() string {
+	return `
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "normal"
+[models.claude.trivial]
+model = "haiku"
+effort = "fast"
+[models.opencode.architectural]
+model = "anthropic/claude-opus-4-8"
+effort = "high"
+[models.opencode.coding]
+model = "anthropic/claude-sonnet-4"
+effort = "medium"
+[models.opencode.trivial]
+model = "openai/gpt-5-mini"
+variant = "cheap"
+`
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -126,6 +127,19 @@ func Load(path string) (*Config, error) {
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	for kind, resources := range map[string]map[string]Resource{
+		"frameworks": c.Frameworks,
+		"skills":     c.Skills,
+		"commands":   c.Commands,
+		"subagents":  c.Subagents,
+	} {
+		if err := validateResources(kind, resources); err != nil {
+			return nil, err
+		}
+	}
+	if err := validateModels(&c); err != nil {
+		return nil, err
+	}
 	// Every other name becomes a key written into a tool's JSON file. sjson
 	// treats index-like segments ("0", "-1") as array positions, silently
 	// turning the containing object into a JSON ARRAY; empty names address
@@ -199,6 +213,85 @@ func validateKey(kind, name string) error {
 		return fmt.Errorf("parse config: %s entry %q would be treated as a JSON array index and corrupt the target file; rename it", kind, name)
 	}
 	return nil
+}
+
+// validateResources checks name, scope, source, and targets for every declared
+// resource of a given kind (frameworks, skills, commands, subagents).
+func validateResources(kind string, resources map[string]Resource) error {
+	for name, r := range resources {
+		if err := validateResourceName(kind, name); err != nil {
+			return err
+		}
+		label := kind + "." + name
+		switch r.Scope {
+		case "user", "project":
+			// ok
+		case "":
+			return fmt.Errorf("parse config: %s is missing required scope; valid values are \"user\" and \"project\"", label)
+		default:
+			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, r.Scope)
+		}
+		if !validSource(r.Source) {
+			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, r.Source)
+		}
+		for _, target := range r.Targets {
+			if target != "claude" && target != "opencode" {
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
+			}
+		}
+	}
+	return nil
+}
+
+func validateResourceName(kind, name string) error {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) || name != filepath.Base(name) {
+		return fmt.Errorf("parse config: %s entry %q is not a plain name", kind, name)
+	}
+	return validateKey(kind, name)
+}
+
+func validSource(source string) bool {
+	for _, prefix := range []string{"builtin:", "local:"} {
+		if strings.HasPrefix(source, prefix) && strings.TrimPrefix(source, prefix) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// validateModels ensures every tool enabled by a non-skill resource has all
+// three model levels (architectural, coding, trivial) populated with a model
+// and either an effort or variant.
+func validateModels(c *Config) error {
+	for _, tool := range c.EnabledModelTools() {
+		for _, level := range []string{"architectural", "coding", "trivial"} {
+			route, ok := modelRouteFor(c.Models, tool, level)
+			label := "models." + tool + "." + level
+			if !ok {
+				return fmt.Errorf("parse config: %s is required for enabled target tool %q", label, tool)
+			}
+			if strings.TrimSpace(route.Model) == "" {
+				return fmt.Errorf("parse config: %s model is required", label)
+			}
+			if strings.TrimSpace(route.Effort) == "" && strings.TrimSpace(route.Variant) == "" {
+				return fmt.Errorf("parse config: %s requires effort or variant", label)
+			}
+		}
+	}
+	return nil
+}
+
+func modelRouteFor(models ModelConfig, tool, level string) (ModelRoute, bool) {
+	switch tool {
+	case "claude":
+		r, ok := models.Claude[level]
+		return r, ok
+	case "opencode":
+		r, ok := models.OpenCode[level]
+		return r, ok
+	default:
+		return ModelRoute{}, false
+	}
 }
 
 // indexLike reports whether sjson would treat name as an array index:
