@@ -1,33 +1,93 @@
-[skills.onto]
-source = "local:onto"
+[skills.comet]
+source = "local:comet"
 scope = "project"
 
-[skills.onto-open]
-source = "local:onto-open"
+[skills.comet-open]
+source = "local:comet-open"
 scope = "project"
 
-[skills.onto-design]
-source = "local:onto-design"
+[skills.comet-design]
+source = "local:comet-design"
 scope = "project"
 
-[skills.onto-build]
-source = "local:onto-build"
+[skills.comet-build]
+source = "local:comet-build"
 scope = "project"
 
-[skills.onto-verify]
-source = "local:onto-verify"
+[skills.comet-verify]
+source = "local:comet-verify"
 scope = "project"
 
-[skills.onto-close]
-source = "local:onto-close"
+[skills.comet-archive]
+source = "local:comet-archive"
 scope = "project"
 
-[skills.onto-fix]
-source = "local:onto-fix"
+[skills.comet-hotfix]
+source = "local:comet-hotfix"
 scope = "project"
 
-[skills.onto-tweak]
-source = "local:onto-tweak"
+[skills.comet-tweak]
+source = "local:comet-tweak"
+scope = "project"
+
+[skills.openspec-explore]
+source = "local:openspec-explore"
+scope = "project"
+
+[skills.openspec-new-change]
+source = "local:openspec-new-change"
+scope = "project"
+
+[skills.openspec-verify-change]
+source = "local:openspec-verify-change"
+scope = "project"
+
+[skills.brainstorming]
+source = "local:brainstorming"
+scope = "project"
+
+[skills.writing-plans]
+source = "local:writing-plans"
+scope = "project"
+
+[skills.executing-plans]
+source = "local:executing-plans"
+scope = "project"
+
+[skills.subagent-driven-development]
+source = "local:subagent-driven-development"
+scope = "project"
+
+[skills.using-git-worktrees]
+source = "local:using-git-worktrees"
+scope = "project"
+
+[skills.test-driven-development]
+source = "local:test-driven-development"
+scope = "project"
+
+[skills.systematic-debugging]
+source = "local:systematic-debugging"
+scope = "project"
+
+[skills.verification-before-completion]
+source = "local:verification-before-completion"
+scope = "project"
+
+[skills.finishing-a-development-branch]
+source = "local:finishing-a-development-branch"
+scope = "project"
+
+[skills.requesting-code-review]
+source = "local:requesting-code-review"
+scope = "project"
+
+[skills.receiving-code-review]
+source = "local:receiving-code-review"
+scope = "project"
+
+[skills.dispatching-parallel-agents]
+source = "local:dispatching-parallel-agents"
 scope = "project"
 
 [models.claude.architectural]
