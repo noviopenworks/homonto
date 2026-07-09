@@ -1,167 +1,93 @@
-# Next Agent Handoff
+# Handoff: catalog-foundation-skills
 
-This file is the first stop for future agents. It summarizes the current
-project state, the verified checks from the last deep audit, and the highest
-value work left to do. Treat older review files as historical unless they agree
-with this handoff and the current source.
+**Date:** 2026-07-09
+**Comet change:** `catalog-foundation-skills` (phase: design, workflow: full)
+**Active branch:** `main`
+**Base ref:** `5eeff35`
 
-## Current Development Workflow
+## What is done
 
-Use Comet for new work. On entry:
+1. **Comet migration complete and committed on main** (5 commits):
+   - `a569675 chore: bootstrap openspec and comet config`
+   - `f687314 chore: dogfood comet development skills`
+   - `1555d0b docs: route development workflow through comet`
+   - `feec0c9 docs: specify comet as development workflow`
+   - `5eeff35 docs: record comet migration verification`
 
-1. Run `openspec list --json --no-color` to discover active OpenSpec changes.
-2. Inspect `openspec/changes/<name>/.comet.yaml` for phase/state when a change exists.
-3. Route through `/comet`; do not create new `docs/changes/*` Onto workspaces.
-4. Treat `docs/changes/archive/*` as historical evidence only.
+2. **OpenSpec change `catalog-foundation-skills` created** with all open-phase artifacts:
+   - `openspec/changes/catalog-foundation-skills/proposal.md` -- WHY + WHAT
+   - `openspec/changes/catalog-foundation-skills/design.md` -- high-level architecture
+   - `openspec/changes/catalog-foundation-skills/tasks.md` -- 7 task groups, 28 tasks
+   - `openspec/changes/catalog-foundation-skills/specs/{builtin-catalog,framework-expansion,config-model,tool-adapters}/spec.md` -- delta specs with SHALL requirements and GIVEN/WHEN/THEN scenarios
+   - `.comet.yaml` state file at `phase: design`
 
-## Current Verified State
+3. **Comet design handoff generated**:
+   - `openspec/changes/catalog-foundation-skills/.comet/handoff/design-context.{json,md}`
+   - `handoff_hash` recorded in `.comet.yaml`
 
-Last complete pre-dual-binary audit was on 2026-07-08:
+4. **Exploration complete** -- tool format investigation, PRD split decided:
+   - Change A (this one): catalog + framework expansion + builtin skill projection
+   - Change B (later): command projection
+   - Change C (later): subagent projection
 
-- `gofmt -l .` clean.
-- `go mod tidy -diff` clean.
-- `go vet ./...` passed with no issues.
-- `go build ./...` succeeded.
-- `go test ./...` passed: 153 tests in 16 packages.
-- `go test -race ./...` passed: 153 tests in 16 packages.
-- `./scripts/docker-test.sh` passed.
-- `go run . status` reports `No drift` (repo dogfooded at project scope).
+## Where it stopped
 
-Latest post-resource-model checks on 2026-07-09:
+**Phase: design, step: brainstorming (comet-design Step 1b)**
 
-- `go test ./... -count=1` passed: 168 tests in 16 packages.
-- `go vet ./...` passed with no issues.
-- `go build ./...` succeeded.
-- `go run . status` reports `No drift`.
+The brainstorming skill was loaded. One key technical decision was presented to the user but the question was dismissed (user asked to write this handoff instead):
 
-Latest Comet migration checks on 2026-07-09:
+**Open decision: go:embed layout for the bundled catalog**
 
-- `openspec list --json --no-color` works.
-- `go test ./... -count=1` passed.
-- `go vet ./...` passed.
-- `go build ./...` succeeded.
-- `go run . status` reported `No drift.`
+Go's `//go:embed` resolves paths relative to the package directory and does not allow `..`. Two options were proposed:
 
-## Fixed Since The Original Deep Review
+- **Option C (recommended):** `catalog/` at repo root as its own Go package (`package catalog`) with `//go:embed all:frameworks all:skills`. `internal/catalog/` imports the embedded FS from it. Keeps source tree at repo root matching the design doc.
+- **Option A:** Catalog content under `internal/catalog/content/`. Idiomatic Go but buries content in internal/.
 
-- Claude MCP projection now uses the real schema: `command` string plus `args`.
-- Claude import now preserves `command` plus `args` instead of dropping args.
-- Missing-state old values are redacted instead of printed.
-- State-recorded pruning exists for MCPs, settings, plugins, and skills.
-- JSON path segments are escaped for dotted and special names.
-- Skill path traversal is rejected by config validation.
-- Atomic writes preserve existing modes and create new files as `0600`.
-- Cross-adapter partial apply persists each successful adapter's state before a
-  later adapter can fail.
-- Plan output is sorted for deterministic rendering.
-- Non-object JSON roots are rejected before writes.
-- **State adoption:** a declared value already matching disk is adopted into
-  state silently via an `adopt` action (no file rewrite), so pruning and drift
-  see pre-existing matching resources. See `internal/adapter/{claude,opencode}`
-  and `internal/plan` (`HasAdoptions`).
-- **True drift in `status`:** `engine.Status` compares each adapter's
-  `ObserveHashes` (hash of current on-disk value) against the recorded
-  `Entry.Applied`, separate from pending desired-vs-disk config changes; drifted
-  keys are excluded from the pending count. A pure `homonto.toml` edit is no
-  longer mistaken for disk drift.
-- **Input validation:** `config.Load` rejects unknown MCP targets, empty MCP
-  commands, reserved settings keys (claude `enabledPlugins`/`mcpServers`,
-  opencode `mcp`/`plugin`), and index-like/empty managed names.
-- **Skills-only apply is link-only:** adapters write a tool JSON file only when
-  a managed key in it changed (`*Changed` guards); `adopt`/`noop`/`skill.*`
-  leave JSON byte-for-byte untouched, so OpenCode JSONC comments survive
-  link-only applies.
-- **Doctor parity:** `doctor` verifies both the claude and opencode skill links
-  per owned skill, at the location for each skill resource's `scope` (user home or
-  project root) via `skillpath.Dir`.
-- **CI expanded:** `ci.yml` runs gofmt, `go mod tidy -diff`, vet, build, test,
-  race, a stamped-`--version` smoke, a temp-HOME CLI smoke, the Docker apply
-  smoke, and `govulncheck`; workflows are least-privilege (`contents: read`).
-- **Release plumbing (Iteration 1 closed):** `.github/workflows/release.yml`
-  builds/checksums/publishes the current `homonto` binary on a `v*` tag;
-  `docs/release-checklist.md` documents tag/build/checksums/smoke/rollback and
-  the deferred-CodeQL decision. Dual-binary packaging for `homonto` + `onto` is
-  still release-gate work.
-- **Binary-level coverage (Iteration 2 closed):** the Docker smoke now covers MCP
-  + settings projection, secret env-ref resolution (resolved in files, `${ref}`
-  in state, never leaked), `init`, `import`/`--force`, and real-file/foreign-
-  symlink conflicts; `internal/cli/command_test.go` adds init/import/error tests.
-- **Public-beta polish (Iteration 3 closed):** README leads with the user path
-  and a consolidated "Known limitations" section, with internal material under
-  "For contributors"; `docs/release-notes.md` carries the accepted limitations
-  into every release's notes.
-- **Foreign skill symlink is a conflict (Iteration 0 blocker closed):**
-  `link.Link`/`link.Plan` now relink only a symlink whose target is inside the
-  managed content root; a symlink pointing outside `homonto/` is a user-owned
-  conflict and is never removed or repointed. Regression tests live at linker
-  level (`internal/link/linker_test.go`) and adapter/apply level
-  (`TestForeignSkillSymlinkAborts` in both adapters).
-- **`settings.claude.mcpServers` is rejected (Iteration 0 blocker closed):**
-  `config.Load` reserves it — claude's `current()` skips reading it back, so it
-  would be non-idempotent. `TestLoadRejectsReservedSettingKeys` names the key.
-- **Scope-switch status is pending, not drift (Iteration 0 blocker closed):**
-  `ObserveHashes` reads each skill link at the destination state recorded (via
-  `recordedDst`), not the current scope's dir, so a pending per-skill `scope`
-  change shows as a pending relocation while old links are intact.
-  `TestScopeSwitchStatusReportsPendingNotDrift` covers both switch directions.
-- **Repo dogfooded at project scope (Iteration 0 blocker closed):**
-  `homonto.toml` declares each onto skill as `[skills.<name>]` with
-  `scope = "project"`, so they link under this repo's own `.claude`/`.opencode`
-  (gitignored) instead of the maintainer's global home. `apply --yes` was run
-  and `status` reports `No drift`.
+This decision must be resolved before the Design Doc can be written.
 
-## Current Remaining Work
+## Key confirmed decisions (from open phase)
 
-The first public release gate has been **reopened** for a dual-binary
-`homonto` + `onto` product rather than the prior config-projector-only beta.
-The config-resource-model code work has landed (explicit per-resource tables,
-required `scope`, `homonto/` local provider root, per-tool model routing),
-the full test suite is green (168 tests), and `go run . status` reports
-`No drift` against the new model. The release design lives at
-[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
-and supersedes the prior "release-ready pending the maintainer's tag" verdict.
+- **Catalog storage:** go:embed + materialize to `.homonto/catalog/skills/<name>/`
+- **Catalog content:** all 4 first-release frameworks (onto, comet, superpowers, openspec)
+- **Scope:** skills only (commands and subagents are separate changes B and C)
+- **Framework metadata:** TOML (`catalog/frameworks/<name>/framework.toml`) with name, version, dependencies, skills table
+- **Expansion:** `[frameworks.comet] source = "builtin:comet"` expands to all comet skills + transitive deps (superpowers, openspec)
+- **Materialization:** version-aware, gated on `.homonto/state.json` catalog version
+- **State:** `.homonto/catalog/` is generated cache (gitignored)
+- **Split:** 3 changes agreed -- A (this), B (commands), C (subagents)
 
-1. **Implement framework/catalog expansion and projection** for `[frameworks.X]`,
-   `[commands.X]`, and `[subagents.X]`, including the bundled `onto`, `comet`,
-   `superpowers`, and `openspec` set plus command/subagent model routing.
-2. **Ship the `onto` binary** alongside `homonto` once installed/shared framework
-   metadata exists for it to read.
-3. **Update dual-binary release packaging** so archives and smoke tests cover
-   both binaries.
-4. **Tag `v0.1.0-rc.1`** once the dual-binary gate in the design doc passes;
-   follow `docs/release-checklist.md`.
-5. **Promote to `v0.1.0`** after at least one clean dogfood cycle with the tagged
-   binaries.
+## Tool format findings (for changes B and C later)
 
-Beyond release, the post-v1 roadmap (framework/catalog maturity, plugin
-configuration, TUI settings, agent lifecycle) remains unstarted feature work. Two
-accepted beta limitations are documented, not bugs: OpenCode JSONC comment loss
-on writes, and `import` being a narrow Claude MCP bootstrap.
+```
+Skills     Claude: ~/.claude/skills/<n>/    OpenCode: ~/.config/opencode/skills/<n>/
+Commands   Claude: ~/.claude/commands/<n>.md  OpenCode: ~/.config/opencode/command/<n>.md
+Subagents  Claude: ~/.claude/agents/ (unclear)  OpenCode: opencode.jsonc "agent" key (JSON merge)
+```
 
-> **Frameworks-projection gap (do not assume today):** declaring
-> `[frameworks.X]`/`[commands.X]`/`[subagents.X]` currently only VALIDATES
-> (scope/source/target/model routing) — it does NOT yet PROJECT or install
-> anything. Framework catalog expansion and resource projection are the next
-> subsystem plan (see
-> [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)).
-> A `[frameworks.onto]` block will not install the onto framework today.
+## How to resume
 
-## Recommended Next Steps
+1. **Run `/comet`** -- it will detect the active `catalog-foundation-skills` change at `phase: design` and route to `/comet-design`.
+2. **Resolve the go:embed layout decision** (Option C recommended).
+3. **Continue brainstorming** to finalize remaining technical details, then confirm design proposal (blocking point).
+4. **Write Design Doc** to `docs/superpowers/specs/2026-07-09-catalog-foundation-skills-design.md`.
+5. **Run design guard** to advance to build phase.
+6. **In build phase:** choose isolation/execution/TDD/review mode, write implementation plan, execute tasks.
 
-1. Read
-   [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
-   for the reopened dual-binary release gate; next build the framework/catalog
-   expansion and resource projection subsystem before the `onto` binary.
-2. Keep `NEXT_AGENT.md` synchronized with source after each behavioral change.
-3. After v0.1.0 ships, pick the next v1.1+ roadmap item and open an onto change
-   workspace for it.
+## Comet script bootstrap (run once on resume)
 
-## Documentation Rules For Future Changes
+```bash
+COMET_ENV="$(find . "$HOME"/.*/skills "$HOME/.config" "$HOME/.gemini" -path '*/comet/scripts/comet-env.mjs' -type f -print -quit 2>/dev/null)"
+COMET_SCRIPTS_DIR="$(node "$COMET_ENV")"
+COMET_STATE="$COMET_SCRIPTS_DIR/comet-state.mjs"
+COMET_GUARD="$COMET_SCRIPTS_DIR/comet-guard.mjs"
+COMET_HANDOFF="$COMET_SCRIPTS_DIR/comet-handoff.mjs"
+```
 
-- Living specs in `docs/specs/` must describe current behavior, not aspirations.
-- Put planned work in `docs/roadmap.md` or a change workspace, not as false SHALLs.
-- If a review is historical, say so at the top or rewrite it as a current-state
-  handoff.
-- When code and docs disagree, source wins until a verified code change lands.
-- Keep README claims conservative: mention known limitations where users can hit
-  them immediately.
+## Current verification state
+
+- `go test ./... -count=1` -- 168 passed (pre-change baseline)
+- `go vet ./...` -- clean
+- `go build ./...` -- success
+- `go run . status` -- `No drift.`
+- `openspec list --json --no-color` -- `[catalog-foundation-skills]`
+- Worktree: clean on `main`
