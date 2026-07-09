@@ -49,7 +49,7 @@ func TestRelativeContentDirResolvesAgainstConfig(t *testing.T) {
 	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{}`), 0o644)
 	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{}`), 0o644)
 	os.MkdirAll(filepath.Join(repo, "content", "skills", "onto"), 0o755)
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"onto\"]\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills.onto]\nsource=\"local:onto\"\nscope=\"user\"\n"), 0o644)
 
 	wd, _ := os.Getwd()
 	other := t.TempDir()

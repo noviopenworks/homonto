@@ -19,7 +19,7 @@ func TestInitScaffoldsRepoAndSkipsExisting(t *testing.T) {
 		t.Fatalf("init: %v\n%s", err, out)
 	}
 	for _, want := range []string{"homonto.toml", ".gitignore", ".env.example",
-		filepath.Join("content", "skills", ".gitkeep")} {
+		filepath.Join("homonto", "skills", ".gitkeep")} {
 		p := filepath.Join(dir, want)
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("init did not create %s: %v", want, err)

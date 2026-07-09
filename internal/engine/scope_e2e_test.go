@@ -21,7 +21,7 @@ func TestProjectScopeEndToEnd(t *testing.T) {
 
 	writeTOML := func(scope string) {
 		os.WriteFile(filepath.Join(repo, "homonto.toml"),
-			[]byte("[skills]\nscope=\""+scope+"\"\nown=[\"graphify\"]\n"), 0o644)
+			[]byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\""+scope+"\"\n"), 0o644)
 	}
 	build := func() *Engine {
 		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
@@ -102,7 +102,7 @@ func TestScopeSwitchStatusReportsPendingNotDrift(t *testing.T) {
 			os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
 			writeTOML := func(scope string) {
 				os.WriteFile(filepath.Join(repo, "homonto.toml"),
-					[]byte("[skills]\nscope=\""+scope+"\"\nown=[\"graphify\"]\n"), 0o644)
+					[]byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\""+scope+"\"\n"), 0o644)
 			}
 			build := func() *Engine {
 				e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
@@ -159,7 +159,7 @@ func TestSkillsOnlyRebuildsLostState(t *testing.T) {
 	content := filepath.Join(repo, "content")
 	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
 	os.WriteFile(filepath.Join(repo, "homonto.toml"),
-		[]byte("[skills]\nscope=\"project\"\nown=[\"foo\"]\n"), 0o644)
+		[]byte("[skills.foo]\nsource=\"local:foo\"\nscope=\"project\"\n"), 0o644)
 	build := func() *Engine {
 		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
 		if err != nil {
@@ -197,8 +197,7 @@ func TestSkillsOnlyRebuildsLostState(t *testing.T) {
 	}
 
 	// With state rebuilt, removing the skill now prunes the links.
-	os.WriteFile(filepath.Join(repo, "homonto.toml"),
-		[]byte("[skills]\nscope=\"project\"\nown=[]\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(""), 0o644)
 	e3 := build()
 	sets3, _ := e3.Plan()
 	if err := e3.Apply(sets3); err != nil {

@@ -19,8 +19,9 @@ command = ["npx","server-brave"]
 env = { BRAVE_API_KEY = "${pass:ai/brave}" }
 targets = ["claude"]
 
-[skills]
-own = ["graphify"]
+[skills.graphify]
+source = "local:graphify"
+scope = "user"
 
 [settings.claude]
 model = "opus"

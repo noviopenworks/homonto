@@ -25,7 +25,7 @@ func TestInitCreatesFilesAndSkipsExisting(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".gitignore")); err != nil {
 		t.Fatal(".gitignore not created")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "content", "skills")); err != nil {
-		t.Fatal("content/skills not created")
+	if _, err := os.Stat(filepath.Join(dir, "homonto", "skills")); err != nil {
+		t.Fatal("homonto/skills not created")
 	}
 }

@@ -1,15 +1,55 @@
-[skills]
-# Project scope: link the onto dev skills under this repo's own .claude/.opencode
-# (dogfooding homonto on homonto) instead of the maintainer's global ~/.claude.
-# The links are machine-specific absolute symlinks, so .gitignore excludes them.
+[skills.onto]
+source = "local:onto"
 scope = "project"
-own = [
-  "onto",
-  "onto-open",
-  "onto-design",
-  "onto-build",
-  "onto-verify",
-  "onto-close",
-  "onto-fix",
-  "onto-tweak",
-]
+
+[skills.onto-open]
+source = "local:onto-open"
+scope = "project"
+
+[skills.onto-design]
+source = "local:onto-design"
+scope = "project"
+
+[skills.onto-build]
+source = "local:onto-build"
+scope = "project"
+
+[skills.onto-verify]
+source = "local:onto-verify"
+scope = "project"
+
+[skills.onto-close]
+source = "local:onto-close"
+scope = "project"
+
+[skills.onto-fix]
+source = "local:onto-fix"
+scope = "project"
+
+[skills.onto-tweak]
+source = "local:onto-tweak"
+scope = "project"
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+
+[models.claude.coding]
+model = "sonnet"
+effort = "normal"
+
+[models.claude.trivial]
+model = "haiku"
+effort = "fast"
+
+[models.opencode.architectural]
+model = "anthropic/claude-opus-4-8"
+effort = "high"
+
+[models.opencode.coding]
+model = "anthropic/claude-sonnet-4"
+effort = "medium"
+
+[models.opencode.trivial]
+model = "openai/gpt-5-mini"
+variant = "cheap"

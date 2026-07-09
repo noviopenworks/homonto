@@ -19,7 +19,7 @@ func applyCmd() *cobra.Command {
 			cfgPath, _ := cmd.Flags().GetString("config")
 			yes, _ := cmd.Flags().GetBool("yes")
 			home, _ := os.UserHomeDir()
-			e, err := engine.Build(cfgPath, home, "content")
+			e, err := engine.Build(cfgPath, home, "homonto")
 			if err != nil {
 				return err
 			}

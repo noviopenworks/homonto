@@ -12,7 +12,7 @@ import (
 func TestDoctorFlagsMissingSkillContent(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"ghost\"]\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills.ghost]\nsource=\"local:ghost\"\nscope=\"user\"\n"), 0o644)
 
 	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
@@ -27,7 +27,7 @@ func TestDoctorFlagsMissingSkillContent(t *testing.T) {
 func TestDoctorReportsSkillLinkState(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"graphify\"]\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\"user\"\n"), 0o644)
 	content := filepath.Join(repo, "content")
 	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
 
@@ -62,7 +62,7 @@ func TestDoctorReportsSkillLinkState(t *testing.T) {
 func TestDoctorProjectScopeChecksProjectLocation(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nscope=\"project\"\nown=[\"graphify\"]\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\"project\"\n"), 0o644)
 	content := filepath.Join(repo, "content")
 	src := filepath.Join(content, "skills", "graphify")
 	os.MkdirAll(src, 0o755)
@@ -104,7 +104,7 @@ func TestDoctorProjectScopeChecksProjectLocation(t *testing.T) {
 func TestDoctorChecksOpenCodeSkillLink(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills]\nown=[\"graphify\"]\n"), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\"user\"\n"), 0o644)
 	content := filepath.Join(repo, "content")
 	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
 	src := filepath.Join(content, "skills", "graphify")

@@ -27,8 +27,8 @@ type Engine struct {
 	Warnings []string
 }
 
-// Build loads config and wires both adapters. home is $HOME; contentDir holds
-// owned content; state lives in <repo>/.homonto next to the config.
+// Build loads config and wires both adapters. home is $HOME; contentDir is the
+// local provider root; state lives in <repo>/.homonto next to the config.
 func Build(configPath, home, contentDir string) (*Engine, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
@@ -54,12 +54,11 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	scope := cfg.Skills.Scope
 	return &Engine{
 		Cfg: cfg,
 		Adapters: []adapter.Adapter{
-			claude.New(home, contentDir).WithScope(scope, projectRoot),
-			opencode.New(home, contentDir).WithScope(scope, projectRoot),
+			claude.New(home, contentDir).WithProjectRoot(projectRoot),
+			opencode.New(home, contentDir).WithProjectRoot(projectRoot),
 		},
 		State:       st,
 		StateDir:    stateDir,
