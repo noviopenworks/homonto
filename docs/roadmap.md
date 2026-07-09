@@ -9,11 +9,15 @@
 `homonto` v1 remains focused on the safe core: one declarative
 `homonto.toml`, a plan/confirm/apply pipeline, reference-only secrets,
 surgical writes, and Claude Code/OpenCode adapters. The core is implemented and
-testable (153 tests across 16 packages locally on 2026-07-08). Every engineering
-item in `docs/road-to-release.md` (Iterations 0–4) is closed; the release now
-waits only on the maintainer pushing the `v0.1.0-rc.1` tag. What remains beyond
-that is either consciously accepted as a documented limitation or belongs to the
-post-v1 roadmap below.
+testable (161 tests across 16 packages locally on 2026-07-09). The explicit
+per-resource config model — `[frameworks.X]`, `[skills.X]`, `[commands.X]`,
+`[subagents.X]`, `[models.<tool>.<level>]` with required `source` + `scope` and
+local provider content under `homonto/` — has landed. The first public release
+gate has been **reopened** for a dual-binary `homonto` + `onto` product; see
+[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md),
+which supersedes the prior "release-ready pending the maintainer's tag" verdict.
+What remains beyond that is either consciously accepted as a documented
+limitation or belongs to the post-v1 roadmap below.
 
 Post-v1 expands Homonto from a config projector into a manager for the AI
 coding-tool ecosystem around those configs: built-in content templates, richer
@@ -108,7 +112,7 @@ Scope:
 - Built-in skills, agents, commands, and rules packaged with Homonto releases.
 - `homonto templates list` shows available templates with type, description,
   version, and target-tool compatibility.
-- `homonto templates add <name>` copies selected templates into `content/`.
+- `homonto templates add <name>` copies selected templates into `homonto/`.
 - Copied templates become user-owned content and may be edited freely.
 - Existing local content is not overwritten unless the user passes an explicit
   force or backup option.
@@ -127,7 +131,7 @@ enabled = ["graphify-skill", "review-agent"]
 ```
 
 The `enabled` list records template origin for auditability. The actual content
-lives under `content/` and remains the user's copy.
+lives under `homonto/` and remains the user's copy.
 
 ## v1.2 Plugin Configuration
 
@@ -198,7 +202,7 @@ v2 manages source, version, compatibility, updates, and migration.
 
 Scope:
 
-- Local authored agents under `content/agents/`.
+- Local authored agents under `homonto/agents/`.
 - Built-in agent templates from the curated template catalog.
 - Remote/community agent sources after local and built-in flows are stable.
 - Version pinning and lockfile/state tracking.

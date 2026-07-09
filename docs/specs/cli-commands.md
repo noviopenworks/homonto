@@ -20,7 +20,7 @@ changes happen by editing `homonto.toml`; there SHALL be no imperative
 ### Requirement: init scaffolds without overwriting
 
 `homonto init [dir]` SHALL scaffold a starter repo (`homonto.toml`, `.gitignore`,
-`.env.example`, `content/skills/`) and SHALL never overwrite an existing file.
+`.env.example`, `homonto/skills/`) and SHALL never overwrite an existing file.
 
 #### Scenario: Existing files are preserved
 - **WHEN** `homonto.toml` already exists in the target dir
@@ -80,15 +80,17 @@ unless `--force` is given.
 
 `homonto doctor` SHALL check that `pass` is on `PATH`, that each target tool's
 config location is present, and that each owned skill exists under
-`content/skills/`. For every owned skill it SHALL verify BOTH tool symlinks at the
-location selected by the config's skill scope — for `user` scope
-`~/.claude/skills/<name>` and `~/.config/opencode/skills/<name>`, and for `project` scope
-`<project>/.claude/skills/<name>` and `<project>/.opencode/skills/<name>` — reporting the
-link state per tool. All findings are reported as `ok`/`warn` lines.
+`homonto/skills/<local-name>` for local-source skills (or the bundled catalog
+path for builtin-source skills). For every owned skill it SHALL verify BOTH tool
+symlinks at the location selected by that skill resource's `scope` — for `user`
+scope `~/.claude/skills/<name>` and `~/.config/opencode/skills/<name>`, and for
+`project` scope `<project>/.claude/skills/<name>` and
+`<project>/.opencode/skills/<name>` — reporting the link state per tool. All
+findings are reported as `ok`/`warn` lines.
 
 #### Scenario: Missing owned skill is flagged
-- **WHEN** a skill listed in `[skills] own` has no directory under
-  `content/skills/`
+- **WHEN** a declared skill resource has no directory under `homonto/skills/`
+  (for local-source skills) or no bundled catalog entry (for builtin-source)
 - **THEN** `doctor` reports a warning naming that skill
 
 #### Scenario: Missing OpenCode link is flagged
@@ -99,7 +101,8 @@ link state per tool. All findings are reported as `ok`/`warn` lines.
   linked for `opencode`
 
 #### Scenario: Project scope is checked at the project location
-- **GIVEN** a config with `[skills] scope = "project"` whose skills are applied
+- **GIVEN** a config with `[skills.<name>] scope = "project"` whose skills are
+  applied
 - **WHEN** `doctor` runs
 - **THEN** it reports the skill links `ok` by checking `<project>/.claude/skills/<name>` and
   `<project>/.opencode/skills/<name>`, not the home locations

@@ -13,10 +13,11 @@ per-tool settings. All downstream stages SHALL operate on this model, never on
 raw TOML.
 
 #### Scenario: Parse a complete config
-- **WHEN** `homonto.toml` declares MCP servers, `[skills] own`, per-tool
-  `[plugins]`, and per-tool `[settings]`
+- **WHEN** `homonto.toml` declares MCP servers, owned skills as explicit
+  `[skills.<name>]` resources, per-tool `[plugins]`, and per-tool `[settings]`
 - **THEN** the loader returns a model exposing each MCP's command/env/targets,
-  the owned skill list, the per-tool plugin lists, and the per-tool settings maps
+  the owned skill resources (each with source and scope), the per-tool plugin
+  lists, and the per-tool settings maps
 
 #### Scenario: Missing config file is an error
 - **WHEN** the config path does not exist
@@ -80,25 +81,40 @@ apply.
 - **WHEN** the config is loaded
 - **THEN** `Load` accepts them
 
-### Requirement: Skill install scope
+### Requirement: Explicit resource declarations
 
-The config model SHALL expose an optional `[skills] scope` selecting where owned skills
-install: `"user"` (the default when absent or empty) targets the user's home tool
-directories, and `"project"` targets the project root (the directory of `homonto.toml`).
-`config.Load` SHALL reject any other value, naming the offending value and the valid set
-(`user`, `project`). Scope SHALL govern skill symlinks only; MCP servers and settings are
-unaffected.
+`homonto` SHALL parse frameworks, skills, commands, and subagents as explicit
+per-resource tables. Every resource SHALL declare `source` and `scope`. Scope
+SHALL be either `user` or `project`; there is no default. Source SHALL be either
+`builtin:<name>` or `local:<name>` in the first release.
 
-#### Scenario: Absent scope defaults to user
-- **WHEN** `homonto.toml` has `[skills] own` but no `scope`
-- **THEN** the loaded model's skill scope is `user`
+#### Scenario: Parse explicit resources
+- **WHEN** `homonto.toml` declares `[skills.graphify]` with `source = "local:graphify"` and `scope = "project"`
+- **THEN** the loader returns a skill resource named `graphify` with local source `graphify` and project scope
 
-#### Scenario: Project scope parsed
-- **WHEN** `homonto.toml` sets `[skills] scope = "project"`
-- **THEN** the loaded model's skill scope is `project`
+#### Scenario: Missing scope is rejected
+- **WHEN** a resource omits `scope`
+- **THEN** `Load` returns an error naming that resource and the missing scope
 
-#### Scenario: Invalid scope is rejected
-- **GIVEN** `[skills] scope = "global"` (not a valid value)
-- **WHEN** the config is loaded
-- **THEN** `Load` returns an error naming `"global"` and the valid values `user` and
-  `project`, rather than silently defaulting
+### Requirement: Tool-specific model routing
+
+For every enabled target tool, `homonto.toml` SHALL define all three model
+levels: `architectural`, `coding`, and `trivial`. Each route SHALL include a
+non-empty `model` and at least one of `effort` or `variant`. Homonto SHALL not
+validate provider-specific model names or effort values beyond presence.
+
+#### Scenario: Model routing for one tool
+- **GIVEN** a config whose only model-enabled tool is `claude`
+- **WHEN** the loader parses `[models.claude.architectural]`, `[models.claude.coding]`, and `[models.claude.trivial]`, each with a `model` plus `effort` or `variant`
+- **THEN** the loader accepts the config and exposes the three routes keyed by tool and level
+
+#### Scenario: Missing model level is rejected
+- **WHEN** a model-enabled tool lacks one of the three levels, or a level omits `model`, or a level has neither `effort` nor `variant`
+- **THEN** `Load` returns an error naming the offending tool and level
+
+### Requirement: Local provider content root
+
+Local-source resources (`source = "local:<name>"`) SHALL resolve from
+`homonto/<kind>/<name>` relative to the directory containing `homonto.toml`.
+Generated state and cache SHALL live under `.homonto/` only; the loader SHALL
+NOT read owned source content from any other root.

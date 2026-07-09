@@ -289,16 +289,18 @@ workflow.
 
 ### Requirement: Dogfood distribution
 
-The onto skills SHALL live in `content/skills/` as homonto-owned content,
-listed under `[skills] own` in the repo's `homonto.toml`, and be projected
-into `~/.claude/skills/` by `homonto apply` as symlinks.
+The onto skills SHALL live in `homonto/skills/` as homonto-owned content,
+declared as explicit `[skills.<name>]` resources (with `source` and `scope`) in
+the repo's `homonto.toml`, and be projected into `~/.claude/skills/` by
+`homonto apply` as symlinks.
 
 #### Scenario: Apply links skills
 
-- **GIVEN** the repo's `homonto.toml` owning the eight onto skills
+- **GIVEN** the repo's `homonto.toml` declaring the eight onto skills as
+  explicit resources
 - **WHEN** the user runs `homonto apply` and confirms
 - **THEN** `~/.claude/skills/onto*` are symlinks into the repo's
-  `content/skills/` and `homonto status` reports no drift
+  `homonto/skills/` and `homonto status` reports no drift
 
 ### Requirement: Artifact templates
 

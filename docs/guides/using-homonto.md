@@ -28,7 +28,7 @@ go build -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=1.2.
 ## Quickstart
 
 ```
-homonto init            # scaffold homonto.toml, .gitignore, .env.example, content/skills/
+homonto init            # scaffold homonto.toml, .gitignore, .env.example, homonto/skills/
 $EDITOR homonto.toml    # declare what you want
 homonto plan            # preview the diff — writes nothing
 homonto apply           # review the plan, confirm, and project it
@@ -59,11 +59,12 @@ command = ["npx", "-y", "server-brave"]
 env     = { BRAVE_API_KEY = "${pass:ai/brave}" }   # secret reference, not a literal
 targets = ["claude"]                                # default: both tools
 
-# Owned skills — directories under content/skills/, symlinked into each tool.
-[skills]
-scope = "user"                    # user (default): ~/.claude, ~/.config/opencode
-                                  # project: <repo>/.claude, <repo>/.opencode
-own = ["graphify", "onto"]
+# Owned skills — explicit per-resource tables. Local source resolves from
+# homonto/skills/<name> (next to homonto.toml). scope is required.
+[skills.graphify]
+source = "local:graphify"          # local:<name> → homonto/skills/<name>
+scope = "user"                     # user: ~/.claude, ~/.config/opencode
+                                   # project: <repo>/.claude, <repo>/.opencode
 
 # Per-tool plugins.
 [plugins]
@@ -82,14 +83,14 @@ model = "anthropic/claude-opus-4-8"
 an explicit list restricts it. Only `claude` and `opencode` are valid — a typo
 like `targets = ["claud"]` is rejected at load, not silently ignored.
 
-**Skill scope.** `[skills] scope` selects where owned skills are linked (skills
-only — MCPs and settings always stay global). `user` (the default when omitted)
-links into `~/.claude/skills/` and `~/.config/opencode/skills/`; `project` links
-into the repo itself, `<repo>/.claude/skills/` and `<repo>/.opencode/skills/`,
-to keep a project's skills in-repo. Switching scope relocates the links cleanly —
+**Skill scope.** Each `[skills.<name>]` resource declares its own required
+`scope` (skills only — MCPs and settings always stay global). `user` links into
+`~/.claude/skills/` and `~/.config/opencode/skills/`; `project` links into the
+repo itself, `<repo>/.claude/skills/` and `<repo>/.opencode/skills/`, to keep a
+project's skills in-repo. Switching a skill's scope relocates its link cleanly —
 `plan` shows the move, `apply` removes the old link as it makes the new one, and
-`status`/`doctor` follow the active scope. Any value other than `user`/`project`
-is rejected at load.
+`status`/`doctor` follow each skill's declared scope. Any value other than
+`user`/`project` is rejected at load.
 
 **Validation is fail-fast.** `homonto` rejects, at load time and naming the
 offender: an MCP with no command; an unknown target; a settings key that
@@ -154,7 +155,7 @@ When neither is present: `No drift.`
   preserves every unmanaged key already in the tool's file. An unparseable tool
   file makes that adapter abort and report — never overwrite. (Writing
   `opencode.jsonc` normalizes it and drops comments.)
-- **Skills are symlinked**, not copied, from `content/skills/<name>` into each
+- **Skills are symlinked**, not copied, from `homonto/skills/<name>` into each
   tool's skills directory, with conflict detection (a real file or a link
   pointing elsewhere is reported, never clobbered).
 - **Pruning.** Remove a resource from `homonto.toml` and the next apply deletes

@@ -6,19 +6,26 @@ gate for tagging and announcing a usable release.
 
 ## Release Verdict
 
-Current state: **release-ready pending the maintainer's tag**.
+Current state: **release gate reopened for the dual-binary homonto + onto
+release.**
 
-Every engineering item in Iterations 0–4 is done: safety blockers closed,
-release + govulncheck CI in place, binary-level coverage expanded, README and
-release notes polished, and the full local gate plus a disposable-home rehearsal
-pass. The repo dogfoods itself cleanly at project scope (`go run . status` →
-`No drift`).
+The earlier "release-ready pending the maintainer's tag" verdict is **superseded**
+by the dual-binary product direction in
+[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md).
+The first public release `v0.1.0-rc.1` is no longer a config-projector-only beta;
+it must ship two binaries — `homonto` (deterministic installer and config
+projector) and `onto` (managed spec-driven development workflow operator) —
+behind the explicit per-resource config model (`[frameworks.X]`, `[skills.X]`,
+`[commands.X]`, `[subagents.X]`, `[models.<tool>.<level>]` with required
+`source` + `scope`, local provider content under `homonto/`).
 
-The only items left open are inherently human-owned and cannot be done
-autonomously: pushing the `v0.1.0-rc.1` tag (which triggers the release
-workflow), running the `go install <module>@<tag>` smoke from a clean
-environment against that tag, and promoting to `v0.1.0` after a dogfood cycle
-with the tagged binary. Follow `docs/release-checklist.md` to do them.
+The config-resource-model code work has landed: 161/161 tests green and
+`go run . status` → `No drift` against the new model. The remaining gate is
+delivering the `onto` binary, the dual-binary release packaging, and the new
+coverage in the design doc's "Testing And Release Gate" section, followed by the
+maintainer-owned `v0.1.0-rc.1` tag and smoke. The Iteration 0–4 history below
+records the work that closed the original beta gate; it is retained as history,
+not as the current release verdict.
 
 ## Iteration 0 - Safety Blockers
 
@@ -27,12 +34,12 @@ OpenCode config directories.
 
 - [x] Fix foreign skill symlink clobbering.
   - Fixed: `link.Link`/`link.Plan` now take the content root and relink only a
-    symlink whose target sits inside it; a symlink pointing outside `content/` is
+    symlink whose target sits inside it; a symlink pointing outside `homonto/` is
     a user-owned conflict and is never removed or repointed.
   - Regression tests: linker level (`TestLinkForeignSymlinkIsConflict`,
     `TestPlanForeignSymlinkIsConflict`, `TestLinkRelinksManagedWrongTarget`) and
     adapter/apply level (`TestForeignSkillSymlinkAborts` in both adapters).
-  - Acceptance met: an existing symlink to outside `content/` aborts without
+  - Acceptance met: an existing symlink to outside `homonto/` aborts without
     being removed or changed.
 
 - [x] Fix or reject `settings.claude.mcpServers`.
@@ -51,9 +58,10 @@ OpenCode config directories.
     drift.
 
 - [x] Make the repository's own dogfood state clean or intentionally waived.
-  - Resolved: `homonto.toml` sets `scope = "project"`, so the onto dev skills
-    link under this repo's own `.claude`/`.opencode` (gitignored) instead of the
-    maintainer's global home. `homonto apply --yes` was run and verified.
+  - Resolved: `homonto.toml` declares each onto skill as `[skills.<name>]` with
+    `scope = "project"`, so they link under this repo's own `.claude`/`.opencode`
+    (gitignored) instead of the maintainer's global home. `homonto apply --yes`
+    was run and verified.
   - Acceptance met: `go run . status` reports `No drift`; `doctor` shows all 8
     skills linked for both tools; the global `~/.claude` is untouched.
 
@@ -167,10 +175,13 @@ Goal: tag only after the release surface survives a clean rehearsal.
 - [x] Check release notes mention every accepted limitation.
   - `docs/release-notes.md` lists every accepted limitation and is prepended to
     each release's notes by the workflow.
-- [ ] Tag `v0.1.0-rc.1` only after the above passes. **(Owner: maintainer.)**
-  - Everything above is green; this step is intentionally left to a human — it
-    pushes a public tag and triggers the release workflow. Follow
-    `docs/release-checklist.md`.
+- [ ] Tag `v0.1.0-rc.1` only after the dual-binary gate in
+  [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
+  passes. **(Owner: maintainer.)**
+  - The original beta gate (Iterations 0–4 above) is green; the reopened gate
+    adds the `onto` binary, dual-binary release packaging, and the new coverage
+    in the design doc. It is intentionally left to a human — it pushes a public
+    tag and triggers the release workflow. Follow `docs/release-checklist.md`.
 - [ ] Promote to `v0.1.0` only after at least one clean dogfood cycle with the
   tagged binary. **(Owner: maintainer.)**
   - Requires the rc tag from the previous step, so it cannot precede it.

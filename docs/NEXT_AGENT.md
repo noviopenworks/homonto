@@ -48,7 +48,7 @@ Last checked locally on 2026-07-08:
   leave JSON byte-for-byte untouched, so OpenCode JSONC comments survive
   link-only applies.
 - **Doctor parity:** `doctor` verifies both the claude and opencode skill links
-  per owned skill, at the location for the active `[skills] scope` (user home or
+  per owned skill, at the location for each skill resource's `scope` (user home or
   project root) via `skillpath.Dir`.
 - **CI expanded:** `ci.yml` runs gofmt, `go mod tidy -diff`, vet, build, test,
   race, a stamped-`--version` smoke, a temp-HOME CLI smoke, the Docker apply
@@ -67,7 +67,7 @@ Last checked locally on 2026-07-08:
   into every release's notes.
 - **Foreign skill symlink is a conflict (Iteration 0 blocker closed):**
   `link.Link`/`link.Plan` now relink only a symlink whose target is inside the
-  managed content root; a symlink pointing outside `content/` is a user-owned
+  managed content root; a symlink pointing outside `homonto/` is a user-owned
   conflict and is never removed or repointed. Regression tests live at linker
   level (`internal/link/linker_test.go`) and adapter/apply level
   (`TestForeignSkillSymlinkAborts` in both adapters).
@@ -76,27 +76,34 @@ Last checked locally on 2026-07-08:
   would be non-idempotent. `TestLoadRejectsReservedSettingKeys` names the key.
 - **Scope-switch status is pending, not drift (Iteration 0 blocker closed):**
   `ObserveHashes` reads each skill link at the destination state recorded (via
-  `recordedDst`), not the current scope's dir, so a pending `[skills] scope`
+  `recordedDst`), not the current scope's dir, so a pending per-skill `scope`
   change shows as a pending relocation while old links are intact.
   `TestScopeSwitchStatusReportsPendingNotDrift` covers both switch directions.
 - **Repo dogfooded at project scope (Iteration 0 blocker closed):**
-  `homonto.toml` sets `scope = "project"`, so the onto dev skills link under this
-  repo's own `.claude`/`.opencode` (gitignored) instead of the maintainer's
-  global home. `apply --yes` was run and `status` reports `No drift`.
+  `homonto.toml` declares each onto skill as `[skills.<name>]` with
+  `scope = "project"`, so they link under this repo's own `.claude`/`.opencode`
+  (gitignored) instead of the maintainer's global home. `apply --yes` was run
+  and `status` reports `No drift`.
 
 ## Current Remaining Work
 
-Every engineering item in `docs/road-to-release.md` (Iterations 0–4) is closed —
-see "Fixed Since The Original Deep Review" above. What is left is inherently
-maintainer-owned and cannot be done autonomously:
+The first public release gate has been **reopened** for a dual-binary
+`homonto` + `onto` product rather than the prior config-projector-only beta.
+The config-resource-model code work has landed (explicit per-resource tables,
+required `scope`, `homonto/` local provider root, per-tool model routing),
+the full test suite is green (161 tests), and `go run . status` reports
+`No drift` against the new model. The release design lives at
+[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
+and supersedes the prior "release-ready pending the maintainer's tag" verdict.
 
-1. **Tag `v0.1.0-rc.1`.** All gates are green; pushing the tag triggers
-   `release.yml`. Follow `docs/release-checklist.md`.
-2. **Run the `go install github.com/noviopenworks/homonto@<tag>` smoke** from a
-   clean environment once the tag exists (only `go install .` and an out-of-repo
-   binary run could be verified without a tag).
-3. **Promote to `v0.1.0`** after at least one clean dogfood cycle with the tagged
-   binary.
+1. **Ship the `onto` binary** alongside `homonto` and the dual-binary release
+   packaging per the design doc.
+2. **Tag `v0.1.0-rc.1`** once the dual-binary gate in the design doc passes;
+   follow `docs/release-checklist.md`.
+3. **Run the `go install github.com/noviopenworks/homonto@<tag>` smoke** from a
+   clean environment once the tag exists.
+4. **Promote to `v0.1.0`** after at least one clean dogfood cycle with the tagged
+   binaries.
 
 Beyond release, the post-v1 roadmap (built-in templates, plugin configuration,
 TUI settings, agent lifecycle) remains unstarted feature work. Two accepted beta
@@ -105,8 +112,10 @@ limitations are documented, not bugs: OpenCode JSONC comment loss on writes, and
 
 ## Recommended Next Steps
 
-1. When ready to release, work `docs/release-checklist.md` end to end and push
-   `v0.1.0-rc.1`; the rest of Iteration 4 unblocks from there.
+1. Read
+   [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md)
+   for the reopened dual-binary release gate; ship the `onto` binary and its
+   release packaging before working toward the `v0.1.0-rc.1` tag.
 2. Keep `NEXT_AGENT.md` synchronized with source after each behavioral change.
 3. After v0.1.0 ships, pick a v1.1+ roadmap item (templates is the natural first
    step) and open an onto change workspace for it.

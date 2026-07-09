@@ -3,13 +3,13 @@
 **onto** is this repo's development workflow: five phases — open → design →
 build → verify → close — plus two preset fast paths (`/onto-fix` for bugs,
 `/onto-tweak` for small non-bug changes). It is self-contained: eight
-markdown skills (shipped from `content/skills/` in this very repo and
+markdown skills (shipped from `homonto/skills/` in this very repo and
 symlinked into your tools by `homonto apply`), one `docs/` tree for all
 artifacts, and an agent-managed `state.yaml` per change. No workflow CLIs,
 no scripts.
 
 Every artifact has a **canonical template** bundled with the skill that
-creates it (`content/skills/<skill>/references/`) — skills stay lean
+creates it (`homonto/skills/<skill>/references/`) — skills stay lean
 process prose; payload loads only when a phase needs it, and structural
 deviation from a template is a close-phase lint finding.
 
@@ -122,7 +122,8 @@ proceeds — a degraded session still works:
 
 ## This repo eats it first
 
-The skills live in `content/skills/onto*` and are listed in `homonto.toml`
-under `[skills] own`, so `homonto apply` links them into `~/.claude/skills/`
-(and OpenCode). Editing a skill file is instantly live everywhere — that is
-homonto's owned-content model doing its job.
+The skills live in `homonto/skills/onto*` and are declared in `homonto.toml`
+as explicit `[skills.<name>]` resources with `scope = "project"`, so
+`homonto apply` links them into `~/.claude/skills/` (and OpenCode). Editing a
+skill file is instantly live everywhere — that is homonto's owned-content
+model doing its job.

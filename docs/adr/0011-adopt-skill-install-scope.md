@@ -1,6 +1,10 @@
 # Adopt a configurable skill install scope (user vs project)
 
-- **Status:** Accepted
+- **Status:** Superseded — by the explicit per-resource config model (see
+  `docs/specs/config-model.md` "Explicit resource declarations" and
+  `docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`). Each
+  `[skills.<name>]` resource now carries its own required `scope`; the
+  list-style `[skills] scope` default and `[skills] own` list no longer exist.
 - **Date:** 2026-07-06
 - **Change:** per-project-skills
 

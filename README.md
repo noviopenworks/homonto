@@ -26,7 +26,7 @@ go install .                                        # from a checked-out repo
 ## Quickstart
 
 ```bash
-homonto init            # scaffold homonto.toml, .gitignore, .env.example, content/
+homonto init            # scaffold homonto.toml, .gitignore, .env.example, homonto/skills/
 $EDITOR homonto.toml    # declare your MCPs / skills / plugins / settings
 homonto plan            # dry run: show the diff, write nothing
 homonto apply           # plan → confirm [y/N] → write (use --yes to skip prompt)
@@ -56,9 +56,9 @@ targets = ["claude", "opencode"]          # default: all tools
 command = ["npx", "-y", "@modelcontextprotocol/server-brave-search"]
 env = { BRAVE_API_KEY = "${pass:ai/brave}" }
 
-[skills]
-scope = "user"                            # user (default) or project — see below
-own = ["graphify"]                        # from content/skills/
+[skills.graphify]
+source = "local:graphify"                 # local:<name> → homonto/skills/<name>
+scope = "project"                         # required: user | project (no default)
 
 [plugins]
 claude = ["claude-hud@official"]          # marketplace entries
@@ -69,6 +69,10 @@ model = "opus"
 
 [settings.opencode]
 model = "anthropic/claude-opus-4-8"
+
+[models.claude.architectural]             # required for every model-enabled tool
+model = "opus"
+variant = "max"
 ```
 
 ## Secrets — referenced, never stored
@@ -90,29 +94,30 @@ Guarantees:
 
 ## Owned content is symlinked
 
-Skills you author live in `content/` and are **symlinked**
-into each tool, so editing `content/...` is instantly live everywhere. `apply`
-ensures the links exist and point correctly; it never clobbers a file that isn't
-its own symlink (reported as a conflict instead). A skills-only apply leaves
-tool JSON files byte-for-byte untouched — adapters write a file only when a
-managed key inside it actually changes — so OpenCode JSONC comments survive
-link-only applies.
+Skills you author live under `homonto/skills/` (the local provider root, next
+to `homonto.toml`) and are **symlinked** into each tool, so editing
+`homonto/skills/...` is instantly live everywhere. `apply` ensures the links
+exist and point correctly; it never clobbers a file that isn't its own symlink
+(reported as a conflict instead). A skills-only apply leaves tool JSON files
+byte-for-byte untouched — adapters write a file only when a managed key inside
+it actually changes — so OpenCode JSONC comments survive link-only applies.
 
 ### Skill scope — user or project
 
-`[skills] scope` chooses where owned skills are linked (it affects skills only;
+Each skill resource declares its own `scope` (`scope` is required; there is no
+default). `scope` chooses where that skill is linked (it affects skills only;
 MCP servers and settings always project into your global tool files):
 
-- `scope = "user"` (default, and the behavior when omitted) — links into
-  `~/.claude/skills/` and `~/.config/opencode/skills/`.
+- `scope = "user"` — links into `~/.claude/skills/` and
+  `~/.config/opencode/skills/`.
 - `scope = "project"` — links into the project itself, next to `homonto.toml`:
   `<repo>/.claude/skills/` and `<repo>/.opencode/skills/`. Use this to keep a
   project's skills in-repo instead of your global tool config.
 
-Switching scope is clean: `plan` shows the link relocating from its old location
-to the new one, and `apply` removes the old link as it creates the new one, so no
-orphaned symlink is left behind. `status` and `doctor` report against whichever
-location the current scope selects.
+Switching a skill's scope is clean: `plan` shows the link relocating from its
+old location to the new one, and `apply` removes the old link as it creates the
+new one, so no orphaned symlink is left behind. `status` and `doctor` report
+against whichever location each skill's scope selects.
 
 ## Surgical merge
 
@@ -160,7 +165,7 @@ failure does not lose earlier records.
 ### Development workflow
 
 This repo is developed with **onto**, a self-contained markdown workflow
-shipped from this very repo (`content/skills/onto*` — dogfooded via
+shipped from this very repo (`homonto/skills/onto*` — dogfooded via
 `homonto apply` at project scope). Five phases (open → design → build → verify →
 close) plus `/onto-fix` and `/onto-tweak` presets; artifacts live under `docs/`:
 

@@ -26,10 +26,12 @@ SHALL cause that adapter to abort and report, never to overwrite.
 
 The Claude adapter SHALL project MCP servers into `~/.claude.json`
 (`mcpServers.<name>`) and settings and plugins into `~/.claude/settings.json` — always at
-the user's home, independent of skill scope. It SHALL link owned skills as symlinks under a
-skills directory selected by the config's skill scope: `~/.claude/skills/` for `user` scope
-and `<project>/.claude/skills/` for `project` scope, where `<project>` is the directory of
-`homonto.toml`.
+the user's home, independent of skill scope. It SHALL link each owned skill as a symlink
+under a skills directory selected by that skill resource's `scope`: `~/.claude/skills/`
+for `user` scope and `<project>/.claude/skills/` for `project` scope, where `<project>` is
+the directory of `homonto.toml`. Local-source skills (`source = "local:<name>"`) SHALL be
+linked from `homonto/skills/<name>`; builtin-source skills SHALL be linked from the
+bundled catalog path for that source.
 
 #### Scenario: MCP and setting projected surgically
 - **WHEN** apply runs with an MCP targeting claude and a claude setting
@@ -37,7 +39,7 @@ and `<project>/.claude/skills/` for `project` scope, where `<project>` is the di
   `~/.claude/settings.json`, with pre-existing unmanaged keys in both files intact
 
 #### Scenario: Project scope links skills under the project root
-- **GIVEN** a config with `[skills] scope = "project"` owning a skill
+- **GIVEN** a config with `[skills.<name>] scope = "project"`
 - **WHEN** apply runs
 - **THEN** the skill symlink is created under `<project>/.claude/skills/<name>` and nothing
   is added under `~/.claude/skills/`, while `~/.claude.json` and `~/.claude/settings.json`
@@ -48,8 +50,8 @@ and `<project>/.claude/skills/` for `project` scope, where `<project>` is the di
 The OpenCode adapter SHALL project MCP servers into `opencode.jsonc`
 (`mcp.<name>` with `type:"local"`, `command`, `enabled`, and `environment` when
 env is set), settings as top-level keys, and plugins appended to the `plugin` array —
-always at the user's home, independent of skill scope. It SHALL link owned skills as
-symlinks under a skills directory selected by the config's skill scope:
+always at the user's home, independent of skill scope. It SHALL link each owned skill as a
+symlink under a skills directory selected by that skill resource's `scope`:
 `~/.config/opencode/skills/` for `user` scope and `<project>/.opencode/skills/` for
 `project` scope, where `<project>` is the directory of `homonto.toml`. JSONC input SHALL be
 normalized before editing; when homonto writes `opencode.jsonc`, all comments in that file
@@ -66,24 +68,27 @@ are removed by whole-document JSONC standardization.
   the file is rewritten
 
 #### Scenario: Project scope links skills under the project root
-- **GIVEN** a config with `[skills] scope = "project"` owning a skill
+- **GIVEN** a config with `[skills.<name>] scope = "project"`
 - **WHEN** apply runs
 - **THEN** the skill symlink is created under `<project>/.opencode/skills/<name>` and
   nothing is added under `~/.config/opencode/skills/`
 
 ### Requirement: Owned content linked by symlink with conflict detection
 
-Owned skills SHALL be linked (not copied) from `content/skills/<name>` into
-each tool's skills directory, and pending link work SHALL be visible as plan
-changes: a missing link appears as a create, a link pointing at the wrong
-target appears as an update, and a correct link is a no-op. `apply` SHALL
-create the links even when they are the only pending changes, and SHALL
-record each applied link in state (`skill.<name>`: desired target path plus
-applied hash) so drift detection and pruning both see it. A skill removed
-from the config SHALL have its link pruned only when the existing path is a
-symlink pointing into homonto's managed content directory. If the target
-already exists and is not homonto's link, the adapter SHALL report a
-conflict and SHALL NOT clobber it — for creation and for pruning alike.
+Owned skills SHALL be linked (not copied) from their source into each tool's
+skills directory at the location chosen by the skill resource's `scope`, and
+pending link work SHALL be visible as plan changes: a missing link appears as a
+create, a link pointing at the wrong target appears as an update, and a correct
+link is a no-op. Local-source skills (`source = "local:<name>"`) SHALL be
+linked from `homonto/skills/<name>`; builtin-source skills SHALL be linked from
+the bundled catalog path for that source. `apply` SHALL create the links even
+when they are the only pending changes, and SHALL record each applied link in
+state (`skill.<name>`: desired target path plus applied hash) so drift detection
+and pruning both see it. A skill removed from the config SHALL have its link
+pruned only when the existing path is a symlink pointing into homonto's managed
+content directory. If the target already exists and is not homonto's link, the
+adapter SHALL report a conflict and SHALL NOT clobber it — for creation and for
+pruning alike.
 
 #### Scenario: Idempotent link creation
 
@@ -93,15 +98,16 @@ conflict and SHALL NOT clobber it — for creation and for pruning alike.
 
 #### Scenario: Skills-only config still applies
 
-- **GIVEN** a config whose only content is `[skills] own`
+- **GIVEN** a config whose only content is owned skills declared as explicit
+  `[skills.<name>]` resources
 - **WHEN** the user runs `homonto apply` and confirms
 - **THEN** the plan shows one create per missing link and apply creates
   every link (it does not short-circuit as "no changes")
 
-#### Scenario: Relative content dir yields absolute link targets
+#### Scenario: Relative local content dir yields absolute link targets
 
-- **GIVEN** homonto invoked from any working directory with a relative
-  content dir (the default `content`)
+- **GIVEN** homonto invoked from any working directory with the default
+  `homonto/` local provider root
 - **WHEN** apply creates skill links
 - **THEN** every symlink target is an absolute path resolved against the
   config file's directory, and the link does not dangle
@@ -119,8 +125,8 @@ conflict and SHALL NOT clobber it — for creation and for pruning alike.
 
 #### Scenario: De-declared skill pruned only when it is our link
 
-- **GIVEN** a skill removed from `[skills] own` whose target path is a
-  real file (or a symlink pointing outside homonto's content dir)
+- **GIVEN** a skill resource removed from `homonto.toml` whose target path is a
+  real file (or a symlink pointing outside homonto's local provider root)
 - **WHEN** apply processes the resulting delete
 - **THEN** the path is left untouched and a conflict is reported; only a
   symlink into homonto's managed content is removed
@@ -226,24 +232,23 @@ secret-bearing keys.
   adoption writes no tool file), and both become pruneable on later removal
   from config
 
-### Requirement: Skill install scope and relocation
+### Requirement: Per-resource skill scope and relocation
 
-Each adapter's skill link destination SHALL be selected by the config's `[skills] scope`:
+Each owned skill's link destination SHALL be selected by that skill resource's `scope`:
 `user` scope links under the user's home tool directory, `project` scope under the project
 root (the directory of `homonto.toml`). MCP servers and settings are unaffected by scope.
-When a skill's location changes because scope was switched, each adapter SHALL relocate the
-link rather than orphan it: `plan` renders the move as a single relocate change for
-`skill.<name>` (old location → new location), and `apply` removes the managed symlink at the
-now-inactive scope location and creates it at the active one. This inactive-location removal
-— including when a skill is de-declared and the scope switched in the same apply — SHALL
-follow the pruning conflict rule: only a symlink pointing into homonto's managed content
-directory is removed, an absent path is a no-op, and a real file or foreign link is left
-untouched. `user`-scope behavior with no scope change SHALL be identical to before this
-capability existed.
+When a skill's location changes because its `scope` was switched, each adapter SHALL
+relocate the link rather than orphan it: `plan` renders the move as a single relocate
+change for `skill.<name>` (old location → new location), and `apply` removes the managed
+symlink at the now-inactive scope location and creates it at the active one. This
+inactive-location removal — including when a skill is de-declared and its scope switched
+in the same apply — SHALL follow the pruning conflict rule: only a symlink pointing into
+homonto's managed content directory is removed, an absent path is a no-op, and a real file
+or foreign link is left untouched.
 
 #### Scenario: Switching scope relocates the link
 - **GIVEN** a skill applied under `user` scope (linked at the home location) whose config is
-  then changed to `[skills] scope = "project"`
+  then changed to `[skills.<name>] scope = "project"`
 - **WHEN** the user runs plan and confirms apply
 - **THEN** plan shows a relocate for `skill.<name>` from the home location to
   `<project>/.claude/skills/<name>` (and the OpenCode equivalent), apply creates the
@@ -259,11 +264,12 @@ capability existed.
 
 #### Scenario: De-declaring a skill while switching scope leaves no orphan
 - **GIVEN** a skill applied at one scope that is then, in a single apply, both removed from
-  `[skills] own` and had `scope` switched (so its link physically sits at the now-inactive scope)
+  `homonto.toml` and had its `scope` switched (so its link physically sits at the
+  now-inactive scope)
 - **WHEN** apply processes the delete
-- **THEN** the link is removed from the location it actually occupies — the delete prunes both
-  the active and the (managed) inactive scope location — leaving no orphan; a foreign file at
-  either location is left untouched
+- **THEN** the link is removed from the location it actually occupies — the delete prunes
+  both the active and the (managed) inactive scope location — leaving no orphan; a foreign
+  file at either location is left untouched
 
 ### Requirement: Skill links are adopted like other managed keys
 
