@@ -11,12 +11,11 @@ import (
 
 // observeCfg exercises every recorded prefix: mcp.*, setting.*, plugin.*, skill.*.
 func observeCfg() *config.Config {
-	return &config.Config{
-		MCPs:     map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"claude"}}},
-		Settings: config.Settings{Claude: map[string]any{"model": "opus"}},
-		Plugins:  config.Plugins{Claude: []string{"repo-plugin"}},
-		Skills:   config.Skills{Own: []string{"onto"}},
-	}
+	c := cfgWithSkills("user", "onto")
+	c.MCPs = map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"claude"}}}
+	c.Settings = config.Settings{Claude: map[string]any{"model": "opus"}}
+	c.Plugins = config.Plugins{Claude: []string{"repo-plugin"}}
+	return c
 }
 
 func applyObserveCfg(t *testing.T, home, content string) (*Adapter, *state.State) {

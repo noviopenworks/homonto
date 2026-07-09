@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
-	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/state"
 )
 
@@ -22,9 +21,9 @@ func TestProjectScopeLinksUnderProjectRoot(t *testing.T) {
 	content := filepath.Join(proj, "content")
 	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
 
-	a := New(home, content).WithScope("project", proj)
+	a := New(home, content).WithProjectRoot(proj)
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{"onto"}}}
+	c := cfgWithSkills("project", "onto")
 
 	cs, err := a.Plan(c, st)
 	if err != nil {
@@ -62,8 +61,8 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 
 	// 1. Apply at user scope.
-	aUser := New(home, content).WithScope("user", proj)
-	cUser := &config.Config{Skills: config.Skills{Scope: "user", Own: []string{"onto"}}}
+	aUser := New(home, content).WithProjectRoot(proj)
+	cUser := cfgWithSkills("user", "onto")
 	cs, err := aUser.Plan(cUser, st)
 	if err != nil {
 		t.Fatalf("user plan: %v", err)
@@ -77,8 +76,8 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	}
 
 	// 2. Switch to project scope; plan shows a relocate referencing home.
-	aProj := New(home, content).WithScope("project", proj)
-	cProj := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{"onto"}}}
+	aProj := New(home, content).WithProjectRoot(proj)
+	cProj := cfgWithSkills("project", "onto")
 	cs2, err := aProj.Plan(cProj, st)
 	if err != nil {
 		t.Fatalf("project plan: %v", err)
@@ -115,8 +114,8 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	os.MkdirAll(filepath.Join(content, "skills", "foo"), 0o755)
 	st, _ := state.Load(t.TempDir())
 
-	aU := New(home, content).WithScope("user", proj)
-	cU := &config.Config{Skills: config.Skills{Scope: "user", Own: []string{"foo"}}}
+	aU := New(home, content).WithProjectRoot(proj)
+	cU := cfgWithSkills("user", "foo")
 	cs, _ := aU.Plan(cU, st)
 	if err := aU.Apply(cs, noSecret(), st); err != nil {
 		t.Fatal(err)
@@ -126,8 +125,8 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 		t.Fatalf("setup: user link missing: %v", err)
 	}
 
-	aP := New(home, content).WithScope("project", proj)
-	cP := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{}}}
+	aP := New(home, content).WithProjectRoot(proj)
+	cP := cfgWithSkills("project")
 	cs2, _ := aP.Plan(cP, st)
 	if err := aP.Apply(cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
@@ -153,7 +152,7 @@ func TestSkillAdoptRebuildsState(t *testing.T) {
 
 	st, _ := state.Load(t.TempDir()) // empty state — simulates lost state.json
 	a := New(home, content)
-	c := &config.Config{Skills: config.Skills{Own: []string{"foo"}}}
+	c := cfgWithSkills("user", "foo")
 
 	cs, _ := a.Plan(c, st)
 	var found *adapter.Change
@@ -192,8 +191,8 @@ func TestRelocationPruneLeavesForeignFile(t *testing.T) {
 	os.WriteFile(foreign, []byte("mine"), 0o644)
 
 	st, _ := state.Load(t.TempDir())
-	a := New(home, content).WithScope("project", proj)
-	c := &config.Config{Skills: config.Skills{Scope: "project", Own: []string{"onto"}}}
+	a := New(home, content).WithProjectRoot(proj)
+	c := cfgWithSkills("project", "onto")
 	cs, err := a.Plan(c, st)
 	if err != nil {
 		t.Fatalf("plan: %v", err)

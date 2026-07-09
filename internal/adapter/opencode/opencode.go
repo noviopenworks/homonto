@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
@@ -19,21 +20,19 @@ import (
 type Adapter struct {
 	home        string
 	content     string
-	scope       string // "" or "user" → home layout; "project" → projectRoot layout
-	projectRoot string // directory of homonto.toml; used only for project scope
-	skills      []string
+	projectRoot string // directory of homonto.toml; used for project-scope resources
+	skills      []config.NamedResource
 }
 
 // New builds an OpenCode adapter at user scope. home is $HOME; content holds
-// owned skills. Use WithScope to install skills under a project root.
+// owned skills. Use WithProjectRoot to install project-scope skills.
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
 
-// WithScope sets the skill install scope and project root (the homonto.toml
-// directory). It affects skill symlink placement only — MCP servers, settings,
-// and plugins always project under home. Empty scope means user scope. Returns
-// the adapter for chaining.
-func (a *Adapter) WithScope(scope, projectRoot string) *Adapter {
-	a.scope, a.projectRoot = scope, projectRoot
+// WithProjectRoot sets the project root (the homonto.toml directory). It is
+// used for project-scope resource placement. MCP servers, settings, and
+// plugins always project under home.
+func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
+	a.projectRoot = projectRoot
 	return a
 }
 
@@ -43,24 +42,34 @@ func (a *Adapter) cfgFile() string {
 	return filepath.Join(a.home, ".config", "opencode", "opencode.jsonc")
 }
 
-// skillsDir is the directory owned-skill symlinks live in for the active scope.
-func (a *Adapter) skillsDir() string {
-	return skillpath.Dir("opencode", a.scope, a.home, a.projectRoot)
+// skillsDir is the directory owned-skill symlinks live in for the given scope.
+func (a *Adapter) skillsDir(scope string) string {
+	return skillpath.Dir("opencode", scope, a.home, a.projectRoot)
 }
 
 // inactiveSkillsDir is the other scope's skills directory — where a link may
-// linger after a scope switch. It returns "" when there is nothing meaningful
-// to relocate from: no project root is known, or the two scopes resolve to the
-// same directory.
-func (a *Adapter) inactiveSkillsDir() string {
+// linger after a per-resource scope switch. It returns "" when there is nothing
+// meaningful to relocate from: no project root is known, or the two scopes
+// resolve to the same directory.
+func (a *Adapter) inactiveSkillsDir(scope string) string {
 	if a.projectRoot == "" {
 		return ""
 	}
-	d := skillpath.Dir("opencode", skillpath.Other(a.scope), a.home, a.projectRoot)
-	if d == a.skillsDir() {
+	d := skillpath.Dir("opencode", skillpath.Other(scope), a.home, a.projectRoot)
+	if d == a.skillsDir(scope) {
 		return ""
 	}
 	return d
+}
+
+// localSourceName resolves a skill resource's content subdirectory: a local:
+// source names that directory directly; any other source falls back to the
+// skill's declared name.
+func localSourceName(source, fallback string) string {
+	if strings.HasPrefix(source, "local:") {
+		return strings.TrimPrefix(source, "local:")
+	}
+	return fallback
 }
 
 func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
@@ -84,7 +93,7 @@ func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 }
 
 func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
-	a.skills = c.Skills.Own
+	a.skills = c.SkillEntriesForTool("opencode")
 	doc, err := readStandardized(a.cfgFile())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -122,9 +131,14 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
-	inactive := a.inactiveSkillsDir()
+	entryByName := map[string]config.NamedResource{}
+	for _, entry := range a.skills {
+		entryByName[entry.Name] = entry
+	}
 	for _, op := range ops {
 		name := filepath.Base(op.Dst)
+		entry := entryByName[name]
+		inactive := a.inactiveSkillsDir(entry.Resource.Scope)
 		// A create whose same-named link still exists (as our managed symlink) at
 		// the other scope is a scope switch: render it as a relocate so the move —
 		// and the prune of the old link Apply performs — is visible before confirm.
@@ -145,12 +159,13 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for _, op := range ops {
 		opDst[op.Dst] = true
 	}
-	for _, name := range c.Skills.Own {
-		dst := filepath.Join(a.skillsDir(), name)
+	for _, entry := range a.skills {
+		name := entry.Name
+		dst := filepath.Join(a.skillsDir(entry.Resource.Scope), name)
 		if opDst[dst] {
 			continue // a create/relink/relocate already covers it
 		}
-		src := filepath.Join(a.content, "skills", name)
+		src := filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, name))
 		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
 			continue // not a correct link into content
 		}
@@ -172,8 +187,8 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for _, p := range c.Plugins.OpenCode {
 		declared["plugin."+p] = true
 	}
-	for _, n := range c.Skills.Own {
-		declared["skill."+n] = true
+	for _, entry := range a.skills {
+		declared["skill."+entry.Name] = true
 	}
 	for _, k := range st.Keys("opencode") {
 		if declared[k] || !managedPrefix(k) {
@@ -187,11 +202,13 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	return cs, nil
 }
 
-// links maps each owned skill's destination to its content source.
+// links maps each owned skill's destination to its content source. Each skill
+// resource carries its own scope, so dst is computed per entry.
 func (a *Adapter) links() map[string]string {
 	out := map[string]string{}
-	for _, name := range a.skills {
-		out[filepath.Join(a.skillsDir(), name)] = filepath.Join(a.content, "skills", name)
+	for _, entry := range a.skills {
+		name := entry.Name
+		out[filepath.Join(a.skillsDir(entry.Resource.Scope), name)] = filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, name))
 	}
 	return out
 }
@@ -329,20 +346,20 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 				docChanged = true
 			case hasPrefix(c.Key, "skill."):
 				// Only a symlink into our content dir is removed; anything else
-				// is a conflict error inside link.Remove. A de-declared skill may
-				// physically sit at the inactive scope too (removal + scope switch
-				// in one apply), so prune that location as well — IsManaged-guarded
-				// so a foreign file there is left untouched, never an error.
+				// is a conflict error inside link.Remove. A de-declared skill is
+				// no longer in a.skills, so recover the on-disk location from the
+				// dst state recorded for it (per-resource scope: each skill lives
+				// at exactly one place). Fall back to user scope when state is
+				// missing the recorded dst.
 				name := trim(c.Key, "skill.")
-				err = link.Remove(filepath.Join(a.skillsDir(), name), a.content)
-				if err == nil {
-					if inactive := a.inactiveSkillsDir(); inactive != "" {
-						old := filepath.Join(inactive, name)
-						if link.IsManaged(old, a.content) {
-							err = link.Remove(old, a.content)
-						}
-					}
+				dst := ""
+				if e, ok := st.Get("opencode", c.Key); ok {
+					dst, _ = recordedDst(e.Desired)
 				}
+				if dst == "" {
+					dst = filepath.Join(a.skillsDir("user"), name)
+				}
+				err = link.Remove(dst, a.content)
 			}
 			if err != nil {
 				return err
@@ -385,16 +402,20 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			return err
 		}
 	}
-	// Prune a link left at the other scope after a scope switch, so no orphan
-	// remains. Only our own managed symlink is removed (IsManaged guards it); a
-	// foreign file or an absent path is left untouched — never an error.
-	if inactive := a.inactiveSkillsDir(); inactive != "" {
-		for _, name := range a.skills {
-			old := filepath.Join(inactive, name)
-			if link.IsManaged(old, a.content) {
-				if err := link.Remove(old, a.content); err != nil {
-					return err
-				}
+	// Prune a link left at a skill's inactive scope after a per-resource scope
+	// switch, so no orphan remains. Only our own managed symlink is removed
+	// (IsManaged guards it); a foreign file or an absent path is left untouched
+	// — never an error. Each skill carries its own scope, so the inactive dir is
+	// computed per entry.
+	for _, entry := range a.skills {
+		inactive := a.inactiveSkillsDir(entry.Resource.Scope)
+		if inactive == "" {
+			continue
+		}
+		old := filepath.Join(inactive, entry.Name)
+		if link.IsManaged(old, a.content) {
+			if err := link.Remove(old, a.content); err != nil {
+				return err
 			}
 		}
 	}

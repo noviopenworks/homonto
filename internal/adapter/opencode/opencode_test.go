@@ -18,6 +18,16 @@ func noSecret() *secret.Resolver {
 	return &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
 }
 
+// cfgWithSkills builds a config whose named skills are explicit local resources
+// at scope, each targeted at the adapter's tool via SkillEntriesForTool.
+func cfgWithSkills(scope string, names ...string) *config.Config {
+	c := &config.Config{Skills: map[string]config.Resource{}}
+	for _, name := range names {
+		c.Skills[name] = config.Resource{Source: "local:" + name, Scope: scope}
+	}
+	return c
+}
+
 func TestOpenCodeProjectsMCPAndPreservesKeys(t *testing.T) {
 	home := t.TempDir()
 	dir := filepath.Join(home, ".config", "opencode")
@@ -200,7 +210,7 @@ func TestOpenCodeLinksOwnedSkill(t *testing.T) {
 	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Skills: config.Skills{Own: []string{"graphify"}}}
+	c := cfgWithSkills("user", "graphify")
 
 	cs, _ := a.Plan(c, st)
 	if err := a.Apply(cs, noSecret(), st); err != nil {
@@ -218,7 +228,7 @@ func TestOpenCodeSkillsOnlyPlanShowsLinkChanges(t *testing.T) {
 	os.MkdirAll(filepath.Join(content, "skills", "onto"), 0o755)
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+	c := cfgWithSkills("user", "onto")
 
 	cs, err := a.Plan(c, st)
 	if err != nil {

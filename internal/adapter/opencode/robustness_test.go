@@ -33,7 +33,7 @@ func TestForeignSkillSymlinkAborts(t *testing.T) {
 
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+	c := cfgWithSkills("user", "onto")
 
 	if _, err := a.Plan(c, st); err == nil || !strings.Contains(err.Error(), "conflict") {
 		t.Fatalf("plan must conflict on a foreign skill symlink, got %v", err)
@@ -119,18 +119,16 @@ func TestOpenCodePlanRenderIsDeterministic(t *testing.T) {
 	home := t.TempDir()
 	a := New(home, t.TempDir())
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{
-		MCPs: map[string]config.MCP{
-			"alpha":   {Command: []string{"a"}, Targets: []string{"opencode"}},
-			"bravo":   {Command: []string{"b"}, Targets: []string{"opencode"}},
-			"charlie": {Command: []string{"c"}, Targets: []string{"opencode"}},
-			"delta":   {Command: []string{"d"}, Targets: []string{"opencode"}},
-			"echo":    {Command: []string{"e"}, Targets: []string{"opencode"}},
-			"foxtrot": {Command: []string{"f"}, Targets: []string{"opencode"}},
-		},
-		Settings: config.Settings{OpenCode: map[string]any{"model": "x", "theme": "dark"}},
-		Skills:   config.Skills{Own: []string{"one", "two", "three"}},
+	c := cfgWithSkills("user", "one", "two", "three")
+	c.MCPs = map[string]config.MCP{
+		"alpha":   {Command: []string{"a"}, Targets: []string{"opencode"}},
+		"bravo":   {Command: []string{"b"}, Targets: []string{"opencode"}},
+		"charlie": {Command: []string{"c"}, Targets: []string{"opencode"}},
+		"delta":   {Command: []string{"d"}, Targets: []string{"opencode"}},
+		"echo":    {Command: []string{"e"}, Targets: []string{"opencode"}},
+		"foxtrot": {Command: []string{"f"}, Targets: []string{"opencode"}},
 	}
+	c.Settings = config.Settings{OpenCode: map[string]any{"model": "x", "theme": "dark"}}
 	var first string
 	for i := 0; i < 20; i++ {
 		cs, err := a.Plan(c, st)

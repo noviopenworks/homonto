@@ -110,7 +110,7 @@ func TestClaudeRemovedSkillLinkIsPruned(t *testing.T) {
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
 
-	cs, _ := a.Plan(&config.Config{Skills: config.Skills{Own: []string{"foo"}}}, st)
+	cs, _ := a.Plan(cfgWithSkills("user", "foo"), st)
 	if err := a.Apply(cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestClaudePruneNeverRemovesNonHomontoFile(t *testing.T) {
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
 
-	cs, _ := a.Plan(&config.Config{Skills: config.Skills{Own: []string{"foo"}}}, st)
+	cs, _ := a.Plan(cfgWithSkills("user", "foo"), st)
 	if err := a.Apply(cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}

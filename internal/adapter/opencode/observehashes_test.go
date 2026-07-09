@@ -18,12 +18,10 @@ func applyObserveCfg(t *testing.T, home, content string) (*Adapter, *state.State
 
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{
-		MCPs:     map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"opencode"}}},
-		Settings: config.Settings{OpenCode: map[string]any{"theme": "dark"}},
-		Plugins:  config.Plugins{OpenCode: []string{"@slkiser/opencode-quota"}},
-		Skills:   config.Skills{Own: []string{"onto"}},
-	}
+	c := cfgWithSkills("user", "onto")
+	c.MCPs = map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"opencode"}}}
+	c.Settings = config.Settings{OpenCode: map[string]any{"theme": "dark"}}
+	c.Plugins = config.Plugins{OpenCode: []string{"@slkiser/opencode-quota"}}
 	cs, err := a.Plan(c, st)
 	if err != nil {
 		t.Fatalf("plan: %v", err)

@@ -21,6 +21,16 @@ func cfg() *config.Config {
 	}
 }
 
+// cfgWithSkills builds a config whose named skills are explicit local resources
+// at scope, each targeted at the adapter's tool via SkillEntriesForTool.
+func cfgWithSkills(scope string, names ...string) *config.Config {
+	c := &config.Config{Skills: map[string]config.Resource{}}
+	for _, name := range names {
+		c.Skills[name] = config.Resource{Source: "local:" + name, Scope: scope}
+	}
+	return c
+}
+
 func resolver() *secret.Resolver {
 	return &secret.Resolver{
 		Getenv: os.Getenv,
@@ -223,7 +233,7 @@ func TestSkillsOnlyConfigPlansAndAppliesLinks(t *testing.T) {
 
 	a := New(home, content)
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Skills: config.Skills{Own: []string{"onto"}}}
+	c := cfgWithSkills("user", "onto")
 
 	cs, err := a.Plan(c, st)
 	if err != nil {
