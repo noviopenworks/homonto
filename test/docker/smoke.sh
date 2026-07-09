@@ -15,8 +15,8 @@ WORK="$(mktemp -d)"
 cd "$WORK"
 
 # A minimal owned skill for homonto to link.
-mkdir -p content/skills/demo
-cat > content/skills/demo/SKILL.md <<'EOF'
+mkdir -p homonto/skills/demo
+cat > homonto/skills/demo/SKILL.md <<'EOF'
 ---
 name: demo
 description: smoke-test skill
@@ -28,11 +28,11 @@ CLAUDE_USER="$HOME/.claude/skills/demo"
 OPEN_USER="$HOME/.config/opencode/skills/demo"
 CLAUDE_PROJ="$WORK/.claude/skills/demo"
 OPEN_PROJ="$WORK/.opencode/skills/demo"
-SRC="$WORK/content/skills/demo"
+SRC="$WORK/homonto/skills/demo"
 
 # ---------------------------------------------------------------- user scope
 log "user scope: apply"
-printf '[skills]\nown = ["demo"]\n' > homonto.toml
+printf '[skills.demo]\nsource = "local:demo"\nscope = "user"\n' > homonto.toml
 homonto apply --yes
 
 [ -L "$CLAUDE_USER" ] || fail "claude user link not created"
@@ -53,7 +53,7 @@ grep -q 'ok: skill "demo" linked (opencode)' /tmp/doctor.out || fail "doctor did
 
 # ------------------------------------------------------------- project scope
 log "project scope: apply relocates links into the repo"
-printf '[skills]\nscope = "project"\nown = ["demo"]\n' > homonto.toml
+printf '[skills.demo]\nsource = "local:demo"\nscope = "project"\n' > homonto.toml
 homonto apply --yes
 
 [ -L "$CLAUDE_PROJ" ] || fail "claude project link not created"
@@ -123,7 +123,7 @@ IWORK="$(mktemp -d)"
 homonto init "$IWORK"
 [ -f "$IWORK/homonto.toml" ]                 || fail "init did not create homonto.toml"
 [ -f "$IWORK/.gitignore" ]                   || fail "init did not create .gitignore"
-[ -f "$IWORK/content/skills/.gitkeep" ]      || fail "init did not create content/skills"
+[ -f "$IWORK/homonto/skills/.gitkeep" ]      || fail "init did not create homonto/skills"
 
 # ----------------------------------------------------------- import command
 # ~/.claude.json now holds the codegraph server (from the MCP apply above), so
@@ -144,9 +144,9 @@ grep -q 'codegraph' homonto.toml              || fail "import --force lost the i
 # apply must ABORT and leave it byte-for-byte / target unchanged.
 log "conflict: a real file at a skill dst aborts apply and is preserved"
 XWORK="$(mktemp -d)"; cd "$XWORK"
-mkdir -p content/skills/blocker
-printf 'skill body\n' > content/skills/blocker/SKILL.md
-printf '[skills]\nown = ["blocker"]\n' > homonto.toml
+mkdir -p homonto/skills/blocker
+printf 'skill body\n' > homonto/skills/blocker/SKILL.md
+printf '[skills.blocker]\nsource = "local:blocker"\nscope = "user"\n' > homonto.toml
 mkdir -p "$HOME/.claude/skills"
 printf 'user data\n' > "$HOME/.claude/skills/blocker"
 if homonto apply --yes >/dev/null 2>&1; then fail "apply must abort on a real file at the skill dst"; fi

@@ -44,7 +44,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		contentDir = filepath.Join(base, contentDir)
 	}
 	// The project root anchors project-scope skill installs — the same directory
-	// that already anchors content/ and .homonto/ (the config file's directory).
+	// that already anchors homonto/ and .homonto/ (the config file's directory).
 	projectRoot, err := filepath.Abs(filepath.Dir(configPath))
 	if err != nil {
 		return nil, err
