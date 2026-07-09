@@ -98,7 +98,7 @@ SHALL be either `user` or `project`; there is no default. Source SHALL be either
 
 ### Requirement: Tool-specific model routing
 
-For every enabled target tool, `homonto.toml` SHALL define all three model
+For every model-enabled target tool, `homonto.toml` SHALL define all three model
 levels: `architectural`, `coding`, and `trivial`. Each route SHALL include a
 non-empty `model` and at least one of `effort` or `variant`. Homonto SHALL not
 validate provider-specific model names or effort values beyond presence.

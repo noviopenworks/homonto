@@ -75,6 +75,10 @@ model = "opus"
 variant = "max"
 ```
 
+The example is abbreviated — a complete config must also define
+`models.claude.coding` and `models.claude.trivial`, and the same three levels
+apply to every model-enabled target tool.
+
 ## Secrets — referenced, never stored
 
 Secret values live outside the repo and are referenced by token:
