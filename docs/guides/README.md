@@ -16,7 +16,9 @@ write/update the affected guide(s) or record an explicit waiver reason.
   projection behavior, status/adoption, and known limitations.
 - [`status-and-adoption.md`](status-and-adoption.md) explains state adoption,
   drift, pending changes, and pruning behavior.
-- [`onto-workflow.md`](onto-workflow.md) documents this repository's internal
-  development workflow.
+- [`comet-workflow.md`](comet-workflow.md) documents this repository's current
+  development workflow (Comet + OpenSpec + Superpowers).
+- [`onto-workflow.md`](onto-workflow.md) is the legacy Onto workflow guide,
+  retained for historical context and potential product-framework reference.
 
 Release-readiness tasks live in [`../road-to-release.md`](../road-to-release.md).

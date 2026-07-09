@@ -1,7 +1,12 @@
 # The onto Development Workflow
 
-**onto** is this repo's development workflow: five phases — open → design →
-build → verify → close — plus two preset fast paths (`/onto-fix` for bugs,
+> Legacy/internal note: Homonto development now uses Comet. This guide documents
+> the previous Onto workflow and may still inform product-framework work if Onto
+> remains a bundled user framework, but it is not the current repo development
+> workflow.
+
+**onto** is this repo's development workflow: five phases -- open -> design ->
+build -> verify -> close -- plus two preset fast paths (`/onto-fix` for bugs,
 `/onto-tweak` for small non-bug changes). It is self-contained: eight
 markdown skills (shipped from `homonto/skills/` in this very repo and
 symlinked into your tools by `homonto apply`), one `docs/` tree for all

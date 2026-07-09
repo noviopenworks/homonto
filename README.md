@@ -184,18 +184,22 @@ failure does not lose earlier records.
 
 ### Development workflow
 
-This repo is developed with **onto**, a self-contained markdown workflow
-shipped from this very repo (`homonto/skills/onto*` — dogfooded via
-`homonto apply` at project scope). Five phases (open → design → build → verify →
-close) plus `/onto-fix` and `/onto-tweak` presets; artifacts live under `docs/`:
+This repo is developed with **Comet**: OpenSpec owns WHAT, Superpowers owns HOW,
+and Comet state/scripts bind the phases together. New development starts with
+`/comet`; active changes live under `openspec/changes/`, and deep technical
+designs and implementation plans live under `docs/superpowers/`.
 
 - `docs/adr/` — accepted architecture decisions
 - `docs/specs/` — living capability specs (SHALL + scenarios)
-- `docs/changes/` — active change workspaces (+ `archive/`)
+- `openspec/changes/` — active Comet/OpenSpec change workspaces (+ archive)
+- `docs/changes/` — legacy Onto workspaces (historical, do not open new work)
 - `docs/guides/` — user-facing guides
 - `docs/road-to-release.md` — the release gate; `docs/release-checklist.md` — how to cut a release
 
-Start with `/onto`. Full guide: [docs/guides/onto-workflow.md](docs/guides/onto-workflow.md).
+Start with `/comet`. Full guide: [docs/guides/comet-workflow.md](docs/guides/comet-workflow.md).
+
+The older `docs/changes/` Onto workspaces are historical. Do not open new work
+there.
 
 Future agents should start with [docs/NEXT_AGENT.md](docs/NEXT_AGENT.md) before
 trusting older reviews or archived change artifacts.

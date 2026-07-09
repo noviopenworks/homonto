@@ -5,6 +5,15 @@ project state, the verified checks from the last deep audit, and the highest
 value work left to do. Treat older review files as historical unless they agree
 with this handoff and the current source.
 
+## Current Development Workflow
+
+Use Comet for new work. On entry:
+
+1. Run `openspec list --json --no-color` to discover active OpenSpec changes.
+2. Inspect `openspec/changes/<name>/.comet.yaml` for phase/state when a change exists.
+3. Route through `/comet`; do not create new `docs/changes/*` Onto workspaces.
+4. Treat `docs/changes/archive/*` as historical evidence only.
+
 ## Current Verified State
 
 Last complete pre-dual-binary audit was on 2026-07-08:

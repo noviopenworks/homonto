@@ -1,5 +1,10 @@
 # Change Workspaces
 
+> Legacy note: this directory documents the previous Onto workflow. New Homonto
+> development uses Comet and OpenSpec under `openspec/changes/`. Keep archived
+> Onto workspaces as historical evidence; do not create new active workspaces in
+> `docs/changes/`.
+
 Every unit of work is a **change** with its own workspace
 `docs/changes/<name>/`. Closed changes move verbatim to
 `docs/changes/archive/YYYY-MM-DD-<name>/`.
