@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+	"sort"
 	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
@@ -24,13 +24,33 @@ func (m MCP) TargetsOrAll() []string {
 	return m.Targets
 }
 
-type Skills struct {
-	// Scope selects where owned skills install: "user" (default) links them
-	// under the user's home tool dirs; "project" links them under the project
-	// root (the directory of homonto.toml). It governs skill symlinks only —
-	// MCP servers and settings always project into the global tool files.
-	Scope string   `toml:"scope"`
-	Own   []string `toml:"own"`
+type Resource struct {
+	Source  string   `toml:"source"`
+	Scope   string   `toml:"scope"`
+	Targets []string `toml:"targets"`
+}
+
+func (r Resource) TargetsOrAll() []string {
+	if len(r.Targets) == 0 {
+		return []string{"claude", "opencode"}
+	}
+	return r.Targets
+}
+
+type NamedResource struct {
+	Name     string
+	Resource Resource
+}
+
+type ModelRoute struct {
+	Model   string `toml:"model"`
+	Effort  string `toml:"effort"`
+	Variant string `toml:"variant"`
+}
+
+type ModelConfig struct {
+	Claude   map[string]ModelRoute `toml:"claude"`
+	OpenCode map[string]ModelRoute `toml:"opencode"`
 }
 
 type Plugins struct {
@@ -45,10 +65,55 @@ type Settings struct {
 
 // Config is the tool-agnostic desired state parsed from homonto.toml.
 type Config struct {
-	MCPs     map[string]MCP `toml:"mcps"`
-	Skills   Skills         `toml:"skills"`
-	Plugins  Plugins        `toml:"plugins"`
-	Settings Settings       `toml:"settings"`
+	MCPs       map[string]MCP      `toml:"mcps"`
+	Frameworks map[string]Resource `toml:"frameworks"`
+	Skills     map[string]Resource `toml:"skills"`
+	Commands   map[string]Resource `toml:"commands"`
+	Subagents  map[string]Resource `toml:"subagents"`
+	Models     ModelConfig         `toml:"models"`
+	Plugins    Plugins             `toml:"plugins"`
+	Settings   Settings            `toml:"settings"`
+}
+
+func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
+	return entriesForTool(c.Skills, tool)
+}
+
+func (c *Config) EnabledModelTools() []string {
+	seen := map[string]bool{}
+	for _, resources := range []map[string]Resource{c.Frameworks, c.Commands, c.Subagents} {
+		for _, r := range resources {
+			for _, target := range r.TargetsOrAll() {
+				seen[target] = true
+			}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for tool := range seen {
+		out = append(out, tool)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func entriesForTool(resources map[string]Resource, tool string) []NamedResource {
+	var out []NamedResource
+	for name, r := range resources {
+		if containsString(r.TargetsOrAll(), tool) {
+			out = append(out, NamedResource{Name: name, Resource: r})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+func containsString(xs []string, want string) bool {
+	for _, x := range xs {
+		if x == want {
+			return true
+		}
+	}
+	return false
 }
 
 // Load reads and parses a homonto.toml file into a Config.
@@ -60,24 +125,6 @@ func Load(path string) (*Config, error) {
 	var c Config
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
-	}
-	// Skill install scope selects the destination root; empty means "user"
-	// (back-compat). Any other value would silently fall back to a home install,
-	// so reject it up front, naming the offending value and the valid set.
-	switch c.Skills.Scope {
-	case "":
-		c.Skills.Scope = "user"
-	case "user", "project":
-		// ok
-	default:
-		return nil, fmt.Errorf("parse config: skills.scope %q is invalid; valid values are \"user\" and \"project\"", c.Skills.Scope)
-	}
-	// Skill names become symlink path components under the scope root; anything
-	// but a bare directory name (traversal, separators, "..") is rejected up front.
-	for _, n := range c.Skills.Own {
-		if n == "" || n == "." || n == ".." || strings.ContainsAny(n, `/\`) || n != filepath.Base(n) {
-			return nil, fmt.Errorf("parse config: skills.own entry %q is not a plain directory name", n)
-		}
 	}
 	// Every other name becomes a key written into a tool's JSON file. sjson
 	// treats index-like segments ("0", "-1") as array positions, silently

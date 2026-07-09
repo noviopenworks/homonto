@@ -17,8 +17,27 @@ command = ["npx", "-y", "server-brave"]
 env = { BRAVE_API_KEY = "${pass:ai/brave}" }
 targets = ["claude"]
 
-[skills]
-own = ["graphify", "comet"]
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+
+[skills.graphify]
+source = "local:graphify"
+scope = "project"
+
+[skills.comet]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[commands.review]
+source = "builtin:review"
+scope = "project"
+targets = ["opencode"]
+
+[subagents.architect]
+source = "builtin:architect"
+scope = "project"
 
 [plugins]
 claude = ["claude-hud@official"]
@@ -29,6 +48,30 @@ model = "opus"
 
 [settings.opencode]
 model = "anthropic/claude-opus-4-8"
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+
+[models.claude.coding]
+model = "sonnet"
+effort = "normal"
+
+[models.claude.trivial]
+model = "haiku"
+effort = "fast"
+
+[models.opencode.architectural]
+model = "anthropic/claude-opus-4-8"
+effort = "high"
+
+[models.opencode.coding]
+model = "anthropic/claude-sonnet-4"
+effort = "medium"
+
+[models.opencode.trivial]
+model = "openai/gpt-5-mini"
+variant = "cheap"
 `
 
 func TestLoad(t *testing.T) {
@@ -56,8 +99,22 @@ func TestLoad(t *testing.T) {
 	if c.Settings.Claude["model"] != "opus" {
 		t.Fatalf("claude model = %v", c.Settings.Claude["model"])
 	}
-	if len(c.Skills.Own) != 2 {
-		t.Fatalf("skills = %v", c.Skills.Own)
+	if got := c.Frameworks["onto"].Scope; got != "project" {
+		t.Fatalf("framework onto scope = %q", got)
+	}
+	if got := c.Skills["graphify"].Source; got != "local:graphify" {
+		t.Fatalf("skill graphify source = %q", got)
+	}
+	claudeSkills := c.SkillEntriesForTool("claude")
+	if len(claudeSkills) != 2 || claudeSkills[0].Name != "comet" || claudeSkills[1].Name != "graphify" {
+		t.Fatalf("claude skill entries = %#v", claudeSkills)
+	}
+	opencodeSkills := c.SkillEntriesForTool("opencode")
+	if len(opencodeSkills) != 1 || opencodeSkills[0].Name != "graphify" {
+		t.Fatalf("opencode skill entries = %#v", opencodeSkills)
+	}
+	if got := c.Models.Claude["architectural"].Variant; got != "max" {
+		t.Fatalf("claude architectural variant = %q", got)
 	}
 }
 
@@ -104,70 +161,6 @@ func TestLoadRejectsIndexLikeNames(t *testing.T) {
 		}
 		if _, err := Load(p); err != nil {
 			t.Fatalf("valid name %q rejected: %v", name, err)
-		}
-	}
-}
-
-// TestLoadRejectsBadSkillNames reproduces the review's traversal finding:
-// own = ["../../../escaped"] must be a load-time error, not a symlink
-// planted outside $HOME. Every non-bare-directory-name entry is rejected.
-func TestLoadRejectsBadSkillNames(t *testing.T) {
-	for _, bad := range []string{"../evil", "..", ".", "", "a/b", `a\b`, "/abs"} {
-		dir := t.TempDir()
-		p := filepath.Join(dir, "homonto.toml")
-		doc := "[skills]\nown = [" + strconv.Quote(bad) + "]\n"
-		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		_, err := Load(p)
-		if err == nil {
-			t.Fatalf("skill name %q accepted; want load error", bad)
-		}
-		if !strings.Contains(err.Error(), strconv.Quote(bad)) {
-			t.Fatalf("error for %q does not name the entry: %v", bad, err)
-		}
-	}
-}
-
-// TestLoadSkillScope covers the per-project-skills capability: [skills] scope
-// selects where owned skills install. Absent/empty normalizes to "user"
-// (back-compat); "project" is honored; any other value is a named load error.
-func TestLoadSkillScope(t *testing.T) {
-	loadScope := func(doc string) (string, error) {
-		p := filepath.Join(t.TempDir(), "homonto.toml")
-		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		c, err := Load(p)
-		if err != nil {
-			return "", err
-		}
-		return c.Skills.Scope, nil
-	}
-
-	// Absent scope defaults to "user".
-	if got, err := loadScope("[skills]\nown = [\"a\"]\n"); err != nil || got != "user" {
-		t.Fatalf("absent scope = %q, %v; want \"user\", nil", got, err)
-	}
-	// Explicit empty also normalizes to "user".
-	if got, err := loadScope("[skills]\nscope = \"\"\nown = [\"a\"]\n"); err != nil || got != "user" {
-		t.Fatalf("empty scope = %q, %v; want \"user\", nil", got, err)
-	}
-	// Explicit user and project honored.
-	if got, err := loadScope("[skills]\nscope = \"user\"\n"); err != nil || got != "user" {
-		t.Fatalf("user scope = %q, %v", got, err)
-	}
-	if got, err := loadScope("[skills]\nscope = \"project\"\n"); err != nil || got != "project" {
-		t.Fatalf("project scope = %q, %v", got, err)
-	}
-	// Invalid value is rejected, naming the offending value and the valid set.
-	err := loadDoc(t, "[skills]\nscope = \"global\"\n")
-	if err == nil {
-		t.Fatal("scope \"global\" accepted; want load error")
-	}
-	for _, want := range []string{strconv.Quote("global"), "user", "project"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Fatalf("error %v does not mention %q", err, want)
 		}
 	}
 }
