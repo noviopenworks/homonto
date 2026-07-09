@@ -1,0 +1,17 @@
+{
+  "change": "catalog-foundation-skills",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "20bd9ce24d63cda40e74c8dbc898af26f300d50f19c3c7f70758163db16729a0",
+  "files": [
+    { "path": "openspec/changes/catalog-foundation-skills/proposal.md", "sha256": "8d9c74ac97ba2ff8868b4bd858983809e748e3ae6b621aa25266a8d372017dc7" },
+    { "path": "openspec/changes/catalog-foundation-skills/design.md", "sha256": "818c7ef01b5934cff072da7a0da38f3524ab95781021c97149242c77d34ef359" },
+    { "path": "openspec/changes/catalog-foundation-skills/tasks.md", "sha256": "8907e0862ee40420ed62a995f8c61bda1d62cb2415f48796a0d81d267bc19d7a" },
+    { "path": "openspec/changes/catalog-foundation-skills/specs/builtin-catalog/spec.md", "sha256": "fe7d9be40fb6808c11ab656b296b70162ff5b4951216df928b4362e5fd41f62f" },
+    { "path": "openspec/changes/catalog-foundation-skills/specs/config-model/spec.md", "sha256": "bf684950cfbf911e7f64f66d125c1d94445e9cc4908ca5a5bbece8617dd4f56f" },
+    { "path": "openspec/changes/catalog-foundation-skills/specs/framework-expansion/spec.md", "sha256": "a119373f266d3208b9b6233e359620709208dd8dcc50d61b0806ea184cd06d69" },
+    { "path": "openspec/changes/catalog-foundation-skills/specs/tool-adapters/spec.md", "sha256": "44f6be9fb8ea5d05075da71817d37399f297c46e276c9f0b0ec6ce65da614d47" }
+  ]
+}
