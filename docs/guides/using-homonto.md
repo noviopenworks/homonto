@@ -13,18 +13,21 @@ imperative `add`/`remove` commands — the file is the source of truth.
 Build from source (Go 1.23+):
 
 ```
-go build -o homonto .
+go install .
 ```
 
-> Note: a bare `go build .` (no `-o`) fails — its default output name `homonto`
-> collides with the `homonto/` content directory next to `main.go` (`go: build
-> output "homonto" already exists and is a directory`). For day-to-day work use
-> `go build ./...`, `go run .`, or `go install .`.
+> Note: avoid a bare `go build .` or `go build -o homonto .` at the repo root —
+> the output name `homonto` collides with the `homonto/` content directory next
+> to `main.go` (a bare build fails with `go: build output "homonto" already
+> exists and is a directory`, and `-o homonto` silently deposits the binary
+> inside the content dir). Use `go install .`, `go run .`, or `go build ./...`.
+> If you need a local binary in the repo, write it outside the content dir,
+> e.g. `go build -o ./bin/homonto .`.
 
 Release builds stamp the version at link time:
 
 ```
-go build -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=1.2.3" -o homonto .
+go install -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=1.2.3" .
 ```
 
 > Note: homonto prints its output through cobra, which writes to **stderr**.
