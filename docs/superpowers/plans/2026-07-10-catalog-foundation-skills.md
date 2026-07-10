@@ -1985,7 +1985,7 @@ Maps tasks.md 5.4.
 **Interfaces:**
 - Consumes: `Engine.CatalogDir` (Task 10); `config.ExpandedSkillEntriesForTool` (Task 7).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/engine/status_test.go` (reuse `cometTOML` / `buildEngine` from Task 10's file — same package):
 
@@ -2011,12 +2011,12 @@ func TestDoctorReportsBuiltinSkillLinked(t *testing.T) {
 
 (Ensure `strings`, `os`, `path/filepath` are imported in status_test.go.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/engine/ -run TestDoctorReportsBuiltin -v`
 Expected: FAIL — Doctor iterates `SkillEntriesForTool` (explicit only, so a framework config surfaces no skills) and resolves content from `ContentDir`, not the materialized catalog.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/engine/status.go`, `Doctor()`, replace each of the two skill loops (claude and opencode) so they iterate the expanded entries and resolve builtin sources from `CatalogDir`. Replace the claude loop:
 
@@ -2095,12 +2095,12 @@ func (e *Engine) doctorSkills(tool string, entries []config.NamedResource) []str
 
 Add `"github.com/noviopenworks/homonto/internal/config"` to the imports of `status.go`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/engine/ -count=1 -v`
 Expected: PASS. Also confirm existing `status_test.go` cases (which use `local:` skills) still pass — the helper preserves the same `ok:`/`warn:` message shapes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/engine/status.go internal/engine/status_test.go
