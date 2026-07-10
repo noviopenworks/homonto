@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-10-subagent-projection-ver
 branch_status: handled
 created_at: 2026-07-10
 verified_at: 2026-07-10
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/subagent-projection/.comet/handoff/design-context.json
 handoff_hash: aa15aa6db9e34e36aab70a333b166146899e902e999a7fc8e0e4f99e08171db1

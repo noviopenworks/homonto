@@ -2,6 +2,8 @@
 comet_change: subagent-projection
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-subagent-projection
+status: final
 ---
 
 # Subagent Projection — Technical Design
@@ -100,10 +102,14 @@ subagent. Each targets both tools, so each is a single verbatim file whose
 frontmatter is the **minimal shared subset** valid for both parsers:
 
 ```yaml
+archived-with: 2026-07-10-subagent-projection
+status: final
 ---
 name: <name>            # required by Claude Code; ignored/derived by OpenCode
 description: <one line> # required by both
 mode: subagent          # OpenCode agent mode; unknown-but-ignored key for Claude
+archived-with: 2026-07-10-subagent-projection
+status: final
 ---
 <system-prompt body>
 ```

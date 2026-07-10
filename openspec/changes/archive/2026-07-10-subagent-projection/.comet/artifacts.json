@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/subagent-projection/tasks.md",
   "openspec_delta_spec": "openspec/changes/subagent-projection/specs/config-model/spec.md",
   "handoff_context": "openspec/changes/subagent-projection/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/subagent-projection/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/subagent-projection/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-10-subagent-projection"
 }

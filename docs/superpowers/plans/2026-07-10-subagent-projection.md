@@ -2,6 +2,7 @@
 change: subagent-projection
 design-doc: docs/superpowers/specs/2026-07-10-subagent-projection-design.md
 base-ref: a53950f972987344a78663294a7f12315f540be5
+archived-with: 2026-07-10-subagent-projection
 ---
 
 # Subagent Projection Implementation Plan
@@ -29,6 +30,7 @@ Copied verbatim from the Design Doc and delta specs — every task's requirement
 - **Verification gates (Design "Testing Strategy" step 9):** `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `go build ./...`, `gofmt -l .`.
 - Module path is `github.com/noviopenworks/homonto`. The catalog embed package is `github.com/noviopenworks/homonto/catalog` (import alias `embedded`); the logic package is `internal/catalog`.
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## File Structure
@@ -57,6 +59,7 @@ Copied verbatim from the Design Doc and delta specs — every task's requirement
 
 Existing model-route validation already counts subagent-targeted tools (`EnabledModelTools` iterates `c.Subagents`); no code change there, only a confirming test (Task 4c).
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 1: `subagentpath` package, real-layout fixtures, and frontmatter contract
@@ -77,10 +80,12 @@ Existing model-route validation already counts subagent-targeted tools (`Enabled
 Create `internal/subagentpath/testdata/claude/agents/sample.md`:
 
 ```markdown
+archived-with: 2026-07-10-subagent-projection
 ---
 name: sample
 description: Fixture subagent used to lock the shared minimal frontmatter contract.
 mode: subagent
+archived-with: 2026-07-10-subagent-projection
 ---
 
 Sample body.
@@ -89,10 +94,12 @@ Sample body.
 Create `internal/subagentpath/testdata/opencode/agent/sample.md` with **identical bytes** (the point is one verbatim file is valid at both tools' real paths — Claude `agents/`, OpenCode `agent/`):
 
 ```markdown
+archived-with: 2026-07-10-subagent-projection
 ---
 name: sample
 description: Fixture subagent used to lock the shared minimal frontmatter contract.
 mode: subagent
+archived-with: 2026-07-10-subagent-projection
 ---
 
 Sample body.
@@ -247,6 +254,7 @@ git add internal/subagentpath
 git commit -m "feat(subagentpath): agent dir mapping + shared-frontmatter contract fixtures"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 2: Bundled subagent content and embed
@@ -264,10 +272,12 @@ git commit -m "feat(subagentpath): agent dir mapping + shared-frontmatter contra
 - [x] **Step 1: Author `catalog/subagents/code-reviewer.md`**
 
 ```markdown
+archived-with: 2026-07-10-subagent-projection
 ---
 name: code-reviewer
 description: Use to review a diff or set of changes for correctness, security, and clarity before merging; reports findings ranked by severity.
 mode: subagent
+archived-with: 2026-07-10-subagent-projection
 ---
 
 You are a focused code reviewer. Given a change (a diff, a set of files, or a
@@ -300,10 +310,12 @@ Rules:
 - [x] **Step 2: Author `catalog/subagents/codebase-explorer.md`**
 
 ```markdown
+archived-with: 2026-07-10-subagent-projection
 ---
 name: codebase-explorer
 description: Use to answer questions about how a codebase works or to locate where behavior lives, by reading across many files and returning conclusions rather than raw dumps.
 mode: subagent
+archived-with: 2026-07-10-subagent-projection
 ---
 
 You are a read-only codebase explorer. Given a question about how something
@@ -332,10 +344,12 @@ Output:
 - [x] **Step 3: Author `catalog/subagents/comet-navigator.md`**
 
 ```markdown
+archived-with: 2026-07-10-subagent-projection
 ---
 name: comet-navigator
 description: Use to orient within the Comet five-phase OpenSpec workflow — identify the active change's phase and the allowed next action, and point to the right phase skill.
 mode: subagent
+archived-with: 2026-07-10-subagent-projection
 ---
 
 You are a navigator for the Comet five-phase OpenSpec workflow. Given the state
@@ -407,6 +421,7 @@ git add catalog/subagents catalog/embed.go internal/catalog/subagents_embed_test
 git commit -m "feat(catalog): bundle code-reviewer, codebase-explorer, comet-navigator subagents"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 3: Catalog subagent parse, index, expand, materialize + comet framework wiring
@@ -634,6 +649,7 @@ git add internal/catalog catalog/frameworks/comet/framework.toml
 git commit -m "feat(catalog): parse/index/expand/materialize subagents; wire comet-navigator into comet"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 4: Config subagent expansion
@@ -898,6 +914,7 @@ git add internal/config
 git commit -m "feat(config): ExpandedSubagentEntriesForTool + model-route gap test"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 5: Engine materialization orchestration + `WithSubagentCatalogRoot` wiring
@@ -1077,6 +1094,7 @@ git add internal/engine/engine.go internal/engine/materialize_test.go internal/a
 git commit -m "feat(engine): materialize builtin subagents under shared version gate; WithSubagentCatalogRoot wiring"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 6: Adapter subagent projection (both tools)
@@ -1471,6 +1489,7 @@ git add internal/adapter
 git commit -m "feat(adapter): project subagents into claude agents/ and opencode agent/ (plan/apply/adopt/prune/relocate)"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 7: Doctor verification
@@ -1558,6 +1577,7 @@ git add internal/engine/status.go internal/engine
 git commit -m "feat(doctor): verify subagent links and materialized files for both tools"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 8: Dogfood
@@ -1610,6 +1630,7 @@ git add homonto.toml
 git commit -m "chore: dogfood code-reviewer and codebase-explorer subagents"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Task 9: Regression and docs
@@ -1649,6 +1670,7 @@ git add README.md docs/guides/using-homonto.md docs/roadmap.md
 git commit -m "docs: subagent projection shipped with real content (roadmap, README, guide)"
 ```
 
+archived-with: 2026-07-10-subagent-projection
 ---
 
 ## Self-Review
