@@ -159,6 +159,57 @@ func TestStatusCommand_SkipsArchivedChanges(t *testing.T) {
 	}
 }
 
+// TestStatusCommand_ReportsSkeletonOk covers a change whose onto-state.yaml
+// loads and derives a phase, and whose required artifacts (proposal.md,
+// tasks.md alongside onto-state.yaml) are all present: the status line for
+// that change must carry a "skeleton ok" note.
+func TestStatusCommand_ReportsSkeletonOk(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "onto-state.yaml"), "change: alpha\nphase: open\n")
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "proposal.md"), "proposal")
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "tasks.md"), "tasks")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"status", "--dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "alpha: open") || !strings.Contains(got, "skeleton ok") {
+		t.Errorf("output = %q, want it to contain %q and %q", got, "alpha: open", "skeleton ok")
+	}
+}
+
+// TestStatusCommand_ReportsSkeletonMissingArtifact covers a change whose
+// onto-state.yaml loads fine but which is missing a required artifact
+// (tasks.md): the status line must carry a note naming the missing file,
+// and must not abort processing of other changes or change the exit code.
+func TestStatusCommand_ReportsSkeletonMissingArtifact(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "onto-state.yaml"), "change: alpha\nphase: open\n")
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "proposal.md"), "proposal")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"status", "--dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "skeleton") || !strings.Contains(got, "tasks.md") {
+		t.Errorf("output = %q, want it to contain %q and %q", got, "skeleton", "tasks.md")
+	}
+}
+
 // TestStatusCommand_ReportsInvalidPhase covers the DerivePhase error branch:
 // a syntactically valid onto-state.yaml whose phase value is not one of the
 // known onto workflow phases. ontostate.Load succeeds (the YAML parses
