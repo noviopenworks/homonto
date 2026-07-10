@@ -2,6 +2,8 @@
 comet_change: catalog-foundation-skills
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-catalog-foundation-skills
+status: final
 ---
 
 # Catalog Foundation (Skills) — Technical Design
@@ -320,3 +322,4 @@ status/doctor: drift = link target changed OR materialized dir missing
 
 Both are supplementary acceptance scenarios / boundary conditions; no scope
 change.
+

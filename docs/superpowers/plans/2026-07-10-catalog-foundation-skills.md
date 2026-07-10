@@ -2,6 +2,7 @@
 change: catalog-foundation-skills
 design-doc: docs/superpowers/specs/2026-07-10-catalog-foundation-skills-design.md
 base-ref: bc85fa2e4de8b03447b73ef040a8b60edb04c627
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 # Catalog Foundation (Skills) Implementation Plan
@@ -27,6 +28,7 @@ base-ref: bc85fa2e4de8b03447b73ef040a8b60edb04c627
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
 - Full regression at the end: `go test ./... -count=1`, `go vet ./...`, `go build ./...`.
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 1: Catalog content + embed package
@@ -220,6 +222,7 @@ EOF
 )"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 2: `internal/catalog` — Load, types, version, skill-path index
@@ -460,6 +463,7 @@ git commit -m "feat(catalog): load and index frameworks from embedded FS
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 3: `internal/catalog` — transitive expansion + cycle detection
@@ -659,6 +663,7 @@ git commit -m "feat(catalog): transitive framework expansion with cycle detectio
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 4: `internal/catalog` — materialization
@@ -819,6 +824,7 @@ git commit -m "feat(catalog): materialize builtin skills from embedded FS
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 5: `internal/state` — catalog version slot
@@ -919,6 +925,7 @@ git commit -m "feat(state): record catalog version for materialization gating
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 6: `internal/link` — managed roots as a variadic set
@@ -1056,6 +1063,7 @@ git commit -m "feat(link): treat multiple managed roots as ours
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 7: `internal/config` — `ExpandedSkillEntriesForTool`
@@ -1310,6 +1318,7 @@ git commit -m "feat(config): expand builtin frameworks into effective skills
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 8: `claude` adapter — builtin source resolution + catalog root
@@ -1575,6 +1584,7 @@ git commit -m "feat(claude): resolve builtin skills from materialized catalog
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 9: `opencode` adapter — builtin source resolution + catalog root
@@ -1733,6 +1743,7 @@ git commit -m "feat(opencode): resolve builtin skills from materialized catalog
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 10: `internal/engine` — materialization orchestration
@@ -1972,6 +1983,7 @@ git commit -m "feat(engine): materialize builtin catalog before linking
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 11: `doctor` — check builtin skills at the materialized path
@@ -2109,6 +2121,7 @@ git commit -m "feat(doctor): check builtin skills at the materialized catalog pa
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 12: Dogfood config — switch to `[frameworks.comet]`
@@ -2176,6 +2189,7 @@ git commit -m "chore: dogfood builtin comet framework via catalog
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ### Task 13: Regression + docs
@@ -2218,6 +2232,7 @@ git commit -m "docs: record catalog-foundation-skills verification evidence
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
+archived-with: 2026-07-10-catalog-foundation-skills
 ---
 
 ## Self-Review
@@ -2251,3 +2266,4 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 **2. Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.
 
 **Which approach?**
+
