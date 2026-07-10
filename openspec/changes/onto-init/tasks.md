@@ -12,6 +12,6 @@
 
 ## 3. Regression and docs
 
-- [ ] 3.1 Full regression: `go build ./...`, `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; confirm both binaries build and `onto init --help` shows the command
-- [ ] 3.2 Update `docs/roadmap.md` "Immediate Next Work": mark onto #2 (`onto init`) landed; remaining onto work = phase-gates (#3), doctor (#4), dual-binary packaging (#5). Do not over-claim
-- [ ] 3.3 Commit all changes
+- [x] 3.1 Full regression: `go build ./...`, `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; confirm both binaries build and `onto init --help` shows the command
+- [x] 3.2 Update `docs/roadmap.md` "Immediate Next Work": mark onto #2 (`onto init`) landed; remaining onto work = phase-gates (#3), doctor (#4), dual-binary packaging (#5). Do not over-claim
+- [x] 3.3 Commit all changes
