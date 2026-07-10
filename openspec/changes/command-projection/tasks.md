@@ -14,8 +14,8 @@
 
 ## 3. Command path mapping
 
-- [ ] 3.1 Add `commandpath.Dir(tool, scope, home, projectRoot)` (claude `.claude/commands`, opencode `.config/opencode/command` user / `.opencode/command` project)
-- [ ] 3.2 Unit tests for all tool/scope combinations
+- [x] 3.1 Add `commandpath.Dir(tool, scope, home, projectRoot)` (claude `.claude/commands`, opencode `.config/opencode/command` user / `.opencode/command` project)
+- [x] 3.2 Unit tests for all tool/scope combinations
 
 ## 4. Config command expansion
 

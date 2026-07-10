@@ -633,7 +633,7 @@ New package mirroring `skillpath.Dir`, mapping tool + scope to the command direc
 **Interfaces:**
 - Produces: `func Dir(tool, scope, home, projectRoot string) string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/commandpath/commandpath_test.go`:
 
@@ -670,12 +670,12 @@ func TestDir(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/commandpath/ -count=1`
 Expected: FAIL (package/`Dir` does not exist).
 
-- [ ] **Step 3: Implement the package**
+- [x] **Step 3: Implement the package**
 
 Create `internal/commandpath/commandpath.go`:
 
@@ -717,12 +717,12 @@ func Dir(tool, scope, home, projectRoot string) string {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/commandpath/ -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/commandpath/
