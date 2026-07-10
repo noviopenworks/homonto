@@ -6,6 +6,7 @@ package ontostate
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -80,4 +81,60 @@ func (s State) DerivePhase() (string, error) {
 		return "", err
 	}
 	return s.Phase, nil
+}
+
+// Marshal encodes a State to YAML bytes.
+func Marshal(s State) ([]byte, error) {
+	return yaml.Marshal(s)
+}
+
+// Save writes s to path as YAML, creating parent directories as needed. It
+// writes to a temp file next to path and renames it into place, removing
+// the temp file if any step fails.
+func Save(path string, s State) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("onto-state: failed to create directory for %s: %w", path, err)
+	}
+	b, err := Marshal(s)
+	if err != nil {
+		return fmt.Errorf("onto-state: failed to marshal %s: %w", path, err)
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("onto-state: failed to write %s: %w", tmp, err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("onto-state: failed to rename %s to %s: %w", tmp, path, err)
+	}
+	return nil
+}
+
+// RequiredArtifacts returns the filenames that must exist in a change
+// directory for the given phase. For "open" (and any other phase, for now)
+// it returns the base skeleton set.
+func RequiredArtifacts(phase string) []string {
+	return []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+}
+
+// ValidateSkeleton loads onto-state.yaml from changeDir, derives its phase,
+// and checks that every artifact RequiredArtifacts(phase) names is present
+// in changeDir. It returns an error naming the first missing artifact, or
+// nil if all are present.
+func ValidateSkeleton(changeDir string) error {
+	state, err := Load(filepath.Join(changeDir, "onto-state.yaml"))
+	if err != nil {
+		return err
+	}
+	phase, err := state.DerivePhase()
+	if err != nil {
+		return err
+	}
+	for _, name := range RequiredArtifacts(phase) {
+		if _, err := os.Stat(filepath.Join(changeDir, name)); err != nil {
+			return fmt.Errorf("onto-state: missing required artifact %s in %s: %w", name, changeDir, err)
+		}
+	}
+	return nil
 }

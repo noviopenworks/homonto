@@ -52,7 +52,11 @@ func runStatus(cmd *cobra.Command, root string) error {
 			continue
 		}
 
-		cmd.Printf("%s: %s\n", state.Change, phase)
+		if skeletonErr := ontostate.ValidateSkeleton(filepath.Dir(path)); skeletonErr != nil {
+			cmd.Printf("%s: %s — skeleton: %v\n", state.Change, phase, skeletonErr)
+		} else {
+			cmd.Printf("%s: %s — skeleton ok\n", state.Change, phase)
+		}
 	}
 
 	return nil

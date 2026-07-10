@@ -33,26 +33,31 @@ it is not optional for `v0.1.0-rc.1`. Its foundation has landed on the
 `onto-binary-foundation` change (not yet merged to `main`); the rest is
 still open, as detailed below.
 
-1. **`onto` binary (release-blocking) — foundation and `onto init` landed,
-   work remains.** The binary foundation has landed: a second `package main`
-   at `cmd/onto` builds an `onto` binary alongside `homonto`;
-   `internal/ontostate` models `onto-state.yaml` (parse, validate, derive
-   phase; phase set `open|design|build|verify|close`); and `onto status` is
-   the read-only, config-independent command — it globs
+1. **`onto` binary (release-blocking) — foundation, `onto init`, and change
+   skeleton creation landed, work remains.** The binary foundation has
+   landed: a second `package main` at `cmd/onto` builds an `onto` binary
+   alongside `homonto`; `internal/ontostate` models `onto-state.yaml` (parse,
+   validate, derive phase; phase set `open|design|build|verify|close`); and
+   `onto status` is the read-only, config-independent command — it globs
    `docs/changes/*/onto-state.yaml` and prints each active change's derived
    phase, never reading `homonto.toml` and never writing a file. `onto init`
    has also landed: it idempotently scaffolds the `docs/{changes,specs,adr,
    guides}` layout, gated behind the Homonto framework install — it writes
    nothing and directs the user to initialize/apply Homonto first if
    `[frameworks.onto]` is not installed, and never overwrites user files on
-   repeat runs. What remains: (#3) the binary must still create and validate
-   skeletons and enforce structural invariants — required files exist,
-   `onto-state.yaml` is consistent, phase transitions happen only through
-   valid gates, dependencies resolve, and archive/close rules hold; (#4)
-   `onto doctor` must check workflow health as a peer to `homonto doctor`'s
-   installation/projection health; (#5) release packaging must still
-   cross-compile and publish **both** binaries with a shared `SHA256SUMS` —
-   packaging work has not started.
+   repeat runs. Change skeleton creation has also landed (#3a): `onto
+   new <change>` creates a gated, no-clobber change skeleton
+   (`onto-state.yaml`, `proposal.md`, `tasks.md`) under
+   `docs/changes/<change>/`, refusing to run without the Homonto framework
+   installed and refusing to overwrite an existing change directory; the
+   `internal/ontostate` model gained a writer plus phase-aware skeleton
+   validation, and `onto status` now reports each change's skeleton validity
+   alongside its derived phase. What remains: (#3b) phase transitions must
+   happen only through valid gates; (#3c) dependency resolution and
+   archive/close rules must hold; (#4) `onto doctor` must check workflow
+   health as a peer to `homonto doctor`'s installation/projection health;
+   (#5) release packaging must still cross-compile and publish **both**
+   binaries with a shared `SHA256SUMS` — packaging work has not started.
 
 Skills, command, and subagent projection have all landed on `main` (see v1.1
 below); the `onto` binary plus dual-binary packaging are what remain before
