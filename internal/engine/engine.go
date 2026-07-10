@@ -2,11 +2,15 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/adapter/claude"
 	"github.com/noviopenworks/homonto/internal/adapter/opencode"
+	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/state"
@@ -19,6 +23,7 @@ type Engine struct {
 	State       *state.State
 	StateDir    string
 	ContentDir  string
+	CatalogRoot string // materialized builtin catalog root (<stateDir>/catalog/skills)
 	Home        string
 	ProjectRoot string // directory of homonto.toml; skill-scope project root
 	Resolver    *secret.Resolver
@@ -50,6 +55,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		return nil, err
 	}
 	stateDir := filepath.Join(filepath.Dir(configPath), ".homonto")
+	catalogDir := filepath.Join(stateDir, "catalog", "skills")
 	st, err := state.Load(stateDir)
 	if err != nil {
 		return nil, err
@@ -57,17 +63,21 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	return &Engine{
 		Cfg: cfg,
 		Adapters: []adapter.Adapter{
-			claude.New(home, contentDir).WithProjectRoot(projectRoot),
-			opencode.New(home, contentDir).WithProjectRoot(projectRoot),
+			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir),
+			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir),
 		},
 		State:       st,
 		StateDir:    stateDir,
 		ContentDir:  contentDir,
+		CatalogRoot: catalogDir,
 		Home:        home,
 		ProjectRoot: projectRoot,
 		Resolver:    secret.NewResolver(),
 	}, nil
 }
+
+// CatalogDir returns the materialized builtin catalog root.
+func (e *Engine) CatalogDir() string { return e.CatalogRoot }
 
 // Plan runs each adapter's Plan. An adapter that fails (e.g. its tool file is
 // unparseable) is skipped with a warning so the other tools still proceed; its
@@ -104,6 +114,11 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 			}
 		}
 	}
+	// Materialize builtin skills before any adapter links them, so no symlink is
+	// created ahead of its target.
+	if err := e.materializeCatalog(); err != nil {
+		return err
+	}
 	// Match each planned set to its adapter by tool name (Plan may have skipped
 	// some adapters, so indexes need not line up).
 	byName := map[string]adapter.Adapter{}
@@ -127,4 +142,57 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 		}
 	}
 	return e.State.Save(e.StateDir)
+}
+
+// materializeCatalog extracts the builtin skills the config declares into
+// CatalogRoot, version-gated: it is a no-op when the recorded catalog version
+// matches the embedded one and every skill dir already exists. The version is
+// recorded (and state saved) only after a full successful materialization, so an
+// interrupted extraction re-materializes on the next apply.
+func (e *Engine) materializeCatalog() error {
+	names := map[string]bool{}
+	for _, tool := range []string{"claude", "opencode"} {
+		entries, err := e.Cfg.ExpandedSkillEntriesForTool(tool)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+				names[strings.TrimPrefix(entry.Resource.Source, "builtin:")] = true
+			}
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	cl, err := catalog.New()
+	if err != nil {
+		return err
+	}
+	skillNames := make([]string, 0, len(names))
+	for n := range names {
+		skillNames = append(skillNames, n)
+	}
+	sort.Strings(skillNames)
+
+	if e.State.CatalogVersionRecorded() == cl.Version() && allSkillDirsExist(e.CatalogRoot, skillNames) {
+		return nil
+	}
+	if err := cl.Materialize(e.CatalogRoot, skillNames); err != nil {
+		return err
+	}
+	e.State.SetCatalogVersion(cl.Version())
+	// Save immediately so a later adapter failure still records the completed
+	// materialization.
+	return e.State.Save(e.StateDir)
+}
+
+func allSkillDirsExist(root string, names []string) bool {
+	for _, n := range names {
+		fi, err := os.Stat(filepath.Join(root, n))
+		if err != nil || !fi.IsDir() {
+			return false
+		}
+	}
+	return true
 }

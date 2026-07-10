@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/skillpath"
 )
 
@@ -96,40 +97,47 @@ func (e *Engine) Doctor() []string {
 			out = append(out, fmt.Sprintf("ok: %s config location present", loc.label))
 		}
 	}
-	for _, entry := range e.Cfg.SkillEntriesForTool("claude") {
-		name := entry.Name
-		sourceName := name
-		if strings.HasPrefix(entry.Resource.Source, "local:") {
-			sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
-		}
-		p := filepath.Join(e.ContentDir, "skills", sourceName)
-		if _, err := os.Stat(p); err != nil {
-			out = append(out, fmt.Sprintf("warn: skill %q missing from %s", name, p))
-			continue
-		}
-		dst := filepath.Join(skillpath.Dir("claude", entry.Resource.Scope, e.Home, e.ProjectRoot), name)
-		if target, err := os.Readlink(dst); err == nil && target == p {
-			out = append(out, fmt.Sprintf("ok: skill %q linked (claude)", name))
-		} else {
-			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked for claude (run apply)", name))
-		}
+	claudeSkills, cerr := e.Cfg.ExpandedSkillEntriesForTool("claude")
+	if cerr != nil {
+		out = append(out, fmt.Sprintf("warn: cannot expand claude skills: %v", cerr))
+	} else {
+		out = append(out, e.doctorSkills("claude", claudeSkills)...)
 	}
-	for _, entry := range e.Cfg.SkillEntriesForTool("opencode") {
+	opencodeSkills, oerr := e.Cfg.ExpandedSkillEntriesForTool("opencode")
+	if oerr != nil {
+		out = append(out, fmt.Sprintf("warn: cannot expand opencode skills: %v", oerr))
+	} else {
+		out = append(out, e.doctorSkills("opencode", opencodeSkills)...)
+	}
+	return out
+}
+
+// doctorSkills reports, per skill, whether its content is present at the right
+// source (builtin: from the materialized catalog, local: from the content dir)
+// and whether it is linked into the tool's skills directory.
+func (e *Engine) doctorSkills(tool string, entries []config.NamedResource) []string {
+	var out []string
+	for _, entry := range entries {
 		name := entry.Name
-		sourceName := name
-		if strings.HasPrefix(entry.Resource.Source, "local:") {
-			sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
+		var p string
+		if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+			p = filepath.Join(e.CatalogDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:"))
+		} else {
+			sourceName := name
+			if strings.HasPrefix(entry.Resource.Source, "local:") {
+				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
+			}
+			p = filepath.Join(e.ContentDir, "skills", sourceName)
 		}
-		p := filepath.Join(e.ContentDir, "skills", sourceName)
 		if _, err := os.Stat(p); err != nil {
-			out = append(out, fmt.Sprintf("warn: skill %q missing from %s", name, p))
+			out = append(out, fmt.Sprintf("warn: skill %q missing from %s (run apply)", name, p))
 			continue
 		}
-		dst := filepath.Join(skillpath.Dir("opencode", entry.Resource.Scope, e.Home, e.ProjectRoot), name)
+		dst := filepath.Join(skillpath.Dir(tool, entry.Resource.Scope, e.Home, e.ProjectRoot), name)
 		if target, err := os.Readlink(dst); err == nil && target == p {
-			out = append(out, fmt.Sprintf("ok: skill %q linked (opencode)", name))
+			out = append(out, fmt.Sprintf("ok: skill %q linked (%s)", name, tool))
 		} else {
-			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked for opencode (run apply)", name))
+			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked for %s (run apply)", name, tool))
 		}
 	}
 	return out

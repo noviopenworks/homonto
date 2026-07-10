@@ -1,0 +1,19 @@
+name = "openspec"
+version = "0.1.0"
+description = "OpenSpec change-management skills"
+
+[dependencies]
+frameworks = []
+
+[skills]
+openspec-apply-change = "skills/openspec-apply-change"
+openspec-archive-change = "skills/openspec-archive-change"
+openspec-bulk-archive-change = "skills/openspec-bulk-archive-change"
+openspec-continue-change = "skills/openspec-continue-change"
+openspec-explore = "skills/openspec-explore"
+openspec-ff-change = "skills/openspec-ff-change"
+openspec-new-change = "skills/openspec-new-change"
+openspec-onboard = "skills/openspec-onboard"
+openspec-propose = "skills/openspec-propose"
+openspec-sync-specs = "skills/openspec-sync-specs"
+openspec-verify-change = "skills/openspec-verify-change"

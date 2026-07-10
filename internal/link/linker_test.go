@@ -127,3 +127,46 @@ func TestPlanForeignSymlinkIsConflict(t *testing.T) {
 		t.Fatalf("Plan changed the foreign symlink: now points to %q", got)
 	}
 }
+
+// TestLinkManagedAcrossMultipleRoots: a symlink pointing into the SECOND managed
+// root (e.g. the materialized catalog) must be treated as ours and relinkable,
+// while a symlink pointing outside every root is still a conflict.
+func TestLinkManagedAcrossMultipleRoots(t *testing.T) {
+	dir := t.TempDir()
+	local := filepath.Join(dir, "content")
+	catalog := filepath.Join(dir, "catalog")
+	src := filepath.Join(catalog, "brainstorming")
+	stale := filepath.Join(catalog, "brainstorming-old")
+	os.MkdirAll(src, 0o755)
+	os.MkdirAll(stale, 0o755)
+	dst := filepath.Join(dir, "claude", "skills", "brainstorming")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(stale, dst); err != nil {
+		t.Fatal(err)
+	}
+
+	// A symlink under the catalog root is ours -> relinked in place.
+	changed, err := Link(src, dst, local, catalog)
+	if err != nil || !changed {
+		t.Fatalf("relink under second root: changed=%v err=%v", changed, err)
+	}
+	if got, _ := os.Readlink(dst); got != src {
+		t.Fatalf("symlink points to %q, want %q", got, src)
+	}
+
+	// IsManaged and Remove also honor the second root.
+	if !IsManaged(dst, local, catalog) {
+		t.Fatal("IsManaged should be true for a link under the catalog root")
+	}
+	if err := Remove(dst, local, catalog); err != nil {
+		t.Fatalf("Remove under second root: %v", err)
+	}
+
+	// A link outside every root is still a conflict.
+	foreign := filepath.Join(dir, "elsewhere")
+	os.MkdirAll(foreign, 0o755)
+	os.Symlink(foreign, dst)
+	if _, err := Link(src, dst, local, catalog); err == nil || !strings.Contains(err.Error(), "conflict") {
+		t.Fatalf("foreign link must still be a conflict, got %v", err)
+	}
+}

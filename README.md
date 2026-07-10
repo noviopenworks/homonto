@@ -148,10 +148,13 @@ homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
 - **`onto` is release-blocking, not shipped in current source yet.** The repo
   dogfoods the markdown skills today; the separate `onto` binary is planned for
   the first public tag.
-- **Frameworks, commands, and subagents validate but do not project yet.** The
-  explicit `[frameworks.X]`, `[commands.X]`, and `[subagents.X]` tables are in
-  the config model, including model-route validation, but `apply` does not yet
-  install framework/catalog resources.
+- **Framework skill projection is implemented; commands and subagents are
+  not yet.** `[frameworks.X]` resolves through the bundled builtin catalog
+  (`onto`, `comet`, `superpowers`, `openspec`), expands dependencies, and
+  materializes/links skills into Claude Code and OpenCode. The explicit
+  `[commands.X]` and `[subagents.X]` tables are in the config model,
+  including model-route validation, but `apply` does not yet install those
+  resources.
 - **OpenCode JSONC comments are not preserved.** Claude's files are plain JSON,
   but OpenCode's `opencode.jsonc` supports comments. Any apply that *writes*
   `opencode.jsonc` rewrites it as normalized JSON, so **all comments in that file

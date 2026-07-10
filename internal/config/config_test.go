@@ -438,6 +438,200 @@ func TestEnabledModelTools(t *testing.T) {
 	}
 }
 
+func loadTOML(t *testing.T, body string) *Config {
+	t.Helper()
+	dir := t.TempDir()
+	p := filepath.Join(dir, "homonto.toml")
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	return c
+}
+
+func TestExpandedSkillsIncludeFrameworkAndDeps(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	got, err := c.ExpandedSkillEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	byName := map[string]NamedResource{}
+	for _, e := range got {
+		byName[e.Name] = e
+	}
+	// A comet skill, a superpowers dep skill, and an openspec dep skill.
+	for _, want := range []string{"comet-open", "brainstorming", "openspec-explore"} {
+		e, ok := byName[want]
+		if !ok {
+			t.Fatalf("expanded set missing %q; got %v", want, keysOf(byName))
+		}
+		if e.Resource.Source != "builtin:"+want {
+			t.Fatalf("%q source = %q", want, e.Resource.Source)
+		}
+		// Inherits the framework declaration's scope and targets (Spec Patch #1).
+		if e.Resource.Scope != "user" || len(e.Resource.Targets) != 1 || e.Resource.Targets[0] != "claude" {
+			t.Fatalf("%q did not inherit scope/targets: %+v", want, e.Resource)
+		}
+	}
+}
+
+func keysOf(m map[string]NamedResource) []string {
+	var ks []string
+	for k := range m {
+		ks = append(ks, k)
+	}
+	return ks
+}
+
+func TestExpandedSkillsTargetFiltering(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	got, err := c.ExpandedSkillEntriesForTool("opencode")
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("comet targets claude only; opencode should get no skills, got %v", got)
+	}
+}
+
+func TestExpandedSkillsCollisionWithExplicit(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[skills.comet-open]
+source = "builtin:comet-open"
+scope = "user"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	_, err := c.ExpandedSkillEntriesForTool("claude")
+	if err == nil || !strings.Contains(err.Error(), "comet-open") {
+		t.Fatalf("expected collision error naming comet-open, got %v", err)
+	}
+}
+
+// TestExpandedSkillsFrameworkVsFrameworkConflict reproduces the reviewer's
+// framework-vs-framework collision path: two frameworks both expand
+// "comet-open" (and the rest of the comet catalog) via the REAL embedded
+// catalog, but with different scope, so the second framework's declaration
+// conflicts with the first's. ExpandedSkillEntriesForTool must error.
+func TestExpandedSkillsFrameworkVsFrameworkConflict(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet_a]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[frameworks.comet_b]
+source = "builtin:comet"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	_, err := c.ExpandedSkillEntriesForTool("claude")
+	if err == nil {
+		t.Fatal("expected conflict error for two frameworks expanding the same skill with different scope, got nil")
+	}
+	if !strings.Contains(err.Error(), "comet-open") && !strings.Contains(err.Error(), "comet_b") {
+		t.Fatalf("error does not name the conflicting skill or framework: %v", err)
+	}
+}
+
+// TestExpandedSkillsSameFrameworkDeclDedup reproduces the reviewer's
+// same-skill-same-declaration dedup path: two frameworks both expand
+// "comet-open" via the REAL embedded catalog, with IDENTICAL scope and
+// targets, so they should collapse into one entry with no error.
+func TestExpandedSkillsSameFrameworkDeclDedup(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet_a]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[frameworks.comet_b]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	got, err := c.ExpandedSkillEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	count := 0
+	for _, e := range got {
+		if e.Name == "comet-open" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("comet-open should appear exactly once (deduped), got %d occurrences in %v", count, got)
+	}
+}
+
 func validModelsBothTools() string {
 	return `
 [models.claude.architectural]
