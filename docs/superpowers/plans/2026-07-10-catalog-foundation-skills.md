@@ -1587,7 +1587,7 @@ Maps tasks.md 5.2 and the opencode portion of 5.5. Mirrors Task 8 exactly.
 
 **Interfaces:** identical shape to Task 8 (`Adapter.catalogRoot`, `WithCatalogRoot`, `skillSource`).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/adapter/opencode/builtin_test.go` — same as Task 8's file but with `package opencode` and the opencode user skills dir (`<home>/.config/opencode/skills/brainstorming`):
 
@@ -1690,12 +1690,12 @@ func TestBuiltinSkillConflictNotClobbered(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/adapter/opencode/ -run TestBuiltin -v`
 Expected: FAIL / build error — `WithCatalogRoot` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Apply the same edits as Task 8, to `internal/adapter/opencode/opencode.go`:
 
@@ -1719,12 +1719,12 @@ with:
 
 In `links()`, use `a.skillSource(entry)` for the value. In the adopt loop, replace `src := filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, name))` with `src := a.skillSource(entry)`. In the relocate check, `link.IsManaged(filepath.Join(inactive, name), a.content)` → add `, a.catalogRoot`. Every `link.Plan(a.links(), a.content)`, `link.Plan(links, a.content)`, `link.Remove(dst, a.content)`, `link.IsManaged(old, a.content)`, `link.Remove(old, a.content)`, and `link.Link(src, dst, a.content)` → append `, a.catalogRoot`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/adapter/opencode/ -count=1 -v`
 Expected: PASS (new builtin tests and all existing opencode tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/adapter/opencode/opencode.go internal/adapter/opencode/builtin_test.go
