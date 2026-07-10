@@ -20,10 +20,14 @@ per-phase set so a change's skeleton requirements tighten as it advances.
 `onto advance <change>` SHALL move a change to the next phase in the fixed order
 `open → design → build → verify → close`, and ONLY through that order (no skips,
 no reversals). It SHALL run the framework-install gate first. Before advancing it
-SHALL verify the transition's precondition:
+SHALL verify the transition's precondition, which is that the CURRENT phase's
+deliverables are complete (a phase's artifacts are produced while a change is in
+that phase, so they gate leaving it, not entering it):
 
-- the artifacts required to enter the NEXT phase (`RequiredArtifacts(next)`) all
-  exist, AND
+- every artifact in `RequiredArtifacts(currentPhase)` exists (e.g. leaving
+  `design` requires `design.md`; leaving `build` requires `plan.md`; leaving
+  `verify` requires `verification.md`; leaving `open` requires only the open
+  artifacts proposal.md + tasks.md), AND
 - when leaving `build`, every `tasks.md` checkbox is checked (at least one
   checkbox present, no unchecked `- [ ]`).
 
@@ -32,17 +36,17 @@ transition. On a failed precondition it SHALL exit non-zero, name what is
 missing, and leave the recorded phase unchanged. Advancing a change already at
 `close` (or with an unknown phase) SHALL be an error with no write.
 
-#### Scenario: advance open to design when design.md exists
+#### Scenario: advance open to design needs only the open artifacts
 
-- **GIVEN** a change at phase `open` with `design.md` present (and the open artifacts)
+- **GIVEN** a change at phase `open` with `proposal.md` and `tasks.md` (as `onto new` creates), and no `design.md` yet
 - **WHEN** `onto advance <change>` runs
 - **THEN** the recorded phase becomes `design` and the command reports `open → design`, exiting 0
 
-#### Scenario: advance refuses when the next phase's artifact is missing
+#### Scenario: advance refuses when the current phase's deliverable is missing
 
-- **GIVEN** a change at phase `open` with no `design.md`
+- **GIVEN** a change at phase `design` that has not yet produced `design.md`
 - **WHEN** `onto advance <change>` runs
-- **THEN** it exits non-zero naming `design.md` as missing and the recorded phase stays `open`
+- **THEN** it exits non-zero naming `design.md` as missing and the recorded phase stays `design`
 
 #### Scenario: advance out of build requires all tasks checked
 
@@ -67,12 +71,12 @@ change the phase.
 
 #### Scenario: dirty worktree warns but allows a normal advance
 
-- **GIVEN** a change at phase `open` (with `design.md`) in a workspace with uncommitted changes
+- **GIVEN** a change at phase `open` (with the open artifacts proposal.md + tasks.md) in a workspace with uncommitted changes
 - **WHEN** `onto advance <change>` runs
 - **THEN** it advances to `design` (exit 0) after printing a dirty-worktree warning
 
 #### Scenario: dirty worktree blocks verify to close
 
-- **GIVEN** a change at phase `verify` (with `verification.md`) in a workspace with uncommitted changes
+- **GIVEN** a change at phase `verify` whose `verification.md` (and earlier deliverables) exist, in a workspace with uncommitted changes
 - **WHEN** `onto advance <change>` runs
 - **THEN** it exits non-zero reporting the dirty worktree and the recorded phase stays `verify`
