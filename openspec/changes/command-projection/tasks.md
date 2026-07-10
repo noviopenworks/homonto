@@ -32,9 +32,9 @@
 ## 6. Adapter command projection
 
 - [x] 6.1 Claude adapter: `commandsDir(scope)`, `commandSource(entry)`, plan/apply/prune/adopt for `command.<n>` links via variadic managed roots
-- [ ] 6.2 OpenCode adapter: same, using `commandpath` (singular `command/`)
-- [ ] 6.3 Extend `managedRoots()` to include the commands roots (non-empty guard)
-- [ ] 6.4 Adapter tests (both tools): builtin command link create, idempotent re-apply, conflict-not-clobbered, de-declared prune, state `command.<n>` recorded
+- [x] 6.2 OpenCode adapter: same, using `commandpath` (singular `command/`)
+- [x] 6.3 Extend `managedRoots()` to include the commands roots (non-empty guard)
+- [x] 6.4 Adapter tests (both tools): builtin command link create, idempotent re-apply, conflict-not-clobbered, de-declared prune, state `command.<n>` recorded
 
 ## 7. Doctor
 

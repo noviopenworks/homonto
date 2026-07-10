@@ -1570,7 +1570,7 @@ Identical command projection for OpenCode, using `commandpath` (singular `comman
 
 **Interfaces:** same set as Task 8, on the OpenCode `*Adapter`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/adapter/opencode/builtin_test.go` (note the OpenCode user command dir is `.config/opencode/command`):
 
@@ -1662,12 +1662,12 @@ func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/adapter/opencode/ -run TestBuiltinCommand -count=1`
 Expected: FAIL (`WithCommandCatalogRoot`/command projection do not exist).
 
-- [ ] **Step 3: Add fields, constructor, roots, and helpers**
+- [x] **Step 3: Add fields, constructor, roots, and helpers**
 
 In `internal/adapter/opencode/opencode.go`, mirror Task 8 Step 3 with `"opencode"` as the tool. Add `commandCatalogRoot string` and `commands []config.NamedResource` to `Adapter`; add `WithCommandCatalogRoot`; extend `managedRoots()` with the non-empty `a.commandCatalogRoot`; add `commandsDir`, `inactiveCommandsDir`, `commandSource`, `commandLinks` (import `github.com/noviopenworks/homonto/internal/commandpath`):
 
@@ -1719,7 +1719,7 @@ func (a *Adapter) commandLinks() map[string]string {
 }
 ```
 
-- [ ] **Step 4: Extend `managedPrefix`**
+- [x] **Step 4: Extend `managedPrefix`**
 
 In `internal/adapter/opencode/util.go`:
 
@@ -1734,7 +1734,7 @@ func managedPrefix(k string) bool {
 }
 ```
 
-- [ ] **Step 5: Emit command ops in `Plan`**
+- [x] **Step 5: Emit command ops in `Plan`**
 
 After `a.skills = skills`, add:
 
@@ -1797,7 +1797,7 @@ In the `declared` map population, add:
 	}
 ```
 
-- [ ] **Step 6: Handle command ops in `Apply`**
+- [x] **Step 6: Handle command ops in `Apply`**
 
 In the adopt branch, after the skill adopt block:
 
@@ -1859,7 +1859,7 @@ At the end of `Apply` (after the skill link loop, before `return nil`):
 	return nil
 ```
 
-- [ ] **Step 7: Handle `command.` in `ObserveHashes`**
+- [x] **Step 7: Handle `command.` in `ObserveHashes`**
 
 In `ObserveHashes`'s switch, add a case after the `skill.` case:
 
@@ -1880,7 +1880,7 @@ In `ObserveHashes`'s switch, add a case after the `skill.` case:
 			out[key] = secret.Hash(dst + " -> " + target)
 ```
 
-- [ ] **Step 8: Wire `WithCommandCatalogRoot` in `engine.Build`**
+- [x] **Step 8: Wire `WithCommandCatalogRoot` in `engine.Build`**
 
 Append `.WithCommandCatalogRoot(commandCatalogDir)` to the opencode constructor line in `internal/engine/engine.go`:
 
@@ -1888,12 +1888,12 @@ Append `.WithCommandCatalogRoot(commandCatalogDir)` to the opencode constructor 
 			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
 ```
 
-- [ ] **Step 9: Run tests to verify they pass**
+- [x] **Step 9: Run tests to verify they pass**
 
 Run: `go test ./internal/adapter/opencode/ ./internal/engine/ -count=1`
 Expected: PASS
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add internal/adapter/opencode/opencode.go internal/adapter/opencode/util.go internal/adapter/opencode/builtin_test.go internal/engine/engine.go
