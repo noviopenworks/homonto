@@ -43,7 +43,7 @@
 
 ## 7. Regression and docs
 
-- [ ] 7.1 Run full regression: `go test ./... -count=1`, `go vet ./...`, `go build ./...`
-- [ ] 7.2 Run stale-doc grep to ensure no doc claims builtin projection is unimplemented for skills
-- [ ] 7.3 Update `docs/NEXT_AGENT.md` with catalog-foundation verification evidence
-- [ ] 7.4 Commit all changes
+- [x] 7.1 Run full regression: `go test ./... -count=1`, `go vet ./...`, `go build ./...`
+- [x] 7.2 Run stale-doc grep to ensure no doc claims builtin projection is unimplemented for skills
+- [x] 7.3 Update `docs/NEXT_AGENT.md` with catalog-foundation verification evidence
+- [x] 7.4 Commit all changes

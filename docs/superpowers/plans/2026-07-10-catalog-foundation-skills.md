@@ -2185,7 +2185,7 @@ Maps tasks.md 7.1, 7.2, 7.3, 7.4.
 **Files:**
 - Modify: `docs/NEXT_AGENT.md` (append verification evidence)
 
-- [ ] **Step 1: Full regression (7.1)**
+- [x] **Step 1: Full regression (7.1)**
 
 ```bash
 go test ./... -count=1
@@ -2195,7 +2195,7 @@ go build ./...
 
 Expected: all tests PASS, vet clean, build succeeds.
 
-- [ ] **Step 2: Stale-doc grep (7.2)**
+- [x] **Step 2: Stale-doc grep (7.2)**
 
 Confirm no doc claims builtin skill projection is still unimplemented:
 
@@ -2205,11 +2205,11 @@ grep -rniE 'builtin.*(not|un)implemented|skills?.*not.*(installed|projected)|cat
 
 Expected: `no stale claims` (or only matches that are clearly about future non-skill resources — commands/subagents/frameworks projection, which remains future work per the config-model spec). If a stale skill-specific claim appears, update that doc line to state builtin skill projection is implemented.
 
-- [ ] **Step 3: Record verification evidence (7.3)**
+- [x] **Step 3: Record verification evidence (7.3)**
 
 Append a dated section to `docs/NEXT_AGENT.md` summarizing: the catalog package + embed, `internal/catalog` Load/Expand/Materialize, config expansion, engine materialization, adapter builtin resolution, doctor check, and the dogfood run — with the exact commands from Task 12 Steps 3–4 and their observed results (materialized skill count, `status` clean, `doctor` all-linked, second apply idempotent).
 
-- [ ] **Step 4: Final commit (7.4)**
+- [x] **Step 4: Final commit (7.4)**
 
 ```bash
 git add docs/NEXT_AGENT.md
