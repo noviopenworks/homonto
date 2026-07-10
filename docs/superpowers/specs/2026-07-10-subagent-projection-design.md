@@ -201,3 +201,25 @@ change.
 
 None blocking. The tool-layout/frontmatter-tolerance confirmation is scheduled as
 the first build task (fixtures) rather than left open.
+
+## Implementation Notes (recorded during build/verify)
+
+**Loose-builtin resolution via a catalog dir-scan (D1/D5 reconciliation).** D4
+above said to add `ExpandSubagents` "exactly like `ExpandCommands`", i.e.
+framework-declaration-driven indexing. But D5 requires `code-reviewer` and
+`codebase-explorer` to be **framework-agnostic loose builtins** declared
+standalone as `[subagents.X] source = "builtin:X"` with no framework home — a
+resource shape the command precedent never supported (its "loose"
+`example-command` was declared under the `onto` framework's `[commands]` table to
+be indexed). Rather than force the two loose subagents under a framework (which
+would contradict D5's "framework-agnostic" intent), the implementation adds a
+global directory scan of `subagents/` in `catalog.Load()` that indexes every
+`<name>.md` by base name, **in addition to** framework `[subagents]` indexing
+(which still handles `comet-navigator`). This is faithful to the delta spec,
+which states `builtin:<name>` resolves from `catalog/subagents/<name>.md` with no
+framework requirement. Safety is preserved: the existing `prev != sap` collision
+check still fires if a dir-scanned name and a framework declaration map to
+different paths; `comet-navigator` (both dir-scanned and comet-declared, same
+path) does not trip it; the scan is non-recursive and `.md`-only. This is an
+addition to D4, not a contradiction of it, and was accepted in the build phase
+(Task 3) and confirmed by the final whole-branch review.
