@@ -49,7 +49,7 @@
 
 ## 9. Regression and docs
 
-- [ ] 9.1 Full regression: `go test ./... -count=1`, `go vet ./...`, `go build ./...`
-- [ ] 9.2 Stale-doc grep: no doc claims command projection is unimplemented for skills-and-commands once shipped
-- [ ] 9.3 Update `docs/roadmap.md` v1.1 status (command projection machinery landed; content deferred)
-- [ ] 9.4 Commit all changes
+- [x] 9.1 Full regression: `go test ./... -count=1`, `go vet ./...`, `go build ./...`
+- [x] 9.2 Stale-doc grep: no doc claims command projection is unimplemented for skills-and-commands once shipped
+- [x] 9.3 Update `docs/roadmap.md` v1.1 status (command projection machinery landed; content deferred)
+- [x] 9.4 Commit all changes

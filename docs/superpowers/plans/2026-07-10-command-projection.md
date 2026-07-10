@@ -2082,7 +2082,7 @@ Full regression sweep, stale-doc check, and roadmap status update for v1.1.
 **Files:**
 - Modify: `docs/roadmap.md`
 
-- [ ] **Step 1: Full regression**
+- [x] **Step 1: Full regression**
 
 ```bash
 cd /home/mg/homonto && go test ./... -count=1 && go vet ./... && go build ./...
@@ -2090,7 +2090,7 @@ cd /home/mg/homonto && go test ./... -count=1 && go vet ./... && go build ./...
 
 Expected: all pass, no vet findings, clean build.
 
-- [ ] **Step 2: Stale-doc grep**
+- [x] **Step 2: Stale-doc grep**
 
 ```bash
 cd /home/mg/homonto && grep -rn -i "command" docs/roadmap.md | grep -i "not.*implement\|unimplement\|deferred\|todo\|future" || echo "no stale command claims"
@@ -2098,7 +2098,7 @@ cd /home/mg/homonto && grep -rn -i "command" docs/roadmap.md | grep -i "not.*imp
 
 Review hits: no doc should now claim command projection is unimplemented. The v1.1 scope line "Projection for skills, commands, and subagents..." remains accurate (subagents still pending; commands now landed as machinery + placeholder).
 
-- [ ] **Step 3: Update roadmap v1.1 status**
+- [x] **Step 3: Update roadmap v1.1 status**
 
 In `docs/roadmap.md`, under the v1.1 section, add a status note reflecting that command projection machinery has landed with a placeholder while real command content is deferred. For example, append to the v1.1 Scope area:
 
@@ -2111,7 +2111,7 @@ In `docs/roadmap.md`, under the v1.1 section, add a status note reflecting that 
 
 (Match the surrounding doc's exact heading/format; keep the claim precise — machinery landed, content deferred.)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/roadmap.md
