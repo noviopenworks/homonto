@@ -26,9 +26,9 @@ base-ref: a3137d2a7b2b603412c28e7beba51a3692a24c63
 
 **Files:** modify `internal/ontostate/state.go`, `internal/ontostate/state_test.go`.
 
-- [ ] 1.1 (RED first) `DepsResolved(root string, deps []string) []string`: for each dep, resolved iff `filepath.Glob(filepath.Join(root,"docs","changes","archive","*-"+dep))` has ≥1 match; return the unresolved subset in input order; nil/empty deps → empty slice. Tests: archived `a` + missing `b` (create `docs/changes/archive/2026-07-10-a/`) → `["b"]`; nil → empty; empty → empty; prefix case (archive `*-ab` present, dep `a`) → `a` unresolved (the `-` separator prevents `*-a` matching `…-ab`).
-- [ ] 1.2 GREEN; gofmt/vet clean for internal/ontostate.
-- [ ] 1.3 Commit: `feat(ontostate): DepsResolved dependency-resolution helper`
+- [x] 1.1 (RED first) `DepsResolved(root string, deps []string) []string`: for each dep, resolved iff `filepath.Glob(filepath.Join(root,"docs","changes","archive","*-"+dep))` has ≥1 match; return the unresolved subset in input order; nil/empty deps → empty slice. Tests: archived `a` + missing `b` (create `docs/changes/archive/2026-07-10-a/`) → `["b"]`; nil → empty; empty → empty; prefix case (archive `*-ab` present, dep `a`) → `a` unresolved (the `-` separator prevents `*-a` matching `…-ab`).
+- [x] 1.2 GREEN; gofmt/vet clean for internal/ontostate.
+- [x] 1.3 Commit: `feat(ontostate): DepsResolved dependency-resolution helper`
 
 ## Task 2: `onto close` command (`internal/ontocli`)
 

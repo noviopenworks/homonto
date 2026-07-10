@@ -1,8 +1,8 @@
 ## 1. Dependency resolution in `internal/ontostate`
 
-- [ ] 1.1 (TDD, RED first) `DepsResolved(root string, deps []string) []string`: for each dep, resolved iff `filepath.Glob(filepath.Join(root,"docs","changes","archive","*-"+dep))` has ≥1 match; return the unresolved subset in order; nil/empty deps → empty. Tests: mix (archived `a`, missing `b` → `["b"]`); nil → empty; empty → empty; the `a` vs `ab` prefix disambiguation (archive `*-ab` present, dep `a` still unresolved).
-- [ ] 1.2 GREEN; gofmt/vet clean for internal/ontostate.
-- [ ] 1.3 Commit: `feat(ontostate): DepsResolved dependency-resolution helper`
+- [x] 1.1 (TDD, RED first) `DepsResolved(root string, deps []string) []string`: for each dep, resolved iff `filepath.Glob(filepath.Join(root,"docs","changes","archive","*-"+dep))` has ≥1 match; return the unresolved subset in order; nil/empty deps → empty. Tests: mix (archived `a`, missing `b` → `["b"]`); nil → empty; empty → empty; the `a` vs `ab` prefix disambiguation (archive `*-ab` present, dep `a` still unresolved).
+- [x] 1.2 GREEN; gofmt/vet clean for internal/ontostate.
+- [x] 1.3 Commit: `feat(ontostate): DepsResolved dependency-resolution helper`
 
 ## 2. `onto close` command (`internal/ontocli`)
 
