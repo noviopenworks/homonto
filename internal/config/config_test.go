@@ -555,6 +555,83 @@ effort = "f"
 	}
 }
 
+// TestExpandedSkillsFrameworkVsFrameworkConflict reproduces the reviewer's
+// framework-vs-framework collision path: two frameworks both expand
+// "comet-open" (and the rest of the comet catalog) via the REAL embedded
+// catalog, but with different scope, so the second framework's declaration
+// conflicts with the first's. ExpandedSkillEntriesForTool must error.
+func TestExpandedSkillsFrameworkVsFrameworkConflict(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet_a]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[frameworks.comet_b]
+source = "builtin:comet"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	_, err := c.ExpandedSkillEntriesForTool("claude")
+	if err == nil {
+		t.Fatal("expected conflict error for two frameworks expanding the same skill with different scope, got nil")
+	}
+	if !strings.Contains(err.Error(), "comet-open") && !strings.Contains(err.Error(), "comet_b") {
+		t.Fatalf("error does not name the conflicting skill or framework: %v", err)
+	}
+}
+
+// TestExpandedSkillsSameFrameworkDeclDedup reproduces the reviewer's
+// same-skill-same-declaration dedup path: two frameworks both expand
+// "comet-open" via the REAL embedded catalog, with IDENTICAL scope and
+// targets, so they should collapse into one entry with no error.
+func TestExpandedSkillsSameFrameworkDeclDedup(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet_a]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[frameworks.comet_b]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`)
+	got, err := c.ExpandedSkillEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	count := 0
+	for _, e := range got {
+		if e.Name == "comet-open" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("comet-open should appear exactly once (deduped), got %d occurrences in %v", count, got)
+	}
+}
+
 func validModelsBothTools() string {
 	return `
 [models.claude.architectural]
