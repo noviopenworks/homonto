@@ -1,6 +1,7 @@
 package ontocli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,5 +90,131 @@ func assertNoDocsFiles(t *testing.T, dir string) {
 	}
 	if len(matches) != 0 {
 		t.Errorf("gate() created docs/ entries: %v", matches)
+	}
+}
+
+// docsDirs is the fixed set of doc-layout directories "onto init" scaffolds.
+var docsDirs = []string{
+	filepath.Join("docs", "changes"),
+	filepath.Join("docs", "specs"),
+	filepath.Join("docs", "adr"),
+	filepath.Join("docs", "guides"),
+}
+
+// setUpGatedWorkspace prepares a temp workspace that passes gate(): a
+// homonto.toml declaring [frameworks.onto] plus an applied onto catalog
+// directory.
+func setUpGatedWorkspace(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "homonto.toml"), "[frameworks.onto]\nsource=\"builtin:onto\"\nscope=\"project\"\n")
+	if err := os.MkdirAll(filepath.Join(dir, ".homonto", "catalog", "skills", "onto"), 0o755); err != nil {
+		t.Fatalf("failed to create catalog dir: %v", err)
+	}
+	return dir
+}
+
+// TestInitCommand_ScaffoldsDocsLayout verifies that, once the framework
+// gate passes, "onto init" creates all four docs/ directories and reports
+// each as created.
+func TestInitCommand_ScaffoldsDocsLayout(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"init", "--dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	got := out.String()
+	for _, d := range docsDirs {
+		full := filepath.Join(dir, d)
+		info, err := os.Stat(full)
+		if err != nil || !info.IsDir() {
+			t.Errorf("expected directory %q to exist, stat err = %v", full, err)
+		}
+		if !strings.Contains(got, "created "+full) {
+			t.Errorf("output = %q, want it to contain %q", got, "created "+full)
+		}
+	}
+}
+
+// TestInitCommand_IsIdempotentAndNeverOverwrites verifies that a second run
+// of "onto init" on an already-scaffolded workspace leaves pre-existing
+// user content untouched and reports the directories as already existing.
+func TestInitCommand_IsIdempotentAndNeverOverwrites(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+
+	cmd1 := NewRootCmd()
+	cmd1.SetOut(&bytes.Buffer{})
+	cmd1.SetErr(&bytes.Buffer{})
+	cmd1.SetArgs([]string{"init", "--dir", dir})
+	if err := cmd1.Execute(); err != nil {
+		t.Fatalf("first execute: %v", err)
+	}
+
+	keepPath := filepath.Join(dir, "docs", "changes", "keep.txt")
+	keepContent := "user data, do not touch\n"
+	writeFile(t, keepPath, keepContent)
+
+	cmd2 := NewRootCmd()
+	var out bytes.Buffer
+	cmd2.SetOut(&out)
+	cmd2.SetErr(&out)
+	cmd2.SetArgs([]string{"init", "--dir", dir})
+	if err := cmd2.Execute(); err != nil {
+		t.Fatalf("second execute: %v", err)
+	}
+
+	for _, d := range docsDirs {
+		full := filepath.Join(dir, d)
+		info, err := os.Stat(full)
+		if err != nil || !info.IsDir() {
+			t.Errorf("expected directory %q to still exist, stat err = %v", full, err)
+		}
+	}
+
+	gotBytes, err := os.ReadFile(keepPath)
+	if err != nil {
+		t.Fatalf("reading keep.txt: %v", err)
+	}
+	if string(gotBytes) != keepContent {
+		t.Errorf("keep.txt content = %q, want unchanged %q", string(gotBytes), keepContent)
+	}
+
+	got := out.String()
+	for _, d := range docsDirs {
+		full := filepath.Join(dir, d)
+		if !strings.Contains(got, "exists "+full) {
+			t.Errorf("output = %q, want it to contain %q", got, "exists "+full)
+		}
+		if strings.Contains(got, "created "+full) {
+			t.Errorf("output = %q, want it NOT to report %q on second run", got, "created "+full)
+		}
+	}
+}
+
+// TestInitCommand_GateFailureCreatesNothing verifies that when the
+// framework gate fails (no homonto.toml here), "onto init" returns a
+// non-zero exit and creates no docs/ directory at all.
+func TestInitCommand_GateFailureCreatesNothing(t *testing.T) {
+	dir := t.TempDir()
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"init", "--dir", dir})
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("execute() = nil, want error")
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "docs")); !os.IsNotExist(err) {
+		t.Errorf("expected docs/ to not exist, stat err = %v", err)
 	}
 }

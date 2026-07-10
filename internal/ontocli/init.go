@@ -6,7 +6,63 @@ import (
 	"path/filepath"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/spf13/cobra"
 )
+
+// docsLayout is the fixed set of documentation directories "onto init"
+// scaffolds once the framework gate passes.
+var docsLayout = []string{
+	filepath.Join("docs", "changes"),
+	filepath.Join("docs", "specs"),
+	filepath.Join("docs", "adr"),
+	filepath.Join("docs", "guides"),
+}
+
+// initCmd builds the "onto init" subcommand: it enforces gate(dir) (the
+// framework-install precondition) before scaffolding the docs/ layout, and
+// performs no writes at all if the gate fails.
+func initCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "init",
+		Short: "Scaffold the onto docs layout, if the onto framework is installed",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runInit(cmd, dir)
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root to initialize")
+	return cmd
+}
+
+// runInit enforces gate(root) and, only on success, idempotently scaffolds
+// the docs/ layout: each directory is created with os.MkdirAll if missing,
+// and left untouched (never overwritten) if it already exists. It reports
+// one line per directory describing the outcome.
+func runInit(cmd *cobra.Command, root string) error {
+	if err := gate(root); err != nil {
+		return err
+	}
+
+	for _, d := range docsLayout {
+		path := filepath.Join(root, d)
+
+		_, statErr := os.Stat(path)
+		preExisted := statErr == nil
+
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			return fmt.Errorf("onto init: creating %s: %w", path, err)
+		}
+
+		if preExisted {
+			cmd.Printf("exists %s\n", path)
+		} else {
+			cmd.Printf("created %s\n", path)
+		}
+	}
+
+	return nil
+}
 
 // homontoConfig is the minimal shape of homonto.toml that the gate needs:
 // just enough to detect whether a [frameworks.onto] table is declared.
