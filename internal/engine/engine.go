@@ -66,7 +66,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		Cfg: cfg,
 		Adapters: []adapter.Adapter{
 			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
-			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir),
+			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
 		},
 		State:              st,
 		StateDir:           stateDir,

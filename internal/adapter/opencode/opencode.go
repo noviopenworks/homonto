@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
@@ -24,6 +25,7 @@ type Adapter struct {
 	commandCatalogRoot string // materialized builtin command root (.homonto/catalog/commands)
 	projectRoot        string // directory of homonto.toml; used for project-scope resources
 	skills             []config.NamedResource
+	commands           []config.NamedResource
 }
 
 // New builds an OpenCode adapter at user scope. home is $HOME; content holds
@@ -46,22 +48,24 @@ func (a *Adapter) WithCatalogRoot(catalogRoot string) *Adapter {
 }
 
 // WithCommandCatalogRoot sets the materialized builtin-command root that
-// builtin:<name> commands link from. Mirrors WithCatalogRoot; command link
-// logic lands in a later task, so this field is unused for now.
+// builtin:<name> commands link from. Mirrors WithCatalogRoot.
 func (a *Adapter) WithCommandCatalogRoot(commandCatalogRoot string) *Adapter {
 	a.commandCatalogRoot = commandCatalogRoot
 	return a
 }
 
 // managedRoots returns every content root homonto owns links into. catalogRoot
-// is included only when set: link.managed() treats an empty-string root as a
-// prefix match for every absolute path, so passing "" here would make link
-// calls treat any symlink as "ours" — an empty catalogRoot must never reach
-// link.*.
+// and commandCatalogRoot are included only when set: link.managed() treats an
+// empty-string root as a prefix match for every absolute path, so passing ""
+// here would make link calls treat any symlink as "ours" — an empty root must
+// never reach link.*.
 func (a *Adapter) managedRoots() []string {
 	roots := []string{a.content}
 	if a.catalogRoot != "" {
 		roots = append(roots, a.catalogRoot)
+	}
+	if a.commandCatalogRoot != "" {
+		roots = append(roots, a.commandCatalogRoot)
 	}
 	return roots
 }
@@ -102,6 +106,44 @@ func (a *Adapter) inactiveSkillsDir(scope string) string {
 	return d
 }
 
+// commandsDir is the directory owned-command symlinks live in for the scope.
+func (a *Adapter) commandsDir(scope string) string {
+	return commandpath.Dir("opencode", scope, a.home, a.projectRoot)
+}
+
+// inactiveCommandsDir is the other scope's commands directory — where a link
+// may linger after a per-resource scope switch. It returns "" when nothing
+// meaningful can be relocated (no project root, or both scopes resolve equal).
+func (a *Adapter) inactiveCommandsDir(scope string) string {
+	if a.projectRoot == "" {
+		return ""
+	}
+	d := commandpath.Dir("opencode", skillpath.Other(scope), a.home, a.projectRoot)
+	if d == a.commandsDir(scope) {
+		return ""
+	}
+	return d
+}
+
+// commandSource resolves a command entry's on-disk file by source scheme:
+// builtin:<n> from the materialized command root (<n>.md), otherwise the local
+// content dir (homonto/commands/<n>.md).
+func (a *Adapter) commandSource(entry config.NamedResource) string {
+	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
+		return filepath.Join(a.commandCatalogRoot, strings.TrimPrefix(s, "builtin:")+".md")
+	}
+	return filepath.Join(a.content, "commands", localSourceName(entry.Resource.Source, entry.Name)+".md")
+}
+
+// commandLinks maps each owned command's destination (<name>.md) to its source.
+func (a *Adapter) commandLinks() map[string]string {
+	out := map[string]string{}
+	for _, entry := range a.commands {
+		out[filepath.Join(a.commandsDir(entry.Resource.Scope), entry.Name+".md")] = a.commandSource(entry)
+	}
+	return out
+}
+
 // localSourceName resolves a skill resource's content subdirectory: a local:
 // source names that directory directly; any other source falls back to the
 // skill's declared name.
@@ -138,6 +180,11 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		return adapter.ChangeSet{}, err
 	}
 	a.skills = skills
+	commands, err := c.ExpandedCommandEntriesForTool("opencode")
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	a.commands = commands
 	doc, err := readStandardized(a.cfgFile())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -218,6 +265,45 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		}
 		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "skill." + name, New: dst + " -> " + src})
 	}
+	// ---- command links (parallel to skills) ----
+	cmdOps, err := link.Plan(a.commandLinks(), a.managedRoots()...)
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	cmdByName := map[string]config.NamedResource{}
+	for _, entry := range a.commands {
+		cmdByName[entry.Name] = entry
+	}
+	for _, op := range cmdOps {
+		name := strings.TrimSuffix(filepath.Base(op.Dst), ".md")
+		entry := cmdByName[name]
+		inactive := a.inactiveCommandsDir(entry.Resource.Scope)
+		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name+".md"), a.managedRoots()...) {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "command." + name, Old: filepath.Join(inactive, name+".md"), New: op.Dst + " -> " + op.Src})
+		} else if op.Cur == "" {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "command." + name, New: op.Dst + " -> " + op.Src})
+		} else {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "command." + name, Old: op.Cur, New: op.Src})
+		}
+	}
+	cmdOpDst := map[string]bool{}
+	for _, op := range cmdOps {
+		cmdOpDst[op.Dst] = true
+	}
+	for _, entry := range a.commands {
+		dst := filepath.Join(a.commandsDir(entry.Resource.Scope), entry.Name+".md")
+		if cmdOpDst[dst] {
+			continue
+		}
+		src := a.commandSource(entry)
+		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
+			continue
+		}
+		if e, ok := st.Get("opencode", "command."+entry.Name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
+			continue
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "command." + entry.Name, New: dst + " -> " + src})
+	}
 	// Orphans: a state key no longer declared in config is de-declared — plan a
 	// delete. (A declared key missing from disk is drift, handled above.) Old is
 	// always redacted: a removed key's provenance is stale by definition.
@@ -233,6 +319,9 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	for _, entry := range a.skills {
 		declared["skill."+entry.Name] = true
+	}
+	for _, entry := range a.commands {
+		declared["command."+entry.Name] = true
 	}
 	for _, k := range st.Keys("opencode") {
 		if declared[k] || !managedPrefix(k) {
@@ -339,6 +428,20 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 				continue // missing or not a symlink → omit
 			}
 			out[key] = secret.Hash(dst + " -> " + target)
+		case hasPrefix(key, "command."):
+			e, ok := st.Get("opencode", key)
+			if !ok {
+				continue
+			}
+			dst, ok := recordedDst(e.Desired)
+			if !ok {
+				continue
+			}
+			target, err := os.Readlink(dst)
+			if err != nil {
+				continue
+			}
+			out[key] = secret.Hash(dst + " -> " + target)
 		}
 		// absent from disk → omit
 	}
@@ -363,6 +466,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			// without touching disk; its value is "dst -> src", not JSON, so it is
 			// recorded exactly like a freshly linked skill (Hash of "dst -> src").
 			if hasPrefix(c.Key, "skill.") {
+				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
+				continue
+			}
+			if hasPrefix(c.Key, "command.") {
 				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
 				continue
 			}
@@ -403,6 +510,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 					dst = filepath.Join(a.skillsDir("user"), name)
 				}
 				err = link.Remove(dst, a.managedRoots()...)
+			case hasPrefix(c.Key, "command."):
+				name := trim(c.Key, "command.")
+				dst := ""
+				if e, ok := st.Get("opencode", c.Key); ok {
+					dst, _ = recordedDst(e.Desired)
+				}
+				if dst == "" {
+					dst = filepath.Join(a.commandsDir("user"), name+".md")
+				}
+				err = link.Remove(dst, a.managedRoots()...)
 			}
 			if err != nil {
 				return err
@@ -412,6 +529,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		}
 		// skill.* changes are symlink work, handled below — not JSON keys.
 		if hasPrefix(c.Key, "skill.") {
+			continue
+		}
+		if hasPrefix(c.Key, "command.") {
 			continue
 		}
 		val, err := res.ResolveJSON(c.New)
@@ -435,9 +555,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		}
 		st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 	}
-	// Fail fast on link conflicts before writing any file.
+	// Fail fast on link conflicts before writing any file. Both skill and
+	// command conflicts must be detected here, before any JSON write or state
+	// mutation below — otherwise a command conflict could let Apply partially
+	// write opencode.jsonc and commit skill-link state before erroring.
 	links := a.links()
 	if _, err := link.Plan(links, a.managedRoots()...); err != nil {
+		return err
+	}
+	cmdLinks := a.commandLinks()
+	if _, err := link.Plan(cmdLinks, a.managedRoots()...); err != nil {
 		return err
 	}
 	if docChanged {
@@ -468,6 +595,25 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		}
 		// Record the link in state so pruning sees de-declared skills later.
 		st.Set("opencode", "skill."+filepath.Base(dst), dst+" -> "+src, secret.Hash(dst+" -> "+src))
+	}
+	// Prune a command link left at its inactive scope after a scope switch.
+	for _, entry := range a.commands {
+		inactive := a.inactiveCommandsDir(entry.Resource.Scope)
+		if inactive == "" {
+			continue
+		}
+		old := filepath.Join(inactive, entry.Name+".md")
+		if link.IsManaged(old, a.managedRoots()...) {
+			if err := link.Remove(old, a.managedRoots()...); err != nil {
+				return err
+			}
+		}
+	}
+	for dst, src := range cmdLinks {
+		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {
+			return err
+		}
+		st.Set("opencode", "command."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
 	}
 	return nil
 }
