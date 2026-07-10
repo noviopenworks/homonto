@@ -391,6 +391,52 @@ func TestDoctorReportsLinkedCommand(t *testing.T) {
 	}
 }
 
+const subagentBothToolsTOML = `
+[subagents.code-reviewer]
+source = "builtin:code-reviewer"
+scope = "project"
+targets = ["claude", "opencode"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+[models.opencode.architectural]
+model = "anthropic/claude-opus-4-8"
+effort = "high"
+[models.opencode.coding]
+model = "anthropic/claude-sonnet-4"
+effort = "medium"
+[models.opencode.trivial]
+model = "openai/gpt-5-mini"
+variant = "cheap"
+`
+
+func TestDoctorReportsLinkedSubagent(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(subagentBothToolsTOML), 0o644)
+
+	e := buildEngine(t, home, repo)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	joined := strings.Join(e.Doctor(), "\n")
+	if !strings.Contains(joined, `ok: subagent "code-reviewer" linked (claude)`) {
+		t.Fatalf("doctor did not report code-reviewer linked for claude; got %s", joined)
+	}
+	if !strings.Contains(joined, `ok: subagent "code-reviewer" linked (opencode)`) {
+		t.Fatalf("doctor did not report code-reviewer linked for opencode; got %s", joined)
+	}
+}
+
 func TestStatusCleanAfterApply(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()

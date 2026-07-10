@@ -11,6 +11,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/skillpath"
+	"github.com/noviopenworks/homonto/internal/subagentpath"
 )
 
 // Status reports two independent facts about the managed surface:
@@ -122,6 +123,18 @@ func (e *Engine) Doctor() []string {
 	} else {
 		out = append(out, e.doctorCommands("opencode", opencodeCommands)...)
 	}
+	claudeSubagents, csaerr := e.Cfg.ExpandedSubagentEntriesForTool("claude")
+	if csaerr != nil {
+		out = append(out, fmt.Sprintf("warn: cannot expand claude subagents: %v", csaerr))
+	} else {
+		out = append(out, e.doctorSubagents("claude", claudeSubagents)...)
+	}
+	opencodeSubagents, osaerr := e.Cfg.ExpandedSubagentEntriesForTool("opencode")
+	if osaerr != nil {
+		out = append(out, fmt.Sprintf("warn: cannot expand opencode subagents: %v", osaerr))
+	} else {
+		out = append(out, e.doctorSubagents("opencode", opencodeSubagents)...)
+	}
 	return out
 }
 
@@ -182,6 +195,37 @@ func (e *Engine) doctorCommands(tool string, entries []config.NamedResource) []s
 			out = append(out, fmt.Sprintf("ok: command %q linked (%s)", name, tool))
 		} else {
 			out = append(out, fmt.Sprintf("warn: command %q content present, not linked for %s (run apply)", name, tool))
+		}
+	}
+	return out
+}
+
+// doctorSubagents reports, per subagent, whether its content file is present at
+// the right source (builtin: from the materialized subagent root, local: from
+// the content dir) and whether it is linked into the tool's agent directory.
+func (e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []string {
+	var out []string
+	for _, entry := range entries {
+		name := entry.Name
+		var p string
+		if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+			p = filepath.Join(e.SubagentDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:")+".md")
+		} else {
+			sourceName := name
+			if strings.HasPrefix(entry.Resource.Source, "local:") {
+				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
+			}
+			p = filepath.Join(e.ContentDir, "subagents", sourceName+".md")
+		}
+		if _, err := os.Stat(p); err != nil {
+			out = append(out, fmt.Sprintf("warn: subagent %q missing from %s (run apply)", name, p))
+			continue
+		}
+		dst := filepath.Join(subagentpath.Dir(tool, entry.Resource.Scope, e.Home, e.ProjectRoot), name+".md")
+		if target, err := os.Readlink(dst); err == nil && target == p {
+			out = append(out, fmt.Sprintf("ok: subagent %q linked (%s)", name, tool))
+		} else {
+			out = append(out, fmt.Sprintf("warn: subagent %q content present, not linked for %s (run apply)", name, tool))
 		}
 	}
 	return out
