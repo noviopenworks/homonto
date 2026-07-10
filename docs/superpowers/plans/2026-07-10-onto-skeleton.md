@@ -25,10 +25,10 @@ base-ref: 08834df8055bf35b1699a98942df4b44e9fbb980
 
 **Files:** modify `internal/ontostate/state.go`, `internal/ontostate/state_test.go`.
 
-- [ ] 1.1 (RED first) `Marshal(s State) ([]byte, error)` = `yaml.Marshal(s)`; `Save(path string, s State) error` = MkdirAll parent (0o755), write `path+".tmp"` variant via os.WriteFile (0o644), os.Rename to path, remove temp on error. Tests: `Parse(Marshal(s))` deep-equals `s`; `Save` then `Load` round-trips; Save into a non-existent subdir creates it.
-- [ ] 1.2 (RED first) `RequiredArtifacts(phase string) []string` (open → `["onto-state.yaml","proposal.md","tasks.md"]`; other phases same base set for now); `ValidateSkeleton(changeDir string) error` (Load `<dir>/onto-state.yaml`, DerivePhase, os.Stat each required, error names first missing). Tests: ok; missing tasks.md → error containing "tasks.md".
-- [ ] 1.3 GREEN; gofmt/vet clean for internal/ontostate.
-- [ ] 1.4 Commit: `feat(ontostate): onto-state.yaml writer + skeleton validation`
+- [x] 1.1 (RED first) `Marshal(s State) ([]byte, error)` = `yaml.Marshal(s)`; `Save(path string, s State) error` = MkdirAll parent (0o755), write `path+".tmp"` variant via os.WriteFile (0o644), os.Rename to path, remove temp on error. Tests: `Parse(Marshal(s))` deep-equals `s`; `Save` then `Load` round-trips; Save into a non-existent subdir creates it.
+- [x] 1.2 (RED first) `RequiredArtifacts(phase string) []string` (open → `["onto-state.yaml","proposal.md","tasks.md"]`; other phases same base set for now); `ValidateSkeleton(changeDir string) error` (Load `<dir>/onto-state.yaml`, DerivePhase, os.Stat each required, error names first missing). Tests: ok; missing tasks.md → error containing "tasks.md".
+- [x] 1.3 GREEN; gofmt/vet clean for internal/ontostate.
+- [x] 1.4 Commit: `feat(ontostate): onto-state.yaml writer + skeleton validation`
 
 ## Task 2: `onto new <change>` command (`internal/ontocli`)
 

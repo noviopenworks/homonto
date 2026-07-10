@@ -1,8 +1,8 @@
 ## 1. onto-state.yaml writer + skeleton validation (`internal/ontostate`)
 
-- [ ] 1.1 (TDD, RED first) Add `Marshal(State) ([]byte, error)` (yaml.Marshal) and `Save(path string, s State) error` (write `<path>.<rand>.tmp` via os.WriteFile then os.Rename; `os.MkdirAll` parent; no fsutil import). Test: `Parse(Marshal(s))` equals `s`; `Save` then `Load` round-trips; parent dir created
-- [ ] 1.2 (TDD, RED first) Add `RequiredArtifacts(phase string) []string` (open → onto-state.yaml, proposal.md, tasks.md) and `ValidateSkeleton(changeDir string) error` (Load onto-state.yaml, DerivePhase, check each required artifact exists, error names first missing file). Tests: ok case; missing-tasks.md error names the file
-- [ ] 1.3 Run → GREEN; gofmt/vet clean for internal/ontostate
+- [x] 1.1 (TDD, RED first) Add `Marshal(State) ([]byte, error)` (yaml.Marshal) and `Save(path string, s State) error` (write `<path>.<rand>.tmp` via os.WriteFile then os.Rename; `os.MkdirAll` parent; no fsutil import). Test: `Parse(Marshal(s))` equals `s`; `Save` then `Load` round-trips; parent dir created
+- [x] 1.2 (TDD, RED first) Add `RequiredArtifacts(phase string) []string` (open → onto-state.yaml, proposal.md, tasks.md) and `ValidateSkeleton(changeDir string) error` (Load onto-state.yaml, DerivePhase, check each required artifact exists, error names first missing file). Tests: ok case; missing-tasks.md error names the file
+- [x] 1.3 Run → GREEN; gofmt/vet clean for internal/ontostate
 
 ## 2. `onto new <change>` command (`internal/ontocli`)
 
