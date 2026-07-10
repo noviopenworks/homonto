@@ -148,17 +148,21 @@ homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
 - **`onto` is release-blocking, not shipped in current source yet.** The repo
   dogfoods the markdown skills today; the separate `onto` binary is planned for
   the first public tag.
-- **Framework skill and command projection are implemented; subagents are
-  not yet.** `[frameworks.X]` resolves through the bundled builtin catalog
-  (`onto`, `comet`, `superpowers`, `openspec`), expands dependencies, and
+- **Framework skill, command, and subagent projection are all implemented.**
+  `[frameworks.X]` resolves through the bundled builtin catalog (`onto`,
+  `comet`, `superpowers`, `openspec`), expands dependencies, and
   materializes/links skills into Claude Code and OpenCode. `[commands.X]`
   (builtin or local, single-file materialization to
   `.homonto/catalog/commands/`) and framework-declared `[commands]` tables
   project the same way, into Claude Code (`.claude/commands/<name>.md`) and
   OpenCode (`.opencode/command/<name>.md` project-scoped, or the equivalent
-  user-scope directories). The explicit `[subagents.X]` table is in the
-  config model, including model-route validation, but `apply` does not yet
-  install those resources.
+  user-scope directories). `[subagents.X]` (builtin or local, single-file
+  materialization to `.homonto/catalog/subagents/`) and framework-declared
+  `[subagents]` tables project verbatim the same way, into Claude Code
+  (`.claude/agents/<name>.md`) and OpenCode (`.opencode/agent/<name>.md`
+  project-scoped, or the equivalent user-scope directories), with `doctor`
+  verifying the links. Three real subagents ship in the catalog:
+  `code-reviewer`, `codebase-explorer`, and `comet-navigator`.
 - **OpenCode JSONC comments are not preserved.** Claude's files are plain JSON,
   but OpenCode's `opencode.jsonc` supports comments. Any apply that *writes*
   `opencode.jsonc` rewrites it as normalized JSON, so **all comments in that file
