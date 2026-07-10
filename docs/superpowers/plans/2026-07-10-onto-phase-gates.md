@@ -45,6 +45,6 @@ base-ref: 6a41f8a09e819d3977a12fa8dfcf7cdc31791c3d
 
 ## Task 3: regression and docs
 
-- [ ] 3.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` then `git diff --exit-code go.mod go.sum` (clean); E2E: in a prepared temp GIT workspace `onto new demo`, add `design.md`, commit, `onto advance demo` → `demo: open → design`, and `onto status` shows phase design.
-- [ ] 3.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3b (`onto advance` valid-gate transitions + dirty-worktree block on close) landed; remaining onto = dependency resolution + archive/close rules (#3c), `onto doctor` (#4), dual-binary packaging (#5). No over-claim.
-- [ ] 3.3 Commit all changes.
+- [x] 3.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` then `git diff --exit-code go.mod go.sum` (clean); E2E: in a prepared temp GIT workspace `onto new demo`, add `design.md`, commit, `onto advance demo` → `demo: open → design`, and `onto status` shows phase design.
+- [x] 3.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3b (`onto advance` valid-gate transitions + dirty-worktree block on close) landed; remaining onto = dependency resolution + archive/close rules (#3c), `onto doctor` (#4), dual-binary packaging (#5). No over-claim.
+- [x] 3.3 Commit all changes.

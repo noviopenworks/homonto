@@ -16,6 +16,6 @@
 
 ## 3. Regression and docs
 
-- [ ] 3.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; E2E in a prepared temp git workspace: `onto new demo`, add `design.md`, `onto advance demo` → reports `open → design` and `onto status` shows phase design.
-- [ ] 3.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3b (`onto advance` valid-gate transitions + dirty-worktree block) landed; remaining onto = dependency resolution + archive/close rules (#3c), `onto doctor` (#4), dual-binary packaging (#5). No over-claim.
-- [ ] 3.3 Commit all changes.
+- [x] 3.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; E2E in a prepared temp git workspace: `onto new demo`, add `design.md`, `onto advance demo` → reports `open → design` and `onto status` shows phase design.
+- [x] 3.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3b (`onto advance` valid-gate transitions + dirty-worktree block) landed; remaining onto = dependency resolution + archive/close rules (#3c), `onto doctor` (#4), dual-binary packaging (#5). No over-claim.
+- [x] 3.3 Commit all changes.
