@@ -369,3 +369,49 @@ func TestTasksAllChecked_MissingFile_ReturnsError(t *testing.T) {
 		t.Fatal("TasksAllChecked returned nil error for missing file, want error")
 	}
 }
+
+func TestDepsResolved_OneArchivedOneMissing_ReturnsMissingOnly(t *testing.T) {
+	root := t.TempDir()
+	archiveDir := filepath.Join(root, "docs", "changes", "archive", "2026-07-10-a")
+	if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+		t.Fatalf("failed to create fixture archive dir: %v", err)
+	}
+
+	got := DepsResolved(root, []string{"a", "b"})
+	want := []string{"b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("DepsResolved(root, [a,b]) = %v, want %v", got, want)
+	}
+}
+
+func TestDepsResolved_NilDeps_ReturnsEmptySlice(t *testing.T) {
+	root := t.TempDir()
+
+	got := DepsResolved(root, nil)
+	if len(got) != 0 {
+		t.Errorf("DepsResolved(root, nil) = %v, want empty slice", got)
+	}
+}
+
+func TestDepsResolved_EmptyDeps_ReturnsEmptySlice(t *testing.T) {
+	root := t.TempDir()
+
+	got := DepsResolved(root, []string{})
+	if len(got) != 0 {
+		t.Errorf("DepsResolved(root, []) = %v, want empty slice", got)
+	}
+}
+
+func TestDepsResolved_PrefixCollision_DoesNotResolveShorterDep(t *testing.T) {
+	root := t.TempDir()
+	archiveDir := filepath.Join(root, "docs", "changes", "archive", "2026-07-10-ab")
+	if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+		t.Fatalf("failed to create fixture archive dir: %v", err)
+	}
+
+	got := DepsResolved(root, []string{"a"})
+	want := []string{"a"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("DepsResolved(root, [a]) = %v, want %v (ab archive must not resolve dep a)", got, want)
+	}
+}

@@ -180,6 +180,24 @@ func TasksAllChecked(tasksPath string) (bool, error) {
 	return sawCheckbox, nil
 }
 
+// DepsResolved reports which of deps are not yet archived under root. A dep
+// is resolved iff filepath.Glob(filepath.Join(root,"docs","changes","archive","*-"+dep))
+// finds at least one match — i.e. the dep was archived under a date-prefixed
+// directory such as docs/changes/archive/2026-07-10-<dep>/. The returned
+// slice contains the unresolved subset of deps, in input order. A nil or
+// empty deps returns an empty (len 0) slice.
+func DepsResolved(root string, deps []string) []string {
+	unresolved := make([]string, 0, len(deps))
+	for _, dep := range deps {
+		pattern := filepath.Join(root, "docs", "changes", "archive", "*-"+dep)
+		matches, _ := filepath.Glob(pattern)
+		if len(matches) == 0 {
+			unresolved = append(unresolved, dep)
+		}
+	}
+	return unresolved
+}
+
 // ValidateSkeleton loads onto-state.yaml from changeDir, derives its phase,
 // and checks that every artifact RequiredArtifacts(phase) names is present
 // in changeDir. It returns an error naming the first missing artifact, or
