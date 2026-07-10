@@ -22,6 +22,6 @@
 
 ## 4. Regression and docs
 
-- [ ] 4.1 Full regression: `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `go build ./...`, `gofmt -l .`, `go mod tidy -diff` (or `go mod verify`)
-- [ ] 4.2 Update `docs/road-to-release.md` / `docs/roadmap.md` to note the onto binary foundation (binary + state model + `onto status`) has landed; onto init/gates/doctor/packaging remain (changes #2–#5)
-- [ ] 4.3 Commit all changes
+- [x] 4.1 Full regression: `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `go build ./...`, `gofmt -l .`, `go mod tidy -diff` (or `go mod verify`)
+- [x] 4.2 Update `docs/road-to-release.md` / `docs/roadmap.md` to note the onto binary foundation (binary + state model + `onto status`) has landed; onto init/gates/doctor/packaging remain (changes #2–#5)
+- [x] 4.3 Commit all changes

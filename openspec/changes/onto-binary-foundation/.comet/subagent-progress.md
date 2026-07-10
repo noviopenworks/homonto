@@ -7,7 +7,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 1: complete (9df1bb2 + fix 2457d34; risk-reviewed APPROVED, Important Load-names-path fix verified)
 - Task 2: complete (bd1445a, no risk; onto version works, homonto untouched)
 - Task 3: complete (8832e89 + fix aa0efc8; risk-reviewed APPROVED, dead archive-skip removed + branch coverage, read-only verified)
-- Task 4: regression + docs — STAGE: implementing
+- Task 4: complete (2899dfd; 255 tests green, race/vet/build/gofmt/tidy clean, both binaries build; docs honest, no over-claim)
+- FINAL REVIEW: pending (standard: 1 lightweight)
 
 ## Minor findings (for final review)
 - OF3 [Task3 status.go]: --dir unvalidated (no ../symlink checks). Accepted for a local read-only diagnostic; harden only if fed untrusted input.

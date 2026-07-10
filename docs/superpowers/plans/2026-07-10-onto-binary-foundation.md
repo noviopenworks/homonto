@@ -59,9 +59,9 @@ base-ref: 06e14209a5145216adaafbb3bb8aa516f4ccce96
 
 ## Task 4: Regression and docs
 
-- [ ] 4.1 Full regression: `go build ./...`, `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` then `git diff --exit-code go.mod go.sum` (clean)
-- [ ] 4.2 Update `docs/road-to-release.md` and `docs/roadmap.md`: note the onto binary FOUNDATION landed (second binary builds, `onto-state.yaml` model, read-only `onto status`); onto init/gates/doctor + dual-binary packaging remain (changes #2–#5). Do not over-claim (init/doctor/gates NOT done)
-- [ ] 4.3 Commit: `docs: record onto binary foundation landed`
+- [x] 4.1 Full regression: `go build ./...`, `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` then `git diff --exit-code go.mod go.sum` (clean)
+- [x] 4.2 Update `docs/road-to-release.md` and `docs/roadmap.md`: note the onto binary FOUNDATION landed (second binary builds, `onto-state.yaml` model, read-only `onto status`); onto init/gates/doctor + dual-binary packaging remain (changes #2–#5). Do not over-claim (init/doctor/gates NOT done)
+- [x] 4.3 Commit: `docs: record onto binary foundation landed`
 
 ## Self-Review
 
