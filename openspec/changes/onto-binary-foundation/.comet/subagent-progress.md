@@ -8,7 +8,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 2: complete (bd1445a, no risk; onto version works, homonto untouched)
 - Task 3: complete (8832e89 + fix aa0efc8; risk-reviewed APPROVED, dead archive-skip removed + branch coverage, read-only verified)
 - Task 4: complete (2899dfd; 255 tests green, race/vet/build/gofmt/tidy clean, both binaries build; docs honest, no over-claim)
-- FINAL REVIEW: pending (standard: 1 lightweight)
+- FINAL REVIEW: opus — READY TO MERGE, 0 Critical/Important. Isolation from homonto confirmed, yaml.v3 confined, status read-only+config-independent, YAML alias-safe, docs no over-claim. OF1/OF3/OF4/OF5 accepted follow-ups.
+- BUILD SDD LOOP COMPLETE.
 
 ## Minor findings (for final review)
 - OF3 [Task3 status.go]: --dir unvalidated (no ../symlink checks). Accepted for a local read-only diagnostic; harden only if fed untrusted input.
