@@ -12,7 +12,7 @@ Homonto SHALL load the bundled catalog from the embedded Go filesystem at startu
 
 ### Requirement: Skill content materialization
 
-Homonto SHALL materialize builtin skill content from the embedded catalog to `.homonto/catalog/skills/<name>/` before creating symlinks. Materialization SHALL be version-aware: the catalog version is tracked in state, and re-materialization occurs only when the version changes or the directory is missing.
+Homonto SHALL materialize builtin skill content from the embedded catalog to `.homonto/catalog/skills/<name>/` before creating symlinks. Materialization SHALL be version-aware: the catalog version is tracked in state, and re-materialization occurs only when the version changes or the directory is missing. The catalog version SHALL be recorded in state only after materialization completes, so an interrupted or partial extraction is never mistaken for an up-to-date cache.
 
 #### Scenario: First materialization
 
@@ -25,3 +25,9 @@ Homonto SHALL materialize builtin skill content from the embedded catalog to `.h
 - **GIVEN** `.homonto/catalog/` exists with state recording catalog version `0.1.0`
 - **WHEN** apply runs with the same binary (same version)
 - **THEN** materialization is skipped and existing directories are reused
+
+#### Scenario: Partial materialization is not recorded as current
+
+- **GIVEN** a prior apply whose materialization was interrupted before the catalog version was recorded in state
+- **WHEN** the next apply runs
+- **THEN** the catalog is re-materialized (state's recorded version does not match the embedded version) rather than trusting the incomplete cache

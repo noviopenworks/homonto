@@ -12,13 +12,19 @@ Each framework in the catalog SHALL have a `framework.toml` metadata file declar
 
 ### Requirement: Framework expansion from builtin source
 
-When config declares `[frameworks.<name>] source = "builtin:<framework-name>"`, Homonto SHALL expand the framework into its constituent skill resources, each with an effective `source = "builtin:<skill-name>"`. Expansion SHALL include transitive dependencies: all dependency frameworks SHALL also be expanded, and their skills added to the effective resource set.
+When config declares `[frameworks.<name>] source = "builtin:<framework-name>"`, Homonto SHALL expand the framework into its constituent skill resources, each with an effective `source = "builtin:<skill-name>"`. Expansion SHALL include transitive dependencies: all dependency frameworks SHALL also be expanded, and their skills added to the effective resource set. Each expanded skill SHALL inherit the `[frameworks.<name>]` declaration's `scope` and `targets`, so a framework governs where its skills link and which tools receive them.
 
 #### Scenario: Framework expands to its skills
 
 - **GIVEN** `[frameworks.comet] source = "builtin:comet"` where comet declares 8 skills
 - **WHEN** the config is loaded
 - **THEN** the effective skill set includes all 8 comet skills as builtin-source resources
+
+#### Scenario: Expanded skills inherit framework scope and targets
+
+- **GIVEN** `[frameworks.comet] source = "builtin:comet" scope = "user" targets = ["claude"]`
+- **WHEN** the config is loaded and the framework is expanded
+- **THEN** every expanded comet skill (and its transitive-dependency skills) carries `scope = "user"` and `targets = ["claude"]`
 
 #### Scenario: Transitive dependency expansion
 

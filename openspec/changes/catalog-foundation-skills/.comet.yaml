@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: design
+phase: build
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 5eeff35d4867c8a074316b5a45eadef3d69721d0
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-10-catalog-foundation-skills-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -21,7 +21,7 @@ verified_at: null
 archived: false
 direct_override: null
 handoff_context: openspec/changes/catalog-foundation-skills/.comet/handoff/design-context.json
-handoff_hash: 20bd9ce24d63cda40e74c8dbc898af26f300d50f19c3c7f70758163db16729a0
+handoff_hash: ddb83e0048cb167a83bb129ada34db05b1032cd4b4ba08706cec05ffcc461fd9
 classic_profile: full
 classic_migration: 1
 run_id: c097c7dc-c635-4c67-bc69-8394e9e6e649

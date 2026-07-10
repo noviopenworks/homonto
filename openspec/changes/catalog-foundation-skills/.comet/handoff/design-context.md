@@ -3,7 +3,7 @@
 - Change: catalog-foundation-skills
 - Phase: design
 - Mode: compact
-- Context hash: 20bd9ce24d63cda40e74c8dbc898af26f300d50f19c3c7f70758163db16729a0
+- Context hash: ddb83e0048cb167a83bb129ada34db05b1032cd4b4ba08706cec05ffcc461fd9
 
 Generated-by: comet-handoff.sh
 
@@ -210,8 +210,8 @@ Full source: openspec/changes/catalog-foundation-skills/design.md
 ## openspec/changes/catalog-foundation-skills/specs/builtin-catalog/spec.md
 
 - Source: openspec/changes/catalog-foundation-skills/specs/builtin-catalog/spec.md
-- Lines: 1-27
-- SHA256: fe7d9be40fb6808c11ab656b296b70162ff5b4951216df928b4362e5fd41f62f
+- Lines: 1-33
+- SHA256: fc93b0f9bbeffe36f8439c3f725478b493c1098f11aca493cc313d99e61f7961
 
 ```md
 ## ADDED Requirements
@@ -228,7 +228,7 @@ Homonto SHALL load the bundled catalog from the embedded Go filesystem at startu
 
 ### Requirement: Skill content materialization
 
-Homonto SHALL materialize builtin skill content from the embedded catalog to `.homonto/catalog/skills/<name>/` before creating symlinks. Materialization SHALL be version-aware: the catalog version is tracked in state, and re-materialization occurs only when the version changes or the directory is missing.
+Homonto SHALL materialize builtin skill content from the embedded catalog to `.homonto/catalog/skills/<name>/` before creating symlinks. Materialization SHALL be version-aware: the catalog version is tracked in state, and re-materialization occurs only when the version changes or the directory is missing. The catalog version SHALL be recorded in state only after materialization completes, so an interrupted or partial extraction is never mistaken for an up-to-date cache.
 
 #### Scenario: First materialization
 
@@ -241,6 +241,12 @@ Homonto SHALL materialize builtin skill content from the embedded catalog to `.h
 - **GIVEN** `.homonto/catalog/` exists with state recording catalog version `0.1.0`
 - **WHEN** apply runs with the same binary (same version)
 - **THEN** materialization is skipped and existing directories are reused
+
+#### Scenario: Partial materialization is not recorded as current
+
+- **GIVEN** a prior apply whose materialization was interrupted before the catalog version was recorded in state
+- **WHEN** the next apply runs
+- **THEN** the catalog is re-materialized (state's recorded version does not match the embedded version) rather than trusting the incomplete cache
 
 ```
 
@@ -322,8 +328,8 @@ Local provider content SHALL live under `homonto/` relative to the directory con
 ## openspec/changes/catalog-foundation-skills/specs/framework-expansion/spec.md
 
 - Source: openspec/changes/catalog-foundation-skills/specs/framework-expansion/spec.md
-- Lines: 1-57
-- SHA256: a119373f266d3208b9b6233e359620709208dd8dcc50d61b0806ea184cd06d69
+- Lines: 1-63
+- SHA256: 3ab521d3e0336be65c0d19acab90239f6f9c86731293e2c03e8b9e18ab122535
 
 ```md
 ## ADDED Requirements
@@ -340,13 +346,19 @@ Each framework in the catalog SHALL have a `framework.toml` metadata file declar
 
 ### Requirement: Framework expansion from builtin source
 
-When config declares `[frameworks.<name>] source = "builtin:<framework-name>"`, Homonto SHALL expand the framework into its constituent skill resources, each with an effective `source = "builtin:<skill-name>"`. Expansion SHALL include transitive dependencies: all dependency frameworks SHALL also be expanded, and their skills added to the effective resource set.
+When config declares `[frameworks.<name>] source = "builtin:<framework-name>"`, Homonto SHALL expand the framework into its constituent skill resources, each with an effective `source = "builtin:<skill-name>"`. Expansion SHALL include transitive dependencies: all dependency frameworks SHALL also be expanded, and their skills added to the effective resource set. Each expanded skill SHALL inherit the `[frameworks.<name>]` declaration's `scope` and `targets`, so a framework governs where its skills link and which tools receive them.
 
 #### Scenario: Framework expands to its skills
 
 - **GIVEN** `[frameworks.comet] source = "builtin:comet"` where comet declares 8 skills
 - **WHEN** the config is loaded
 - **THEN** the effective skill set includes all 8 comet skills as builtin-source resources
+
+#### Scenario: Expanded skills inherit framework scope and targets
+
+- **GIVEN** `[frameworks.comet] source = "builtin:comet" scope = "user" targets = ["claude"]`
+- **WHEN** the config is loaded and the framework is expanded
+- **THEN** every expanded comet skill (and its transitive-dependency skills) carries `scope = "user"` and `targets = ["claude"]`
 
 #### Scenario: Transitive dependency expansion
 
