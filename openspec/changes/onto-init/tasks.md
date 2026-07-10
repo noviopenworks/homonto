@@ -1,7 +1,7 @@
 ## 1. Framework-install gate
 
-- [ ] 1.1 Add a gate helper in `internal/ontocli/init.go` (or a small sibling): given a workspace root, return a typed result / error for: (a) `homonto.toml` missing, (b) present but no `[frameworks.onto]` table, (c) `[frameworks.onto]` present but `.homonto/catalog/skills/onto/` missing, (d) OK. Read homonto.toml with `go-toml/v2` (a minimal struct with `Frameworks map[string]any` — presence of key `onto` is enough); do NOT call `internal/config.Load` and do NOT construct the engine
-- [ ] 1.2 Unit tests (TDD, RED first) for all four gate outcomes over temp workspaces, asserting the guidance message content and that NO `docs/` files are created in the three failing cases
+- [x] 1.1 Add a gate helper in `internal/ontocli/init.go` (or a small sibling): given a workspace root, return a typed result / error for: (a) `homonto.toml` missing, (b) present but no `[frameworks.onto]` table, (c) `[frameworks.onto]` present but `.homonto/catalog/skills/onto/` missing, (d) OK. Read homonto.toml with `go-toml/v2` (a minimal struct with `Frameworks map[string]any` — presence of key `onto` is enough); do NOT call `internal/config.Load` and do NOT construct the engine
+- [x] 1.2 Unit tests (TDD, RED first) for all four gate outcomes over temp workspaces, asserting the guidance message content and that NO `docs/` files are created in the three failing cases
 
 ## 2. `onto init` command + scaffold
 
