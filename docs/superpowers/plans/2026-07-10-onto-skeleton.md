@@ -2,6 +2,7 @@
 change: onto-skeleton
 design-doc: docs/superpowers/specs/2026-07-10-onto-skeleton-design.md
 base-ref: 08834df8055bf35b1699a98942df4b44e9fbb980
+archived-with: 2026-07-10-onto-skeleton
 ---
 
 # Onto Skeleton Implementation Plan

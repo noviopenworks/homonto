@@ -2,6 +2,8 @@
 comet_change: onto-skeleton
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-onto-skeleton
+status: final
 ---
 
 # Onto Skeleton — Technical Design
