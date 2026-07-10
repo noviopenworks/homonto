@@ -102,3 +102,91 @@ func TestBuiltinSkillConflictNotClobbered(t *testing.T) {
 		t.Fatal("conflict clobbered the user file")
 	}
 }
+
+func builtinCmdCfg() *config.Config {
+	return &config.Config{
+		Commands: map[string]config.Resource{
+			"example-command": {Source: "builtin:example-command", Scope: "user", Targets: []string{"claude"}},
+		},
+	}
+}
+
+func TestBuiltinCommandLinksToCommandCatalogRoot(t *testing.T) {
+	home := t.TempDir()
+	cmdRoot := t.TempDir()
+	// Simulate materialization: the command file exists under the command root.
+	os.WriteFile(filepath.Join(cmdRoot, "example-command.md"), []byte("body"), 0o644)
+
+	a := New(home, t.TempDir()).WithCommandCatalogRoot(cmdRoot)
+	st, _ := state.Load(t.TempDir())
+	cs, err := a.Plan(builtinCmdCfg(), st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	dst := filepath.Join(home, ".claude", "commands", "example-command.md")
+	target, err := os.Readlink(dst)
+	if err != nil {
+		t.Fatalf("command link missing: %v", err)
+	}
+	if want := filepath.Join(cmdRoot, "example-command.md"); target != want {
+		t.Fatalf("link target = %q, want %q", target, want)
+	}
+	if _, ok := st.Get("claude", "command.example-command"); !ok {
+		t.Fatal("command.example-command not recorded in state")
+	}
+	// Re-plan is a noop for the link.
+	cs2, _ := a.Plan(builtinCmdCfg(), st)
+	for _, c := range cs2.Changes {
+		if c.Key == "command.example-command" && c.Action != "noop" {
+			t.Fatalf("re-plan not idempotent: %+v", c)
+		}
+	}
+}
+
+func TestBuiltinCommandPrunedWhenDeDeclared(t *testing.T) {
+	home := t.TempDir()
+	cmdRoot := t.TempDir()
+	os.WriteFile(filepath.Join(cmdRoot, "example-command.md"), []byte("body"), 0o644)
+	a := New(home, t.TempDir()).WithCommandCatalogRoot(cmdRoot)
+	st, _ := state.Load(t.TempDir())
+
+	cs, _ := a.Plan(builtinCmdCfg(), st)
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	dst := filepath.Join(home, ".claude", "commands", "example-command.md")
+
+	cs2, err := a.Plan(&config.Config{}, st)
+	if err != nil {
+		t.Fatalf("plan empty: %v", err)
+	}
+	if err := a.Apply(cs2, resolver(), st); err != nil {
+		t.Fatalf("apply empty: %v", err)
+	}
+	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
+		t.Fatal("de-declared builtin command link not pruned")
+	}
+}
+
+func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
+	home := t.TempDir()
+	cmdRoot := t.TempDir()
+	os.WriteFile(filepath.Join(cmdRoot, "example-command.md"), []byte("body"), 0o644)
+	a := New(home, t.TempDir()).WithCommandCatalogRoot(cmdRoot)
+	st, _ := state.Load(t.TempDir())
+
+	dst := filepath.Join(home, ".claude", "commands", "example-command.md")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	os.WriteFile(dst, []byte("user file"), 0o644)
+
+	if _, err := a.Plan(builtinCmdCfg(), st); err == nil {
+		t.Fatal("expected conflict for real file at builtin command link dst")
+	}
+	if b, _ := os.ReadFile(dst); string(b) != "user file" {
+		t.Fatal("conflict clobbered the user file")
+	}
+}
