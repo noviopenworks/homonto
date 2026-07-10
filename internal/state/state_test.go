@@ -55,6 +55,35 @@ func TestKeysSortedAndDelete(t *testing.T) {
 	}
 }
 
+func TestCatalogVersionRoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := Load(dir)
+	if s.CatalogVersionRecorded() != "" {
+		t.Fatal("fresh state should record no catalog version")
+	}
+	s.SetCatalogVersion("0.1.0")
+	if err := s.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := Load(dir)
+	if got.CatalogVersionRecorded() != "0.1.0" {
+		t.Fatalf("reloaded catalog version = %q", got.CatalogVersionRecorded())
+	}
+}
+
+func TestCatalogVersionOmittedWhenEmpty(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := Load(dir)
+	s.Set("claude", "mcp.a", "x", "h") // some content so the file is written
+	if err := s.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(filepath.Join(dir, "state.json"))
+	if strings.Contains(string(raw), "catalogVersion") {
+		t.Fatalf("empty catalog version must be omitted, got %s", raw)
+	}
+}
+
 func TestSaveIsAtomicJSON(t *testing.T) {
 	dir := t.TempDir()
 	s, _ := Load(dir)

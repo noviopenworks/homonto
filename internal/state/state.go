@@ -20,9 +20,19 @@ type Entry struct {
 }
 
 // State is the last-applied snapshot, keyed tool -> managed key -> Entry.
+// CatalogVersion is the embedded-catalog version last successfully materialized;
+// it is global (not per-tool) and omitted when empty so pre-catalog state.json
+// files stay backward-compatible (absent = "force materialize").
 type State struct {
-	Managed map[string]map[string]Entry `json:"managed"`
+	Managed        map[string]map[string]Entry `json:"managed"`
+	CatalogVersion string                      `json:"catalogVersion,omitempty"`
 }
+
+// CatalogVersionRecorded returns the catalog version last materialized, or "".
+func (s *State) CatalogVersionRecorded() string { return s.CatalogVersion }
+
+// SetCatalogVersion records the catalog version after a successful materialize.
+func (s *State) SetCatalogVersion(v string) { s.CatalogVersion = v }
 
 func newState() *State { return &State{Managed: map[string]map[string]Entry{}} }
 
