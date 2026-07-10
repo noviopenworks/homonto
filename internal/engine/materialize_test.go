@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/secret"
 )
 
@@ -42,6 +43,23 @@ model = "haiku"
 effort = "f"
 `
 
+const subagentTOML = `
+[subagents.code-reviewer]
+source = "builtin:code-reviewer"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`
+
 func buildEngine(t *testing.T, home, repo string) *Engine {
 	t.Helper()
 	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
@@ -50,6 +68,25 @@ func buildEngine(t *testing.T, home, repo string) *Engine {
 	}
 	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
 	return e
+}
+
+func buildEngineWithSubagent(t *testing.T) *Engine {
+	t.Helper()
+	home := t.TempDir()
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(subagentTOML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return buildEngine(t, home, repo)
+}
+
+func mustPlan(t *testing.T, e *Engine) []adapter.ChangeSet {
+	t.Helper()
+	sets, err := e.Plan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sets
 }
 
 func TestApplyMaterializesBuiltinSkills(t *testing.T) {
@@ -209,5 +246,33 @@ func TestApplyRematerializesWhenCommandFileMissing(t *testing.T) {
 	}
 	if _, err := os.Stat(cmdFile); err != nil {
 		t.Fatalf("command not restored after missing file triggered re-materialization: %v", err)
+	}
+}
+
+func TestApplyMaterializesBuiltinSubagent(t *testing.T) {
+	e := buildEngineWithSubagent(t)
+	if err := e.Apply(mustPlan(t, e)); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	p := filepath.Join(e.SubagentDir(), "code-reviewer.md")
+	if _, err := os.Stat(p); err != nil {
+		t.Fatalf("subagent not materialized: %v", err)
+	}
+}
+
+func TestApplyRematerializesWhenSubagentFileMissing(t *testing.T) {
+	e := buildEngineWithSubagent(t)
+	if err := e.Apply(mustPlan(t, e)); err != nil {
+		t.Fatalf("first apply: %v", err)
+	}
+	p := filepath.Join(e.SubagentDir(), "code-reviewer.md")
+	if err := os.Remove(p); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if err := e.Apply(mustPlan(t, e)); err != nil {
+		t.Fatalf("second apply: %v", err)
+	}
+	if _, err := os.Stat(p); err != nil {
+		t.Fatalf("subagent not re-materialized when file missing: %v", err)
 	}
 }
