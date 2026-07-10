@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: design
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: ab006a1ec6fd54ab8854508e8f5163b6269c0bdb
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-10-onto-init-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-10
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/onto-init/.comet/handoff/design-context.json
+handoff_hash: 9311bd7928ae6599755dcfeb1db416a17fc75a6f43b30d728f81231bf4b5a4f9
+classic_profile: full
+classic_migration: 1
+run_id: 53d1c21c-2af6-41d9-97ce-ec25377fffd5

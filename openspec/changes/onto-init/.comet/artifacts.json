@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/onto-init/proposal.md",
+  "openspec_design": "openspec/changes/onto-init/design.md",
+  "openspec_tasks": "openspec/changes/onto-init/tasks.md",
+  "openspec_delta_spec": "openspec/changes/onto-init/specs/onto-binary/spec.md",
+  "handoff_context": "openspec/changes/onto-init/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/onto-init/.comet/handoff/design-context.md"
+}
