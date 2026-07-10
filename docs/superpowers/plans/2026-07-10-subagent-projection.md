@@ -1567,7 +1567,7 @@ git commit -m "feat(doctor): verify subagent links and materialized files for bo
 
 **Interfaces:** Consumes the fully built pipeline; produces on-disk links + state validating the whole change end to end.
 
-- [ ] **Step 1: Declare the two loose subagents in `homonto.toml`**
+- [x] **Step 1: Declare the two loose subagents in `homonto.toml`**
 
 Add after the `[commands.example-command]` block (keep the existing `[frameworks.comet]` block — it supplies the `comet-navigator` framework subagent):
 ```toml
@@ -1580,7 +1580,7 @@ source = "builtin:codebase-explorer"
 scope = "project"
 ```
 
-- [ ] **Step 2: Build and apply**
+- [x] **Step 2: Build and apply**
 
 Run:
 ```bash
@@ -1593,7 +1593,7 @@ Expected: apply succeeds; it materializes `code-reviewer`, `codebase-explorer`, 
 - `.claude/agents/code-reviewer.md`, `.claude/agents/codebase-explorer.md`, `.claude/agents/comet-navigator.md`
 - `.opencode/agent/code-reviewer.md`, `.opencode/agent/codebase-explorer.md`, `.opencode/agent/comet-navigator.md`
 
-- [ ] **Step 3: Verify no drift and doctor OK**
+- [x] **Step 3: Verify no drift and doctor OK**
 
 Run: `go run . status` — expected: **No drift** (a second status shows every subagent as a noop). Then `go run . doctor` — expected: `ok: subagent "code-reviewer" linked (claude)` / `(opencode)` and the same for `codebase-explorer` and `comet-navigator`.
 
@@ -1603,7 +1603,7 @@ diff .homonto/catalog/subagents/code-reviewer.md catalog/subagents/code-reviewer
 ```
 Expected: no diff, `verbatim OK`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add homonto.toml

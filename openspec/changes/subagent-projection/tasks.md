@@ -50,9 +50,9 @@
 
 ## 8. Dogfood
 
-- [ ] 8.1 Declare `code-reviewer` and `codebase-explorer` in `homonto.toml` (builtin, scope project); keep `[frameworks.comet]` for the framework subagent
-- [ ] 8.2 Run `homonto apply --yes`; verify materialize + link of all three subagents into targeted tools
-- [ ] 8.3 Run `homonto status` (No drift) and `homonto doctor` (subagent links ok for both tools)
+- [x] 8.1 Declare `code-reviewer` and `codebase-explorer` in `homonto.toml` (builtin, scope project); keep `[frameworks.comet]` for the framework subagent
+- [x] 8.2 Run `homonto apply --yes`; verify materialize + link of all three subagents into targeted tools
+- [x] 8.3 Run `homonto status` (No drift) and `homonto doctor` (subagent links ok for both tools)
 
 ## 9. Regression and docs
 

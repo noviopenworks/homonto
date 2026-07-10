@@ -12,8 +12,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 5: complete (bd7bce5, no risk; version gate covers subagents; TODO engine.go:70 for Task 6 to chain WithSubagentCatalogRoot)
 - Task 6: complete (404354f, risk-reviewed APPROVED by opus; all safety props verified in code)
 - Task 7: complete (94066c6, no risk; full repo suite green)
-- Task 8: dogfood — STAGE: implementing
-- Task 9: regression + docs — pending
+- Task 8: complete (94c94e6; 3 subagents both tools, No drift, doctor ok, idempotent — independently verified)
+- Task 9: regression + docs — STAGE: implementing
 
 ## Minor findings (for final review)
 - SP4 [Task6 builtin_test.go]: subagent conflict test discards Plan's conflict error (relies only on Apply pre-check); weaker than command sibling. Coverage gap, code safe.
