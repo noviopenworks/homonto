@@ -25,6 +25,23 @@ model = "haiku"
 effort = "f"
 `
 
+const commandTOML = `
+[commands.example-command]
+source = "builtin:example-command"
+scope = "user"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`
+
 func buildEngine(t *testing.T, home, repo string) *Engine {
 	t.Helper()
 	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
@@ -147,5 +164,50 @@ func TestApplySkipsRematerializeWhenVersionMatchesAndDirsIntact(t *testing.T) {
 	}
 	if _, err := os.Stat(sentinel); err != nil {
 		t.Fatalf("sentinel removed: re-apply re-materialized despite matching version and intact dirs: %v", err)
+	}
+}
+
+func TestApplyMaterializesBuiltinCommand(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(commandTOML), 0o644)
+
+	e := buildEngine(t, home, repo)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	got := filepath.Join(repo, ".homonto", "catalog", "commands", "example-command.md")
+	if _, err := os.Stat(got); err != nil {
+		t.Fatalf("example-command not materialized: %v", err)
+	}
+	if e.State.CatalogVersionRecorded() == "" {
+		t.Fatal("catalog version not recorded after command materialization")
+	}
+}
+
+func TestApplyRematerializesWhenCommandFileMissing(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(commandTOML), 0o644)
+
+	e := buildEngine(t, home, repo)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	cmdFile := filepath.Join(e.CommandDir(), "example-command.md")
+	if err := os.Remove(cmdFile); err != nil {
+		t.Fatal(err)
+	}
+
+	e2 := buildEngine(t, home, repo)
+	sets2, _ := e2.Plan()
+	if err := e2.Apply(sets2); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+	if _, err := os.Stat(cmdFile); err != nil {
+		t.Fatalf("command not restored after missing file triggered re-materialization: %v", err)
 	}
 }

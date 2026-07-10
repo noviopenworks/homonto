@@ -18,11 +18,12 @@ import (
 
 // Adapter projects desired config into OpenCode's opencode.jsonc under home.
 type Adapter struct {
-	home        string
-	content     string
-	catalogRoot string // materialized builtin catalog root (.homonto/catalog/skills)
-	projectRoot string // directory of homonto.toml; used for project-scope resources
-	skills      []config.NamedResource
+	home               string
+	content            string
+	catalogRoot        string // materialized builtin catalog root (.homonto/catalog/skills)
+	commandCatalogRoot string // materialized builtin command root (.homonto/catalog/commands)
+	projectRoot        string // directory of homonto.toml; used for project-scope resources
+	skills             []config.NamedResource
 }
 
 // New builds an OpenCode adapter at user scope. home is $HOME; content holds
@@ -41,6 +42,14 @@ func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 // skills link from. Mirrors WithProjectRoot.
 func (a *Adapter) WithCatalogRoot(catalogRoot string) *Adapter {
 	a.catalogRoot = catalogRoot
+	return a
+}
+
+// WithCommandCatalogRoot sets the materialized builtin-command root that
+// builtin:<name> commands link from. Mirrors WithCatalogRoot; command link
+// logic lands in a later task, so this field is unused for now.
+func (a *Adapter) WithCommandCatalogRoot(commandCatalogRoot string) *Adapter {
+	a.commandCatalogRoot = commandCatalogRoot
 	return a
 }
 
