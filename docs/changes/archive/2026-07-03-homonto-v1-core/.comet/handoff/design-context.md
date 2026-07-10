@@ -538,4 +538,3 @@ the adapter SHALL report a conflict and SHALL NOT clobber it.
 - **WHEN** the link target exists as a real file or points elsewhere
 - **THEN** apply reports a conflict and leaves the existing file untouched
 ```
-

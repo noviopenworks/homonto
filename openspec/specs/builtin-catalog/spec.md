@@ -34,4 +34,3 @@ Homonto SHALL materialize builtin skill content from the embedded catalog to `.h
 - **GIVEN** a prior apply whose materialization was interrupted before the catalog version was recorded in state
 - **WHEN** the next apply runs
 - **THEN** the catalog is re-materialized (state's recorded version does not match the embedded version) rather than trusting the incomplete cache
-

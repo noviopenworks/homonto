@@ -272,4 +272,3 @@ remains prunable and drift-detectable afterward.
 - **WHEN** the user runs apply
 - **THEN** the link is left unchanged on disk, state regains the `skill.<name>` record, and a
   subsequent removal of that skill from config prunes the link
-

@@ -70,4 +70,3 @@ The catalog SHALL contain the four first-release frameworks: `onto`, `comet`, `s
 - **GIVEN** the bundled catalog
 - **WHEN** the comet framework metadata is loaded
 - **THEN** its dependencies list is `["superpowers", "openspec"]`
-

@@ -330,4 +330,3 @@ confirmation before archive (close). An explicit user directive to run
 ```
 
 Full source: openspec/changes/add-onto-workflow/specs/onto-workflow/spec.md
-

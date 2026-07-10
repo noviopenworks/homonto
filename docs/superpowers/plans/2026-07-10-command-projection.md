@@ -2163,4 +2163,3 @@ archived-with: 2026-07-10-command-projection
 **2. Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.
 
 **Which approach?**
-

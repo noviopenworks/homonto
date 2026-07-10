@@ -180,4 +180,3 @@ status/doctor → drift = link changed OR materialized file missing
 
 ## 11. Spec Patches
 None.
-

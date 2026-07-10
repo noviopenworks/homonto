@@ -1,6 +1,7 @@
 /.homonto/
 .env
 graphify-out/
+__pycache__/
 # Project-scoped dogfood skill links (machine-specific absolute symlinks).
 /.claude/
 /.opencode/

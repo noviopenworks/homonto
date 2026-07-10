@@ -110,4 +110,3 @@ a later change.
 - **GIVEN** the bundled catalog containing the placeholder command
 - **WHEN** it is declared and applied
 - **THEN** it materializes and links into both tools with no drift
-

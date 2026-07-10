@@ -322,4 +322,3 @@ status/doctor: drift = link target changed OR materialized dir missing
 
 Both are supplementary acceptance scenarios / boundary conditions; no scope
 change.
-

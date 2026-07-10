@@ -187,4 +187,3 @@ The `.homonto/catalog/` directory SHALL be treated as generated cache. It SHALL 
 - **GIVEN** a repo initialized with `homonto init`
 - **WHEN** builtin skills are materialized to `.homonto/catalog/`
 - **THEN** `git status` reports no untracked files under `.homonto/catalog/`
-
