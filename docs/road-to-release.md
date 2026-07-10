@@ -27,6 +27,18 @@ maintainer-owned `v0.1.0-rc.1` tag and smoke. The Iteration 0–4 history below
 records the work that closed the original beta gate; it is retained as history,
 not as the current release verdict.
 
+**Onto binary foundation landed (2026-07-10, `onto-binary-foundation`
+change, not yet merged to `main`):** a second `package main` at `cmd/onto`
+now builds an `onto` binary alongside `homonto`; `internal/ontostate` models
+`onto-state.yaml` (parse, validate, derive phase; phase set
+`open|design|build|verify|close`); and `onto status` is a read-only,
+config-independent command that globs `docs/changes/*/onto-state.yaml` and
+prints each active change's derived phase, without reading `homonto.toml` or
+writing any file. This is a foundation only — `onto init`, phase-gate
+enforcement, `onto doctor`, and dual-binary release packaging (cross-compiling
+and publishing both binaries under one `SHA256SUMS`) are not implemented yet,
+so the dual-binary release gate above is **not** met by this work alone.
+
 ## Iteration 0 - Safety Blockers
 
 Goal: make the tool safe enough to recommend to users who have real Claude and

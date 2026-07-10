@@ -29,21 +29,28 @@ TUI-related settings, and full lifecycle management for agents.
 One item stands between the current `main` and the reopened dual-binary
 release gate, scoped in
 [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md);
-it is not optional for `v0.1.0-rc.1`.
+it is not optional for `v0.1.0-rc.1`. Its foundation has landed on the
+`onto-binary-foundation` change (not yet merged to `main`); the rest is
+still open, as detailed below.
 
-1. **`onto` binary (release-blocking).** Source builds only the `homonto`
-   binary today (`main.go` at the repo root); there is no second `package main`.
-   `onto` must ship beside it as the managed spec-driven workflow operator.
-   `onto init` scaffolds the `docs/` layout, but only after `[frameworks.onto]`
-   is declared and applied through Homonto; if the framework install is missing
-   it directs the user to initialize/apply Homonto first. `onto status` is the
-   read-only degraded exception that may inspect `docs/` without config. The
-   binary creates and validates skeletons and enforces structural invariants:
-   required files exist, `onto-state.yaml` is consistent, phase transitions
-   happen only through valid gates, dependencies resolve, and archive/close
-   rules hold. `onto doctor` checks workflow health as a peer to `homonto
-   doctor`'s installation/projection health. Release packaging must
-   cross-compile and publish **both** binaries with a shared `SHA256SUMS`.
+1. **`onto` binary (release-blocking) — foundation landed, work
+   remains.** The binary foundation has landed: a second `package main` at
+   `cmd/onto` builds an `onto` binary alongside `homonto`; `internal/ontostate`
+   models `onto-state.yaml` (parse, validate, derive phase; phase set
+   `open|design|build|verify|close`); and `onto status` is the read-only,
+   config-independent command — it globs `docs/changes/*/onto-state.yaml` and
+   prints each active change's derived phase, never reading `homonto.toml` and
+   never writing a file. What remains: `onto init` must scaffold the `docs/`
+   layout, but only after `[frameworks.onto]` is declared and applied through
+   Homonto; if the framework install is missing it directs the user to
+   initialize/apply Homonto first. The binary must also create and validate
+   skeletons and enforce structural invariants: required files exist,
+   `onto-state.yaml` is consistent, phase transitions happen only through
+   valid gates, dependencies resolve, and archive/close rules hold. `onto
+   doctor` must check workflow health as a peer to `homonto doctor`'s
+   installation/projection health. Release packaging must still cross-compile
+   and publish **both** binaries with a shared `SHA256SUMS` — packaging work
+   has not started.
 
 Skills, command, and subagent projection have all landed on `main` (see v1.1
 below); the `onto` binary plus dual-binary packaging are what remain before
