@@ -14,6 +14,8 @@ version = "0.1.0"
 description = "sp"
 [skills]
 brainstorming = "skills/brainstorming"
+[commands]
+demo-cmd = "commands/demo-cmd.md"
 `)},
 		"frameworks/comet/framework.toml": {Data: []byte(`name = "comet"
 version = "0.1.0"
@@ -25,6 +27,7 @@ comet = "skills/comet"
 `)},
 		"skills/brainstorming/SKILL.md": {Data: []byte("b")},
 		"skills/comet/SKILL.md":         {Data: []byte("c")},
+		"commands/demo-cmd.md":          {Data: []byte("d")},
 	}
 }
 
@@ -54,6 +57,32 @@ func TestLoadRejectsMissingSkillPath(t *testing.T) {
 	_, err := Load(m)
 	if err == nil || !strings.Contains(err.Error(), "skills/comet") {
 		t.Fatalf("expected missing-skill-path error, got %v", err)
+	}
+}
+
+func TestLoadIndexesFrameworkCommands(t *testing.T) {
+	c, err := Load(fixtureFS())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	sp, ok := c.Framework("superpowers")
+	if !ok {
+		t.Fatal("superpowers not indexed")
+	}
+	if sp.Commands["demo-cmd"] != "commands/demo-cmd.md" {
+		t.Fatalf("superpowers commands = %v", sp.Commands)
+	}
+	if p, ok := c.CommandPath("demo-cmd"); !ok || p != "commands/demo-cmd.md" {
+		t.Fatalf("demo-cmd path = %q ok=%v", p, ok)
+	}
+}
+
+func TestLoadRejectsMissingCommandPath(t *testing.T) {
+	m := fixtureFS()
+	delete(m, "commands/demo-cmd.md")
+	_, err := Load(m)
+	if err == nil || !strings.Contains(err.Error(), "commands/demo-cmd.md") {
+		t.Fatalf("expected missing-command-path error, got %v", err)
 	}
 }
 

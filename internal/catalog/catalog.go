@@ -19,6 +19,7 @@ type Framework struct {
 	Description  string
 	Dependencies []string          // framework names
 	Skills       map[string]string // skill name -> catalog-relative path ("skills/<n>")
+	Commands     map[string]string // command name -> catalog-relative path ("commands/<n>.md")
 }
 
 // Catalog is the loaded, indexed catalog.
@@ -26,6 +27,7 @@ type Catalog struct {
 	fsys       fs.FS
 	frameworks map[string]Framework
 	skills     map[string]string // skill name -> catalog-relative path (global index)
+	commands   map[string]string // command name -> catalog-relative path (global index)
 	version    string
 }
 
@@ -36,7 +38,8 @@ type frameworkTOML struct {
 	Dependencies struct {
 		Frameworks []string `toml:"frameworks"`
 	} `toml:"dependencies"`
-	Skills map[string]string `toml:"skills"`
+	Skills   map[string]string `toml:"skills"`
+	Commands map[string]string `toml:"commands"`
 }
 
 // New loads the production catalog from the embedded filesystem.
@@ -50,6 +53,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		fsys:       fsys,
 		frameworks: map[string]Framework{},
 		skills:     map[string]string{},
+		commands:   map[string]string{},
 	}
 	vb, err := fs.ReadFile(fsys, "version.txt")
 	if err != nil {
@@ -87,12 +91,22 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			}
 			c.skills[skill] = sp
 		}
+		for command, cp := range ft.Commands {
+			if _, err := fs.Stat(fsys, cp); err != nil {
+				return nil, fmt.Errorf("catalog: framework %q command %q path %q missing from catalog", dir, command, cp)
+			}
+			if prev, ok := c.commands[command]; ok && prev != cp {
+				return nil, fmt.Errorf("catalog: command %q mapped to both %q and %q", command, prev, cp)
+			}
+			c.commands[command] = cp
+		}
 		c.frameworks[dir] = Framework{
 			Name:         ft.Name,
 			Version:      ft.Version,
 			Description:  ft.Description,
 			Dependencies: ft.Dependencies.Frameworks,
 			Skills:       ft.Skills,
+			Commands:     ft.Commands,
 		}
 	}
 	return c, nil
@@ -111,5 +125,12 @@ func (c *Catalog) Framework(name string) (Framework, bool) {
 // it is known.
 func (c *Catalog) SkillPath(name string) (string, bool) {
 	p, ok := c.skills[name]
+	return p, ok
+}
+
+// CommandPath returns a command's catalog-relative path ("commands/<n>.md") and
+// whether it is known.
+func (c *Catalog) CommandPath(name string) (string, bool) {
+	p, ok := c.commands[name]
 	return p, ok
 }
