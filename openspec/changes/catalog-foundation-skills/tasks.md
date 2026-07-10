@@ -30,7 +30,7 @@
 
 - [ ] 5.1 Extend claude adapter: resolve `builtin:<name>` skills to `.homonto/catalog/skills/<name>/` path
 - [ ] 5.2 Extend opencode adapter: same builtin source resolution
-- [ ] 5.3 Update linker managed-root check to accept `.homonto/catalog/skills/` as a valid managed root for pruning
+- [x] 5.3 Update linker managed-root check to accept `.homonto/catalog/skills/` as a valid managed root for pruning
 - [ ] 5.4 Update doctor to check builtin skill content at materialized path
 - [ ] 5.5 Write adapter tests for builtin skill projection, pruning, and conflict detection
 

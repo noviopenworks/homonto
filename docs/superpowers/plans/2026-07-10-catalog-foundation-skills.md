@@ -937,7 +937,7 @@ Maps tasks.md 5.3.
   - `func Plan(srcs map[string]string, roots ...string) ([]Op, error)`
   - `managed(target string, roots ...string) bool` — true if `target` is under ANY root.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/link/linker_test.go`:
 
@@ -986,12 +986,12 @@ func TestLinkManagedAcrossMultipleRoots(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/link/ -run TestLinkManagedAcrossMultipleRoots -v`
 Expected: FAIL to compile — `Link`/`IsManaged`/`Remove` take one root today (they still compile with one arg, but `Link(src, dst, local, catalog)` is too many args → build error).
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/link/linker.go`:
 
@@ -1042,12 +1042,12 @@ func Plan(srcs map[string]string, roots ...string) ([]Op, error) {
 - `if !managed(cur, contentRoot) {` → `if !managed(cur, roots...) {`
 - error message `contentRoot` → `strings.Join(roots, ", ")`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/link/ -count=1 -v`
 Expected: PASS (new multi-root test and all existing single-root tests — variadic keeps `Plan(m, content)` etc. valid).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/link/linker.go internal/link/linker_test.go
