@@ -14,7 +14,9 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 7: complete (94066c6, no risk; full repo suite green)
 - Task 8: complete (94c94e6; 3 subagents both tools, No drift, doctor ok, idempotent — independently verified)
 - Task 9: complete (97ad03d; 239 tests green, race/vet/build/gofmt clean; docs shipped)
-- FINAL REVIEW: dispatched (standard: 1 lightweight whole-branch review)
+- FINAL REVIEW: opus, standard/lightweight — READY TO MERGE, 0 Critical / 0 Important. Independently re-verified 239 tests + build/vet/gofmt clean. Version gate (D2) correct; path traversal rejected (validateResourceName); empty-root guard both adapters; all spec reqs met; docs accurate.
+  ACCEPTED non-blocking follow-ups: SP1 (strings.Cut style), SP2 (dir-scan dedicated unit test — highest value), SP3 (expand single-fw test), SP4 (conflict test uses Apply pre-check), SP5 (foreign-dst de-declare test). All safe by construction / covered indirectly.
+- BUILD SDD LOOP COMPLETE — proceeding to build-exit guard -> verify.
 
 ## Minor findings (for final review)
 - SP4 [Task6 builtin_test.go]: subagent conflict test discards Plan's conflict error (relies only on Apply pre-check); weaker than command sibling. Coverage gap, code safe.
