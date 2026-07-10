@@ -241,7 +241,7 @@ Maps tasks.md 2.1 and the parse/validation portion of 2.5.
   - `func (c *Catalog) Framework(name string) (Framework, bool)`
   - `func (c *Catalog) SkillPath(name string) (string, bool)` — skill name → catalog-relative path
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/catalog/catalog_test.go`:
 
@@ -319,12 +319,12 @@ comet = "skills/comet"
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run TestLoad -v`
 Expected: FAIL / build error — `Load`, `Catalog`, `Framework`, `Version`, `SkillPath` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/catalog/catalog.go`:
 
@@ -446,12 +446,12 @@ func (c *Catalog) SkillPath(name string) (string, bool) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -run TestLoad -v`
 Expected: PASS (all three tests). The real embedded catalog is also loadable — confirm with `go test ./internal/catalog/ -run TestLoad -count=1`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/catalog.go internal/catalog/catalog_test.go
