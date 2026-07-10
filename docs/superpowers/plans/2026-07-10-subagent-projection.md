@@ -428,7 +428,7 @@ git commit -m "feat(catalog): bundle code-reviewer, codebase-explorer, comet-nav
   - `type ExpandedSubagent struct { Name, Framework string }` and `(c *Catalog) ExpandSubagents(frameworkNames []string) ([]ExpandedSubagent, error)`.
   - `(c *Catalog) MaterializeSubagents(dstRoot string, names []string) error` — writes `<dstRoot>/<name>.md` byte-for-byte.
 
-- [ ] **Step 1: Write the failing parse + expand + materialize tests**
+- [x] **Step 1: Write the failing parse + expand + materialize tests**
 
 In `internal/catalog/materialize_test.go`, add (mirrors `TestMaterializeCommandsWritesFile`, adding a byte-for-byte assertion against the embedded source):
 
@@ -493,12 +493,12 @@ func TestExpandSubagentsIncludesFrameworkSubagent(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/catalog/ -run 'TestMaterializeSubagents|TestExpandSubagents' -v`
 Expected: FAIL to compile — `SubagentPath`, `MaterializeSubagents`, `ExpandSubagents` undefined, and the comet `[subagents]` entry not yet present.
 
-- [ ] **Step 3: Add the `Subagents` field, index, and parse+validate loop**
+- [x] **Step 3: Add the `Subagents` field, index, and parse+validate loop**
 
 In `internal/catalog/catalog.go`:
 
@@ -551,7 +551,7 @@ func (c *Catalog) SubagentPath(name string) (string, bool) {
 }
 ```
 
-- [ ] **Step 4: Add `ExpandSubagents`**
+- [x] **Step 4: Add `ExpandSubagents`**
 
 In `internal/catalog/expand.go`, add the type next to `ExpandedCommand`:
 ```go
@@ -581,7 +581,7 @@ func (c *Catalog) ExpandSubagents(frameworkNames []string) ([]ExpandedSubagent, 
 }
 ```
 
-- [ ] **Step 5: Add `MaterializeSubagents`**
+- [x] **Step 5: Add `MaterializeSubagents`**
 
 In `internal/catalog/materialize.go`, add after `MaterializeCommands` (identical single-file, verbatim shape — subagent index instead of command index):
 ```go
@@ -613,7 +613,7 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
 }
 ```
 
-- [ ] **Step 6: Wire the comet framework's `[subagents]` entry**
+- [x] **Step 6: Wire the comet framework's `[subagents]` entry**
 
 Append to `catalog/frameworks/comet/framework.toml`:
 ```toml
@@ -622,12 +622,12 @@ Append to `catalog/frameworks/comet/framework.toml`:
 comet-navigator = "subagents/comet-navigator.md"
 ```
 
-- [ ] **Step 7: Run the tests to verify they pass**
+- [x] **Step 7: Run the tests to verify they pass**
 
 Run: `go test ./internal/catalog/ -count=1 -v`
 Expected: PASS, including the two new tests and every pre-existing catalog test (the parse loop must not break existing skills/commands parsing).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add internal/catalog catalog/frameworks/comet/framework.toml

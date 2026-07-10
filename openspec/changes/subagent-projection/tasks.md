@@ -14,12 +14,12 @@
 
 ## 3. Catalog subagent loading, expansion, materialization
 
-- [ ] 3.1 Parse an optional `[subagents]` table into `Framework.Subagents` (name → `subagents/<n>.md`); validate each path exists in the embedded FS
-- [ ] 3.2 Index subagents and add a subagent-path lookup (`SubagentPath(name)`)
-- [ ] 3.3 Add `ExpandSubagents` (transitive, deduped), mirroring `ExpandCommands`
-- [ ] 3.4 Add single-file **verbatim** materialization to `.homonto/catalog/subagents/<n>.md`, version-gated (assert byte-for-byte equal to source)
-- [ ] 3.5 Add the comet framework's `[subagents]` entry to `catalog/frameworks/comet/framework.toml`
-- [ ] 3.6 Unit tests: subagent table parse, expansion/dedup, single-file materialize, missing-file re-materialize, no-model-injection (content equals source)
+- [x] 3.1 Parse an optional `[subagents]` table into `Framework.Subagents` (name → `subagents/<n>.md`); validate each path exists in the embedded FS
+- [x] 3.2 Index subagents and add a subagent-path lookup (`SubagentPath(name)`)
+- [x] 3.3 Add `ExpandSubagents` (transitive, deduped), mirroring `ExpandCommands`
+- [x] 3.4 Add single-file **verbatim** materialization to `.homonto/catalog/subagents/<n>.md`, version-gated (assert byte-for-byte equal to source)
+- [x] 3.5 Add the comet framework's `[subagents]` entry to `catalog/frameworks/comet/framework.toml`
+- [x] 3.6 Unit tests: subagent table parse, expansion/dedup, single-file materialize, missing-file re-materialize, no-model-injection (content equals source)
 
 ## 4. Config subagent expansion
 

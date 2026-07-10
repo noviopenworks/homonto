@@ -7,8 +7,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 ## Tasks (9)
 - Task 1: complete (efd4218, no risk; Minor: strings.Index->Cut nit for final review)
 - Task 2: complete (44a9b71, no risk)
-- Task 3: catalog parse/index/expand/materialize + comet framework — STAGE: implementing
-- Task 4: config subagent expansion — pending
+- Task 3: complete (7f96e98, risk-reviewed APPROVED; dir-scan D1/D5 reconciliation confirmed safe)
+- Task 4: config subagent expansion — STAGE: implementing
 - Task 5: engine materialization + WithSubagentCatalogRoot — pending
 - Task 6: adapter subagent projection (both tools) — pending
 - Task 7: doctor verification — pending
@@ -16,4 +16,6 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 9: regression + docs — pending
 
 ## Minor findings (for final review)
+- SP2 [Task3 catalog.go:68-86]: subagents/ dir-scan (new logic) has no dedicated unit test; untested edges: non-.md/subdir under subagents/, dir-scan vs framework decl collision at different path. Add a targeted test.
+- SP3 [Task3 expand_test.go:129]: ExpandSubagents test checks single-framework membership only (transitive/dedup proven via shared expandResources). Weak standalone evidence, not a gap.
 - SP1 [Task1 frontmatter_test.go:21]: strings.Index can use strings.Cut (Minor, brief-verbatim).
