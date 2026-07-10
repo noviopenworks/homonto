@@ -302,7 +302,7 @@ Refactors the existing three-color cycle-detecting DFS in `Expand` into a privat
   - `func (c *Catalog) ExpandCommands(frameworkNames []string) ([]ExpandedCommand, error)`
   - `Expand` unchanged in signature: `func (c *Catalog) Expand(frameworkNames []string) ([]ExpandedSkill, error)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Extend `internal/catalog/expand_test.go`. First extend `graphFS` so each framework can also declare commands; add a `commands map[string][]string` parameter:
 
@@ -365,12 +365,12 @@ func TestExpandCommandsDetectsCycle(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run TestExpandCommands -count=1`
 Expected: FAIL (`ExpandCommands` undefined; `graphFS` arity mismatch until updated).
 
-- [ ] **Step 3: Refactor and implement**
+- [x] **Step 3: Refactor and implement**
 
 Replace the body of `internal/catalog/expand.go` (keeping `ExpandedSkill`) with:
 
@@ -496,12 +496,12 @@ func (c *Catalog) ExpandCommands(frameworkNames []string) ([]ExpandedCommand, er
 
 (The `white` const is now unused but retained for parity/readability; unused constants are legal in Go.)
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -count=1`
 Expected: PASS (both new command tests and the unchanged skill `Expand` tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/expand.go internal/catalog/expand_test.go
