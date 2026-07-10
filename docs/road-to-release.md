@@ -38,10 +38,17 @@ phase, without reading `homonto.toml` or writing any file; and `onto init`
 idempotently scaffolds the `docs/{changes,specs,adr,guides}` layout, gated
 behind the Homonto framework install (it writes nothing if
 `[frameworks.onto]` is not installed, and never overwrites user files on
-repeat runs). Phase-gate enforcement, `onto doctor`, and dual-binary release
-packaging (cross-compiling and publishing both binaries under one
-`SHA256SUMS`) are not implemented yet, so the dual-binary release gate above
-is **not** met by this work alone.
+repeat runs). Change skeleton creation (`onto new`, #3a) and gated phase
+transitions (`onto advance`, #3b) have since landed: `onto advance <change>`
+moves a change through `open → design → build → verify → close` only when
+the current phase's required deliverables (and, to leave `build`, all
+checked tasks) are complete, warning on a dirty worktree for a normal
+advance and blocking outright on the release-critical `verify → close`
+transition. Dependency resolution and archive/close rules (#3c), `onto
+doctor` (#4), and dual-binary release packaging (cross-compiling and
+publishing both binaries under one `SHA256SUMS`, #5) are not implemented
+yet, so the dual-binary release gate above is **not** met by this work
+alone.
 
 ## Iteration 0 - Safety Blockers
 
