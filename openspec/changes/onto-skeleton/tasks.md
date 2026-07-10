@@ -18,6 +18,6 @@
 
 ## 4. Regression and docs
 
-- [ ] 4.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; `onto new --help` and `onto status` work; a fresh `onto new demo` in a prepared temp workspace creates the skeleton and `onto status` reports it ok
-- [ ] 4.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3a (`onto new` skeleton create + validate) landed; remaining onto = phase transitions (#3b), deps+archive/close (#3c), doctor (#4), dual-binary packaging (#5). No over-claim
-- [ ] 4.3 Commit all changes
+- [x] 4.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; `onto new --help` and `onto status` work; a fresh `onto new demo` in a prepared temp workspace creates the skeleton and `onto status` reports it ok
+- [x] 4.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3a (`onto new` skeleton create + validate) landed; remaining onto = phase transitions (#3b), deps+archive/close (#3c), doctor (#4), dual-binary packaging (#5). No over-claim
+- [x] 4.3 Commit all changes
