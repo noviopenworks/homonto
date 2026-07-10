@@ -5,5 +5,5 @@ package catalog
 
 import "embed"
 
-//go:embed all:frameworks all:skills all:commands version.txt
+//go:embed all:frameworks all:skills all:commands all:subagents version.txt
 var FS embed.FS
