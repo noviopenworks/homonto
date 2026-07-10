@@ -54,7 +54,11 @@ func Load(path string) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("onto-state: failed to read %s: %w", path, err)
 	}
-	return Parse(b)
+	state, err := Parse(b)
+	if err != nil {
+		return State{}, fmt.Errorf("%s: %w", path, err)
+	}
+	return state, nil
 }
 
 // Validate checks that the State satisfies the invariants required to

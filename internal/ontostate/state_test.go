@@ -100,6 +100,26 @@ func TestLoad_ValidFile_ReturnsState(t *testing.T) {
 	}
 }
 
+func TestLoad_MalformedFile_ErrorNamesPathAndProblem(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "onto-state.yaml")
+	content := []byte("change: [unterminated\n  phase: build")
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatalf("failed to write fixture file: %v", err)
+	}
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load returned nil error for malformed file, want error")
+	}
+	if !strings.Contains(err.Error(), path) {
+		t.Errorf("Load error = %q, want it to contain path %q", err.Error(), path)
+	}
+	if !strings.Contains(err.Error(), "yaml") {
+		t.Errorf("Load error = %q, want it to indicate the YAML/parse problem", err.Error())
+	}
+}
+
 func TestParse_GarbageBytes_DoesNotPanicAndReturnsError(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
