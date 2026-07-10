@@ -2,6 +2,7 @@
 change: onto-binary-foundation
 design-doc: docs/superpowers/specs/2026-07-10-onto-binary-foundation-design.md
 base-ref: 06e14209a5145216adaafbb3bb8aa516f4ccce96
+archived-with: 2026-07-10-onto-binary-foundation
 ---
 
 # Onto Binary Foundation Implementation Plan

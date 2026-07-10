@@ -2,6 +2,8 @@
 comet_change: onto-binary-foundation
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-onto-binary-foundation
+status: final
 ---
 
 # Onto Binary Foundation — Technical Design
