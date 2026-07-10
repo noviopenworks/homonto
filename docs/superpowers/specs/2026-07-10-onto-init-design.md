@@ -2,6 +2,8 @@
 comet_change: onto-init
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-onto-init
+status: final
 ---
 
 # Onto Init — Technical Design
