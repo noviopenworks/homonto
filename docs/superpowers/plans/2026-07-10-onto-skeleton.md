@@ -34,11 +34,11 @@ base-ref: 08834df8055bf35b1699a98942df4b44e9fbb980
 
 **Files:** create `internal/ontocli/new.go`, `internal/ontocli/new_test.go`; modify `internal/ontocli/root.go` (register).
 
-- [ ] 2.1 (RED first) Local `validChangeName(name string) error` in internal/ontocli: reject empty, `name != filepath.Base(name)`, contains `..`/`/`/`\`, or not matching `^[a-z0-9]+(-[a-z0-9]+)*$`. Tests: valid (`feature-x`) + invalid (``, `../evil`, `Foo`, `a/b`, `-x`).
-- [ ] 2.2 (RED first) `newCmd()` positional `<change-name>` + `--dir` (default "."): gate(root) → validChangeName → refuse if `docs/changes/<name>/` exists (non-zero, no writes) → MkdirAll dir, `ontostate.Save(<dir>/onto-state.yaml, State{Change:name,Workflow:"full",Phase:"open",Created:time.Now().Format("2006-01-02")})`, os.WriteFile empty proposal.md + tasks.md (only if absent); print created report, exit 0. Register `newCmd()` in `NewRootCmd()`.
-- [ ] 2.3 (RED first) Tests via `NewRootCmd().SetArgs([]string{"new",name,"--dir",tmp})` in a prepared workspace (homonto.toml `[frameworks.onto]` + `.homonto/catalog/skills/onto/`): creates skeleton (onto-state.yaml Parses to phase open + change name; proposal.md + tasks.md exist), exit 0; second `new same-name` → non-zero, and a pre-placed `docs/changes/<name>/proposal.md` with known bytes is UNCHANGED; invalid name → non-zero, `docs/changes/<name>` absent; gate-failure (empty dir) → non-zero, no docs/ writes; `created` matches `^\d{4}-\d{2}-\d{2}$`.
-- [ ] 2.4 GREEN; `grep -E "internal/(config|engine|adapter|catalog)" internal/ontocli/*.go` empty; gofmt/vet clean.
-- [ ] 2.5 Commit: `feat(onto): 'onto new' creates a gated, no-clobber change skeleton`
+- [x] 2.1 (RED first) Local `validChangeName(name string) error` in internal/ontocli: reject empty, `name != filepath.Base(name)`, contains `..`/`/`/`\`, or not matching `^[a-z0-9]+(-[a-z0-9]+)*$`. Tests: valid (`feature-x`) + invalid (``, `../evil`, `Foo`, `a/b`, `-x`).
+- [x] 2.2 (RED first) `newCmd()` positional `<change-name>` + `--dir` (default "."): gate(root) → validChangeName → refuse if `docs/changes/<name>/` exists (non-zero, no writes) → MkdirAll dir, `ontostate.Save(<dir>/onto-state.yaml, State{Change:name,Workflow:"full",Phase:"open",Created:time.Now().Format("2006-01-02")})`, os.WriteFile empty proposal.md + tasks.md (only if absent); print created report, exit 0. Register `newCmd()` in `NewRootCmd()`.
+- [x] 2.3 (RED first) Tests via `NewRootCmd().SetArgs([]string{"new",name,"--dir",tmp})` in a prepared workspace (homonto.toml `[frameworks.onto]` + `.homonto/catalog/skills/onto/`): creates skeleton (onto-state.yaml Parses to phase open + change name; proposal.md + tasks.md exist), exit 0; second `new same-name` → non-zero, and a pre-placed `docs/changes/<name>/proposal.md` with known bytes is UNCHANGED; invalid name → non-zero, `docs/changes/<name>` absent; gate-failure (empty dir) → non-zero, no docs/ writes; `created` matches `^\d{4}-\d{2}-\d{2}$`.
+- [x] 2.4 GREEN; `grep -E "internal/(config|engine|adapter|catalog)" internal/ontocli/*.go` empty; gofmt/vet clean.
+- [x] 2.5 Commit: `feat(onto): 'onto new' creates a gated, no-clobber change skeleton`
 
 ## Task 3: status skeleton reporting
 

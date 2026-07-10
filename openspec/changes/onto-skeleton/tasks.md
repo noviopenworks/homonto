@@ -6,10 +6,10 @@
 
 ## 2. `onto new <change>` command (`internal/ontocli`)
 
-- [ ] 2.1 (TDD, RED first) Add a local kebab-case name validator in internal/ontocli (`^[a-z0-9]+(-[a-z0-9]+)*$`, reject empty / `..` / `/` / `\` / non-Base). Tests for valid + several invalid names (incl. `../evil`, `Foo`, ``)
-- [ ] 2.2 (TDD, RED first) Implement `newCmd()` (`--dir` default "."): run `gate(root)` (reuse from init.go) → validate name → if `docs/changes/<name>/` exists return non-zero "already exists" (no writes) → else create dir, `ontostate.Save` onto-state.yaml (change, workflow full, phase open, created `time.Now().Format("2006-01-02")`), write empty `proposal.md` + `tasks.md`; report created, exit 0. Register `newCmd()` on the root
-- [ ] 2.3 (TDD) Tests via `NewRootCmd().SetArgs([]string{"new","<name>","--dir",tmp})`: prepared workspace creates skeleton (onto-state.yaml phase open + proposal + tasks), exit 0; existing change refused with no writes (assert a pre-placed file under docs/changes/<name>/ untouched); invalid name rejected, nothing created; gate-failure → guidance, nothing created
-- [ ] 2.4 Run → GREEN; confirm (grep) new.go imports no internal/{config,engine,adapter,catalog}; gofmt/vet clean
+- [x] 2.1 (TDD, RED first) Add a local kebab-case name validator in internal/ontocli (`^[a-z0-9]+(-[a-z0-9]+)*$`, reject empty / `..` / `/` / `\` / non-Base). Tests for valid + several invalid names (incl. `../evil`, `Foo`, ``)
+- [x] 2.2 (TDD, RED first) Implement `newCmd()` (`--dir` default "."): run `gate(root)` (reuse from init.go) → validate name → if `docs/changes/<name>/` exists return non-zero "already exists" (no writes) → else create dir, `ontostate.Save` onto-state.yaml (change, workflow full, phase open, created `time.Now().Format("2006-01-02")`), write empty `proposal.md` + `tasks.md`; report created, exit 0. Register `newCmd()` on the root
+- [x] 2.3 (TDD) Tests via `NewRootCmd().SetArgs([]string{"new","<name>","--dir",tmp})`: prepared workspace creates skeleton (onto-state.yaml phase open + proposal + tasks), exit 0; existing change refused with no writes (assert a pre-placed file under docs/changes/<name>/ untouched); invalid name rejected, nothing created; gate-failure → guidance, nothing created
+- [x] 2.4 Run → GREEN; confirm (grep) new.go imports no internal/{config,engine,adapter,catalog}; gofmt/vet clean
 
 ## 3. status skeleton reporting
 
