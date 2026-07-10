@@ -89,3 +89,63 @@ func TestApplyRematerializesWhenVersionStale(t *testing.T) {
 		t.Fatal("stale content not refreshed when recorded version was empty")
 	}
 }
+
+func TestApplyRematerializesWhenSkillDirMissing(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+
+	e := buildEngine(t, home, repo)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	skillDir := filepath.Join(e.CatalogDir(), "comet-open")
+	if _, err := os.Stat(skillDir); err != nil {
+		t.Fatalf("comet-open not materialized after first apply: %v", err)
+	}
+
+	// Delete a materialized skill dir while leaving the recorded catalog
+	// version unchanged (still matching the current catalog version).
+	if err := os.RemoveAll(skillDir); err != nil {
+		t.Fatal(err)
+	}
+
+	e2 := buildEngine(t, home, repo)
+	sets2, _ := e2.Plan()
+	if err := e2.Apply(sets2); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil {
+		t.Fatalf("comet-open not restored after missing dir triggered re-materialization: %v", err)
+	}
+}
+
+func TestApplySkipsRematerializeWhenVersionMatchesAndDirsIntact(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+
+	e := buildEngine(t, home, repo)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	skillDir := filepath.Join(e.CatalogDir(), "comet-open")
+	sentinel := filepath.Join(skillDir, "SENTINEL")
+	if err := os.WriteFile(sentinel, []byte("keep-me"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Recorded version still matches and all skill dirs are intact, so the
+	// re-apply must skip materialization entirely (catalog.Materialize does
+	// os.RemoveAll(dstDir) per skill, which would delete the sentinel).
+	e2 := buildEngine(t, home, repo)
+	sets2, _ := e2.Plan()
+	if err := e2.Apply(sets2); err != nil {
+		t.Fatalf("re-apply: %v", err)
+	}
+	if _, err := os.Stat(sentinel); err != nil {
+		t.Fatalf("sentinel removed: re-apply re-materialized despite matching version and intact dirs: %v", err)
+	}
+}
