@@ -2120,7 +2120,7 @@ Maps tasks.md 6.1, 6.2, 6.3, 6.4. This materializes REAL skill content from `cat
 
 **Note on scope (6.2):** Every skill currently declared in `homonto.toml` (comet-*, the openspec-* subset, and the superpowers skills) is a member of the `comet`/`superpowers`/`openspec` frameworks, so `[frameworks.comet]` covers them all. There are no local-only skills to keep as explicit `[skills.X]` entries here; do not re-add any.
 
-- [ ] **Step 1: Replace the explicit skill list with the framework declaration**
+- [x] **Step 1: Replace the explicit skill list with the framework declaration**
 
 Replace the entire block of `[skills.*]` tables at the top of `homonto.toml` (from `[skills.comet]` through `[skills.dispatching-parallel-agents]`) with a single framework declaration, leaving the `[models.*]` tables untouched:
 
@@ -2132,7 +2132,7 @@ scope = "project"
 
 The file after editing is: this `[frameworks.comet]` block followed by the existing `[models.claude.*]` and `[models.opencode.*]` tables.
 
-- [ ] **Step 2: Build the binary and run plan (dry check before apply)**
+- [x] **Step 2: Build the binary and run plan (dry check before apply)**
 
 ```bash
 go build -o /tmp/homonto . && /tmp/homonto plan
@@ -2140,7 +2140,7 @@ go build -o /tmp/homonto . && /tmp/homonto plan
 
 Expected: plan lists `create` for each comet + superpowers + openspec skill link across claude and opencode (project scope). No conflict errors.
 
-- [ ] **Step 3: Apply and verify materialization + links (6.3)**
+- [x] **Step 3: Apply and verify materialization + links (6.3)**
 
 ```bash
 /tmp/homonto apply --yes
@@ -2150,7 +2150,7 @@ ls -l .claude/skills/ | grep -- '->' | head
 
 Expected: `.homonto/catalog/skills/` contains the expanded skills (comet-*, brainstorming, openspec-*, …); `.claude/skills/` and `.opencode/skills/` contain symlinks pointing into `.homonto/catalog/skills/`.
 
-- [ ] **Step 4: Verify no drift (6.4)**
+- [x] **Step 4: Verify no drift (6.4)**
 
 ```bash
 /tmp/homonto status
@@ -2159,7 +2159,7 @@ Expected: `.homonto/catalog/skills/` contains the expanded skills (comet-*, brai
 
 Expected: `status` reports no drift and 0 pending after a second apply; `doctor` reports every expanded skill as `linked`. Run `/tmp/homonto apply --yes` a second time and confirm it is a no-op (idempotent, catalog materialization skipped by version gate).
 
-- [ ] **Step 5: Confirm the catalog cache is gitignored**
+- [x] **Step 5: Confirm the catalog cache is gitignored**
 
 ```bash
 git status --porcelain .homonto/
@@ -2167,7 +2167,7 @@ git status --porcelain .homonto/
 
 Expected: no output (`.homonto/` is covered by the existing `/.homonto/` gitignore rule; the materialized catalog is not tracked).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add homonto.toml

@@ -36,10 +36,10 @@
 
 ## 6. Dogfood config update
 
-- [ ] 6.1 Update `homonto.toml` to use `[frameworks.comet] source = "builtin:comet"` instead of individual `[skills.X]` entries for Comet/OpenSpec/Superpowers skills
-- [ ] 6.2 Keep any skills not covered by frameworks as explicit local entries
-- [ ] 6.3 Run `homonto apply --yes` and verify all skills materialize and link correctly
-- [ ] 6.4 Run `homonto status` and `homonto doctor` and verify no drift and all links ok
+- [x] 6.1 Update `homonto.toml` to use `[frameworks.comet] source = "builtin:comet"` instead of individual `[skills.X]` entries for Comet/OpenSpec/Superpowers skills
+- [x] 6.2 Keep any skills not covered by frameworks as explicit local entries
+- [x] 6.3 Run `homonto apply --yes` and verify all skills materialize and link correctly
+- [x] 6.4 Run `homonto status` and `homonto doctor` and verify no drift and all links ok
 
 ## 7. Regression and docs
 
