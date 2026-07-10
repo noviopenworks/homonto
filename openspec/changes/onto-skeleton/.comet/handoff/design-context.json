@@ -1,0 +1,14 @@
+{
+  "change": "onto-skeleton",
+  "phase": "design",
+  "mode": "full",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "0f626ea1e10e55eb1b873daf706e4815ca9bd54166b81685d5d80e6442d2c65a",
+  "files": [
+    { "path": "openspec/changes/onto-skeleton/proposal.md", "sha256": "ff3a28fa76409b17454b576953d6b25b30693aa0b08b7225c7ff552413debaf2" },
+    { "path": "openspec/changes/onto-skeleton/design.md", "sha256": "7e1329a488ffdd3e61307c11687b45ada65639a9fe47f4395ff7ab8740d81b96" },
+    { "path": "openspec/changes/onto-skeleton/tasks.md", "sha256": "be9f5c3dc4f7558b9cde305afb5fdb6f27904ebe48e99b49fda1cc32b72b6cf1" },
+    { "path": "openspec/changes/onto-skeleton/specs/onto-binary/spec.md", "sha256": "95a7781d55438e0f8c09b1e2da7299d3a3957db83f9b56433ed5a34ec84ff889" }
+  ]
+}
