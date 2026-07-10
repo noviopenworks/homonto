@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 36966b561ab1491b3d183f339560a7ba6139cb56
 design_doc: docs/superpowers/specs/2026-07-10-onto-phase-gates-design.md
 plan: docs/superpowers/plans/2026-07-10-onto-phase-gates.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-10-onto-phase-gates-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-10
-verified_at: null
+verified_at: 2026-07-10
 archived: false
 direct_override: null
 handoff_context: openspec/changes/onto-phase-gates/.comet/handoff/design-context.json
