@@ -1092,7 +1092,7 @@ Apply every step to **both** `internal/adapter/claude/claude.go` and `internal/a
 - Consumes: `config.ExpandedSubagentEntriesForTool`, `subagentpath.Dir`, `skillpath.Other`, `link.Plan/Link/Remove/IsManaged`, `state.State`, `recordedDst`.
 - Produces on each adapter: `subagentCatalogRoot` field, `subagents []config.NamedResource` field, `WithSubagentCatalogRoot`, `subagentsDir`, `inactiveSubagentsDir`, `subagentSource`, `subagentLinks`; `subagent.*` handling in `Plan`, `Apply`, `ObserveHashes`, the declared-keys map, and `managedPrefix`.
 
-- [ ] **Step 1: Write the failing adapter tests (both tools)**
+- [x] **Step 1: Write the failing adapter tests (both tools)**
 
 In `internal/adapter/claude/builtin_test.go`, add (mirror `TestBuiltinCommandLinksToCommandCatalogRoot`, `TestBuiltinCommandPrunedWhenDeDeclared`, `TestBuiltinCommandConflictNotClobbered`, targeting `.claude/agents/<name>.md` and the `subagent.<name>` state key). Add a `builtinSubagentCfg()` helper returning a `*config.Config` with `[subagents.code-reviewer] source="builtin:code-reviewer"`, scope project (or user, matching how `builtinCmdCfg()` sets scope), targeting claude:
 
@@ -1209,12 +1209,12 @@ func TestBuiltinSubagentAdoptsExistingLink(t *testing.T) {
 
 Add the same four tests to the OpenCode adapter's test file (the file holding `TestBuiltinCommand…` for opencode), changing the destination to `filepath.Join(home, ".config", "opencode", "agent", "code-reviewer.md")` and the state tool to `"opencode"`. For a **scope-switch relocate** test, mirror whatever the command suite already has (if the command suite has a scope-switch test, copy it for subagents on at least one adapter; if not, add one on Claude: apply with `scope="user"`, then re-plan/apply the same subagent with `scope="project"` and assert the user-scope link is gone and the project-scope link exists, and the plan rendered an `update` for `subagent.code-reviewer`).
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/adapter/claude/ ./internal/adapter/opencode/ -run 'TestBuiltinSubagent' -v`
 Expected: FAIL — `WithSubagentCatalogRoot` and subagent projection undefined.
 
-- [ ] **Step 3: Add the field, setter, and `managedRoots` extension (both adapters)**
+- [x] **Step 3: Add the field, setter, and `managedRoots` extension (both adapters)**
 
 Add the import `"github.com/noviopenworks/homonto/internal/subagentpath"` to each adapter.
 
@@ -1248,7 +1248,7 @@ Extend `managedRoots` (non-empty guard preserved):
 	return roots
 ```
 
-- [ ] **Step 4: Add the subagent dir/source/link helpers (both adapters)**
+- [x] **Step 4: Add the subagent dir/source/link helpers (both adapters)**
 
 Add after `commandLinks` (use `"claude"` in the claude adapter and `"opencode"` in the opencode adapter for the tool literal):
 ```go
@@ -1291,7 +1291,7 @@ func (a *Adapter) subagentLinks() map[string]string {
 }
 ```
 
-- [ ] **Step 5: Wire subagents into `Plan` (both adapters)**
+- [x] **Step 5: Wire subagents into `Plan` (both adapters)**
 
 In `Plan`, after the `a.commands = commands` assignment, load subagents:
 ```go
@@ -1357,7 +1357,7 @@ In the orphan-pruning declared-map block, add subagents next to commands:
 
 (The `sort.SliceStable` at the end already covers the new keys.)
 
-- [ ] **Step 6: Wire subagents into `Apply` (both adapters)**
+- [x] **Step 6: Wire subagents into `Apply` (both adapters)**
 
 In the change loop, extend the `adopt` branch:
 ```go
@@ -1430,7 +1430,7 @@ After the command inactive-scope prune + link loop (the block ending with `st.Se
 	}
 ```
 
-- [ ] **Step 7: Wire subagents into `ObserveHashes` (both adapters)**
+- [x] **Step 7: Wire subagents into `ObserveHashes` (both adapters)**
 
 After the `command.` branch in `ObserveHashes`, add:
 ```go
@@ -1452,19 +1452,19 @@ After the `command.` branch in `ObserveHashes`, add:
 		}
 ```
 
-- [ ] **Step 8: Add `"subagent."` to `managedPrefix` (both util.go files)**
+- [x] **Step 8: Add `"subagent."` to `managedPrefix` (both util.go files)**
 
 In `internal/adapter/claude/util.go` and `internal/adapter/opencode/util.go`:
 ```go
 	for _, p := range []string{"mcp.", "setting.", "plugin.", "skill.", "command.", "subagent."} {
 ```
 
-- [ ] **Step 9: Run the tests to verify they pass**
+- [x] **Step 9: Run the tests to verify they pass**
 
 Run: `go test ./internal/adapter/... -count=1 -v`
 Expected: PASS, including the new subagent tests on both adapters and every pre-existing skill/command adapter test.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add internal/adapter

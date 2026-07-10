@@ -37,11 +37,11 @@
 
 ## 6. Adapter subagent projection
 
-- [ ] 6.1 Claude adapter: `subagentsDir(scope)`, `inactiveSubagentsDir`, `subagentSource(entry)`, `subagentLinks`, plan/apply/adopt/prune for `subagent.<n>` links via variadic managed roots
-- [ ] 6.2 OpenCode adapter: same, using `subagentpath` (singular `agent/`)
-- [ ] 6.3 Extend `managedRoots()` to include the subagent catalog root (non-empty guard)
-- [ ] 6.4 `ObserveHashes`: handle `subagent.<n>` as a symlink hash, mirroring `command.<n>`
-- [ ] 6.5 Adapter tests (both tools): builtin subagent link create, idempotent re-apply, conflict-not-clobbered, de-declared prune, scope-switch relocate, adopt pre-existing link, state `subagent.<n>` recorded
+- [x] 6.1 Claude adapter: `subagentsDir(scope)`, `inactiveSubagentsDir`, `subagentSource(entry)`, `subagentLinks`, plan/apply/adopt/prune for `subagent.<n>` links via variadic managed roots
+- [x] 6.2 OpenCode adapter: same, using `subagentpath` (singular `agent/`)
+- [x] 6.3 Extend `managedRoots()` to include the subagent catalog root (non-empty guard)
+- [x] 6.4 `ObserveHashes`: handle `subagent.<n>` as a symlink hash, mirroring `command.<n>`
+- [x] 6.5 Adapter tests (both tools): builtin subagent link create, idempotent re-apply, conflict-not-clobbered, de-declared prune, scope-switch relocate, adopt pre-existing link, state `subagent.<n>` recorded
 
 ## 7. Doctor
 
