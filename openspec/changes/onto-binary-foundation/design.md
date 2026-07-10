@@ -51,8 +51,9 @@ Doc will confirm the exact struct tags and the minimal field set.)
 
 **D3 — Minimal foundation state schema; derive = validated read.** For this
 increment `onto-state.yaml` carries at least a change identifier and a `phase`
-field (from the fixed set open → design → build → verify → archive; exact set
-confirmed against the design doc in the Design phase). "Derive phase" validates
+field from the onto workflow phase set open → design → build → verify → close
+(terminal `close`, matching the `onto-*` skills and legacy `state.yaml`; NOT the
+comet dev terminal `archive`). "Derive phase" validates
 the recorded phase is a known value and returns it. Full artifact-based phase
 derivation and gate consistency are change #3/#4 concerns; the model is
 structured so those extend it without a rewrite.

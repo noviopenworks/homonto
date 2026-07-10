@@ -38,9 +38,13 @@ current workflow phase from those fields. The file name is exactly
 the legacy `state.yaml` name (pre-release). Parsing an invalid or malformed
 `onto-state.yaml` SHALL return a clear error identifying the file, not a panic.
 
+The recognized workflow phases are `open`, `design`, `build`, `verify`, `close`
+(the onto workflow phase set, matching the `onto-*` skills and the legacy
+`state.yaml`), with `close` as the terminal phase.
+
 #### Scenario: parse and derive phase from a valid onto-state.yaml
 
-- **GIVEN** a valid `onto-state.yaml` recording a change's phase and gate fields
+- **GIVEN** a valid `onto-state.yaml` recording a change's phase (one of open|design|build|verify|close) and gate fields
 - **WHEN** the state model loads it
 - **THEN** it returns the typed state and the derived phase without error
 

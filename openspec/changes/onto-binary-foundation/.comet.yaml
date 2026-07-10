@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: build
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 52b70469e29594d7de8f3c53f971070a72de429f
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-10-onto-binary-foundation-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-10
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/onto-binary-foundation/.comet/handoff/design-context.json
+handoff_hash: 7b107df2caf6bebd4b9aebd19f36a547fe0ffb9bbca1e48f17b396a3e4690662
+classic_profile: full
+classic_migration: 1
+run_id: 87f9e34f-455f-4859-9f4f-869c6455e6d4
