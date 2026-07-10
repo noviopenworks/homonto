@@ -1617,7 +1617,7 @@ git commit -m "chore: dogfood code-reviewer and codebase-explorer subagents"
 **Files:**
 - Modify: `README.md`, `docs/guides/using-homonto.md`, `docs/roadmap.md`
 
-- [ ] **Step 1: Full regression suite**
+- [x] **Step 1: Full regression suite**
 
 Run each and confirm clean:
 ```bash
@@ -1629,20 +1629,20 @@ gofmt -l .
 ```
 Expected: all tests PASS; `go vet` and `go build` clean; `gofmt -l .` prints nothing.
 
-- [ ] **Step 2: Stale-doc grep**
+- [x] **Step 2: Stale-doc grep**
 
 Run: `grep -rn -i "subagent" README.md docs/`
 For every hit claiming subagent projection is unimplemented/pending/parsed-but-ignored, update it to reflect that projection now ships with real content. Focus points (confirmed present at plan time):
 - `README.md:144` "Known limitations" and lines ~151/159 (currently: "subagents are... [not projected]"). Replace with a statement that framework skill, command, **and subagent** projection are implemented; the `[subagents.X]` table now materializes and links into Claude Code `agents/` and OpenCode `agent/`.
 - `docs/guides/using-homonto.md:181` "Known limitations" and ~192 (currently: "`[subagents.X]` is parsed and validated ... [but not projected]"). Update to describe subagent projection as working, with the directory table (Claude `agents/`, OpenCode `agent/`, user and project scopes).
 
-- [ ] **Step 3: Update the roadmap**
+- [x] **Step 3: Update the roadmap**
 
 In `docs/roadmap.md`:
 - "Immediate Next Work" item 2 ("Subagent projection (`[subagents.X]`)", lines ~48-55): mark **done** — subagent projection landed on `main` with real bundled content (`code-reviewer`, `codebase-explorer`, comet's `comet-navigator`). The remaining immediate work is the `onto` binary.
 - v1.1 status (line ~69 area): note subagent projection landed with real content alongside skills and commands.
 
-- [ ] **Step 4: Final commit**
+- [x] **Step 4: Final commit**
 
 ```bash
 git add README.md docs/guides/using-homonto.md docs/roadmap.md

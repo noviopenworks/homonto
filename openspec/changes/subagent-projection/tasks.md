@@ -56,7 +56,7 @@
 
 ## 9. Regression and docs
 
-- [ ] 9.1 Full regression: `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `go build ./...`, `gofmt -l .`
-- [ ] 9.2 Stale-doc grep: no doc claims subagent projection is unimplemented once shipped; update README "Known limitations" and `docs/guides/using-homonto.md`
-- [ ] 9.3 Update `docs/roadmap.md` v1.1 status (subagent projection landed with real content) and the "Immediate Next Work" section (item 2 done; onto binary remains)
-- [ ] 9.4 Commit all changes
+- [x] 9.1 Full regression: `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `go build ./...`, `gofmt -l .`
+- [x] 9.2 Stale-doc grep: no doc claims subagent projection is unimplemented once shipped; update README "Known limitations" and `docs/guides/using-homonto.md`
+- [x] 9.3 Update `docs/roadmap.md` v1.1 status (subagent projection landed with real content) and the "Immediate Next Work" section (item 2 done; onto binary remains)
+- [x] 9.4 Commit all changes
