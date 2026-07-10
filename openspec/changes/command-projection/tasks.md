@@ -19,9 +19,9 @@
 
 ## 4. Config command expansion
 
-- [ ] 4.1 Add `Config.ExpandedCommandEntriesForTool(tool)` (explicit `[commands.X]` + framework-expanded commands, scope/targets inheritance)
-- [ ] 4.2 Collision detection (explicit vs framework command name) and cycle propagation
-- [ ] 4.3 Config tests for command expansion, inheritance, collision, target filtering
+- [x] 4.1 Add `Config.ExpandedCommandEntriesForTool(tool)` (explicit `[commands.X]` + framework-expanded commands, scope/targets inheritance)
+- [x] 4.2 Collision detection (explicit vs framework command name) and cycle propagation
+- [x] 4.3 Config tests for command expansion, inheritance, collision, target filtering
 
 ## 5. Engine materialization orchestration
 

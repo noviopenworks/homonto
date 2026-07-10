@@ -747,7 +747,7 @@ Adds `CommandEntriesForTool` (explicit only) and `ExpandedCommandEntriesForTool`
 
 **Note on test coverage:** no framework in the *real* embedded catalog declares a `[commands]` table yet (deferred with real content), so the config-level framework-command **inheritance/collision** paths cannot be triggered against the real embed here. Their algorithm is byte-identical to skills (proven by `ExpandedSkill*` tests) and to the catalog `ExpandCommands` tests (Task 3). The config tests below exercise what the real embed supports: explicit command entries, target filtering, skill/command name-share, and that the framework loop safely no-ops when the framework declares no commands.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/config/config_test.go` (uses `loadTOML` + `validModelsBothTools` helpers already in the file):
 
@@ -835,12 +835,12 @@ targets = ["claude"]
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/config/ -run 'TestExpandedCommands|TestSkillAndCommandMayShareName' -count=1`
 Expected: FAIL (`ExpandedCommandEntriesForTool` undefined).
 
-- [ ] **Step 3: Implement the two methods**
+- [x] **Step 3: Implement the two methods**
 
 In `internal/config/config.go`, add next to `SkillEntriesForTool`:
 
@@ -926,12 +926,12 @@ func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, er
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/config/ -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/config/config.go internal/config/config_test.go
