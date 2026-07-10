@@ -128,7 +128,7 @@ Adds a `Commands` table to `Framework`/`frameworkTOML`, validates each command p
   - `Catalog.commands map[string]string` (global index).
   - `func (c *Catalog) CommandPath(name string) (string, bool)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/catalog/catalog_test.go`. First extend `fixtureFS()` so the superpowers framework declares a command and its file exists:
 
@@ -173,12 +173,12 @@ func TestLoadRejectsMissingCommandPath(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run 'TestLoadIndexesFrameworkCommands|TestLoadRejectsMissingCommandPath' -count=1`
 Expected: FAIL (`Commands`/`CommandPath` undefined).
 
-- [ ] **Step 3: Implement the parse, index, and lookup**
+- [x] **Step 3: Implement the parse, index, and lookup**
 
 In `internal/catalog/catalog.go`:
 
@@ -271,12 +271,12 @@ func (c *Catalog) CommandPath(name string) (string, bool) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -run 'TestLoadIndexesFrameworkCommands|TestLoadRejectsMissingCommandPath|TestLoad' -count=1`
 Expected: PASS (existing `TestLoad*` still pass with the extended fixture).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/catalog.go internal/catalog/catalog_test.go

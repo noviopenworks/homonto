@@ -1,4 +1,4 @@
 # Subagent Progress — command-projection
 review_mode: standard | tdd_mode: tdd | base: a10061e
-- Task 1 DONE checked off (0d23d50). Placeholder = example-command.md. tasks.md 1.1-1.3 checked.
-- Task 2 (Framework [commands] parse/index/lookup) NEXT.
+Tasks 1-2 DONE: 0d23d50, 51cbead. tasks.md checked: 1.1-1.3,2.1,2.2.
+Task 3 (factor expandResources + ExpandCommands — touches shipped expand.go, expect risk review) NEXT.

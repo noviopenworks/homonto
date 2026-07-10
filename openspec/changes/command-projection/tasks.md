@@ -6,8 +6,8 @@
 
 ## 2. Catalog command loading, expansion, materialization
 
-- [ ] 2.1 Parse an optional `[commands]` table into `Framework.Commands` (name → `commands/<n>.md`); validate each path exists in the embedded FS
-- [ ] 2.2 Index commands and add a command-path lookup (`CommandPath(name)`)
+- [x] 2.1 Parse an optional `[commands]` table into `Framework.Commands` (name → `commands/<n>.md`); validate each path exists in the embedded FS
+- [x] 2.2 Index commands and add a command-path lookup (`CommandPath(name)`)
 - [ ] 2.3 Expand framework commands (transitive, deduped) — extend `Expand` or add `ExpandCommands`
 - [ ] 2.4 Add single-file command materialization to `.homonto/catalog/commands/<n>.md`, version-gated
 - [ ] 2.5 Unit tests: command table parse, command expansion/dedup, single-file materialize, missing-file re-materialize
