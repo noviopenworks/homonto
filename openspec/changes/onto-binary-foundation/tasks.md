@@ -8,10 +8,10 @@
 
 ## 2. onto binary + CLI root (`cmd/onto`, `internal/ontocli`)
 
-- [ ] 2.1 Create `internal/ontocli/root.go`: `Version` var (ldflags-stampable) + `NewRootCmd()` (Use "onto", SilenceUsage/Errors) + `version` subcommand, mirroring `internal/cli/root.go`
-- [ ] 2.2 Create `cmd/onto/main.go` (`package main`) calling `ontocli.NewRootCmd().Execute()`, mirroring root `main.go`
-- [ ] 2.3 Verify `go build ./cmd/onto` produces the binary and `go build ./...` still builds `homonto`
-- [ ] 2.4 Test: `onto version` prints `onto <Version>`; a stamped `-ldflags -X ...Version=` value is reflected (build-tag or ldflags test, or a unit test on the version command output)
+- [x] 2.1 Create `internal/ontocli/root.go`: `Version` var (ldflags-stampable) + `NewRootCmd()` (Use "onto", SilenceUsage/Errors) + `version` subcommand, mirroring `internal/cli/root.go`
+- [x] 2.2 Create `cmd/onto/main.go` (`package main`) calling `ontocli.NewRootCmd().Execute()`, mirroring root `main.go`
+- [x] 2.3 Verify `go build ./cmd/onto` produces the binary and `go build ./...` still builds `homonto`
+- [x] 2.4 Test: `onto version` prints `onto <Version>`; a stamped `-ldflags -X ...Version=` value is reflected (build-tag or ldflags test, or a unit test on the version command output)
 
 ## 3. `onto status` (read-only, config-independent)
 

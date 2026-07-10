@@ -5,8 +5,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 
 ## Tasks (4)
 - Task 1: complete (9df1bb2 + fix 2457d34; risk-reviewed APPROVED, Important Load-names-path fix verified)
-- Task 2: cmd/onto binary + internal/ontocli root+version — STAGE: implementing
-- Task 3: onto status (read-only) — pending
+- Task 2: complete (bd1445a, no risk; onto version works, homonto untouched)
+- Task 3: onto status (read-only) — STAGE: implementing
 - Task 4: regression + docs — pending
 
 ## Minor findings (for final review)

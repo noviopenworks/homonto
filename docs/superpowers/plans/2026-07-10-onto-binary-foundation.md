@@ -39,12 +39,12 @@ base-ref: 06e14209a5145216adaafbb3bb8aa516f4ccce96
 
 **Files:** create `internal/ontocli/root.go`, `internal/ontocli/root_test.go`, `cmd/onto/main.go`.
 
-- [ ] 2.1 Write failing test in `root_test.go`: `NewRootCmd()` returns a cmd with Use "onto"; executing `version` prints `onto <Version>` (capture cmd output)
-- [ ] 2.2 Run → RED
-- [ ] 2.3 Implement `internal/ontocli/root.go`: `var Version = "0.1.0-dev"` (doc-comment noting ldflags stamping to `…/internal/ontocli.Version`); `NewRootCmd()` (Use:"onto", Short, Version, SilenceUsage/Errors) + `version` subcommand printing `onto %s`
-- [ ] 2.4 Create `cmd/onto/main.go` (`package main`) mirroring root `main.go`: `ontocli.NewRootCmd().Execute()`, print `error:` to stderr, `os.Exit(1)`
-- [ ] 2.5 Run → GREEN; `go build ./cmd/onto` produces onto; `go build ./...` builds both; gofmt/vet clean
-- [ ] 2.6 Commit: `feat(onto): cmd/onto binary + ontocli root and version`
+- [x] 2.1 Write failing test in `root_test.go`: `NewRootCmd()` returns a cmd with Use "onto"; executing `version` prints `onto <Version>` (capture cmd output)
+- [x] 2.2 Run → RED
+- [x] 2.3 Implement `internal/ontocli/root.go`: `var Version = "0.1.0-dev"` (doc-comment noting ldflags stamping to `…/internal/ontocli.Version`); `NewRootCmd()` (Use:"onto", Short, Version, SilenceUsage/Errors) + `version` subcommand printing `onto %s`
+- [x] 2.4 Create `cmd/onto/main.go` (`package main`) mirroring root `main.go`: `ontocli.NewRootCmd().Execute()`, print `error:` to stderr, `os.Exit(1)`
+- [x] 2.5 Run → GREEN; `go build ./cmd/onto` produces onto; `go build ./...` builds both; gofmt/vet clean
+- [x] 2.6 Commit: `feat(onto): cmd/onto binary + ontocli root and version`
 
 ## Task 3: `onto status` (read-only, config-independent)
 
