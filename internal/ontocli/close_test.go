@@ -92,6 +92,14 @@ func TestCloseCommand_NonClosePhaseRefused(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "docs", "changes", "demo")); err != nil {
 		t.Errorf("change dir should still exist, stat err = %v", err)
 	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "demo", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading in-place onto-state.yaml: %v", err)
+	}
+	if st.Archived {
+		t.Errorf("st.Archived = true after refusal, want false")
+	}
 }
 
 // TestCloseCommand_UnresolvedDepRefused verifies that a change with an
@@ -118,6 +126,14 @@ func TestCloseCommand_UnresolvedDepRefused(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "docs", "changes", "demo")); err != nil {
 		t.Errorf("change dir should still exist, stat err = %v", err)
 	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "demo", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading in-place onto-state.yaml: %v", err)
+	}
+	if st.Archived {
+		t.Errorf("st.Archived = true after refusal, want false")
+	}
 }
 
 // TestCloseCommand_DirtyWorktreeRefused verifies that an uncommitted change
@@ -140,6 +156,14 @@ func TestCloseCommand_DirtyWorktreeRefused(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "docs", "changes", "demo")); err != nil {
 		t.Errorf("change dir should still exist, stat err = %v", err)
+	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "demo", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading in-place onto-state.yaml: %v", err)
+	}
+	if st.Archived {
+		t.Errorf("st.Archived = true after refusal, want false")
 	}
 }
 
@@ -168,5 +192,13 @@ func TestCloseCommand_ArchiveTargetExistsRefused(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "docs", "changes", "demo")); err != nil {
 		t.Errorf("change dir should still exist, stat err = %v", err)
+	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "demo", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading in-place onto-state.yaml: %v", err)
+	}
+	if st.Archived {
+		t.Errorf("st.Archived = true after refusal, want false")
 	}
 }
