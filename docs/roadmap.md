@@ -148,6 +148,24 @@ targets = ["opencode"]
 Bundled catalog entries carry origin/version metadata for auditability. Local
 adaptations live under `homonto/` and are declared with `source = "local:<name>"`.
 
+**Status (2026-07-10):** The catalog foundation for **skills** is implemented
+on `feature/20260710/catalog-foundation-skills`. This covers the bundled
+`go:embed` catalog (`onto`, `comet`, `superpowers`, `openspec` frameworks),
+`[frameworks.X]` dependency expansion, version-gated materialization to
+`.homonto/catalog/skills/`, and builtin SKILL projection into Claude Code and
+OpenCode. Command and subagent projection (`[commands.X]`, `[subagents.X]`)
+remain future work — see "Known limitations" in `README.md` and
+`docs/guides/using-homonto.md`.
+
+Verification evidence:
+- Full Go test suite: 195 tests passing across 18 packages (`go test ./...
+  -count=1`), `go vet ./...` clean, `go build ./...` clean.
+- Dogfood run: switching `homonto.toml` to `[frameworks.comet]` (which
+  transitively pulls in `superpowers` and `openspec`) and running `homonto
+  apply` materializes and links all 31 skills; a second `homonto status`
+  reports `No drift.`; `homonto doctor` reports all 31 skills × 2 tools
+  (Claude Code, OpenCode) = 62 "linked" OK lines.
+
 ## v1.2 Plugin Configuration
 
 Plugin support expands from simple references to declarations with configuration.

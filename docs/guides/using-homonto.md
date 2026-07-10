@@ -184,9 +184,11 @@ When neither is present: `No drift.`
   settings/plugins/skills, are not imported. Non-stdio (url/http) servers are
   skipped with a warning. Command/args are copied verbatim — review before
   sharing.
-- `[frameworks.X]`, `[commands.X]`, and `[subagents.X]` are parsed and validated,
-  including required model routes, but current adapters do not install or project
-  them yet.
+- `[frameworks.X]` resolves through the bundled builtin catalog and projects
+  skills (with dependency expansion) into Claude Code and OpenCode.
+  `[commands.X]` and `[subagents.X]` are parsed and validated, including
+  required model routes, but current adapters do not install or project them
+  yet.
 - The standalone `onto` binary is planned for the first public tag; current
   source only ships the `homonto` CLI and dogfooded onto skills.
 - Writing `opencode.jsonc` removes comments (whole-document JSONC
