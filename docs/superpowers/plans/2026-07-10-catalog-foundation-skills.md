@@ -1327,7 +1327,7 @@ Maps tasks.md 5.1 and the claude portion of 5.5.
   - `func (a *Adapter) WithCatalogRoot(catalogRoot string) *Adapter`
   - `func (a *Adapter) skillSource(entry config.NamedResource) string` — `builtin:<n>` → `filepath.Join(a.catalogRoot, <n>)`, else the existing local path.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/adapter/claude/builtin_test.go`:
 
@@ -1443,12 +1443,12 @@ func TestBuiltinSkillConflictNotClobbered(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/adapter/claude/ -run TestBuiltin -v`
 Expected: FAIL / build error — `WithCatalogRoot` undefined, and links target `<content>/skills/brainstorming` not the catalog root.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/adapter/claude/claude.go`:
 
@@ -1561,12 +1561,12 @@ with:
 
 In `Apply`, the final relink loop — replace `if _, err := link.Link(src, dst, a.content); err != nil {` with `if _, err := link.Link(src, dst, a.content, a.catalogRoot); err != nil {`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/adapter/claude/ -count=1 -v`
 Expected: PASS (new builtin tests and all existing claude tests — existing tests use `local:` sources, unaffected by `skillSource`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/adapter/claude/claude.go internal/adapter/claude/builtin_test.go
