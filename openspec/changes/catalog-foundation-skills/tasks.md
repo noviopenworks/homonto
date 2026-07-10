@@ -10,7 +10,7 @@
 - [x] 2.1 Create `internal/catalog/catalog.go` with embedded FS (`go:embed all:catalog`), framework metadata parser, and framework/skill lookup APIs
 - [x] 2.2 Add dependency graph builder with cycle detection and transitive expansion
 - [x] 2.3 Add materialization function: extract builtin skill from embedded FS to `.homonto/catalog/skills/<name>/`
-- [ ] 2.4 Add catalog version read and comparison for re-materialization gating
+- [x] 2.4 Add catalog version read and comparison for re-materialization gating
 - [x] 2.5 Write unit tests for catalog parsing, expansion, cycle detection, and materialization
 
 ## 3. Config integration
