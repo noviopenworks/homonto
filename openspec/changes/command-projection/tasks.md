@@ -38,8 +38,8 @@
 
 ## 7. Doctor
 
-- [ ] 7.1 Extend `doctor` to verify command links and materialized command files
-- [ ] 7.2 Doctor test for a linked builtin command
+- [x] 7.1 Extend `doctor` to verify command links and materialized command files
+- [x] 7.2 Doctor test for a linked builtin command
 
 ## 8. Dogfood
 

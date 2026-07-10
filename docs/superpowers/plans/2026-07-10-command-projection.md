@@ -1914,7 +1914,7 @@ Extends `Doctor` to verify command content presence + tool-side symlink for each
 - Consumes: `config.ExpandedCommandEntriesForTool`, `Engine.CommandDir()`, `commandpath.Dir`.
 - Produces: `func (e *Engine) doctorCommands(tool string, entries []config.NamedResource) []string`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/engine/status_test.go` (mirror the existing doctor skill test's setup pattern; declare the placeholder builtin command, apply, then assert doctor reports it linked):
 
@@ -1944,12 +1944,12 @@ func TestDoctorReportsLinkedCommand(t *testing.T) {
 
 (If `commandTOML` is defined in `materialize_test.go` in the same `engine` package, it is reused directly. `strings` is already imported by `status_test.go`; add it if not.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/engine/ -run TestDoctorReportsLinkedCommand -count=1`
 Expected: FAIL (doctor does not report commands).
 
-- [ ] **Step 3: Implement `doctorCommands` and wire it into `Doctor`**
+- [x] **Step 3: Implement `doctorCommands` and wire it into `Doctor`**
 
 In `internal/engine/status.go`, add the `commandpath` import (`github.com/noviopenworks/homonto/internal/commandpath`). In `Doctor`, after the opencode skills block, add:
 
@@ -2003,12 +2003,12 @@ func (e *Engine) doctorCommands(tool string, entries []config.NamedResource) []s
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/engine/ -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/engine/status.go internal/engine/status_test.go
