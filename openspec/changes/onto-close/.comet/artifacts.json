@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/onto-close/proposal.md",
+  "openspec_design": "openspec/changes/onto-close/design.md",
+  "openspec_tasks": "openspec/changes/onto-close/tasks.md",
+  "openspec_delta_spec": "openspec/changes/onto-close/specs/onto-binary/spec.md",
+  "handoff_context": "openspec/changes/onto-close/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/onto-close/.comet/handoff/design-context.md"
+}
