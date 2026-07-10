@@ -30,10 +30,10 @@
 
 ## 5. Engine materialization orchestration
 
-- [ ] 5.1 Extend catalog materialization to collect declared builtin subagent names and materialize them (single-file) before adapters, under the same version gate
-- [ ] 5.2 Ensure `CatalogVersion` is recorded only after skills + commands + subagents materialization succeeds
-- [ ] 5.3 Add `WithSubagentCatalogRoot` wiring for both adapters
-- [ ] 5.4 Engine tests: first-apply subagent materialization, version-gated skip, missing-file refresh
+- [x] 5.1 Extend catalog materialization to collect declared builtin subagent names and materialize them (single-file) before adapters, under the same version gate
+- [x] 5.2 Ensure `CatalogVersion` is recorded only after skills + commands + subagents materialization succeeds
+- [x] 5.3 Add `WithSubagentCatalogRoot` wiring for both adapters
+- [x] 5.4 Engine tests: first-apply subagent materialization, version-gated skip, missing-file refresh
 
 ## 6. Adapter subagent projection
 

@@ -9,8 +9,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 2: complete (44a9b71, no risk)
 - Task 3: complete (7f96e98, risk-reviewed APPROVED; dir-scan D1/D5 reconciliation confirmed safe)
 - Task 4: complete (49f7575, no risk; EnabledModelTools already counts subagents, test-locked)
-- Task 5: engine materialization + WithSubagentCatalogRoot — STAGE: implementing
-- Task 6: adapter subagent projection (both tools) — pending
+- Task 5: complete (bd7bce5, no risk; version gate covers subagents; TODO engine.go:70 for Task 6 to chain WithSubagentCatalogRoot)
+- Task 6: adapter subagent projection (both tools) — STAGE: implementing (MUST complete engine.go:70 TODO)
 - Task 7: doctor verification — pending
 - Task 8: dogfood — pending
 - Task 9: regression + docs — pending

@@ -912,7 +912,7 @@ git commit -m "feat(config): ExpandedSubagentEntriesForTool + model-route gap te
 
 > **Ordering note:** the `Build` change in Step 5 calls `.WithSubagentCatalogRoot(...)` on each adapter, which does not exist until Task 6. To keep this task independently compilable, add the adapter `WithSubagentCatalogRoot` method (Task 6 Step 1) **before** running this task's build — or execute Task 6 Step 1 first, then this task, then the rest of Task 6. The subagent-driven executor should treat "engine field + adapter setter" as the compilable unit; the plan lists them separately only for review clarity.
 
-- [ ] **Step 1: Write the failing engine tests**
+- [x] **Step 1: Write the failing engine tests**
 
 In `internal/engine/materialize_test.go`, add (mirror `TestApplyMaterializesBuiltinCommand` and `TestApplyRematerializesWhenCommandFileMissing`, using a subagent config and asserting the file at `<SubagentDir()>/<name>.md`):
 
@@ -948,12 +948,12 @@ func TestApplyRematerializesWhenSubagentFileMissing(t *testing.T) {
 
 Reuse the existing test scaffolding pattern from the command tests in this file (`buildEngine…`, `mustPlan`, the temp `homonto.toml` writer). Add a `buildEngineWithSubagent` helper that writes a `homonto.toml` declaring `[subagents.code-reviewer] source = "builtin:code-reviewer"` with `scope = "project"` and the required `[models.*]` blocks, exactly mirroring how the existing command engine test builds its config.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/engine/ -run 'TestApply.*Subagent' -v`
 Expected: FAIL — `SubagentDir` undefined and no subagent materialization.
 
-- [ ] **Step 3: Add the engine field, `SubagentDir`, and Build wiring**
+- [x] **Step 3: Add the engine field, `SubagentDir`, and Build wiring**
 
 In `internal/engine/engine.go`:
 
@@ -987,7 +987,7 @@ Add the accessor after `CommandDir`:
 func (e *Engine) SubagentDir() string { return e.SubagentCatalogRoot }
 ```
 
-- [ ] **Step 4: Extend `materializeCatalog` with the subagent set + gate**
+- [x] **Step 4: Extend `materializeCatalog` with the subagent set + gate**
 
 In `internal/engine/engine.go`, in `materializeCatalog`:
 
@@ -1061,16 +1061,16 @@ func allSubagentFilesExist(root string, names []string) bool {
 }
 ```
 
-- [ ] **Step 5: Add the adapter `WithSubagentCatalogRoot` setter (both adapters) so Build compiles**
+- [x] **Step 5: Add the adapter `WithSubagentCatalogRoot` setter (both adapters) so Build compiles**
 
 This is Task 6 Step 1; add it now (see Task 6) if executing tasks strictly in order. Minimum needed here: the field `subagentCatalogRoot string` + the `WithSubagentCatalogRoot` method on each adapter, returning the adapter.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `go test ./internal/engine/ -run 'TestApply' -count=1 -v`
 Expected: PASS, including the two new subagent tests and every pre-existing skill/command materialization test (the shared version gate must still record only after all three kinds materialize).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add internal/engine/engine.go internal/engine/materialize_test.go internal/adapter
