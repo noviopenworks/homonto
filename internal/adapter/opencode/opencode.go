@@ -20,6 +20,7 @@ import (
 type Adapter struct {
 	home        string
 	content     string
+	catalogRoot string // materialized builtin catalog root (.homonto/catalog/skills)
 	projectRoot string // directory of homonto.toml; used for project-scope resources
 	skills      []config.NamedResource
 }
@@ -34,6 +35,36 @@ func New(home, content string) *Adapter { return &Adapter{home: home, content: c
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.projectRoot = projectRoot
 	return a
+}
+
+// WithCatalogRoot sets the materialized builtin-catalog root that builtin:<name>
+// skills link from. Mirrors WithProjectRoot.
+func (a *Adapter) WithCatalogRoot(catalogRoot string) *Adapter {
+	a.catalogRoot = catalogRoot
+	return a
+}
+
+// managedRoots returns every content root homonto owns links into. catalogRoot
+// is included only when set: link.managed() treats an empty-string root as a
+// prefix match for every absolute path, so passing "" here would make link
+// calls treat any symlink as "ours" — an empty catalogRoot must never reach
+// link.*.
+func (a *Adapter) managedRoots() []string {
+	roots := []string{a.content}
+	if a.catalogRoot != "" {
+		roots = append(roots, a.catalogRoot)
+	}
+	return roots
+}
+
+// skillSource resolves a skill entry's on-disk content directory by source
+// scheme: builtin:<n> from the materialized catalog root, otherwise the local
+// content dir.
+func (a *Adapter) skillSource(entry config.NamedResource) string {
+	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
+		return filepath.Join(a.catalogRoot, strings.TrimPrefix(s, "builtin:"))
+	}
+	return filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, entry.Name))
 }
 
 func (a *Adapter) Name() string { return "opencode" }
@@ -93,7 +124,11 @@ func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 }
 
 func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
-	a.skills = c.SkillEntriesForTool("opencode")
+	skills, err := c.ExpandedSkillEntriesForTool("opencode")
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	a.skills = skills
 	doc, err := readStandardized(a.cfgFile())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -127,7 +162,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "plugin." + p, New: mustJSON(p)})
 		}
 	}
-	ops, err := link.Plan(a.links(), a.content)
+	ops, err := link.Plan(a.links(), a.managedRoots()...)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
@@ -142,7 +177,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		// A create whose same-named link still exists (as our managed symlink) at
 		// the other scope is a scope switch: render it as a relocate so the move —
 		// and the prune of the old link Apply performs — is visible before confirm.
-		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name), a.content) {
+		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name), a.managedRoots()...) {
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: filepath.Join(inactive, name), New: op.Dst + " -> " + op.Src})
 		} else if op.Cur == "" {
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + name, New: op.Dst + " -> " + op.Src})
@@ -165,7 +200,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		if opDst[dst] {
 			continue // a create/relink/relocate already covers it
 		}
-		src := filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, name))
+		src := a.skillSource(entry)
 		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
 			continue // not a correct link into content
 		}
@@ -207,8 +242,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 func (a *Adapter) links() map[string]string {
 	out := map[string]string{}
 	for _, entry := range a.skills {
-		name := entry.Name
-		out[filepath.Join(a.skillsDir(entry.Resource.Scope), name)] = filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, name))
+		out[filepath.Join(a.skillsDir(entry.Resource.Scope), entry.Name)] = a.skillSource(entry)
 	}
 	return out
 }
@@ -359,7 +393,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 				if dst == "" {
 					dst = filepath.Join(a.skillsDir("user"), name)
 				}
-				err = link.Remove(dst, a.content)
+				err = link.Remove(dst, a.managedRoots()...)
 			}
 			if err != nil {
 				return err
@@ -394,7 +428,7 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	}
 	// Fail fast on link conflicts before writing any file.
 	links := a.links()
-	if _, err := link.Plan(links, a.content); err != nil {
+	if _, err := link.Plan(links, a.managedRoots()...); err != nil {
 		return err
 	}
 	if docChanged {
@@ -413,14 +447,14 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			continue
 		}
 		old := filepath.Join(inactive, entry.Name)
-		if link.IsManaged(old, a.content) {
-			if err := link.Remove(old, a.content); err != nil {
+		if link.IsManaged(old, a.managedRoots()...) {
+			if err := link.Remove(old, a.managedRoots()...); err != nil {
 				return err
 			}
 		}
 	}
 	for dst, src := range links {
-		if _, err := link.Link(src, dst, a.content); err != nil {
+		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {
 			return err
 		}
 		// Record the link in state so pruning sees de-declared skills later.
