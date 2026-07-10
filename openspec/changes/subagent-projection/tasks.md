@@ -45,8 +45,8 @@
 
 ## 7. Doctor
 
-- [ ] 7.1 Extend `doctor` to verify subagent links and materialized subagent files for both tools
-- [ ] 7.2 Doctor test for a linked builtin subagent (both tools)
+- [x] 7.1 Extend `doctor` to verify subagent links and materialized subagent files for both tools
+- [x] 7.2 Doctor test for a linked builtin subagent (both tools)
 
 ## 8. Dogfood
 

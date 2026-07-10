@@ -1483,16 +1483,16 @@ git commit -m "feat(adapter): project subagents into claude agents/ and opencode
 - Consumes: `config.ExpandedSubagentEntriesForTool`, `subagentpath.Dir`, `Engine.SubagentDir`, `Engine.ContentDir`.
 - Produces: `(e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []string` and its two `Doctor()` call sites (claude + opencode).
 
-- [ ] **Step 1: Write the failing doctor test**
+- [x] **Step 1: Write the failing doctor test**
 
 Add a test mirroring the existing command-doctor test: build an engine with a declared builtin subagent, `Apply`, then assert `Doctor()` output contains `ok: subagent "code-reviewer" linked (claude)` and `... (opencode)`. Reuse the command doctor test's scaffolding verbatim, swapping "command" → "subagent".
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `go test ./internal/engine/ -run 'Doctor.*Subagent|Subagent.*Doctor' -v`
 Expected: FAIL — `doctorSubagents` undefined / no subagent lines emitted.
 
-- [ ] **Step 3: Add `doctorSubagents` and wire it into `Doctor()`**
+- [x] **Step 3: Add `doctorSubagents` and wire it into `Doctor()`**
 
 Add the import `"github.com/noviopenworks/homonto/internal/subagentpath"` to `status.go`.
 
@@ -1546,12 +1546,12 @@ In `Doctor()`, after the two `doctorCommands` call sites, add:
 	}
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `go test ./internal/engine/ -count=1 -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/engine/status.go internal/engine
