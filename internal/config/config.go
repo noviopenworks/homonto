@@ -83,6 +83,10 @@ func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
 	return entriesForTool(c.Skills, tool)
 }
 
+func (c *Config) CommandEntriesForTool(tool string) []NamedResource {
+	return entriesForTool(c.Commands, tool)
+}
+
 var (
 	catalogOnce sync.Once
 	catalogInst *cat.Catalog
@@ -160,6 +164,79 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 				continue
 			}
 			byName[es.Name] = nr
+		}
+	}
+
+	out := make([]NamedResource, 0, len(byName))
+	for _, nr := range byName {
+		out = append(out, nr)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// ExpandedCommandEntriesForTool returns the effective commands for a tool:
+// explicit [commands.X] entries plus, for each [frameworks.<fw>]
+// source="builtin:<fw>" targeting the tool, its transitively expanded commands.
+// Each expanded command inherits the framework declaration's scope and targets.
+// A framework command whose name collides with an explicit [commands.X] entry,
+// or with another framework's command under a conflicting declaration, is an
+// error, as is a dependency cycle (surfaced from catalog.ExpandCommands).
+// Collision is command-vs-command only: a command may share a name with a skill.
+func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, error) {
+	byName := map[string]NamedResource{}
+	explicitNames := map[string]bool{}
+	for _, e := range c.CommandEntriesForTool(tool) {
+		byName[e.Name] = e
+		explicitNames[e.Name] = true
+	}
+
+	// Deterministic framework iteration order for stable error messages.
+	fwNames := make([]string, 0, len(c.Frameworks))
+	for name := range c.Frameworks {
+		fwNames = append(fwNames, name)
+	}
+	sort.Strings(fwNames)
+
+	var cl *cat.Catalog
+	for _, fwName := range fwNames {
+		fwRes := c.Frameworks[fwName]
+		if !strings.HasPrefix(fwRes.Source, "builtin:") {
+			continue
+		}
+		if !containsString(fwRes.TargetsOrAll(), tool) {
+			continue
+		}
+		if cl == nil {
+			var err error
+			if cl, err = loadedCatalog(); err != nil {
+				return nil, err
+			}
+		}
+		builtin := strings.TrimPrefix(fwRes.Source, "builtin:")
+		expanded, err := cl.ExpandCommands([]string{builtin})
+		if err != nil {
+			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
+		}
+		for _, ec := range expanded {
+			if explicitNames[ec.Name] {
+				return nil, fmt.Errorf("config: command %q is declared both explicitly in [commands] and by framework %q", ec.Name, fwName)
+			}
+			nr := NamedResource{
+				Name: ec.Name,
+				Resource: Resource{
+					Source:  "builtin:" + ec.Name,
+					Scope:   fwRes.Scope,
+					Targets: fwRes.Targets,
+				},
+			}
+			if prev, ok := byName[ec.Name]; ok {
+				if !sameResource(prev.Resource, nr.Resource) {
+					return nil, fmt.Errorf("config: command %q expanded by multiple frameworks with conflicting scope/targets (framework %q)", ec.Name, fwName)
+				}
+				continue
+			}
+			byName[ec.Name] = nr
 		}
 	}
 

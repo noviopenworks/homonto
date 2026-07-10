@@ -654,3 +654,85 @@ model = "openai/gpt-5-mini"
 variant = "cheap"
 `
 }
+
+func TestExpandedCommandsExplicitAndTargetFilter(t *testing.T) {
+	c := loadTOML(t, `
+[commands.example-command]
+source = "builtin:example-command"
+scope = "project"
+targets = ["claude"]
+`+validModelsBothTools())
+
+	claude, err := c.ExpandedCommandEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("expand claude: %v", err)
+	}
+	if len(claude) != 1 || claude[0].Name != "example-command" {
+		t.Fatalf("claude commands = %v", claude)
+	}
+	if claude[0].Resource.Source != "builtin:example-command" || claude[0].Resource.Scope != "project" {
+		t.Fatalf("example-command resource = %+v", claude[0].Resource)
+	}
+	// targets = ["claude"] only -> opencode gets nothing.
+	opencode, err := c.ExpandedCommandEntriesForTool("opencode")
+	if err != nil {
+		t.Fatalf("expand opencode: %v", err)
+	}
+	if len(opencode) != 0 {
+		t.Fatalf("opencode commands = %v, want none", opencode)
+	}
+}
+
+// A skill and a command may share a name: separate namespaces, both returned.
+func TestSkillAndCommandMayShareName(t *testing.T) {
+	c := loadTOML(t, `
+[skills.shared]
+source = "builtin:shared"
+scope = "user"
+targets = ["claude"]
+
+[commands.shared]
+source = "builtin:shared"
+scope = "user"
+targets = ["claude"]
+`+validModelsBothTools())
+
+	skills, err := c.ExpandedSkillEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("skills: %v", err)
+	}
+	commands, err := c.ExpandedCommandEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("commands: %v", err)
+	}
+	if len(skills) != 1 || skills[0].Name != "shared" {
+		t.Fatalf("skills = %v", skills)
+	}
+	if len(commands) != 1 || commands[0].Name != "shared" {
+		t.Fatalf("commands = %v", commands)
+	}
+}
+
+// The framework loop must not crash or invent commands when the real framework
+// declares no [commands] table: only explicit commands survive.
+func TestExpandedCommandsFrameworkWithoutCommandsNoOps(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "user"
+targets = ["claude"]
+
+[commands.example-command]
+source = "builtin:example-command"
+scope = "user"
+targets = ["claude"]
+`+validModelsBothTools())
+
+	got, err := c.ExpandedCommandEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	if len(got) != 1 || got[0].Name != "example-command" {
+		t.Fatalf("commands = %v, want only example-command", got)
+	}
+}
