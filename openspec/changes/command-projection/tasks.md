@@ -1,8 +1,8 @@
 ## 1. Catalog commands content and embed
 
-- [ ] 1.1 Add `catalog/commands/<placeholder>.md` (one flat placeholder command with frontmatter)
-- [ ] 1.2 Extend the root `catalog` package `//go:embed` directive to include `all:commands`
-- [ ] 1.3 Verify the embed compiles and the placeholder command is present in the embedded FS
+- [x] 1.1 Add `catalog/commands/<placeholder>.md` (one flat placeholder command with frontmatter)
+- [x] 1.2 Extend the root `catalog` package `//go:embed` directive to include `all:commands`
+- [x] 1.3 Verify the embed compiles and the placeholder command is present in the embedded FS
 
 ## 2. Catalog command loading, expansion, materialization
 

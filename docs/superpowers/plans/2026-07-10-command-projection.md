@@ -42,7 +42,7 @@ Ships the one placeholder command file and extends the embed directive so `all:c
 - Consumes: `embedded "github.com/noviopenworks/homonto/catalog"` exposing `embedded.FS embed.FS`.
 - Produces: an embedded file readable at FS path `commands/example-command.md`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/catalog/embed_test.go`:
 
@@ -63,12 +63,12 @@ func TestEmbedIncludesPlaceholderCommand(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run TestEmbedIncludesPlaceholderCommand -count=1`
 Expected: FAIL (file not embedded, or build error `pattern all:commands: no matching files found` once the directive is added before the file — either failure is acceptable at this step).
 
-- [ ] **Step 3: Create the placeholder command file**
+- [x] **Step 3: Create the placeholder command file**
 
 Create `catalog/commands/example-command.md`:
 
@@ -85,7 +85,7 @@ command-projection machinery (materialize, link, doctor) can be dogfooded before
 real command content is authored. Replace or remove it in a later change.
 ```
 
-- [ ] **Step 4: Extend the embed directive**
+- [x] **Step 4: Extend the embed directive**
 
 In `catalog/embed.go`, change line 8 from:
 
@@ -99,12 +99,12 @@ to:
 //go:embed all:frameworks all:skills all:commands version.txt
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -run TestEmbedIncludesPlaceholderCommand -count=1`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add catalog/commands/example-command.md catalog/embed.go internal/catalog/embed_test.go
