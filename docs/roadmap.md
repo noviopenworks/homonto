@@ -1,6 +1,6 @@
 # homonto — Post-v1 Roadmap
 
-**Date:** 2026-07-08
+**Date:** 2026-07-10
 **Status:** Product roadmap. Release-readiness tasks live in
 [`road-to-release.md`](road-to-release.md).
 
@@ -23,6 +23,38 @@ Post-v1 expands Homonto from a config projector into a manager for the AI
 coding-tool ecosystem around those configs: framework/catalog projection,
 workflow operation through `onto`, richer plugin configuration, Claude/OpenCode
 TUI-related settings, and full lifecycle management for agents.
+
+## Immediate Next Work
+
+Two items stand between the current `main` and the reopened dual-binary release
+gate. Both are scoped in
+[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md);
+neither is optional for `v0.1.0-rc.1`.
+
+1. **`onto` binary (release-blocking).** Source builds only the `homonto`
+   binary today (`main.go` at the repo root); there is no second `package main`.
+   `onto` must ship beside it as the managed spec-driven workflow operator.
+   `onto init` scaffolds the `docs/` layout, but only after `[frameworks.onto]`
+   is declared and applied through Homonto; if the framework install is missing
+   it directs the user to initialize/apply Homonto first. `onto status` is the
+   read-only degraded exception that may inspect `docs/` without config. The
+   binary creates and validates skeletons and enforces structural invariants:
+   required files exist, `onto-state.yaml` is consistent, phase transitions
+   happen only through valid gates, dependencies resolve, and archive/close
+   rules hold. `onto doctor` checks workflow health as a peer to `homonto
+   doctor`'s installation/projection health. Release packaging must
+   cross-compile and publish **both** binaries with a shared `SHA256SUMS`.
+
+2. **Subagent projection (`[subagents.X]`).** The last resource type in v1.1
+   scope. `[subagents.X]` already parses and passes model-route validation in
+   `internal/config`, but no adapter, engine, or plan step projects it — `apply`
+   installs skills and commands only. Projecting subagents into Claude Code and
+   OpenCode (with `doctor` link verification, mirroring the skills/commands
+   pattern) closes the catalog projection surface.
+
+Skills and command projection have already landed on `main` (see v1.1 below);
+these two items plus dual-binary packaging are what remain before the
+maintainer-owned `v0.1.0-rc.1` tag.
 
 ## Roadmap Strategy
 
@@ -148,8 +180,9 @@ targets = ["opencode"]
 Bundled catalog entries carry origin/version metadata for auditability. Local
 adaptations live under `homonto/` and are declared with `source = "local:<name>"`.
 
-**Status (2026-07-10):** The catalog foundation for **skills** is implemented
-on `feature/20260710/catalog-foundation-skills`. This covers the bundled
+**Status (2026-07-10, merged to `main`):** The catalog foundation for
+**skills** is implemented and merged (originally
+`feature/20260710/catalog-foundation-skills`). This covers the bundled
 `go:embed` catalog (`onto`, `comet`, `superpowers`, `openspec` frameworks),
 `[frameworks.X]` dependency expansion, version-gated materialization to
 `.homonto/catalog/skills/`, and builtin SKILL projection into Claude Code and
@@ -167,8 +200,10 @@ Verification evidence:
   reports `No drift.`; `homonto doctor` reports all 31 skills × 2 tools
   (Claude Code, OpenCode) = 62 "linked" OK lines.
 
-**Status (2026-07-10, `feature/20260710/command-projection`):** Command
-projection machinery has since landed on top of the skills foundation above.
+**Status (2026-07-10, merged to `main` and archived):** Command projection
+machinery has since landed on top of the skills foundation above (originally
+`feature/20260710/command-projection`, now merged and its Comet change
+archived).
 `[commands.X]` (builtin or local, `source` resolving to `.homonto/catalog/
 commands/<name>.md` or `homonto/commands/<name>.md` respectively) and
 framework-declared `[commands]` tables (inherited scope/targets, transitive
