@@ -27,11 +27,11 @@ base-ref: 6a41f8a09e819d3977a12fa8dfcf7cdc31791c3d
 
 **Files:** modify `internal/ontostate/state.go`, `internal/ontostate/state_test.go`.
 
-- [ ] 1.1 (RED first) Make `RequiredArtifacts(phase)` CUMULATIVE: open→[onto-state.yaml,proposal.md,tasks.md]; design→+design.md; build→+plan.md; verify & close→+verification.md; unknown→open base. Update/extend tests; ensure existing `ValidateSkeleton` tests still pass (adjust any build-phase fixture to include plan.md, or assert the new missing-plan.md error).
-- [ ] 1.2 (RED first) `NextPhase(phase string) (string, bool)` over ["open","design","build","verify","close"]: successor+true; ("",false) at close & unknown. Tests: each step; close→false; "bogus"→false.
-- [ ] 1.3 (RED first) `TasksAllChecked(tasksPath string) (bool, error)`: read file; true iff ≥1 checkbox line (`- [ ]` or `- [x]`) and no `- [ ]`. Tests: all `- [x]`→true; one `- [ ]`→false; no checkboxes→false; missing file→error.
-- [ ] 1.4 GREEN; gofmt/vet clean for internal/ontostate.
-- [ ] 1.5 Commit: `feat(ontostate): per-phase RequiredArtifacts + NextPhase + TasksAllChecked`
+- [x] 1.1 (RED first) Make `RequiredArtifacts(phase)` CUMULATIVE: open→[onto-state.yaml,proposal.md,tasks.md]; design→+design.md; build→+plan.md; verify & close→+verification.md; unknown→open base. Update/extend tests; ensure existing `ValidateSkeleton` tests still pass (adjust any build-phase fixture to include plan.md, or assert the new missing-plan.md error).
+- [x] 1.2 (RED first) `NextPhase(phase string) (string, bool)` over ["open","design","build","verify","close"]: successor+true; ("",false) at close & unknown. Tests: each step; close→false; "bogus"→false.
+- [x] 1.3 (RED first) `TasksAllChecked(tasksPath string) (bool, error)`: read file; true iff ≥1 checkbox line (`- [x]` or `- [x]`) and no `- [x]`. Tests: all `- [x]`→true; one `- [x]`→false; no checkboxes→false; missing file→error.
+- [x] 1.4 GREEN; gofmt/vet clean for internal/ontostate.
+- [x] 1.5 Commit: `feat(ontostate): per-phase RequiredArtifacts + NextPhase + TasksAllChecked`
 
 ## Task 2: `onto advance` command (`internal/ontocli`)
 

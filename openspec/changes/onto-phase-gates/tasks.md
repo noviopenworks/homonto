@@ -1,10 +1,10 @@
 ## 1. Phase helpers in `internal/ontostate`
 
-- [ ] 1.1 (TDD, RED first) Make `RequiredArtifacts(phase)` cumulative per phase: open→[onto-state.yaml,proposal.md,tasks.md]; design→+design.md; build→+plan.md; verify/close→+verification.md; unknown→open base set. Tests: each phase's set; unknown → base. Confirm existing `ValidateSkeleton` tests still pass (a build-phase change missing plan.md now errors).
-- [ ] 1.2 (TDD, RED first) `NextPhase(phase string) (string, bool)` over ["open","design","build","verify","close"]: successor+true; ("",false) at close and for unknown. Tests: each step, close→false, "bogus"→false.
-- [ ] 1.3 (TDD, RED first) `TasksAllChecked(tasksPath string) (bool, error)`: read file; true iff ≥1 checkbox and no unchecked `- [ ]`. Tests: all `- [x]` → true; a mix with one `- [ ]` → false; no checkboxes → false; missing file → error.
-- [ ] 1.4 GREEN; gofmt/vet clean for internal/ontostate.
-- [ ] 1.5 Commit: `feat(ontostate): per-phase RequiredArtifacts + NextPhase + TasksAllChecked`
+- [x] 1.1 (TDD, RED first) Make `RequiredArtifacts(phase)` cumulative per phase: open→[onto-state.yaml,proposal.md,tasks.md]; design→+design.md; build→+plan.md; verify/close→+verification.md; unknown→open base set. Tests: each phase's set; unknown → base. Confirm existing `ValidateSkeleton` tests still pass (a build-phase change missing plan.md now errors).
+- [x] 1.2 (TDD, RED first) `NextPhase(phase string) (string, bool)` over ["open","design","build","verify","close"]: successor+true; ("",false) at close and for unknown. Tests: each step, close→false, "bogus"→false.
+- [x] 1.3 (TDD, RED first) `TasksAllChecked(tasksPath string) (bool, error)`: read file; true iff ≥1 checkbox and no unchecked `- [ ]`. Tests: all `- [x]` → true; a mix with one `- [ ]` → false; no checkboxes → false; missing file → error.
+- [x] 1.4 GREEN; gofmt/vet clean for internal/ontostate.
+- [x] 1.5 Commit: `feat(ontostate): per-phase RequiredArtifacts + NextPhase + TasksAllChecked`
 
 ## 2. `onto advance` command (`internal/ontocli`)
 
