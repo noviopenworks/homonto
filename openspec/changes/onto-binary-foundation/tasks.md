@@ -15,10 +15,10 @@
 
 ## 3. `onto status` (read-only, config-independent)
 
-- [ ] 3.1 Implement `statusCmd()` in `internal/ontocli`: walk `docs/changes/*/onto-state.yaml`, load each via `internal/ontostate`, print a per-change phase line; report unreadable/malformed changes as invalid without aborting the run
-- [ ] 3.2 Register `statusCmd()` on the onto root; ensure it never constructs the homonto config/engine and never writes
-- [ ] 3.3 Tests: status over a temp `docs/changes/` with a valid change (phase reported) and an invalid one (flagged), asserting exit 0 and that no file was created/modified/removed (read-only)
-- [ ] 3.4 Test: status works with no `homonto.toml` present (degraded/config-independent)
+- [x] 3.1 Implement `statusCmd()` in `internal/ontocli`: walk `docs/changes/*/onto-state.yaml`, load each via `internal/ontostate`, print a per-change phase line; report unreadable/malformed changes as invalid without aborting the run
+- [x] 3.2 Register `statusCmd()` on the onto root; ensure it never constructs the homonto config/engine and never writes
+- [x] 3.3 Tests: status over a temp `docs/changes/` with a valid change (phase reported) and an invalid one (flagged), asserting exit 0 and that no file was created/modified/removed (read-only)
+- [x] 3.4 Test: status works with no `homonto.toml` present (degraded/config-independent)
 
 ## 4. Regression and docs
 

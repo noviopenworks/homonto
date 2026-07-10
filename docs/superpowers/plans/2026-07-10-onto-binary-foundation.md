@@ -50,12 +50,12 @@ base-ref: 06e14209a5145216adaafbb3bb8aa516f4ccce96
 
 **Files:** create `internal/ontocli/status.go`, `internal/ontocli/status_test.go`.
 
-- [ ] 3.1 Write failing tests in `status_test.go`: over a temp workspace with `docs/changes/<a>/onto-state.yaml` (valid, phase build) and `docs/changes/<b>/onto-state.yaml` (malformed) — running status prints a phase line for `<a>` and an "invalid" line for `<b>`, exits 0; snapshot the temp tree before/after and assert NO file created/modified/removed; a run with no `homonto.toml` present succeeds
-- [ ] 3.2 Run → RED
-- [ ] 3.3 Implement `statusCmd()`: resolve workspace root (`--dir` flag default `.`), glob `docs/changes/*/onto-state.yaml` (skip `docs/changes/archive/`), load each via `internal/ontostate`, print `"<change>: <phase>"` or `"<change>: invalid (<reason>)"`; never abort on one bad file; construct no config/engine; perform zero writes; exit 0 on clean read
-- [ ] 3.4 Register `statusCmd()` on the onto root in `NewRootCmd()`
-- [ ] 3.5 Run → GREEN; gofmt/vet clean
-- [ ] 3.6 Commit: `feat(onto): read-only config-independent 'onto status'`
+- [x] 3.1 Write failing tests in `status_test.go`: over a temp workspace with `docs/changes/<a>/onto-state.yaml` (valid, phase build) and `docs/changes/<b>/onto-state.yaml` (malformed) — running status prints a phase line for `<a>` and an "invalid" line for `<b>`, exits 0; snapshot the temp tree before/after and assert NO file created/modified/removed; a run with no `homonto.toml` present succeeds
+- [x] 3.2 Run → RED
+- [x] 3.3 Implement `statusCmd()`: resolve workspace root (`--dir` flag default `.`), glob `docs/changes/*/onto-state.yaml` (skip `docs/changes/archive/`), load each via `internal/ontostate`, print `"<change>: <phase>"` or `"<change>: invalid (<reason>)"`; never abort on one bad file; construct no config/engine; perform zero writes; exit 0 on clean read
+- [x] 3.4 Register `statusCmd()` on the onto root in `NewRootCmd()`
+- [x] 3.5 Run → GREEN; gofmt/vet clean
+- [x] 3.6 Commit: `feat(onto): read-only config-independent 'onto status'`
 
 ## Task 4: Regression and docs
 
