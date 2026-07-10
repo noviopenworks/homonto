@@ -5,10 +5,10 @@
 
 ## 2. `onto init` command + scaffold
 
-- [ ] 2.1 Implement `initCmd()` with a `--dir` flag (default "."): run the gate; on failure print the specific guidance and return a non-zero error WITHOUT touching `docs/`; on success scaffold `docs/{changes,specs,adr,guides}` via `os.MkdirAll`, tracking created-vs-preexisting, and print the report; never overwrite existing paths
-- [ ] 2.2 Register `initCmd()` on the onto root in `internal/ontocli/root.go`'s `NewRootCmd()`
-- [ ] 2.3 Tests (TDD, RED first): in a prepared workspace (homonto.toml with `[frameworks.onto]` + a fake `.homonto/catalog/skills/onto/` dir) init creates the four dirs and reports created, exit 0; a second run is idempotent (pre-existing dirs + any user file under docs/ untouched, reported skipped); gate-failure cases create no docs/ files and exit non-zero
-- [ ] 2.4 Confirm `onto init` does not import/run `internal/engine` or `internal/adapter`; keep the ontocli isolation from #1 (no homonto projection engine)
+- [x] 2.1 Implement `initCmd()` with a `--dir` flag (default "."): run the gate; on failure print the specific guidance and return a non-zero error WITHOUT touching `docs/`; on success scaffold `docs/{changes,specs,adr,guides}` via `os.MkdirAll`, tracking created-vs-preexisting, and print the report; never overwrite existing paths
+- [x] 2.2 Register `initCmd()` on the onto root in `internal/ontocli/root.go`'s `NewRootCmd()`
+- [x] 2.3 Tests (TDD, RED first): in a prepared workspace (homonto.toml with `[frameworks.onto]` + a fake `.homonto/catalog/skills/onto/` dir) init creates the four dirs and reports created, exit 0; a second run is idempotent (pre-existing dirs + any user file under docs/ untouched, reported skipped); gate-failure cases create no docs/ files and exit non-zero
+- [x] 2.4 Confirm `onto init` does not import/run `internal/engine` or `internal/adapter`; keep the ontocli isolation from #1 (no homonto projection engine)
 
 ## 3. Regression and docs
 
