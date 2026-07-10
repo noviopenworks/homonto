@@ -522,7 +522,7 @@ Adds `MaterializeCommands`, the single-file sibling of `Materialize`: it overwri
 - Consumes: `Catalog.commands`, `Catalog.fsys`.
 - Produces: `func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/catalog/materialize_test.go`. Extend `matFS()` to declare a command:
 
@@ -572,12 +572,12 @@ func TestMaterializeCommandsUnknownErrors(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run TestMaterializeCommands -count=1`
 Expected: FAIL (`MaterializeCommands` undefined).
 
-- [ ] **Step 3: Implement `MaterializeCommands`**
+- [x] **Step 3: Implement `MaterializeCommands`**
 
 Append to `internal/catalog/materialize.go`:
 
@@ -608,12 +608,12 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -count=1`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/materialize.go internal/catalog/materialize_test.go
