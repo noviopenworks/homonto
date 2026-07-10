@@ -154,8 +154,9 @@ on `feature/20260710/catalog-foundation-skills`. This covers the bundled
 `[frameworks.X]` dependency expansion, version-gated materialization to
 `.homonto/catalog/skills/`, and builtin SKILL projection into Claude Code and
 OpenCode. Command and subagent projection (`[commands.X]`, `[subagents.X]`)
-remain future work — see "Known limitations" in `README.md` and
-`docs/guides/using-homonto.md`.
+were future work as of this status; command projection has since landed (see
+the status note below). Subagent projection remains future work — see "Known
+limitations" in `README.md` and `docs/guides/using-homonto.md`.
 
 Verification evidence:
 - Full Go test suite: 195 tests passing across 18 packages (`go test ./...
@@ -165,6 +166,34 @@ Verification evidence:
   apply` materializes and links all 31 skills; a second `homonto status`
   reports `No drift.`; `homonto doctor` reports all 31 skills × 2 tools
   (Claude Code, OpenCode) = 62 "linked" OK lines.
+
+**Status (2026-07-10, `feature/20260710/command-projection`):** Command
+projection machinery has since landed on top of the skills foundation above.
+`[commands.X]` (builtin or local, `source` resolving to `.homonto/catalog/
+commands/<name>.md` or `homonto/commands/<name>.md` respectively) and
+framework-declared `[commands]` tables (inherited scope/targets, transitive
+through framework dependencies, deduplicated, explicit-entry collisions
+rejected) both single-file-materialize to `.homonto/catalog/commands/` under
+the same version gate as skills, then project into Claude Code
+(`.claude/commands/<name>.md`) and OpenCode (`.opencode/command/<name>.md` or
+the user-scope equivalents), with `homonto doctor` verifying both tools'
+links. Real bundled command content is still deferred: exactly one
+placeholder `example-command` exists (`catalog/commands/example-command.md`),
+declared standalone in `homonto.toml` as `[commands.example-command] source =
+"builtin:example-command"` for dogfood, matching the "Placeholder fixture
+command" design constraint; the `onto` framework's catalog also lists it in
+its `[commands]` table, exercised by framework-expansion unit tests. Subagent
+projection (`[subagents.X]`) remains pending, unchanged from the status
+above.
+
+Verification evidence:
+- Full Go test suite: 215 tests passing across 19 packages (`go test ./...
+  -count=1`), `go vet ./...` clean, `go build ./...` clean.
+- Dogfood run: with `[commands.example-command]` declared, `homonto apply`
+  materializes and links it into both tools; a follow-up `homonto status`
+  reports `No drift.`, and `homonto doctor` reports `ok: command
+  "example-command" linked (claude)` and `ok: command "example-command"
+  linked (opencode)`.
 
 ## v1.2 Plugin Configuration
 
