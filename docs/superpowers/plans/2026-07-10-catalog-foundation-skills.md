@@ -1750,7 +1750,7 @@ Maps tasks.md 4.1, 4.2, 4.3.
   - Both adapters wired with `.WithCatalogRoot(catalogDir)` in `Build`.
   - `func (e *Engine) materializeCatalog() error`, called at the top of `Apply` before the adapter loop.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/engine/materialize_test.go`. It drives the REAL embedded catalog through a `[frameworks.comet]` config and asserts the materialized cache appears, is version-gated, and re-materializes when the recorded version is stale:
 
@@ -1848,12 +1848,12 @@ func TestApplyRematerializesWhenVersionStale(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/engine/ -run TestApplyMaterializes -v`
 Expected: FAIL — `.homonto/catalog/skills/comet-open` is not created (no materialization step yet); `CatalogVersionRecorded` empty.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/engine/engine.go`:
 
@@ -1958,12 +1958,12 @@ func allSkillDirsExist(root string, names []string) bool {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/engine/ -count=1 -v`
 Expected: PASS (new materialization tests and all existing engine tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/engine/engine.go internal/engine/materialize_test.go

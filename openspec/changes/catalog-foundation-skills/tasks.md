@@ -22,9 +22,9 @@
 
 ## 4. Engine and materialization orchestration
 
-- [ ] 4.1 Add materialization step in engine build/apply: before adapters run, materialize all builtin skills to `.homonto/catalog/skills/`
-- [ ] 4.2 Track catalog version in state; gate re-materialization on version change
-- [ ] 4.3 Pass materialized catalog root path to adapters alongside existing content root
+- [x] 4.1 Add materialization step in engine build/apply: before adapters run, materialize all builtin skills to `.homonto/catalog/skills/`
+- [x] 4.2 Track catalog version in state; gate re-materialization on version change
+- [x] 4.3 Pass materialized catalog root path to adapters alongside existing content root
 
 ## 5. Adapter changes
 
