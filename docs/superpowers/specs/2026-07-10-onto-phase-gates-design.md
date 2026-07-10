@@ -2,6 +2,8 @@
 comet_change: onto-phase-gates
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-onto-phase-gates
+status: final
 ---
 
 # Onto Phase Gates — Technical Design

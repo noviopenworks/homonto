@@ -2,6 +2,7 @@
 change: onto-phase-gates
 design-doc: docs/superpowers/specs/2026-07-10-onto-phase-gates-design.md
 base-ref: 6a41f8a09e819d3977a12fa8dfcf7cdc31791c3d
+archived-with: 2026-07-10-onto-phase-gates
 ---
 
 # Onto Phase Gates Implementation Plan
