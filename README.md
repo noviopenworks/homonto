@@ -151,10 +151,14 @@ homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
   a read-only `onto status` that reports each active change's phase from
   `docs/changes/*/onto-state.yaml` without touching `homonto.toml`, and an
   `onto init` that idempotently scaffolds the `docs/{changes,specs,adr,
-  guides}` layout, gated behind the Homonto framework install. Phase-gate
-  enforcement, `onto doctor`, and dual-binary release packaging are not
-  implemented yet; the repo still dogfoods the markdown skills workflow
-  today.
+  guides}` layout, gated behind the Homonto framework install. Change
+  skeleton creation (`onto new`) and gated phase transitions (`onto
+  advance`, moving a change through `open → design → build → verify →
+  close` only when the current phase's deliverables are complete, with a
+  dirty-worktree block on `verify → close`) have since landed. Dependency
+  resolution and archive/close rules, `onto doctor`, and dual-binary release
+  packaging are not implemented yet; the repo still dogfoods the markdown
+  skills workflow today.
 - **Framework skill, command, and subagent projection are all implemented.**
   `[frameworks.X]` resolves through the bundled builtin catalog (`onto`,
   `comet`, `superpowers`, `openspec`), expands dependencies, and

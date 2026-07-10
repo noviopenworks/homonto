@@ -4,9 +4,11 @@
 package ontostate
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -111,11 +113,71 @@ func Save(path string, s State) error {
 	return nil
 }
 
+// orderedPhases lists the onto workflow phases in traversal order. "close"
+// is the terminal phase.
+var orderedPhases = []string{"open", "design", "build", "verify", "close"}
+
 // RequiredArtifacts returns the filenames that must exist in a change
-// directory for the given phase. For "open" (and any other phase, for now)
-// it returns the base skeleton set.
+// directory for the given phase. Requirements are cumulative: each phase
+// requires the base skeleton set plus every artifact introduced by earlier
+// phases. Unknown phases fall back to the base skeleton set. The returned
+// slice is a fresh copy on every call.
 func RequiredArtifacts(phase string) []string {
-	return []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+	base := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+	switch phase {
+	case "design":
+		return append(base, "design.md")
+	case "build":
+		return append(base, "design.md", "plan.md")
+	case "verify", "close":
+		return append(base, "design.md", "plan.md", "verification.md")
+	default:
+		return base
+	}
+}
+
+// NextPhase returns the phase that follows phase in the ordered onto
+// workflow sequence ["open","design","build","verify","close"], and true.
+// It returns ("", false) when phase is "close" (the terminal phase) or is
+// not a recognized phase.
+func NextPhase(phase string) (string, bool) {
+	for i, p := range orderedPhases {
+		if p == phase {
+			if i+1 < len(orderedPhases) {
+				return orderedPhases[i+1], true
+			}
+			return "", false
+		}
+	}
+	return "", false
+}
+
+// TasksAllChecked reads the file at tasksPath and reports whether every
+// checkbox line ("- [ ]" or "- [x]"/"- [X]", after trimming leading
+// whitespace) is checked. It returns false if the file contains no
+// checkbox lines. It returns an error if the file cannot be read.
+func TasksAllChecked(tasksPath string) (bool, error) {
+	f, err := os.Open(tasksPath)
+	if err != nil {
+		return false, fmt.Errorf("onto-state: failed to read %s: %w", tasksPath, err)
+	}
+	defer f.Close()
+
+	sawCheckbox := false
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		switch {
+		case strings.HasPrefix(line, "- [ ]"):
+			return false, nil
+		case strings.HasPrefix(line, "- [x]"), strings.HasPrefix(line, "- [X]"):
+			sawCheckbox = true
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return false, fmt.Errorf("onto-state: failed to read %s: %w", tasksPath, err)
+	}
+	return sawCheckbox, nil
 }
 
 // ValidateSkeleton loads onto-state.yaml from changeDir, derives its phase,

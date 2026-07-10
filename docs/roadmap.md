@@ -52,12 +52,19 @@ still open, as detailed below.
    installed and refusing to overwrite an existing change directory; the
    `internal/ontostate` model gained a writer plus phase-aware skeleton
    validation, and `onto status` now reports each change's skeleton validity
-   alongside its derived phase. What remains: (#3b) phase transitions must
-   happen only through valid gates; (#3c) dependency resolution and
-   archive/close rules must hold; (#4) `onto doctor` must check workflow
-   health as a peer to `homonto doctor`'s installation/projection health;
-   (#5) release packaging must still cross-compile and publish **both**
-   binaries with a shared `SHA256SUMS` — packaging work has not started.
+   alongside its derived phase. Gated phase transitions have also landed
+   (#3b): `onto advance <change>` moves a change through the fixed phase
+   order `open → design → build → verify → close` only when the *current*
+   phase's required deliverables are complete (and, to leave `build`, all
+   tasks in `tasks.md` are checked); a normal advance on a dirty worktree
+   prints a warning and proceeds, while the release-critical `verify →
+   close` transition is blocked outright on a dirty or indeterminate
+   worktree, with no phase write on any refusal. What remains: (#3c)
+   dependency resolution and archive/close rules must hold; (#4) `onto
+   doctor` must check workflow health as a peer to `homonto doctor`'s
+   installation/projection health; (#5) release packaging must still
+   cross-compile and publish **both** binaries with a shared `SHA256SUMS` —
+   packaging work has not started.
 
 Skills, command, and subagent projection have all landed on `main` (see v1.1
 below); the `onto` binary plus dual-binary packaging are what remain before

@@ -49,9 +49,13 @@ unknown. `TasksAllChecked(path) (bool,error)`: line-scan `tasks.md`; true iff �
    (error if missing/invalid).
 3. `next,ok := NextPhase(st.Phase)`; `!ok` → non-zero "already at terminal
    phase 'close'" / "unknown phase", no write.
-4. Precondition: stat every `RequiredArtifacts(next)` under changeDir (name first
-   missing); AND if `st.Phase=="build"`, `TasksAllChecked(<dir>/tasks.md)` must be
-   true (else "tasks incomplete"). Fail → non-zero, no write.
+4. Precondition — the CURRENT phase's deliverables gate LEAVING it (a phase's
+   artifacts are produced while the change is IN that phase): stat every
+   `RequiredArtifacts(st.Phase)` under changeDir (name first missing); AND if
+   `st.Phase=="build"`, `TasksAllChecked(<dir>/tasks.md)` must be true (else
+   "tasks incomplete"). Fail → non-zero, no write. (Leaving `open` needs only
+   proposal.md + tasks.md; leaving `design` needs `design.md`; etc. — NOT
+   `RequiredArtifacts(next)`, which would require a phase's output before it runs.)
 5. `dirty, ok := worktreeDirty(root)`. If `next=="close"` and (dirty OR !ok) →
    non-zero "dirty worktree blocks close" / "cannot verify worktree", no write.
    Else if dirty → warn to stderr, continue.

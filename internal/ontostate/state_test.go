@@ -252,3 +252,120 @@ func TestValidateSkeleton_MissingTasksFile_ErrorNamesFile(t *testing.T) {
 		t.Errorf("ValidateSkeleton error = %q, want it to contain %q", err.Error(), "tasks.md")
 	}
 }
+
+func TestRequiredArtifacts_CumulativePerPhase(t *testing.T) {
+	base := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+	cases := []struct {
+		phase string
+		want  []string
+	}{
+		{"open", base},
+		{"design", append(append([]string{}, base...), "design.md")},
+		{"build", append(append([]string{}, base...), "design.md", "plan.md")},
+		{"verify", append(append([]string{}, base...), "design.md", "plan.md", "verification.md")},
+		{"close", append(append([]string{}, base...), "design.md", "plan.md", "verification.md")},
+		{"bogus", base},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.phase, func(t *testing.T) {
+			got := RequiredArtifacts(tc.phase)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("RequiredArtifacts(%q) = %v, want %v", tc.phase, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRequiredArtifacts_ReturnsFreshSliceEachCall(t *testing.T) {
+	got1 := RequiredArtifacts("design")
+	got1[0] = "mutated"
+	got2 := RequiredArtifacts("design")
+	if got2[0] == "mutated" {
+		t.Error("RequiredArtifacts returned a shared slice; mutation leaked across calls")
+	}
+}
+
+func TestNextPhase_WalksOrderedPhaseSequence(t *testing.T) {
+	cases := []struct {
+		phase    string
+		wantNext string
+		wantOK   bool
+	}{
+		{"open", "design", true},
+		{"design", "build", true},
+		{"build", "verify", true},
+		{"verify", "close", true},
+		{"close", "", false},
+		{"bogus", "", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.phase, func(t *testing.T) {
+			next, ok := NextPhase(tc.phase)
+			if next != tc.wantNext || ok != tc.wantOK {
+				t.Errorf("NextPhase(%q) = (%q, %v), want (%q, %v)", tc.phase, next, ok, tc.wantNext, tc.wantOK)
+			}
+		})
+	}
+}
+
+func TestTasksAllChecked_AllChecked_ReturnsTrue(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tasks.md")
+	content := "# Tasks\n- [x] one\n  - [x] two\n- [X] three\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write fixture file: %v", err)
+	}
+
+	got, err := TasksAllChecked(path)
+	if err != nil {
+		t.Fatalf("TasksAllChecked returned unexpected error: %v", err)
+	}
+	if !got {
+		t.Error("TasksAllChecked = false, want true")
+	}
+}
+
+func TestTasksAllChecked_OneUnchecked_ReturnsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tasks.md")
+	content := "# Tasks\n- [x] one\n- [ ] two\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write fixture file: %v", err)
+	}
+
+	got, err := TasksAllChecked(path)
+	if err != nil {
+		t.Fatalf("TasksAllChecked returned unexpected error: %v", err)
+	}
+	if got {
+		t.Error("TasksAllChecked = true, want false")
+	}
+}
+
+func TestTasksAllChecked_NoCheckboxes_ReturnsFalse(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tasks.md")
+	content := "# Tasks\nNo checkboxes here.\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write fixture file: %v", err)
+	}
+
+	got, err := TasksAllChecked(path)
+	if err != nil {
+		t.Fatalf("TasksAllChecked returned unexpected error: %v", err)
+	}
+	if got {
+		t.Error("TasksAllChecked = true, want false")
+	}
+}
+
+func TestTasksAllChecked_MissingFile_ReturnsError(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "does-not-exist", "tasks.md")
+
+	_, err := TasksAllChecked(missing)
+	if err == nil {
+		t.Fatal("TasksAllChecked returned nil error for missing file, want error")
+	}
+}
