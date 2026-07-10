@@ -145,14 +145,16 @@ only when a managed key inside it actually changes.
 
 homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
 
-- **`onto` is release-blocking; only its foundation has landed, not a
-  release-complete binary.** A second `package main` at `cmd/onto` builds an
-  `onto` binary alongside `homonto`, with an `onto version` command and a
-  read-only `onto status` that reports each active change's phase from
-  `docs/changes/*/onto-state.yaml` without touching `homonto.toml`. `onto
-  init`, phase-gate enforcement, `onto doctor`, and dual-binary release
-  packaging are not implemented yet; the repo still dogfoods the markdown
-  skills workflow today.
+- **`onto` is release-blocking; its foundation and `onto init` have landed,
+  not a release-complete binary.** A second `package main` at `cmd/onto`
+  builds an `onto` binary alongside `homonto`, with an `onto version` command,
+  a read-only `onto status` that reports each active change's phase from
+  `docs/changes/*/onto-state.yaml` without touching `homonto.toml`, and an
+  `onto init` that idempotently scaffolds the `docs/{changes,specs,adr,
+  guides}` layout, gated behind the Homonto framework install. Phase-gate
+  enforcement, `onto doctor`, and dual-binary release packaging are not
+  implemented yet; the repo still dogfoods the markdown skills workflow
+  today.
 - **Framework skill, command, and subagent projection are all implemented.**
   `[frameworks.X]` resolves through the bundled builtin catalog (`onto`,
   `comet`, `superpowers`, `openspec`), expands dependencies, and
