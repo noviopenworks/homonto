@@ -261,7 +261,7 @@ git commit -m "feat(subagentpath): agent dir mapping + shared-frontmatter contra
 **Interfaces:**
 - Produces: three embedded files under `subagents/` in `embedded.FS`, each valid against the Task 1 shared-frontmatter contract. `comet-navigator` is the one wired into the comet framework in Task 3.
 
-- [ ] **Step 1: Author `catalog/subagents/code-reviewer.md`**
+- [x] **Step 1: Author `catalog/subagents/code-reviewer.md`**
 
 ```markdown
 ---
@@ -297,7 +297,7 @@ Rules:
   finding.
 ```
 
-- [ ] **Step 2: Author `catalog/subagents/codebase-explorer.md`**
+- [x] **Step 2: Author `catalog/subagents/codebase-explorer.md`**
 
 ```markdown
 ---
@@ -329,7 +329,7 @@ Output:
   looked. Never edit files — this agent only investigates and reports.
 ```
 
-- [ ] **Step 3: Author `catalog/subagents/comet-navigator.md`**
+- [x] **Step 3: Author `catalog/subagents/comet-navigator.md`**
 
 ```markdown
 ---
@@ -363,7 +363,7 @@ Output:
   This agent orients and reports; it does not perform phase transitions itself.
 ```
 
-- [ ] **Step 4: Extend the embed directive**
+- [x] **Step 4: Extend the embed directive**
 
 In `catalog/embed.go`, change the directive line:
 
@@ -371,7 +371,7 @@ In `catalog/embed.go`, change the directive line:
 //go:embed all:frameworks all:skills all:commands all:subagents version.txt
 ```
 
-- [ ] **Step 5: Write the failing embed presence test**
+- [x] **Step 5: Write the failing embed presence test**
 
 Create `internal/catalog/subagents_embed_test.go`:
 
@@ -395,12 +395,12 @@ func TestSubagentsEmbedded(t *testing.T) {
 }
 ```
 
-- [ ] **Step 6: Run the test to verify it passes (and the embed compiles)**
+- [x] **Step 6: Run the test to verify it passes (and the embed compiles)**
 
 Run: `go build ./... && go test ./internal/catalog/ -run TestSubagentsEmbedded -v`
 Expected: build succeeds; test PASS. (If Step 4 were omitted the `go:embed` would still compile but `fs.Stat` would fail — the test is the gate.)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add catalog/subagents catalog/embed.go internal/catalog/subagents_embed_test.go

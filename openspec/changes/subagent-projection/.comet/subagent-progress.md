@@ -6,8 +6,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 
 ## Tasks (9)
 - Task 1: complete (efd4218, no risk; Minor: strings.Index->Cut nit for final review)
-- Task 2: bundled subagent content + embed — STAGE: implementing
-- Task 3: catalog parse/index/expand/materialize + comet framework — pending
+- Task 2: complete (44a9b71, no risk)
+- Task 3: catalog parse/index/expand/materialize + comet framework — STAGE: implementing
 - Task 4: config subagent expansion — pending
 - Task 5: engine materialization + WithSubagentCatalogRoot — pending
 - Task 6: adapter subagent projection (both tools) — pending

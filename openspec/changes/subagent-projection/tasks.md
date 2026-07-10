@@ -6,11 +6,11 @@
 
 ## 2. Catalog subagent content and embed
 
-- [ ] 2.1 Author `catalog/subagents/code-reviewer.md` (framework-agnostic loose subagent, valid frontmatter + body)
-- [ ] 2.2 Author `catalog/subagents/codebase-explorer.md` (read-only research subagent, valid frontmatter + body)
-- [ ] 2.3 Author one comet-framework subagent under `catalog/subagents/<name>.md`
-- [ ] 2.4 Extend the root `catalog` package `//go:embed` directive to include `all:subagents`
-- [ ] 2.5 Verify the embed compiles and all three subagents are present in the embedded FS
+- [x] 2.1 Author `catalog/subagents/code-reviewer.md` (framework-agnostic loose subagent, valid frontmatter + body)
+- [x] 2.2 Author `catalog/subagents/codebase-explorer.md` (read-only research subagent, valid frontmatter + body)
+- [x] 2.3 Author one comet-framework subagent under `catalog/subagents/<name>.md`
+- [x] 2.4 Extend the root `catalog` package `//go:embed` directive to include `all:subagents`
+- [x] 2.5 Verify the embed compiles and all three subagents are present in the embedded FS
 
 ## 3. Catalog subagent loading, expansion, materialization
 
