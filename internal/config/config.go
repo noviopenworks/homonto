@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
+	"sync"
 
+	cat "github.com/noviopenworks/homonto/internal/catalog"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -78,6 +81,94 @@ type Config struct {
 
 func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
 	return entriesForTool(c.Skills, tool)
+}
+
+var (
+	catalogOnce sync.Once
+	catalogInst *cat.Catalog
+	catalogErr  error
+)
+
+// loadedCatalog lazily builds the singleton embedded catalog (cheap to index).
+func loadedCatalog() (*cat.Catalog, error) {
+	catalogOnce.Do(func() { catalogInst, catalogErr = cat.New() })
+	return catalogInst, catalogErr
+}
+
+func sameResource(a, b Resource) bool {
+	return a.Source == b.Source && a.Scope == b.Scope && slices.Equal(a.Targets, b.Targets)
+}
+
+// ExpandedSkillEntriesForTool returns the effective skills for a tool: explicit
+// [skills.X] entries plus, for each [frameworks.<fw>] source="builtin:<fw>"
+// targeting the tool, its transitively expanded skills. Each expanded skill
+// inherits the framework declaration's scope and targets. A framework skill
+// whose name collides with an explicit [skills.X] entry, or with another
+// framework's skill under a conflicting declaration, is an error, as is a
+// dependency cycle (surfaced from catalog.Expand).
+func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, error) {
+	byName := map[string]NamedResource{}
+	explicitNames := map[string]bool{}
+	for _, e := range c.SkillEntriesForTool(tool) {
+		byName[e.Name] = e
+		explicitNames[e.Name] = true
+	}
+
+	// Deterministic framework iteration order for stable error messages.
+	fwNames := make([]string, 0, len(c.Frameworks))
+	for name := range c.Frameworks {
+		fwNames = append(fwNames, name)
+	}
+	sort.Strings(fwNames)
+
+	var cl *cat.Catalog
+	for _, fwName := range fwNames {
+		fwRes := c.Frameworks[fwName]
+		if !strings.HasPrefix(fwRes.Source, "builtin:") {
+			continue
+		}
+		if !containsString(fwRes.TargetsOrAll(), tool) {
+			continue
+		}
+		if cl == nil {
+			var err error
+			if cl, err = loadedCatalog(); err != nil {
+				return nil, err
+			}
+		}
+		builtin := strings.TrimPrefix(fwRes.Source, "builtin:")
+		expanded, err := cl.Expand([]string{builtin})
+		if err != nil {
+			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
+		}
+		for _, es := range expanded {
+			if explicitNames[es.Name] {
+				return nil, fmt.Errorf("config: skill %q is declared both explicitly in [skills] and by framework %q", es.Name, fwName)
+			}
+			nr := NamedResource{
+				Name: es.Name,
+				Resource: Resource{
+					Source:  "builtin:" + es.Name,
+					Scope:   fwRes.Scope,
+					Targets: fwRes.Targets,
+				},
+			}
+			if prev, ok := byName[es.Name]; ok {
+				if !sameResource(prev.Resource, nr.Resource) {
+					return nil, fmt.Errorf("config: skill %q expanded by multiple frameworks with conflicting scope/targets (framework %q)", es.Name, fwName)
+				}
+				continue
+			}
+			byName[es.Name] = nr
+		}
+	}
+
+	out := make([]NamedResource, 0, len(byName))
+	for _, nr := range byName {
+		out = append(out, nr)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
 }
 
 func (c *Config) EnabledModelTools() []string {
