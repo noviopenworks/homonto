@@ -369,6 +369,28 @@ func TestDoctorReportsBuiltinSkillLinked(t *testing.T) {
 	}
 }
 
+func TestDoctorReportsLinkedCommand(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(commandTOML), 0o644)
+
+	e := buildEngine(t, home, repo)
+	sets, _ := e.Plan()
+	if err := e.Apply(sets); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	var found bool
+	for _, line := range e.Doctor() {
+		if strings.Contains(line, "ok: command \"example-command\" linked (claude)") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("doctor did not report example-command linked; got %v", e.Doctor())
+	}
+}
+
 func TestStatusCleanAfterApply(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()

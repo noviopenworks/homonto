@@ -48,3 +48,28 @@ func (c *Catalog) Materialize(dstRoot string, skillNames []string) error {
 	}
 	return nil
 }
+
+// MaterializeCommands writes each named builtin command from the embedded FS to
+// dstRoot/<name>.md (a single file), replacing any existing file. Unlike
+// Materialize (per-skill directories), no RemoveAll is needed — a single-file
+// overwrite fully replaces prior content on upgrade. It is the caller's job
+// (engine) to gate this on the catalog version.
+func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
+	for _, name := range names {
+		cp, ok := c.commands[name]
+		if !ok {
+			return fmt.Errorf("catalog: unknown command %q", name)
+		}
+		data, err := fs.ReadFile(c.fsys, cp)
+		if err != nil {
+			return fmt.Errorf("catalog: read %q: %w", cp, err)
+		}
+		if err := os.MkdirAll(dstRoot, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dstRoot, name+".md"), data, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}

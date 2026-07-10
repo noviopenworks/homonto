@@ -185,10 +185,12 @@ When neither is present: `No drift.`
   skipped with a warning. Command/args are copied verbatim — review before
   sharing.
 - `[frameworks.X]` resolves through the bundled builtin catalog and projects
-  skills (with dependency expansion) into Claude Code and OpenCode.
-  `[commands.X]` and `[subagents.X]` are parsed and validated, including
-  required model routes, but current adapters do not install or project them
-  yet.
+  skills and commands (with dependency expansion, including
+  framework-declared `[commands]` tables) into Claude Code and OpenCode.
+  `[commands.X]` (builtin or local) materialize as single files under
+  `.homonto/catalog/commands/` and link into each tool's command directory.
+  `[subagents.X]` is parsed and validated, including required model routes,
+  but current adapters do not install or project it yet.
 - The standalone `onto` binary is planned for the first public tag; current
   source only ships the `homonto` CLI and dogfooded onto skills.
 - Writing `opencode.jsonc` removes comments (whole-document JSONC

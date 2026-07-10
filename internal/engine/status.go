@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/skillpath"
 )
@@ -109,6 +110,18 @@ func (e *Engine) Doctor() []string {
 	} else {
 		out = append(out, e.doctorSkills("opencode", opencodeSkills)...)
 	}
+	claudeCommands, ccerr := e.Cfg.ExpandedCommandEntriesForTool("claude")
+	if ccerr != nil {
+		out = append(out, fmt.Sprintf("warn: cannot expand claude commands: %v", ccerr))
+	} else {
+		out = append(out, e.doctorCommands("claude", claudeCommands)...)
+	}
+	opencodeCommands, ocerr := e.Cfg.ExpandedCommandEntriesForTool("opencode")
+	if ocerr != nil {
+		out = append(out, fmt.Sprintf("warn: cannot expand opencode commands: %v", ocerr))
+	} else {
+		out = append(out, e.doctorCommands("opencode", opencodeCommands)...)
+	}
 	return out
 }
 
@@ -138,6 +151,37 @@ func (e *Engine) doctorSkills(tool string, entries []config.NamedResource) []str
 			out = append(out, fmt.Sprintf("ok: skill %q linked (%s)", name, tool))
 		} else {
 			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked for %s (run apply)", name, tool))
+		}
+	}
+	return out
+}
+
+// doctorCommands reports, per command, whether its content file is present at
+// the right source (builtin: from the materialized command root, local: from
+// the content dir) and whether it is linked into the tool's command directory.
+func (e *Engine) doctorCommands(tool string, entries []config.NamedResource) []string {
+	var out []string
+	for _, entry := range entries {
+		name := entry.Name
+		var p string
+		if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+			p = filepath.Join(e.CommandDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:")+".md")
+		} else {
+			sourceName := name
+			if strings.HasPrefix(entry.Resource.Source, "local:") {
+				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
+			}
+			p = filepath.Join(e.ContentDir, "commands", sourceName+".md")
+		}
+		if _, err := os.Stat(p); err != nil {
+			out = append(out, fmt.Sprintf("warn: command %q missing from %s (run apply)", name, p))
+			continue
+		}
+		dst := filepath.Join(commandpath.Dir(tool, entry.Resource.Scope, e.Home, e.ProjectRoot), name+".md")
+		if target, err := os.Readlink(dst); err == nil && target == p {
+			out = append(out, fmt.Sprintf("ok: command %q linked (%s)", name, tool))
+		} else {
+			out = append(out, fmt.Sprintf("warn: command %q content present, not linked for %s (run apply)", name, tool))
 		}
 	}
 	return out

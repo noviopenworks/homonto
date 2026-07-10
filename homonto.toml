@@ -2,6 +2,10 @@
 source = "builtin:comet"
 scope = "project"
 
+[commands.example-command]
+source = "builtin:example-command"
+scope = "project"
+
 [models.claude.architectural]
 model = "opus"
 variant = "max"
