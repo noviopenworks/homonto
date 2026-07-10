@@ -1,9 +1,9 @@
 ## 1. Catalog structure and content
 
-- [ ] 1.1 Create `catalog/frameworks/{onto,comet,superpowers,openspec}/framework.toml` with name, version, dependencies, and skills tables
-- [ ] 1.2 Copy skill content from `homonto/skills/` into `catalog/skills/<name>/` for all bundled skills referenced by frameworks
-- [ ] 1.3 Add `catalog/version.txt` with the initial catalog version string
-- [ ] 1.4 Verify all framework.toml files reference skills that exist under `catalog/skills/`
+- [x] 1.1 Create `catalog/frameworks/{onto,comet,superpowers,openspec}/framework.toml` with name, version, dependencies, and skills tables
+- [x] 1.2 Copy skill content from `homonto/skills/` into `catalog/skills/<name>/` for all bundled skills referenced by frameworks
+- [x] 1.3 Add `catalog/version.txt` with the initial catalog version string
+- [x] 1.4 Verify all framework.toml files reference skills that exist under `catalog/skills/`
 
 ## 2. Catalog Go package
 

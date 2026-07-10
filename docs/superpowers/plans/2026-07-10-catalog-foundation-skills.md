@@ -51,7 +51,7 @@ Maps tasks.md 1.1, 1.2, 1.3, 1.4. Content-only task (no unit test); its delivera
 - `superpowers` (12): brainstorming, writing-plans, executing-plans, subagent-driven-development, using-git-worktrees, test-driven-development, systematic-debugging, verification-before-completion, finishing-a-development-branch, requesting-code-review, receiving-code-review, dispatching-parallel-agents
 - `openspec` (11): openspec-apply-change, openspec-archive-change, openspec-bulk-archive-change, openspec-continue-change, openspec-explore, openspec-ff-change, openspec-new-change, openspec-onboard, openspec-propose, openspec-sync-specs, openspec-verify-change
 
-- [ ] **Step 1: Create the version file**
+- [x] **Step 1: Create the version file**
 
 Create `catalog/version.txt` with exactly one line:
 
@@ -59,7 +59,7 @@ Create `catalog/version.txt` with exactly one line:
 0.1.0
 ```
 
-- [ ] **Step 2: Create the four framework.toml files**
+- [x] **Step 2: Create the four framework.toml files**
 
 `catalog/frameworks/onto/framework.toml`:
 
@@ -152,7 +152,7 @@ comet-hotfix = "skills/comet-hotfix"
 comet-tweak = "skills/comet-tweak"
 ```
 
-- [ ] **Step 3: Copy all skill content from `homonto/skills/` into `catalog/skills/`**
+- [x] **Step 3: Copy all skill content from `homonto/skills/` into `catalog/skills/`**
 
 Run (copies every skill directory, including nested `references/`, `scripts/`, dotfiles):
 
@@ -169,7 +169,7 @@ ls catalog/skills/comet/ && ls catalog/skills/onto/
 
 Expected: files/subdirectories present (e.g. `SKILL.md`, `references/`, `scripts/`).
 
-- [ ] **Step 4: Create the embed package**
+- [x] **Step 4: Create the embed package**
 
 Create `catalog/embed.go`:
 
@@ -185,7 +185,7 @@ import "embed"
 var FS embed.FS
 ```
 
-- [ ] **Step 5: Verify the embed compiles and metadata matches content**
+- [x] **Step 5: Verify the embed compiles and metadata matches content**
 
 Run:
 
@@ -208,7 +208,7 @@ echo "consistency check done"
 
 Expected: prints only `consistency check done` (no `MISSING:` lines).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add catalog/
