@@ -43,9 +43,9 @@
 
 ## 8. Dogfood
 
-- [ ] 8.1 Declare the placeholder command in `homonto.toml` (builtin, scope project)
-- [ ] 8.2 Run `homonto apply --yes`; verify materialize + link into both tools
-- [ ] 8.3 Run `homonto status` (No drift) and `homonto doctor` (command link ok)
+- [x] 8.1 Declare the placeholder command in `homonto.toml` (builtin, scope project)
+- [x] 8.2 Run `homonto apply --yes`; verify materialize + link into both tools
+- [x] 8.3 Run `homonto status` (No drift) and `homonto doctor` (command link ok)
 
 ## 9. Regression and docs
 

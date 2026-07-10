@@ -2027,7 +2027,7 @@ Declares the placeholder command in the repo's own `homonto.toml` (builtin, proj
 **Interfaces:**
 - Consumes: the full pipeline built in Tasks 1–10 via the `homonto` CLI.
 
-- [ ] **Step 1: Declare the command in `homonto.toml`**
+- [x] **Step 1: Declare the command in `homonto.toml`**
 
 Append to `/home/mg/homonto/homonto.toml`:
 
@@ -2039,7 +2039,7 @@ scope = "project"
 
 (No `targets` → defaults to both claude and opencode; existing `[models.*]` for both tools already satisfy model validation.)
 
-- [ ] **Step 2: Build and apply**
+- [x] **Step 2: Build and apply**
 
 ```bash
 go build -o /tmp/homonto ./cmd/homonto
@@ -2058,7 +2058,7 @@ Expected: `MATERIALIZED`; both readlinks print `.../.homonto/catalog/commands/ex
 
 (If the CLI subcommand/flag names differ from `apply --yes`, use the repo's actual apply invocation — check `cmd/homonto` help. The observable outcomes above are what matters.)
 
-- [ ] **Step 3: Status and doctor**
+- [x] **Step 3: Status and doctor**
 
 ```bash
 cd /home/mg/homonto && /tmp/homonto status && /tmp/homonto doctor
@@ -2066,7 +2066,7 @@ cd /home/mg/homonto && /tmp/homonto status && /tmp/homonto doctor
 
 Expected: `status` reports no drift and no pending for the command; `doctor` prints `ok: command "example-command" linked (claude)` and `... (opencode)`.
 
-- [ ] **Step 4: Commit (config only)**
+- [x] **Step 4: Commit (config only)**
 
 ```bash
 git add homonto.toml
