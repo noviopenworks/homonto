@@ -41,8 +41,9 @@ timing (a later user request may still produce it).
 Archived artifacts are not living truth. They may contain requirements,
 implementation notes, review findings, or install instructions that were correct
 when written but later superseded. Future agents must treat `docs/specs/`,
-`docs/adr/`, `docs/guides/`, `docs/roadmap.md`, and `docs/NEXT_AGENT.md` as the
-current documentation surfaces, using archive files only for historical context.
+`docs/adr/`, `docs/guides/`, and `docs/roadmap.md` as the
+current documentation surfaces (plus the active `openspec/changes/` for in-flight
+work), using archive files only for historical context.
 
 ## state.yaml schema
 

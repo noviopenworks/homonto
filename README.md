@@ -201,5 +201,6 @@ Start with `/comet`. Full guide: [docs/guides/comet-workflow.md](docs/guides/com
 The older `docs/changes/` Onto workspaces are historical. Do not open new work
 there.
 
-Future agents should start with [docs/NEXT_AGENT.md](docs/NEXT_AGENT.md) before
-trusting older reviews or archived change artifacts.
+Future agents should start with `/comet` — it inspects `openspec/changes/` and
+each active change's `.comet.yaml` for current state — before trusting older
+reviews or archived change artifacts.

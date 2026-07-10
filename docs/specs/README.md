@@ -3,9 +3,9 @@
 One file per capability: `docs/specs/<capability>.md`. Each spec describes
 what the system does **now** — always true, never a change log.
 
-Future agents should read [`docs/NEXT_AGENT.md`](../NEXT_AGENT.md) before using
-the specs as a work queue. Specs are current behavior; gaps and next steps live
-in the handoff or roadmap until the implementation changes.
+Do not use the specs as a work queue. Specs are current behavior; gaps and next
+steps live in `docs/roadmap.md` and the active `openspec/changes/` until the
+implementation changes.
 
 ## Format
 

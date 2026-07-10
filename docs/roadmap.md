@@ -101,7 +101,8 @@ release checklist.
    it as normalized JSON and removes all comments. This is an accepted,
    documented limitation; comment preservation is an open question, not a bug.
 
-Future agents should read `docs/NEXT_AGENT.md` before starting v1 work.
+Future agents should start with `/comet` (which reads `openspec/changes/` and
+`.comet.yaml`) before starting v1 work.
 
 ## v1.1 Onto Framework And Catalog Projection
 

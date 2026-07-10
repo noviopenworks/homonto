@@ -66,9 +66,10 @@ OpenCode config directories.
     skills linked for both tools; the global `~/.claude` is untouched.
 
 - [x] Sync stale docs that future agents rely on.
-  - Done: `docs/NEXT_AGENT.md` now records the closed blockers, the current
-    verified state, and the remaining release work. The guide index lists
-    `using-homonto.md` as the core usage guide.
+  - Done: current state, closed blockers, and remaining release work now live in
+    this file, `docs/roadmap.md`, and the active `openspec/changes/` (the
+    former `docs/NEXT_AGENT.md` handoff was retired — see ADR 0012). The guide
+    index lists `using-homonto.md` as the core usage guide.
   - Acceptance met: no current-state doc contradicts source on known release
     risks.
 
