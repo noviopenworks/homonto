@@ -25,9 +25,9 @@
 
 ## 5. Engine materialization orchestration
 
-- [ ] 5.1 Extend `materializeCatalog` to collect declared builtin command names and materialize them (single-file) before adapters, under the same version gate
-- [ ] 5.2 Ensure `CatalogVersion` is recorded only after skills + commands materialization succeeds
-- [ ] 5.3 Engine tests: first-apply command materialization, version-gated skip, missing-file refresh
+- [x] 5.1 Extend `materializeCatalog` to collect declared builtin command names and materialize them (single-file) before adapters, under the same version gate
+- [x] 5.2 Ensure `CatalogVersion` is recorded only after skills + commands materialization succeeds
+- [x] 5.3 Engine tests: first-apply command materialization, version-gated skip, missing-file refresh
 
 ## 6. Adapter command projection
 

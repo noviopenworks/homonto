@@ -956,7 +956,7 @@ Extends `materializeCatalog` to collect declared builtin **command** names (acro
   - local `commandCatalogDir` var in `Build` (used by Tasks 8–9 wiring).
   - `func allCommandFilesExist(root string, names []string) bool`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/engine/materialize_test.go`. Add a command-declaring config constant near `cometTOML`:
 
@@ -1024,12 +1024,12 @@ func TestApplyRematerializesWhenCommandFileMissing(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/engine/ -run 'TestApplyMaterializesBuiltinCommand|TestApplyRematerializesWhenCommandFileMissing' -count=1`
 Expected: FAIL (`CommandDir` undefined; command file not materialized).
 
-- [ ] **Step 3: Implement the engine changes**
+- [x] **Step 3: Implement the engine changes**
 
 In `internal/engine/engine.go`:
 
@@ -1143,12 +1143,12 @@ func allCommandFilesExist(root string, names []string) bool {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/engine/ -count=1`
 Expected: PASS (new command tests plus unchanged skill materialization tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/engine/engine.go internal/engine/materialize_test.go
