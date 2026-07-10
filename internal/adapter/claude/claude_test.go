@@ -31,6 +31,17 @@ func cfgWithSkills(scope string, names ...string) *config.Config {
 	return c
 }
 
+// cfgWithSubagents builds a config whose named subagents are explicit local
+// resources at scope, each targeted at the adapter's tool via
+// ExpandedSubagentEntriesForTool. Mirrors cfgWithSkills.
+func cfgWithSubagents(scope string, names ...string) *config.Config {
+	c := &config.Config{Subagents: map[string]config.Resource{}}
+	for _, name := range names {
+		c.Subagents[name] = config.Resource{Source: "local:" + name, Scope: scope}
+	}
+	return c
+}
+
 func resolver() *secret.Resolver {
 	return &secret.Resolver{
 		Getenv: os.Getenv,

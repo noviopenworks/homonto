@@ -67,10 +67,8 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	return &Engine{
 		Cfg: cfg,
 		Adapters: []adapter.Adapter{
-			// TODO(subagent-projection Task 6): chain .WithSubagentCatalogRoot(subagentCatalogDir)
-			// on both adapters once adapter.WithSubagentCatalogRoot exists (Task 6 Step 1).
-			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
-			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
+			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir),
+			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir),
 		},
 		State:               st,
 		StateDir:            stateDir,
