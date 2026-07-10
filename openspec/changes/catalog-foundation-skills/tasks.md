@@ -15,10 +15,10 @@
 
 ## 3. Config integration
 
-- [ ] 3.1 Extend `config.Load` to expand `[frameworks.X]` into effective skill entries with builtin source
-- [ ] 3.2 Add name collision detection between framework-expanded skills and explicit `[skills.X]` entries
-- [ ] 3.3 Add `Config.ExpandedSkillEntriesForTool(tool)` that returns effective skills including framework expansion
-- [ ] 3.4 Write config tests for framework expansion, dependency resolution, collision detection, and cycle rejection
+- [x] 3.1 Extend `config.Load` to expand `[frameworks.X]` into effective skill entries with builtin source
+- [x] 3.2 Add name collision detection between framework-expanded skills and explicit `[skills.X]` entries
+- [x] 3.3 Add `Config.ExpandedSkillEntriesForTool(tool)` that returns effective skills including framework expansion
+- [x] 3.4 Write config tests for framework expansion, dependency resolution, collision detection, and cycle rejection
 
 ## 4. Engine and materialization orchestration
 

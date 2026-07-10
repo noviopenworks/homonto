@@ -1072,7 +1072,7 @@ Maps tasks.md 3.1, 3.2, 3.3, 3.4.
 
 Note (design §4): `config.Load` stays a pure parse+validate; collision/cycle errors surface from `ExpandedSkillEntriesForTool`, which `plan`/`apply` and the adapters call — so a bad framework graph is reported cleanly at plan/apply time.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/config/config_test.go`. These drive the REAL embedded catalog (comet → superpowers + openspec), so they assert against known bundled skills:
 
@@ -1197,12 +1197,12 @@ effort = "f"
 
 (`os`, `path/filepath`, `strings` are already imported in config_test.go.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/config/ -run TestExpandedSkills -v`
 Expected: FAIL / build error — `ExpandedSkillEntriesForTool` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/config/config.go`, add imports `"slices"`, `"sync"`, and `cat "github.com/noviopenworks/homonto/internal/catalog"`. Then add:
 
@@ -1296,12 +1296,12 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/config/ -count=1 -v`
 Expected: PASS (new expansion tests and all existing config tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/config/config.go internal/config/config_test.go
