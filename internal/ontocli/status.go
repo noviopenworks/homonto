@@ -2,7 +2,6 @@ package ontocli
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/noviopenworks/homonto/internal/ontostate"
 	"github.com/spf13/cobra"
@@ -27,17 +26,18 @@ func statusCmd() *cobra.Command {
 }
 
 func runStatus(cmd *cobra.Command, root string) error {
+	// The single "*" wildcard only matches direct children of docs/changes/
+	// (it does not cross path separators), so it structurally cannot match
+	// archived changes, which live one level deeper at
+	// docs/changes/archive/<name>/onto-state.yaml. Archived changes are
+	// therefore excluded from the results by the shape of this glob, with
+	// no separate filtering step required.
 	matches, err := filepath.Glob(filepath.Join(root, "docs", "changes", "*", "onto-state.yaml"))
 	if err != nil {
 		return err
 	}
 
-	archivePrefix := filepath.Join(root, "docs", "changes", "archive") + string(filepath.Separator)
 	for _, path := range matches {
-		if strings.HasPrefix(path, archivePrefix) {
-			continue
-		}
-
 		changeDir := filepath.Base(filepath.Dir(path))
 
 		state, loadErr := ontostate.Load(path)

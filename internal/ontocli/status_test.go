@@ -129,6 +129,13 @@ func TestStatusCommand_SucceedsWithoutHomontoToml(t *testing.T) {
 	}
 }
 
+// TestStatusCommand_SkipsArchivedChanges verifies the real exclusion
+// mechanism: the status glob "docs/changes/*/onto-state.yaml" uses a single
+// wildcard segment, which does not cross path separators, so it only
+// matches direct children of docs/changes/. An archived change nested one
+// level deeper at docs/changes/archive/<name>/onto-state.yaml is therefore
+// never matched and never appears in the output, while an active change at
+// docs/changes/<name>/onto-state.yaml is matched and reported.
 func TestStatusCommand_SkipsArchivedChanges(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "onto-state.yaml"), "change: alpha\nphase: build\n")
@@ -143,7 +150,41 @@ func TestStatusCommand_SkipsArchivedChanges(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
 	}
-	if strings.Contains(out.String(), "old-change") {
-		t.Errorf("output = %q, want archived change to be skipped", out.String())
+	got := out.String()
+	if strings.Contains(got, "old-change") {
+		t.Errorf("output = %q, want archived change to be skipped", got)
+	}
+	if !strings.Contains(got, "alpha: build") {
+		t.Errorf("output = %q, want active change to be reported", got)
+	}
+}
+
+// TestStatusCommand_ReportsInvalidPhase covers the DerivePhase error branch:
+// a syntactically valid onto-state.yaml whose phase value is not one of the
+// known onto workflow phases. ontostate.Load succeeds (the YAML parses
+// fine), but state.DerivePhase() fails validation, so status must still
+// print an "invalid" line for it (via the second error branch in
+// runStatus) and must not abort processing of other changes.
+func TestStatusCommand_ReportsInvalidPhase(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "onto-state.yaml"), "change: alpha\nphase: build\n")
+	writeFile(t, filepath.Join(dir, "docs", "changes", "gamma", "onto-state.yaml"), "change: gamma\nphase: bogus\n")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"status", "--dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "alpha: build") {
+		t.Errorf("output = %q, want it to contain %q", got, "alpha: build")
+	}
+	if !strings.Contains(got, "gamma:") || !strings.Contains(got, "invalid") {
+		t.Errorf("output = %q, want a line for gamma containing %q", got, "invalid")
 	}
 }
