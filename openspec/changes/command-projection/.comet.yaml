@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: build
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: c9757d7b939466480efaaf28d1cc7d69de66084a
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-10-command-projection-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-10
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/command-projection/.comet/handoff/design-context.json
+handoff_hash: 279b83b2bd0db0b750fc3e46a2152c2aeed5591ff16115bb251483a4e867c682
+classic_profile: full
+classic_migration: 1
+run_id: 540a0256-3e06-4526-bd1c-2d1fd28104c3

@@ -1,0 +1,16 @@
+{
+  "change": "command-projection",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "279b83b2bd0db0b750fc3e46a2152c2aeed5591ff16115bb251483a4e867c682",
+  "files": [
+    { "path": "openspec/changes/command-projection/proposal.md", "sha256": "b7149ee2c375db4823d0030a3e309c284d392aad924e2ca712a7ea09b7702ff0" },
+    { "path": "openspec/changes/command-projection/design.md", "sha256": "825756ea9e79fd04c2f5ad6c7ff32bf1aa085e4d0df6099ba5b2ba62c2a67ad5" },
+    { "path": "openspec/changes/command-projection/tasks.md", "sha256": "ef7cf22b27a2bee4e8fd8f0e89b19028831ae43b049f7d88a1bc7fb81368001d" },
+    { "path": "openspec/changes/command-projection/specs/command-projection/spec.md", "sha256": "24fcc481ac8d7485ed18fb983458f51c9d603b6fe11d0b49c004887dba70baf4" },
+    { "path": "openspec/changes/command-projection/specs/config-model/spec.md", "sha256": "e2e05d60328e4efd113606df8da4c18172fb54977cc0f8b54de8c6632507dab3" },
+    { "path": "openspec/changes/command-projection/specs/framework-expansion/spec.md", "sha256": "55aaa2d932bc34b7d84a101397914db02435ff3c7456ffb6b2f5f9f48454fc01" }
+  ]
+}
