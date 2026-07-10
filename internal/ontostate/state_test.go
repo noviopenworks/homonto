@@ -3,6 +3,7 @@ package ontostate
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -139,5 +140,115 @@ func TestDerivePhase_InvalidState_ReturnsValidateError(t *testing.T) {
 	_, err := state.DerivePhase()
 	if err == nil {
 		t.Fatal("DerivePhase returned nil error for invalid state, want error")
+	}
+}
+
+func TestMarshalParse_RoundTrip_SimpleState(t *testing.T) {
+	state := State{Change: "c", Phase: "build"}
+
+	b, err := Marshal(state)
+	if err != nil {
+		t.Fatalf("Marshal returned unexpected error: %v", err)
+	}
+
+	got, err := Parse(b)
+	if err != nil {
+		t.Fatalf("Parse returned unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(got, state) {
+		t.Errorf("Parse(Marshal(state)) = %+v, want %+v", got, state)
+	}
+}
+
+func TestMarshalParse_RoundTrip_FullState(t *testing.T) {
+	state := State{
+		Change:   "onto-binary-foundation",
+		Workflow: "full",
+		Phase:    "verify",
+		Created:  "2026-07-10",
+		BaseRef:  "main",
+		Deps:     []string{"other-change", "another-change"},
+		Archived: true,
+	}
+
+	b, err := Marshal(state)
+	if err != nil {
+		t.Fatalf("Marshal returned unexpected error: %v", err)
+	}
+
+	got, err := Parse(b)
+	if err != nil {
+		t.Fatalf("Parse returned unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(got, state) {
+		t.Errorf("Parse(Marshal(state)) = %+v, want %+v", got, state)
+	}
+}
+
+func TestSave_NonExistentSubdir_CreatesDirAndFileAndCleansUpTemp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "nested", "sub", "onto-state.yaml")
+	state := State{Change: "onto-binary-foundation", Phase: "open"}
+
+	if err := Save(path, state); err != nil {
+		t.Fatalf("Save returned unexpected error: %v", err)
+	}
+
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(got, state) {
+		t.Errorf("Load(Save(state)) = %+v, want %+v", got, state)
+	}
+
+	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+		t.Errorf("expected temp file %s to be gone, stat err = %v", path+".tmp", err)
+	}
+}
+
+func TestRequiredArtifacts_OpenPhase_ReturnsBaseSet(t *testing.T) {
+	want := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+
+	got := RequiredArtifacts("open")
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("RequiredArtifacts(\"open\") = %v, want %v", got, want)
+	}
+}
+
+func TestValidateSkeleton_AllArtifactsPresent_ReturnsNil(t *testing.T) {
+	dir := t.TempDir()
+	state := State{Change: "onto-binary-foundation", Phase: "open"}
+	if err := Save(filepath.Join(dir, "onto-state.yaml"), state); err != nil {
+		t.Fatalf("Save returned unexpected error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "proposal.md"), []byte("proposal"), 0o644); err != nil {
+		t.Fatalf("failed to write proposal.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tasks.md"), []byte("tasks"), 0o644); err != nil {
+		t.Fatalf("failed to write tasks.md: %v", err)
+	}
+
+	if err := ValidateSkeleton(dir); err != nil {
+		t.Errorf("ValidateSkeleton returned unexpected error: %v", err)
+	}
+}
+
+func TestValidateSkeleton_MissingTasksFile_ErrorNamesFile(t *testing.T) {
+	dir := t.TempDir()
+	state := State{Change: "onto-binary-foundation", Phase: "open"}
+	if err := Save(filepath.Join(dir, "onto-state.yaml"), state); err != nil {
+		t.Fatalf("Save returned unexpected error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "proposal.md"), []byte("proposal"), 0o644); err != nil {
+		t.Fatalf("failed to write proposal.md: %v", err)
+	}
+
+	err := ValidateSkeleton(dir)
+	if err == nil {
+		t.Fatal("ValidateSkeleton returned nil error for missing tasks.md, want error")
+	}
+	if !strings.Contains(err.Error(), "tasks.md") {
+		t.Errorf("ValidateSkeleton error = %q, want it to contain %q", err.Error(), "tasks.md")
 	}
 }
