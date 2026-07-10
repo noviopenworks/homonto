@@ -26,10 +26,10 @@ TUI-related settings, and full lifecycle management for agents.
 
 ## Immediate Next Work
 
-Two items stand between the current `main` and the reopened dual-binary release
-gate. Both are scoped in
+One item stands between the current `main` and the reopened dual-binary
+release gate, scoped in
 [`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md);
-neither is optional for `v0.1.0-rc.1`.
+it is not optional for `v0.1.0-rc.1`.
 
 1. **`onto` binary (release-blocking).** Source builds only the `homonto`
    binary today (`main.go` at the repo root); there is no second `package main`.
@@ -45,16 +45,9 @@ neither is optional for `v0.1.0-rc.1`.
    doctor`'s installation/projection health. Release packaging must
    cross-compile and publish **both** binaries with a shared `SHA256SUMS`.
 
-2. **Subagent projection (`[subagents.X]`).** The last resource type in v1.1
-   scope. `[subagents.X]` already parses and passes model-route validation in
-   `internal/config`, but no adapter, engine, or plan step projects it — `apply`
-   installs skills and commands only. Projecting subagents into Claude Code and
-   OpenCode (with `doctor` link verification, mirroring the skills/commands
-   pattern) closes the catalog projection surface.
-
-Skills and command projection have already landed on `main` (see v1.1 below);
-these two items plus dual-binary packaging are what remain before the
-maintainer-owned `v0.1.0-rc.1` tag.
+Skills, command, and subagent projection have all landed on `main` (see v1.1
+below); the `onto` binary plus dual-binary packaging are what remain before
+the maintainer-owned `v0.1.0-rc.1` tag.
 
 ## Roadmap Strategy
 
@@ -187,9 +180,8 @@ adaptations live under `homonto/` and are declared with `source = "local:<name>"
 `[frameworks.X]` dependency expansion, version-gated materialization to
 `.homonto/catalog/skills/`, and builtin SKILL projection into Claude Code and
 OpenCode. Command and subagent projection (`[commands.X]`, `[subagents.X]`)
-were future work as of this status; command projection has since landed (see
-the status note below). Subagent projection remains future work — see "Known
-limitations" in `README.md` and `docs/guides/using-homonto.md`.
+were future work as of this status; both have since landed (see the status
+notes below).
 
 Verification evidence:
 - Full Go test suite: 195 tests passing across 18 packages (`go test ./...
@@ -217,9 +209,7 @@ placeholder `example-command` exists (`catalog/commands/example-command.md`),
 declared standalone in `homonto.toml` as `[commands.example-command] source =
 "builtin:example-command"` for dogfood, matching the "Placeholder fixture
 command" design constraint; the `onto` framework's catalog also lists it in
-its `[commands]` table, exercised by framework-expansion unit tests. Subagent
-projection (`[subagents.X]`) remains pending, unchanged from the status
-above.
+its `[commands]` table, exercised by framework-expansion unit tests.
 
 Verification evidence:
 - Full Go test suite: 215 tests passing across 19 packages (`go test ./...
@@ -229,6 +219,35 @@ Verification evidence:
   reports `No drift.`, and `homonto doctor` reports `ok: command
   "example-command" linked (claude)` and `ok: command "example-command"
   linked (opencode)`.
+
+**Status (2026-07-10, merged to `main`):** Subagent projection machinery has
+since landed on top of the skills/commands foundation above (originally
+`feature/20260710/subagent-projection`). `[subagents.X]` (builtin or local,
+`source` resolving to `.homonto/catalog/subagents/<name>.md` or
+`homonto/subagents/<name>.md` respectively) and framework-declared
+`[subagents]` tables (inherited scope/targets, transitive through framework
+dependencies, deduplicated, explicit-entry collisions rejected) both
+single-file-materialize verbatim (no model injection) to
+`.homonto/catalog/subagents/` under the same version gate as skills and
+commands, then link into Claude Code (`.claude/agents/<name>.md`) and
+OpenCode (`.opencode/agent/<name>.md`, or the user-scope equivalents), with
+`homonto doctor` verifying both tools' links. Unlike the command projection
+placeholder, subagent projection ships with real bundled content: three
+subagents — `code-reviewer`, `codebase-explorer`, and comet's
+`comet-navigator` — are declared in the catalog and dogfooded through
+`homonto.toml`.
+
+Verification evidence:
+- Full Go test suite: 239 tests passing across 20 packages (`go test ./...
+  -count=1`), `go test -race ./...` clean, `go vet ./...` clean, `go build
+  ./...` clean, `gofmt -l .` clean.
+- Dogfood run: with `[subagents.code-reviewer]` and
+  `[subagents.codebase-explorer]` declared directly in `homonto.toml` and
+  `comet-navigator` pulled in transitively via `[frameworks.comet]`, `homonto
+  apply` materializes and links all three into both tools; a follow-up
+  `homonto status` reports `No drift.`, and `homonto doctor` reports `ok:
+  subagent "<name>" linked (claude)` and `ok: subagent "<name>" linked
+  (opencode)` for all three.
 
 ## v1.2 Plugin Configuration
 

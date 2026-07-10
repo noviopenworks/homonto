@@ -15,17 +15,20 @@ import (
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/state"
+	"github.com/noviopenworks/homonto/internal/subagentpath"
 )
 
 // Adapter projects desired config into OpenCode's opencode.jsonc under home.
 type Adapter struct {
-	home               string
-	content            string
-	catalogRoot        string // materialized builtin catalog root (.homonto/catalog/skills)
-	commandCatalogRoot string // materialized builtin command root (.homonto/catalog/commands)
-	projectRoot        string // directory of homonto.toml; used for project-scope resources
-	skills             []config.NamedResource
-	commands           []config.NamedResource
+	home                string
+	content             string
+	catalogRoot         string // materialized builtin catalog root (.homonto/catalog/skills)
+	commandCatalogRoot  string // materialized builtin command root (.homonto/catalog/commands)
+	subagentCatalogRoot string // materialized builtin subagent root (.homonto/catalog/subagents)
+	projectRoot         string // directory of homonto.toml; used for project-scope resources
+	skills              []config.NamedResource
+	commands            []config.NamedResource
+	subagents           []config.NamedResource
 }
 
 // New builds an OpenCode adapter at user scope. home is $HOME; content holds
@@ -54,11 +57,18 @@ func (a *Adapter) WithCommandCatalogRoot(commandCatalogRoot string) *Adapter {
 	return a
 }
 
-// managedRoots returns every content root homonto owns links into. catalogRoot
-// and commandCatalogRoot are included only when set: link.managed() treats an
-// empty-string root as a prefix match for every absolute path, so passing ""
-// here would make link calls treat any symlink as "ours" — an empty root must
-// never reach link.*.
+// WithSubagentCatalogRoot sets the materialized builtin-subagent root that
+// builtin:<name> subagents link from. Mirrors WithCommandCatalogRoot.
+func (a *Adapter) WithSubagentCatalogRoot(subagentCatalogRoot string) *Adapter {
+	a.subagentCatalogRoot = subagentCatalogRoot
+	return a
+}
+
+// managedRoots returns every content root homonto owns links into. catalogRoot,
+// commandCatalogRoot, and subagentCatalogRoot are included only when set:
+// link.managed() treats an empty-string root as a prefix match for every
+// absolute path, so passing "" here would make link calls treat any symlink as
+// "ours" — an empty root must never reach link.*.
 func (a *Adapter) managedRoots() []string {
 	roots := []string{a.content}
 	if a.catalogRoot != "" {
@@ -66,6 +76,9 @@ func (a *Adapter) managedRoots() []string {
 	}
 	if a.commandCatalogRoot != "" {
 		roots = append(roots, a.commandCatalogRoot)
+	}
+	if a.subagentCatalogRoot != "" {
+		roots = append(roots, a.subagentCatalogRoot)
 	}
 	return roots
 }
@@ -144,6 +157,44 @@ func (a *Adapter) commandLinks() map[string]string {
 	return out
 }
 
+// subagentsDir is the directory owned-subagent symlinks live in for the scope.
+func (a *Adapter) subagentsDir(scope string) string {
+	return subagentpath.Dir("opencode", scope, a.home, a.projectRoot)
+}
+
+// inactiveSubagentsDir is the other scope's subagent directory — where a link
+// may linger after a per-resource scope switch. It returns "" when nothing
+// meaningful can be relocated (no project root, or both scopes resolve equal).
+func (a *Adapter) inactiveSubagentsDir(scope string) string {
+	if a.projectRoot == "" {
+		return ""
+	}
+	d := subagentpath.Dir("opencode", skillpath.Other(scope), a.home, a.projectRoot)
+	if d == a.subagentsDir(scope) {
+		return ""
+	}
+	return d
+}
+
+// subagentSource resolves a subagent entry's on-disk file by source scheme:
+// builtin:<n> from the materialized subagent root (<n>.md), otherwise the local
+// content dir (homonto/subagents/<n>.md).
+func (a *Adapter) subagentSource(entry config.NamedResource) string {
+	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
+		return filepath.Join(a.subagentCatalogRoot, strings.TrimPrefix(s, "builtin:")+".md")
+	}
+	return filepath.Join(a.content, "subagents", localSourceName(entry.Resource.Source, entry.Name)+".md")
+}
+
+// subagentLinks maps each owned subagent's destination (<name>.md) to its source.
+func (a *Adapter) subagentLinks() map[string]string {
+	out := map[string]string{}
+	for _, entry := range a.subagents {
+		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = a.subagentSource(entry)
+	}
+	return out
+}
+
 // localSourceName resolves a skill resource's content subdirectory: a local:
 // source names that directory directly; any other source falls back to the
 // skill's declared name.
@@ -185,6 +236,11 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		return adapter.ChangeSet{}, err
 	}
 	a.commands = commands
+	subagents, err := c.ExpandedSubagentEntriesForTool("opencode")
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	a.subagents = subagents
 	doc, err := readStandardized(a.cfgFile())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -304,6 +360,45 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		}
 		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "command." + entry.Name, New: dst + " -> " + src})
 	}
+	// ---- subagent links (parallel to commands) ----
+	subOps, err := link.Plan(a.subagentLinks(), a.managedRoots()...)
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	subByName := map[string]config.NamedResource{}
+	for _, entry := range a.subagents {
+		subByName[entry.Name] = entry
+	}
+	for _, op := range subOps {
+		name := strings.TrimSuffix(filepath.Base(op.Dst), ".md")
+		entry := subByName[name]
+		inactive := a.inactiveSubagentsDir(entry.Resource.Scope)
+		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name+".md"), a.managedRoots()...) {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "subagent." + name, Old: filepath.Join(inactive, name+".md"), New: op.Dst + " -> " + op.Src})
+		} else if op.Cur == "" {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "subagent." + name, New: op.Dst + " -> " + op.Src})
+		} else {
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "subagent." + name, Old: op.Cur, New: op.Src})
+		}
+	}
+	subOpDst := map[string]bool{}
+	for _, op := range subOps {
+		subOpDst[op.Dst] = true
+	}
+	for _, entry := range a.subagents {
+		dst := filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")
+		if subOpDst[dst] {
+			continue
+		}
+		src := a.subagentSource(entry)
+		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
+			continue
+		}
+		if e, ok := st.Get("opencode", "subagent."+entry.Name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
+			continue
+		}
+		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "subagent." + entry.Name, New: dst + " -> " + src})
+	}
 	// Orphans: a state key no longer declared in config is de-declared — plan a
 	// delete. (A declared key missing from disk is drift, handled above.) Old is
 	// always redacted: a removed key's provenance is stale by definition.
@@ -322,6 +417,9 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	for _, entry := range a.commands {
 		declared["command."+entry.Name] = true
+	}
+	for _, entry := range a.subagents {
+		declared["subagent."+entry.Name] = true
 	}
 	for _, k := range st.Keys("opencode") {
 		if declared[k] || !managedPrefix(k) {
@@ -442,6 +540,20 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 				continue
 			}
 			out[key] = secret.Hash(dst + " -> " + target)
+		case hasPrefix(key, "subagent."):
+			e, ok := st.Get("opencode", key)
+			if !ok {
+				continue
+			}
+			dst, ok := recordedDst(e.Desired)
+			if !ok {
+				continue
+			}
+			target, err := os.Readlink(dst)
+			if err != nil {
+				continue
+			}
+			out[key] = secret.Hash(dst + " -> " + target)
 		}
 		// absent from disk → omit
 	}
@@ -470,6 +582,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 				continue
 			}
 			if hasPrefix(c.Key, "command.") {
+				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
+				continue
+			}
+			if hasPrefix(c.Key, "subagent.") {
 				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
 				continue
 			}
@@ -520,6 +636,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 					dst = filepath.Join(a.commandsDir("user"), name+".md")
 				}
 				err = link.Remove(dst, a.managedRoots()...)
+			case hasPrefix(c.Key, "subagent."):
+				name := trim(c.Key, "subagent.")
+				dst := ""
+				if e, ok := st.Get("opencode", c.Key); ok {
+					dst, _ = recordedDst(e.Desired)
+				}
+				if dst == "" {
+					dst = filepath.Join(a.subagentsDir("user"), name+".md")
+				}
+				err = link.Remove(dst, a.managedRoots()...)
 			}
 			if err != nil {
 				return err
@@ -532,6 +658,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			continue
 		}
 		if hasPrefix(c.Key, "command.") {
+			continue
+		}
+		if hasPrefix(c.Key, "subagent.") {
 			continue
 		}
 		val, err := res.ResolveJSON(c.New)
@@ -565,6 +694,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	}
 	cmdLinks := a.commandLinks()
 	if _, err := link.Plan(cmdLinks, a.managedRoots()...); err != nil {
+		return err
+	}
+	subLinks := a.subagentLinks()
+	if _, err := link.Plan(subLinks, a.managedRoots()...); err != nil {
 		return err
 	}
 	if docChanged {
@@ -614,6 +747,25 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			return err
 		}
 		st.Set("opencode", "command."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
+	}
+	// Prune a subagent link left at its inactive scope after a scope switch.
+	for _, entry := range a.subagents {
+		inactive := a.inactiveSubagentsDir(entry.Resource.Scope)
+		if inactive == "" {
+			continue
+		}
+		old := filepath.Join(inactive, entry.Name+".md")
+		if link.IsManaged(old, a.managedRoots()...) {
+			if err := link.Remove(old, a.managedRoots()...); err != nil {
+				return err
+			}
+		}
+	}
+	for dst, src := range subLinks {
+		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {
+			return err
+		}
+		st.Set("opencode", "subagent."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
 	}
 	return nil
 }

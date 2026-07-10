@@ -197,3 +197,120 @@ func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
 		t.Fatal("Apply wrote opencode.jsonc before failing on the command link conflict")
 	}
 }
+
+func builtinSubagentCfg() *config.Config {
+	return &config.Config{
+		Subagents: map[string]config.Resource{
+			"code-reviewer": {Source: "builtin:code-reviewer", Scope: "user", Targets: []string{"opencode"}},
+		},
+	}
+}
+
+func TestBuiltinSubagentLinksToSubagentCatalogRoot(t *testing.T) {
+	home := t.TempDir()
+	saRoot := t.TempDir()
+	os.WriteFile(filepath.Join(saRoot, "code-reviewer.md"), []byte("body"), 0o644)
+
+	a := New(home, t.TempDir()).WithSubagentCatalogRoot(saRoot)
+	st, _ := state.Load(t.TempDir())
+	cs, err := a.Plan(builtinSubagentCfg(), st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	dst := filepath.Join(home, ".config", "opencode", "agent", "code-reviewer.md")
+	target, err := os.Readlink(dst)
+	if err != nil {
+		t.Fatalf("subagent link missing: %v", err)
+	}
+	if want := filepath.Join(saRoot, "code-reviewer.md"); target != want {
+		t.Fatalf("link target = %q, want %q", target, want)
+	}
+	if _, ok := st.Get("opencode", "subagent.code-reviewer"); !ok {
+		t.Fatal("subagent.code-reviewer not recorded in state")
+	}
+	cs2, _ := a.Plan(builtinSubagentCfg(), st)
+	for _, c := range cs2.Changes {
+		if c.Key == "subagent.code-reviewer" && c.Action != "noop" {
+			t.Fatalf("re-plan not idempotent: %+v", c)
+		}
+	}
+}
+
+func TestBuiltinSubagentPrunedWhenDeDeclared(t *testing.T) {
+	home := t.TempDir()
+	saRoot := t.TempDir()
+	os.WriteFile(filepath.Join(saRoot, "code-reviewer.md"), []byte("body"), 0o644)
+	a := New(home, t.TempDir()).WithSubagentCatalogRoot(saRoot)
+	st, _ := state.Load(t.TempDir())
+	cs, _ := a.Plan(builtinSubagentCfg(), st)
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	dst := filepath.Join(home, ".config", "opencode", "agent", "code-reviewer.md")
+	cs2, err := a.Plan(&config.Config{}, st)
+	if err != nil {
+		t.Fatalf("plan empty: %v", err)
+	}
+	if err := a.Apply(cs2, resolver(), st); err != nil {
+		t.Fatalf("apply empty: %v", err)
+	}
+	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
+		t.Fatal("de-declared builtin subagent link not pruned")
+	}
+}
+
+func TestBuiltinSubagentConflictNotClobbered(t *testing.T) {
+	home := t.TempDir()
+	saRoot := t.TempDir()
+	os.WriteFile(filepath.Join(saRoot, "code-reviewer.md"), []byte("body"), 0o644)
+	dst := filepath.Join(home, ".config", "opencode", "agent", "code-reviewer.md")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(dst, []byte("REAL USER FILE"), 0o644)
+
+	a := New(home, t.TempDir()).WithSubagentCatalogRoot(saRoot)
+	st, _ := state.Load(t.TempDir())
+	cs, _ := a.Plan(builtinSubagentCfg(), st)
+	if err := a.Apply(cs, resolver(), st); err == nil {
+		t.Fatal("expected conflict error, got nil")
+	}
+	b, _ := os.ReadFile(dst)
+	if string(b) != "REAL USER FILE" {
+		t.Fatal("conflicting real file was clobbered")
+	}
+}
+
+func TestBuiltinSubagentAdoptsExistingLink(t *testing.T) {
+	home := t.TempDir()
+	saRoot := t.TempDir()
+	src := filepath.Join(saRoot, "code-reviewer.md")
+	os.WriteFile(src, []byte("body"), 0o644)
+	dst := filepath.Join(home, ".config", "opencode", "agent", "code-reviewer.md")
+	os.MkdirAll(filepath.Dir(dst), 0o755)
+	if err := os.Symlink(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	a := New(home, t.TempDir()).WithSubagentCatalogRoot(saRoot)
+	st, _ := state.Load(t.TempDir())
+	cs, _ := a.Plan(builtinSubagentCfg(), st)
+	adopted := false
+	for _, c := range cs.Changes {
+		if c.Key == "subagent.code-reviewer" && c.Action == "adopt" {
+			adopted = true
+		}
+	}
+	if !adopted {
+		t.Fatalf("pre-existing correct link not adopted: %+v", cs.Changes)
+	}
+	if err := a.Apply(cs, resolver(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if tgt, _ := os.Readlink(dst); tgt != src {
+		t.Fatal("adopt must leave the on-disk link untouched")
+	}
+}

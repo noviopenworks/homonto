@@ -18,16 +18,17 @@ import (
 
 // Engine wires config, adapters, secret resolver, and state for plan/apply.
 type Engine struct {
-	Cfg                *config.Config
-	Adapters           []adapter.Adapter
-	State              *state.State
-	StateDir           string
-	ContentDir         string
-	CatalogRoot        string // materialized builtin catalog root (<stateDir>/catalog/skills)
-	CommandCatalogRoot string // materialized builtin command root (<stateDir>/catalog/commands)
-	Home               string
-	ProjectRoot        string // directory of homonto.toml; skill-scope project root
-	Resolver           *secret.Resolver
+	Cfg                 *config.Config
+	Adapters            []adapter.Adapter
+	State               *state.State
+	StateDir            string
+	ContentDir          string
+	CatalogRoot         string // materialized builtin catalog root (<stateDir>/catalog/skills)
+	CommandCatalogRoot  string // materialized builtin command root (<stateDir>/catalog/commands)
+	SubagentCatalogRoot string // materialized builtin subagent root (<stateDir>/catalog/subagents)
+	Home                string
+	ProjectRoot         string // directory of homonto.toml; skill-scope project root
+	Resolver            *secret.Resolver
 	// Warnings collects non-fatal per-adapter failures from the last Plan (e.g.
 	// an unparseable tool file); other tools still proceed.
 	Warnings []string
@@ -58,6 +59,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	stateDir := filepath.Join(filepath.Dir(configPath), ".homonto")
 	catalogDir := filepath.Join(stateDir, "catalog", "skills")
 	commandCatalogDir := filepath.Join(stateDir, "catalog", "commands")
+	subagentCatalogDir := filepath.Join(stateDir, "catalog", "subagents")
 	st, err := state.Load(stateDir)
 	if err != nil {
 		return nil, err
@@ -65,17 +67,18 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	return &Engine{
 		Cfg: cfg,
 		Adapters: []adapter.Adapter{
-			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
-			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
+			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir),
+			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir),
 		},
-		State:              st,
-		StateDir:           stateDir,
-		ContentDir:         contentDir,
-		CatalogRoot:        catalogDir,
-		CommandCatalogRoot: commandCatalogDir,
-		Home:               home,
-		ProjectRoot:        projectRoot,
-		Resolver:           secret.NewResolver(),
+		State:               st,
+		StateDir:            stateDir,
+		ContentDir:          contentDir,
+		CatalogRoot:         catalogDir,
+		CommandCatalogRoot:  commandCatalogDir,
+		SubagentCatalogRoot: subagentCatalogDir,
+		Home:                home,
+		ProjectRoot:         projectRoot,
+		Resolver:            secret.NewResolver(),
 	}, nil
 }
 
@@ -84,6 +87,9 @@ func (e *Engine) CatalogDir() string { return e.CatalogRoot }
 
 // CommandDir returns the materialized builtin command root.
 func (e *Engine) CommandDir() string { return e.CommandCatalogRoot }
+
+// SubagentDir returns the materialized builtin subagent root.
+func (e *Engine) SubagentDir() string { return e.SubagentCatalogRoot }
 
 // Plan runs each adapter's Plan. An adapter that fails (e.g. its tool file is
 // unparseable) is skipped with a warning so the other tools still proceed; its
@@ -150,15 +156,17 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 	return e.State.Save(e.StateDir)
 }
 
-// materializeCatalog extracts the builtin skills and commands the config
-// declares into CatalogRoot and CommandCatalogRoot, version-gated: it is a
-// no-op when the recorded catalog version matches the embedded one AND every
-// skill dir and command file already exists. The version is recorded (and
-// state saved) only after BOTH skills and commands materialize, so an
+// materializeCatalog extracts the builtin skills, commands, and subagents the
+// config declares into CatalogRoot, CommandCatalogRoot, and
+// SubagentCatalogRoot, version-gated: it is a no-op when the recorded catalog
+// version matches the embedded one AND every skill dir, command file, and
+// subagent file already exists. The version is recorded (and state saved)
+// only after skills, commands, AND subagents all materialize, so an
 // interrupted extraction re-materializes on the next apply.
 func (e *Engine) materializeCatalog() error {
 	skillSet := map[string]bool{}
 	cmdSet := map[string]bool{}
+	subSet := map[string]bool{}
 	for _, tool := range []string{"claude", "opencode"} {
 		sEntries, err := e.Cfg.ExpandedSkillEntriesForTool(tool)
 		if err != nil {
@@ -178,8 +186,17 @@ func (e *Engine) materializeCatalog() error {
 				cmdSet[strings.TrimPrefix(entry.Resource.Source, "builtin:")] = true
 			}
 		}
+		saEntries, err := e.Cfg.ExpandedSubagentEntriesForTool(tool)
+		if err != nil {
+			return err
+		}
+		for _, entry := range saEntries {
+			if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+				subSet[strings.TrimPrefix(entry.Resource.Source, "builtin:")] = true
+			}
+		}
 	}
-	if len(skillSet) == 0 && len(cmdSet) == 0 {
+	if len(skillSet) == 0 && len(cmdSet) == 0 && len(subSet) == 0 {
 		return nil
 	}
 	cl, err := catalog.New()
@@ -196,16 +213,25 @@ func (e *Engine) materializeCatalog() error {
 		cmdNames = append(cmdNames, n)
 	}
 	sort.Strings(cmdNames)
+	subNames := make([]string, 0, len(subSet))
+	for n := range subSet {
+		subNames = append(subNames, n)
+	}
+	sort.Strings(subNames)
 
 	if e.State.CatalogVersionRecorded() == cl.Version() &&
 		allSkillDirsExist(e.CatalogRoot, skillNames) &&
-		allCommandFilesExist(e.CommandCatalogRoot, cmdNames) {
+		allCommandFilesExist(e.CommandCatalogRoot, cmdNames) &&
+		allSubagentFilesExist(e.SubagentCatalogRoot, subNames) {
 		return nil
 	}
 	if err := cl.Materialize(e.CatalogRoot, skillNames); err != nil {
 		return err
 	}
 	if err := cl.MaterializeCommands(e.CommandCatalogRoot, cmdNames); err != nil {
+		return err
+	}
+	if err := cl.MaterializeSubagents(e.SubagentCatalogRoot, subNames); err != nil {
 		return err
 	}
 	e.State.SetCatalogVersion(cl.Version())
@@ -225,6 +251,16 @@ func allSkillDirsExist(root string, names []string) bool {
 }
 
 func allCommandFilesExist(root string, names []string) bool {
+	for _, n := range names {
+		fi, err := os.Stat(filepath.Join(root, n+".md"))
+		if err != nil || fi.IsDir() {
+			return false
+		}
+	}
+	return true
+}
+
+func allSubagentFilesExist(root string, names []string) bool {
 	for _, n := range names {
 		fi, err := os.Stat(filepath.Join(root, n+".md"))
 		if err != nil || fi.IsDir() {

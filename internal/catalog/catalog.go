@@ -20,6 +20,7 @@ type Framework struct {
 	Dependencies []string          // framework names
 	Skills       map[string]string // skill name -> catalog-relative path ("skills/<n>")
 	Commands     map[string]string // command name -> catalog-relative path ("commands/<n>.md")
+	Subagents    map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
 }
 
 // Catalog is the loaded, indexed catalog.
@@ -28,6 +29,7 @@ type Catalog struct {
 	frameworks map[string]Framework
 	skills     map[string]string // skill name -> catalog-relative path (global index)
 	commands   map[string]string // command name -> catalog-relative path (global index)
+	subagents  map[string]string // subagent name -> catalog-relative path (global index)
 	version    string
 }
 
@@ -38,8 +40,9 @@ type frameworkTOML struct {
 	Dependencies struct {
 		Frameworks []string `toml:"frameworks"`
 	} `toml:"dependencies"`
-	Skills   map[string]string `toml:"skills"`
-	Commands map[string]string `toml:"commands"`
+	Skills    map[string]string `toml:"skills"`
+	Commands  map[string]string `toml:"commands"`
+	Subagents map[string]string `toml:"subagents"`
 }
 
 // New loads the production catalog from the embedded filesystem.
@@ -54,12 +57,33 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		frameworks: map[string]Framework{},
 		skills:     map[string]string{},
 		commands:   map[string]string{},
+		subagents:  map[string]string{},
 	}
 	vb, err := fs.ReadFile(fsys, "version.txt")
 	if err != nil {
 		return nil, fmt.Errorf("catalog: read version.txt: %w", err)
 	}
 	c.version = strings.TrimSpace(string(vb))
+
+	// Loose (framework-agnostic) subagents: every "<n>.md" file directly under
+	// subagents/ is indexed by base name, independent of any framework
+	// declaring it. Unlike skills/commands, subagents are designed to include
+	// standalone builtins (e.g. code-reviewer, codebase-explorer) referenced
+	// directly by an explicit [subagents.X] config entry with no framework
+	// home. The subagents/ directory is optional — fixtures/tests that don't
+	// exercise subagents need not provide one.
+	if entries, err := fs.ReadDir(fsys, "subagents"); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := strings.TrimSuffix(e.Name(), ".md")
+			if name == e.Name() {
+				continue // not a ".md" file
+			}
+			c.subagents[name] = path.Join("subagents", e.Name())
+		}
+	}
 
 	dirs, err := fs.ReadDir(fsys, "frameworks")
 	if err != nil {
@@ -100,6 +124,15 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			}
 			c.commands[command] = cp
 		}
+		for subagent, sap := range ft.Subagents {
+			if _, err := fs.Stat(fsys, sap); err != nil {
+				return nil, fmt.Errorf("catalog: framework %q subagent %q path %q missing from catalog", dir, subagent, sap)
+			}
+			if prev, ok := c.subagents[subagent]; ok && prev != sap {
+				return nil, fmt.Errorf("catalog: subagent %q mapped to both %q and %q", subagent, prev, sap)
+			}
+			c.subagents[subagent] = sap
+		}
 		c.frameworks[dir] = Framework{
 			Name:         ft.Name,
 			Version:      ft.Version,
@@ -107,6 +140,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			Dependencies: ft.Dependencies.Frameworks,
 			Skills:       ft.Skills,
 			Commands:     ft.Commands,
+			Subagents:    ft.Subagents,
 		}
 	}
 	return c, nil
@@ -132,5 +166,12 @@ func (c *Catalog) SkillPath(name string) (string, bool) {
 // whether it is known.
 func (c *Catalog) CommandPath(name string) (string, bool) {
 	p, ok := c.commands[name]
+	return p, ok
+}
+
+// SubagentPath returns a subagent's catalog-relative path ("subagents/<n>.md")
+// and whether it is known.
+func (c *Catalog) SubagentPath(name string) (string, bool) {
+	p, ok := c.subagents[name]
 	return p, ok
 }

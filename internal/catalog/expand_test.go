@@ -128,3 +128,26 @@ func TestExpandCommandsDetectsCycle(t *testing.T) {
 		t.Fatalf("expected cycle error, got %v", err)
 	}
 }
+
+func TestExpandSubagentsIncludesFrameworkSubagent(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	got, err := c.ExpandSubagents([]string{"comet"})
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	found := false
+	for _, e := range got {
+		if e.Name == "comet-navigator" {
+			found = true
+			if e.Framework != "comet" {
+				t.Errorf("comet-navigator framework = %q, want comet", e.Framework)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("comet-navigator not returned by ExpandSubagents([comet])")
+	}
+}
