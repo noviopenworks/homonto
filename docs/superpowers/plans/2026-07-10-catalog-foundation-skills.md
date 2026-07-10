@@ -476,7 +476,7 @@ Maps tasks.md 2.2 and the expansion/cycle portion of 2.5.
   - `type ExpandedSkill struct { Name, Framework string }`
   - `func (c *Catalog) Expand(frameworkNames []string) ([]ExpandedSkill, error)` — transitive, deduplicated, sorted by `Name`; returns an error naming a dependency cycle.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/catalog/expand_test.go`:
 
@@ -562,12 +562,12 @@ func TestExpandDetectsCycle(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run TestExpand -v`
 Expected: FAIL / build error — `Expand`, `ExpandedSkill` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/catalog/expand.go`:
 
@@ -645,12 +645,12 @@ func (c *Catalog) Expand(frameworkNames []string) ([]ExpandedSkill, error) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -run TestExpand -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/expand.go internal/catalog/expand_test.go
