@@ -648,7 +648,7 @@ git commit -m "feat(catalog): parse/index/expand/materialize subagents; wire com
   - `(c *Config) SubagentEntriesForTool(tool string) []NamedResource`.
   - `(c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, error)` — explicit `[subagents.X]` + framework-expanded subagents, scope/targets inheritance, explicit-vs-framework collision error, conflicting-framework error, cycle propagation.
 
-- [ ] **Step 1: Write the failing config tests**
+- [x] **Step 1: Write the failing config tests**
 
 In `internal/config/config_test.go`, add (mirrors `TestExpandedCommandsExplicitAndTargetFilter` and the collision test for commands):
 
@@ -770,12 +770,12 @@ variant = "cheap"
 
 Note: use whatever load helper the existing command tests use. If they call `mustLoad`/`loadDoc`, match it; the existing `TestExpandedCommandsExplicitAndTargetFilter` shows the exact helper name — reuse it verbatim rather than introducing a new one.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/config/ -run TestExpandedSubagents -v`
 Expected: FAIL — `ExpandedSubagentEntriesForTool` undefined.
 
-- [ ] **Step 3: Add `SubagentEntriesForTool` and `ExpandedSubagentEntriesForTool`**
+- [x] **Step 3: Add `SubagentEntriesForTool` and `ExpandedSubagentEntriesForTool`**
 
 In `internal/config/config.go`, add next to `CommandEntriesForTool`:
 ```go
@@ -859,12 +859,12 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/config/ -run TestExpandedSubagents -v`
 Expected: PASS.
 
-- [ ] **Step 5: Add the model-validation-gap confirming test**
+- [x] **Step 5: Add the model-validation-gap confirming test**
 
 `EnabledModelTools` already iterates `c.Subagents`, so a subagent targeting a tool with no model routes must already fail at `Load`. Add a test that locks this behavior (mirrors `TestLoadRequiresAllModelLevelsForEnabledTools` but driven by `[subagents.X]`):
 
@@ -886,12 +886,12 @@ targets = ["opencode"]
 
 Use the same `loadDoc` helper `TestLoadRequiresAllModelLevelsForEnabledTools` uses.
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `go test ./internal/config/ -run TestLoadRequiresModelsForSubagentTargetedTool -v`
 Expected: PASS (confirms existing validation covers subagents — no production change needed).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add internal/config

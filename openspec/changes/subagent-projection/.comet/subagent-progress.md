@@ -8,8 +8,8 @@ review_mode: standard | tdd_mode: tdd | build_mode: subagent-driven-development
 - Task 1: complete (efd4218, no risk; Minor: strings.Index->Cut nit for final review)
 - Task 2: complete (44a9b71, no risk)
 - Task 3: complete (7f96e98, risk-reviewed APPROVED; dir-scan D1/D5 reconciliation confirmed safe)
-- Task 4: config subagent expansion — STAGE: implementing
-- Task 5: engine materialization + WithSubagentCatalogRoot — pending
+- Task 4: complete (49f7575, no risk; EnabledModelTools already counts subagents, test-locked)
+- Task 5: engine materialization + WithSubagentCatalogRoot — STAGE: implementing
 - Task 6: adapter subagent projection (both tools) — pending
 - Task 7: doctor verification — pending
 - Task 8: dogfood — pending

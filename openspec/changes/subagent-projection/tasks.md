@@ -23,10 +23,10 @@
 
 ## 4. Config subagent expansion
 
-- [ ] 4.1 Add `Config.ExpandedSubagentEntriesForTool(tool)` (explicit `[subagents.X]` + framework-expanded subagents, scope/targets inheritance)
-- [ ] 4.2 Collision detection (explicit vs framework subagent name) and cycle propagation
-- [ ] 4.3 Verify `EnabledModelTools`/`validateModels` already counts subagent-targeted tools; add a test asserting a subagent enabling a tool without model routes fails clearly
-- [ ] 4.4 Config tests for subagent expansion, inheritance, collision, target filtering
+- [x] 4.1 Add `Config.ExpandedSubagentEntriesForTool(tool)` (explicit `[subagents.X]` + framework-expanded subagents, scope/targets inheritance)
+- [x] 4.2 Collision detection (explicit vs framework subagent name) and cycle propagation
+- [x] 4.3 Verify `EnabledModelTools`/`validateModels` already counts subagent-targeted tools; add a test asserting a subagent enabling a tool without model routes fails clearly
+- [x] 4.4 Config tests for subagent expansion, inheritance, collision, target filtering
 
 ## 5. Engine materialization orchestration
 
