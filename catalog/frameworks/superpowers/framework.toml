@@ -1,0 +1,20 @@
+name = "superpowers"
+version = "0.1.0"
+description = "Superpowers development skills"
+
+[dependencies]
+frameworks = []
+
+[skills]
+brainstorming = "skills/brainstorming"
+writing-plans = "skills/writing-plans"
+executing-plans = "skills/executing-plans"
+subagent-driven-development = "skills/subagent-driven-development"
+using-git-worktrees = "skills/using-git-worktrees"
+test-driven-development = "skills/test-driven-development"
+systematic-debugging = "skills/systematic-debugging"
+verification-before-completion = "skills/verification-before-completion"
+finishing-a-development-branch = "skills/finishing-a-development-branch"
+requesting-code-review = "skills/requesting-code-review"
+receiving-code-review = "skills/receiving-code-review"
+dispatching-parallel-agents = "skills/dispatching-parallel-agents"

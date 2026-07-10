@@ -1,0 +1,16 @@
+name = "comet"
+version = "0.1.0"
+description = "Comet five-phase OpenSpec workflow"
+
+[dependencies]
+frameworks = ["superpowers", "openspec"]
+
+[skills]
+comet = "skills/comet"
+comet-open = "skills/comet-open"
+comet-design = "skills/comet-design"
+comet-build = "skills/comet-build"
+comet-verify = "skills/comet-verify"
+comet-archive = "skills/comet-archive"
+comet-hotfix = "skills/comet-hotfix"
+comet-tweak = "skills/comet-tweak"

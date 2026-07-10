@@ -1,0 +1,16 @@
+name = "onto"
+version = "0.1.0"
+description = "Onto self-contained development workflow"
+
+[dependencies]
+frameworks = []
+
+[skills]
+onto = "skills/onto"
+onto-build = "skills/onto-build"
+onto-close = "skills/onto-close"
+onto-design = "skills/onto-design"
+onto-fix = "skills/onto-fix"
+onto-open = "skills/onto-open"
+onto-tweak = "skills/onto-tweak"
+onto-verify = "skills/onto-verify"
