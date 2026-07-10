@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/command-projection/tasks.md",
   "openspec_delta_spec": "openspec/changes/command-projection/specs/command-projection/spec.md",
   "handoff_context": "openspec/changes/command-projection/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/command-projection/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/command-projection/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-10-command-projection"
 }

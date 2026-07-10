@@ -116,7 +116,7 @@ validate provider-specific model names or effort values beyond presence.
 
 ### Requirement: Local provider content root
 
-Local provider content SHALL live under `homonto/` relative to the directory containing `homonto.toml`; generated state, cache, and the materialized builtin catalog SHALL live under `.homonto/` only. Current adapters resolve local-source skills (`source = "local:<name>"`) from `homonto/skills/<name>`. Builtin-source skills (`source = "builtin:<name>"`) resolve from the materialized `.homonto/catalog/skills/<name>/`. Local command, subagent, and framework content resolution is part of future framework/catalog projection work and MUST NOT be claimed as installed behavior yet.
+Local provider content SHALL live under `homonto/` relative to the directory containing `homonto.toml`; generated state, cache, and the materialized builtin catalog SHALL live under `.homonto/` only. Current adapters resolve local-source skills (`source = "local:<name>"`) from `homonto/skills/<name>` and local-source commands from `homonto/commands/<name>.md`. Builtin-source skills resolve from the materialized `.homonto/catalog/skills/<name>/` and builtin-source commands from the materialized `.homonto/catalog/commands/<name>.md`. Local subagent and framework content resolution is part of future framework/catalog projection work and MUST NOT be claimed as installed behavior yet.
 
 #### Scenario: Local skill resolves from homonto/
 
@@ -129,6 +129,18 @@ Local provider content SHALL live under `homonto/` relative to the directory con
 - **GIVEN** a config with `[skills.brainstorming] source = "builtin:brainstorming"`
 - **WHEN** apply creates the skill link
 - **THEN** the symlink target is `.homonto/catalog/skills/brainstorming/`
+
+#### Scenario: Local command resolves from homonto/commands
+
+- **GIVEN** a config with `[commands.mine] source = "local:mine"`
+- **WHEN** apply creates the command link
+- **THEN** the symlink target is `homonto/commands/mine.md`
+
+#### Scenario: Builtin command resolves from materialized catalog
+
+- **GIVEN** a config with `[commands.demo] source = "builtin:demo"`
+- **WHEN** apply creates the command link
+- **THEN** the symlink target is `.homonto/catalog/commands/demo.md`
 
 ### Requirement: Bundled catalog embedded in binary
 

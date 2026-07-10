@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-10-command-projection-veri
 branch_status: handled
 created_at: 2026-07-10
 verified_at: 2026-07-10
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/command-projection/.comet/handoff/design-context.json
 handoff_hash: 279b83b2bd0db0b750fc3e46a2152c2aeed5591ff16115bb251483a4e867c682

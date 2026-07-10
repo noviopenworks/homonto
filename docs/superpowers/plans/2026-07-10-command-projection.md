@@ -2,6 +2,7 @@
 change: command-projection
 design-doc: docs/superpowers/specs/2026-07-10-command-projection-design.md
 base-ref: 70dd84da50e6f04aacc37197c78a14004ca28a4f
+archived-with: 2026-07-10-command-projection
 ---
 
 # Command Projection Implementation Plan
@@ -27,6 +28,7 @@ base-ref: 70dd84da50e6f04aacc37197c78a14004ca28a4f
 - Verification commands: `go test ./... -count=1`, `go vet ./...`, `go build ./...`.
 - `.homonto/`, `/.claude/`, `/.opencode/` are gitignored (dogfood artifacts) — never commit them.
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 1: Catalog commands content + embed
@@ -73,9 +75,11 @@ Expected: FAIL (file not embedded, or build error `pattern all:commands: no matc
 Create `catalog/commands/example-command.md`:
 
 ```markdown
+archived-with: 2026-07-10-command-projection
 ---
 name: example-command
 description: Placeholder command shipped to exercise command projection end-to-end; real command content lands in a later change.
+archived-with: 2026-07-10-command-projection
 ---
 
 # Example Command
@@ -111,6 +115,7 @@ git add catalog/commands/example-command.md catalog/embed.go internal/catalog/em
 git commit -m "feat(catalog): embed placeholder command and commands area"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 2: Framework `[commands]` parse, index, and lookup
@@ -283,6 +288,7 @@ git add internal/catalog/catalog.go internal/catalog/catalog_test.go
 git commit -m "feat(catalog): parse and index framework [commands] table"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 3: Factor `expandResources` and add `ExpandCommands`
@@ -508,6 +514,7 @@ git add internal/catalog/expand.go internal/catalog/expand_test.go
 git commit -m "feat(catalog): factor expandResources and add ExpandCommands"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 4: Single-file command materialization
@@ -620,6 +627,7 @@ git add internal/catalog/materialize.go internal/catalog/materialize_test.go
 git commit -m "feat(catalog): materialize builtin commands as single files"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 5: `internal/commandpath` package
@@ -729,6 +737,7 @@ git add internal/commandpath/
 git commit -m "feat(commandpath): add command directory mapping"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 6: Config command expansion
@@ -938,6 +947,7 @@ git add internal/config/config.go internal/config/config_test.go
 git commit -m "feat(config): expand framework and explicit commands per tool"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 7: Engine command materialization
@@ -1155,6 +1165,7 @@ git add internal/engine/engine.go internal/engine/materialize_test.go
 git commit -m "feat(engine): version-gated builtin command materialization"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 8: Claude adapter command projection
@@ -1556,6 +1567,7 @@ git add internal/adapter/claude/claude.go internal/adapter/claude/util.go intern
 git commit -m "feat(claude): project builtin and local commands"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 9: OpenCode adapter command projection
@@ -1900,6 +1912,7 @@ git add internal/adapter/opencode/opencode.go internal/adapter/opencode/util.go 
 git commit -m "feat(opencode): project builtin and local commands"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 10: Doctor command verification
@@ -2015,6 +2028,7 @@ git add internal/engine/status.go internal/engine/status_test.go
 git commit -m "feat(doctor): verify command content and links"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 11: Dogfood the placeholder command
@@ -2073,6 +2087,7 @@ git add homonto.toml
 git commit -m "chore: dogfood placeholder command projection"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ### Task 12: Regression and docs
@@ -2118,6 +2133,7 @@ git add docs/roadmap.md
 git commit -m "docs: mark command projection machinery landed in v1.1"
 ```
 
+archived-with: 2026-07-10-command-projection
 ---
 
 ## Self-Review
@@ -2147,3 +2163,4 @@ git commit -m "docs: mark command projection machinery landed in v1.1"
 **2. Inline Execution** — Execute tasks in this session using executing-plans, batch execution with checkpoints.
 
 **Which approach?**
+

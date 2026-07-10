@@ -2,6 +2,8 @@
 comet_change: command-projection
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-10-command-projection
+status: final
 ---
 
 # Command Projection — Technical Design
@@ -178,3 +180,4 @@ status/doctor → drift = link changed OR materialized file missing
 
 ## 11. Spec Patches
 None.
+
