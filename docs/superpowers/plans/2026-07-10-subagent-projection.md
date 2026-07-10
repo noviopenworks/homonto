@@ -72,7 +72,7 @@ Existing model-route validation already counts subagent-targeted tools (`Enabled
 - Produces: `subagentpath.Dir(tool, scope, home, projectRoot string) string` — mirrors `commandpath.Dir`; used by both adapters and doctor.
 - Produces the validated **minimal shared frontmatter shape** (`name`, `description`, `mode: subagent`; no `model`, no `tools`) that Task 2 authors the real subagents against.
 
-- [ ] **Step 1: Write the real-layout fixtures (both tools, both directory names)**
+- [x] **Step 1: Write the real-layout fixtures (both tools, both directory names)**
 
 Create `internal/subagentpath/testdata/claude/agents/sample.md`:
 
@@ -98,7 +98,7 @@ mode: subagent
 Sample body.
 ```
 
-- [ ] **Step 2: Write the failing frontmatter contract test**
+- [x] **Step 2: Write the failing frontmatter contract test**
 
 Create `internal/subagentpath/frontmatter_test.go`. No YAML library is available, so parse the frontmatter block by string. This is the empirical both-tools load check (Design Risks): it asserts each real-layout fixture carries exactly the shared keys and omits the two hard-conflicting keys.
 
@@ -152,12 +152,12 @@ func TestSharedFrontmatterContract(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run the test to verify it fails**
+- [x] **Step 3: Run the test to verify it fails**
 
 Run: `go test ./internal/subagentpath/ -run TestSharedFrontmatterContract -v`
 Expected: FAIL — package has no non-test `.go` file yet, so it will not compile ("no Go files" / build error). (Once Step 4 lands, this test passes.)
 
-- [ ] **Step 4: Write `subagentpath.Dir`**
+- [x] **Step 4: Write `subagentpath.Dir`**
 
 Create `internal/subagentpath/subagentpath.go`:
 
@@ -200,7 +200,7 @@ func Dir(tool, scope, home, projectRoot string) string {
 }
 ```
 
-- [ ] **Step 5: Write the failing `Dir` unit test**
+- [x] **Step 5: Write the failing `Dir` unit test**
 
 Create `internal/subagentpath/subagentpath_test.go`:
 
@@ -235,12 +235,12 @@ func TestDir(t *testing.T) {
 }
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `go test ./internal/subagentpath/ -v`
 Expected: PASS (`TestDir`, `TestSharedFrontmatterContract`).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add internal/subagentpath

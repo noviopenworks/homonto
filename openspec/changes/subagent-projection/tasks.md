@@ -1,8 +1,8 @@
 ## 1. Tool-layout fixtures and path mapping (confirm real layout first)
 
-- [ ] 1.1 Add real-layout test fixtures for Claude `agents/` (plural) and OpenCode `agent/` (singular), user and project scope, mirroring the skills/commands fixtures
-- [ ] 1.2 Add `subagentpath.Dir(tool, scope, home, projectRoot)` (claude `.claude/agents` user / `<repo>/.claude/agents` project; opencode `.config/opencode/agent` user / `<repo>/.opencode/agent` project) — extend `commandpath` or add a sibling package
-- [ ] 1.3 Unit tests for all tool/scope combinations, asserting the singular/plural split
+- [x] 1.1 Add real-layout test fixtures for Claude `agents/` (plural) and OpenCode `agent/` (singular), user and project scope, mirroring the skills/commands fixtures
+- [x] 1.2 Add `subagentpath.Dir(tool, scope, home, projectRoot)` (claude `.claude/agents` user / `<repo>/.claude/agents` project; opencode `.config/opencode/agent` user / `<repo>/.opencode/agent` project) — extend `commandpath` or add a sibling package
+- [x] 1.3 Unit tests for all tool/scope combinations, asserting the singular/plural split
 
 ## 2. Catalog subagent content and embed
 
