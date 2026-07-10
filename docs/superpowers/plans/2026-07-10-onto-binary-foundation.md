@@ -28,12 +28,12 @@ base-ref: 06e14209a5145216adaafbb3bb8aa516f4ccce96
 
 **Files:** create `internal/ontostate/state.go`, `internal/ontostate/state_test.go`; modify `go.mod`/`go.sum`.
 
-- [ ] 1.1 `go get gopkg.in/yaml.v3` then `go mod tidy`; confirm it appears in go.mod require and `go mod tidy` is clean (no diff)
-- [ ] 1.2 Write failing tests first in `state_test.go`: valid parse+derive (phase build); malformed-YAML error mentions "onto-state"; unknown-phase → validate error; empty-change → validate error; missing-file `Load` error; no panic on `Parse([]byte("\x00garbage"))`
-- [ ] 1.3 Run tests → RED (package has no State type yet / build failure)
-- [ ] 1.4 Implement `State` struct (fields: Change, Workflow, Phase, Created, BaseRef, Deps, Archived — yaml tags per Design D3), `Parse`, `Load` (wrap os error naming the path), `Validate` (Change non-empty; Phase ∈ open|design|build|verify|close), `DerivePhase` (Validate then return Phase)
-- [ ] 1.5 Run tests → GREEN; `gofmt -l internal/ontostate/`, `go vet ./internal/ontostate/` clean
-- [ ] 1.6 Commit: `feat(ontostate): onto-state.yaml model (parse/validate/derive-phase)`
+- [x] 1.1 `go get gopkg.in/yaml.v3` then `go mod tidy`; confirm it appears in go.mod require and `go mod tidy` is clean (no diff)
+- [x] 1.2 Write failing tests first in `state_test.go`: valid parse+derive (phase build); malformed-YAML error mentions "onto-state"; unknown-phase → validate error; empty-change → validate error; missing-file `Load` error; no panic on `Parse([]byte("\x00garbage"))`
+- [x] 1.3 Run tests → RED (package has no State type yet / build failure)
+- [x] 1.4 Implement `State` struct (fields: Change, Workflow, Phase, Created, BaseRef, Deps, Archived — yaml tags per Design D3), `Parse`, `Load` (wrap os error naming the path), `Validate` (Change non-empty; Phase ∈ open|design|build|verify|close), `DerivePhase` (Validate then return Phase)
+- [x] 1.5 Run tests → GREEN; `gofmt -l internal/ontostate/`, `go vet ./internal/ontostate/` clean
+- [x] 1.6 Commit: `feat(ontostate): onto-state.yaml model (parse/validate/derive-phase)`
 
 ## Task 2: onto binary + CLI root (`internal/ontocli`, `cmd/onto`)
 

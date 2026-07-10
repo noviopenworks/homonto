@@ -1,10 +1,10 @@
 ## 1. onto-state.yaml model (`internal/ontostate`)
 
-- [ ] 1.1 Add `gopkg.in/yaml.v3` to go.mod (`go get gopkg.in/yaml.v3`); run `go mod tidy`
-- [ ] 1.2 Define the `State` struct (change id/name, `phase`, minimal gate fields) with yaml tags in `internal/ontostate/state.go`
-- [ ] 1.3 Implement `Parse([]byte) (State, error)` / `Load(path)` — unmarshal + wrap YAML/os errors with the file name; never panic
-- [ ] 1.4 Implement `Validate()` (phase is one of open|design|build|verify|close — the onto workflow phase set, matching the onto-* skills and legacy state.yaml) and `DerivePhase() (string, error)` (validated recorded phase)
-- [ ] 1.5 Unit tests: valid parse+derive, malformed-YAML error names the file, unknown-phase error, missing-file error
+- [x] 1.1 Add `gopkg.in/yaml.v3` to go.mod (`go get gopkg.in/yaml.v3`); run `go mod tidy`
+- [x] 1.2 Define the `State` struct (change id/name, `phase`, minimal gate fields) with yaml tags in `internal/ontostate/state.go`
+- [x] 1.3 Implement `Parse([]byte) (State, error)` / `Load(path)` — unmarshal + wrap YAML/os errors with the file name; never panic
+- [x] 1.4 Implement `Validate()` (phase is one of open|design|build|verify|close — the onto workflow phase set, matching the onto-* skills and legacy state.yaml) and `DerivePhase() (string, error)` (validated recorded phase)
+- [x] 1.5 Unit tests: valid parse+derive, malformed-YAML error names the file, unknown-phase error, missing-file error
 
 ## 2. onto binary + CLI root (`cmd/onto`, `internal/ontocli`)
 
