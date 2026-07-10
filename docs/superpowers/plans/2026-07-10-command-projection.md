@@ -1183,7 +1183,7 @@ Adds `command.<name>` link projection to the Claude adapter, mirroring skill pro
   - `func (a *Adapter) commandSource(entry config.NamedResource) string`
   - `func (a *Adapter) commandLinks() map[string]string`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/adapter/claude/builtin_test.go`:
 
@@ -1277,12 +1277,12 @@ func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/adapter/claude/ -run TestBuiltinCommand -count=1`
 Expected: FAIL (`WithCommandCatalogRoot`/command projection do not exist).
 
-- [ ] **Step 3: Add fields, constructor, roots, and helpers**
+- [x] **Step 3: Add fields, constructor, roots, and helpers**
 
 In `internal/adapter/claude/claude.go`:
 
@@ -1368,7 +1368,7 @@ func (a *Adapter) commandLinks() map[string]string {
 }
 ```
 
-- [ ] **Step 4: Extend `managedPrefix`**
+- [x] **Step 4: Extend `managedPrefix`**
 
 In `internal/adapter/claude/util.go`, add `"command."` to the prefix list:
 
@@ -1383,7 +1383,7 @@ func managedPrefix(k string) bool {
 }
 ```
 
-- [ ] **Step 5: Emit command ops in `Plan`**
+- [x] **Step 5: Emit command ops in `Plan`**
 
 In `Plan`, after `a.skills = skills` (near the top), add:
 
@@ -1449,7 +1449,7 @@ In the `declared` map population (orphan-delete section), after the skills loop 
 
 (The existing orphan-delete loop over `st.Keys("claude")` now prunes de-declared `command.*` keys automatically, since `managedPrefix` recognizes them.)
 
-- [ ] **Step 6: Handle command ops in `Apply`**
+- [x] **Step 6: Handle command ops in `Apply`**
 
 In `Apply`'s adopt branch, after the `if hasPrefix(c.Key, "skill.") { ... }` block add:
 
@@ -1513,7 +1513,7 @@ After the skill inactive-prune loop and skill link-creation loop (at the end of 
 	return nil
 ```
 
-- [ ] **Step 7: Handle `command.` in `ObserveHashes`**
+- [x] **Step 7: Handle `command.` in `ObserveHashes`**
 
 In `ObserveHashes`, immediately after the `if hasPrefix(key, "skill.") { ... }` block, add:
 
@@ -1536,7 +1536,7 @@ In `ObserveHashes`, immediately after the `if hasPrefix(key, "skill.") { ... }` 
 		}
 ```
 
-- [ ] **Step 8: Wire `WithCommandCatalogRoot` in `engine.Build`**
+- [x] **Step 8: Wire `WithCommandCatalogRoot` in `engine.Build`**
 
 In `internal/engine/engine.go`, append `.WithCommandCatalogRoot(commandCatalogDir)` to the claude constructor line:
 
@@ -1544,12 +1544,12 @@ In `internal/engine/engine.go`, append `.WithCommandCatalogRoot(commandCatalogDi
 			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir),
 ```
 
-- [ ] **Step 9: Run tests to verify they pass**
+- [x] **Step 9: Run tests to verify they pass**
 
 Run: `go test ./internal/adapter/claude/ ./internal/engine/ -count=1`
 Expected: PASS
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add internal/adapter/claude/claude.go internal/adapter/claude/util.go internal/adapter/claude/builtin_test.go internal/engine/engine.go
