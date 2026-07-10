@@ -736,3 +736,86 @@ targets = ["claude"]
 		t.Fatalf("commands = %v, want only example-command", got)
 	}
 }
+
+func TestExpandedSubagentsExplicitAndTargetFilter(t *testing.T) {
+	c := loadTOML(t, `
+[subagents.code-reviewer]
+source = "builtin:code-reviewer"
+scope = "project"
+targets = ["claude"]
+`+validModelsBothTools())
+
+	claude, err := c.ExpandedSubagentEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("claude: %v", err)
+	}
+	if len(claude) != 1 || claude[0].Name != "code-reviewer" {
+		t.Fatalf("claude subagents = %+v, want [code-reviewer]", claude)
+	}
+	oc, err := c.ExpandedSubagentEntriesForTool("opencode")
+	if err != nil {
+		t.Fatalf("opencode: %v", err)
+	}
+	if len(oc) != 0 {
+		t.Fatalf("opencode subagents = %+v, want none (target filter)", oc)
+	}
+}
+
+func TestExpandedSubagentsFrameworkInheritsScopeTargets(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "project"
+targets = ["claude", "opencode"]
+`+validModelsBothTools())
+
+	got, err := c.ExpandedSubagentEntriesForTool("claude")
+	if err != nil {
+		t.Fatalf("expand: %v", err)
+	}
+	var nav *NamedResource
+	for i := range got {
+		if got[i].Name == "comet-navigator" {
+			nav = &got[i]
+		}
+	}
+	if nav == nil {
+		t.Fatal("comet-navigator not expanded for claude")
+	}
+	if nav.Resource.Scope != "project" || nav.Resource.Source != "builtin:comet-navigator" {
+		t.Fatalf("comet-navigator inherited wrong scope/source: %+v", nav.Resource)
+	}
+}
+
+func TestExpandedSubagentsExplicitVsFrameworkCollision(t *testing.T) {
+	c := loadTOML(t, `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "project"
+
+[subagents.comet-navigator]
+source = "builtin:comet-navigator"
+scope = "user"
+`+validModelsBothTools())
+
+	if _, err := c.ExpandedSubagentEntriesForTool("claude"); err == nil {
+		t.Fatal("expected collision error: comet-navigator declared explicitly and by framework")
+	}
+}
+
+// EnabledModelTools already iterates c.Subagents, so a subagent targeting a
+// tool with no model routes must already fail at Load. This test locks that
+// behavior in place — no production change should be needed for it to pass.
+func TestLoadRequiresModelsForSubagentTargetedTool(t *testing.T) {
+	doc := `
+[subagents.code-reviewer]
+source = "builtin:code-reviewer"
+scope = "project"
+targets = ["opencode"]
+`
+	if err := loadDoc(t, doc); err == nil {
+		t.Fatal("subagent enabling opencode without model routes was accepted; want load error")
+	} else if !strings.Contains(err.Error(), "models.opencode") {
+		t.Fatalf("error %v does not mention missing opencode model routes", err)
+	}
+}
