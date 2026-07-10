@@ -45,8 +45,9 @@ func advanceCmd() *cobra.Command {
 
 // runAdvance enforces, in order: gate(root); validChangeName(name); that
 // docs/changes/<name>/onto-state.yaml loads; that its phase has a next
-// phase; that every RequiredArtifacts(next) file is present in the change
-// directory; that, when leaving "build", tasks.md has no unchecked items;
+// phase; that every RequiredArtifacts(st.Phase) file — the current phase's
+// cumulative deliverables — is present in the change directory; that, when
+// leaving "build", tasks.md has no unchecked items;
 // and a worktree-dirty check that unconditionally blocks entering "close"
 // (refusing when dirtiness can't even be determined) but only warns for
 // every other transition. Only once all of these pass does it flip the
@@ -73,9 +74,9 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto advance: %q is at terminal/unknown phase %q; nothing to advance", name, st.Phase)
 	}
 
-	for _, f := range ontostate.RequiredArtifacts(next) {
+	for _, f := range ontostate.RequiredArtifacts(st.Phase) {
 		if _, statErr := os.Stat(filepath.Join(changeDir, f)); statErr != nil {
-			return fmt.Errorf("onto advance: cannot enter %q: missing %s", next, f)
+			return fmt.Errorf("onto advance: cannot leave %q: missing %s", st.Phase, f)
 		}
 	}
 

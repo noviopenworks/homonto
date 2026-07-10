@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/ontostate"
@@ -138,10 +139,11 @@ func TestWorktreeDirty_NonRepo(t *testing.T) {
 // --- advance command ---
 
 // TestAdvanceCommand_OpenToDesign verifies a normal, unblocked advance: an
-// open change with design.md present moves to design and exits 0.
+// open change with only open's own required artifacts (no design.md, which
+// is design's deliverable, not open's) moves to design and exits 0.
 func TestAdvanceCommand_OpenToDesign(t *testing.T) {
 	dir := prepWorkspace(t)
-	seedChange(t, dir, "feature-x", "open", "design.md")
+	seedChange(t, dir, "feature-x", "open")
 	commitAll(t, dir, "seed change")
 
 	cmd := NewRootCmd()
@@ -163,11 +165,20 @@ func TestAdvanceCommand_OpenToDesign(t *testing.T) {
 	}
 }
 
-// TestAdvanceCommand_MissingDesignDocRefused verifies that advancing an open
-// change without design.md is refused and leaves the phase unchanged.
+// TestAdvanceCommand_MissingDesignDocRefused verifies that advancing a
+// design-phase change without design.md — one of design's own required
+// deliverables — is refused, names design.md in the error, and leaves the
+// phase unchanged.
 func TestAdvanceCommand_MissingDesignDocRefused(t *testing.T) {
 	dir := prepWorkspace(t)
-	seedChange(t, dir, "feature-x", "open")
+	changeDir := filepath.Join(dir, "docs", "changes", "feature-x")
+	st := ontostate.State{Change: "feature-x", Workflow: "full", Phase: "design", Created: "2026-07-10"}
+	if err := ontostate.Save(filepath.Join(changeDir, "onto-state.yaml"), st); err != nil {
+		t.Fatalf("saving onto-state.yaml: %v", err)
+	}
+	writeFile(t, filepath.Join(changeDir, "proposal.md"), "")
+	writeFile(t, filepath.Join(changeDir, "tasks.md"), "")
+	// design.md deliberately omitted: design's own required artifact.
 	commitAll(t, dir, "seed change")
 
 	cmd := NewRootCmd()
@@ -176,28 +187,31 @@ func TestAdvanceCommand_MissingDesignDocRefused(t *testing.T) {
 	cmd.SetErr(&out)
 	cmd.SetArgs([]string{"advance", "feature-x", "--dir", dir})
 
-	if err := cmd.Execute(); err == nil {
+	err := cmd.Execute()
+	if err == nil {
 		t.Fatal("execute() = nil, want error")
 	}
+	if !strings.Contains(err.Error(), "design.md") {
+		t.Errorf("execute() error = %q, want it to mention %q", err.Error(), "design.md")
+	}
 
-	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-x", "onto-state.yaml"))
+	loaded, err := ontostate.Load(filepath.Join(changeDir, "onto-state.yaml"))
 	if err != nil {
 		t.Fatalf("loading onto-state.yaml: %v", err)
 	}
-	if st.Phase != "open" {
-		t.Errorf("st.Phase = %q, want unchanged %q", st.Phase, "open")
+	if loaded.Phase != "design" {
+		t.Errorf("st.Phase = %q, want unchanged %q", loaded.Phase, "design")
 	}
 }
 
 // TestAdvanceCommand_BuildToVerifyBlockedByUncheckedTask verifies that a
 // build change whose tasks.md still has an unchecked item cannot advance to
-// verify, even though every required artifact for verify is present.
+// verify, even though every artifact RequiredArtifacts("build") names
+// (build's own cumulative deliverables) is present.
 func TestAdvanceCommand_BuildToVerifyBlockedByUncheckedTask(t *testing.T) {
 	dir := prepWorkspace(t)
 	seedChange(t, dir, "feature-x", "build")
 	changeDir := filepath.Join(dir, "docs", "changes", "feature-x")
-	// verify's RequiredArtifacts adds verification.md on top of build's set.
-	writeFile(t, filepath.Join(changeDir, "verification.md"), "")
 	writeFile(t, filepath.Join(changeDir, "tasks.md"), "- [ ] todo\n")
 	commitAll(t, dir, "seed change")
 
@@ -279,7 +293,7 @@ func TestAdvanceCommand_VerifyToCloseBlockedByDirtyWorktree(t *testing.T) {
 // transition proceeds, printing a warning to stderr.
 func TestAdvanceCommand_DirtyWorktreeWarnsAndProceedsForNonCloseTransition(t *testing.T) {
 	dir := prepWorkspace(t)
-	seedChange(t, dir, "feature-x", "open", "design.md")
+	seedChange(t, dir, "feature-x", "open")
 	commitAll(t, dir, "seed change")
 	dirtyWorktree(t, dir)
 
