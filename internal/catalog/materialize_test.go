@@ -1,10 +1,14 @@
 package catalog
 
 import (
+	"bytes"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
+
+	embedded "github.com/noviopenworks/homonto/catalog"
 )
 
 func matFS() fstest.MapFS {
@@ -95,5 +99,35 @@ func TestMaterializeCommandsUnknownErrors(t *testing.T) {
 	c, _ := Load(matFS())
 	if err := c.MaterializeCommands(t.TempDir(), []string{"nope"}); err == nil {
 		t.Fatal("expected error for unknown command")
+	}
+}
+
+func TestMaterializeSubagentsWritesFileVerbatim(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	dst := t.TempDir()
+	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}); err != nil {
+		t.Fatalf("materialize: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(dst, "code-reviewer.md"))
+	if err != nil {
+		t.Fatalf("read materialized: %v", err)
+	}
+	sp, _ := c.SubagentPath("code-reviewer")
+	want, err := fs.ReadFile(embedded.FS, sp)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("materialized subagent is not byte-for-byte identical to catalog source")
+	}
+}
+
+func TestMaterializeSubagentsUnknownErrors(t *testing.T) {
+	c, _ := New()
+	if err := c.MaterializeSubagents(t.TempDir(), []string{"nope"}); err == nil {
+		t.Fatal("expected error for unknown subagent")
 	}
 }

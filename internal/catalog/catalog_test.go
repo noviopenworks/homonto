@@ -86,6 +86,53 @@ func TestLoadRejectsMissingCommandPath(t *testing.T) {
 	}
 }
 
+func TestLoadIndexesFrameworkSubagents(t *testing.T) {
+	m := fixtureFS()
+	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "comet"
+version = "0.1.0"
+description = "cm"
+[dependencies]
+frameworks = ["superpowers"]
+[skills]
+comet = "skills/comet"
+[subagents]
+comet-navigator = "subagents/comet-navigator.md"
+`)}
+	m["subagents/comet-navigator.md"] = &fstest.MapFile{Data: []byte("n")}
+	c, err := Load(m)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	cm, ok := c.Framework("comet")
+	if !ok {
+		t.Fatal("comet not indexed")
+	}
+	if cm.Subagents["comet-navigator"] != "subagents/comet-navigator.md" {
+		t.Fatalf("comet subagents = %v", cm.Subagents)
+	}
+	if p, ok := c.SubagentPath("comet-navigator"); !ok || p != "subagents/comet-navigator.md" {
+		t.Fatalf("comet-navigator path = %q ok=%v", p, ok)
+	}
+}
+
+func TestLoadRejectsMissingSubagentPath(t *testing.T) {
+	m := fixtureFS()
+	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "comet"
+version = "0.1.0"
+description = "cm"
+[dependencies]
+frameworks = ["superpowers"]
+[skills]
+comet = "skills/comet"
+[subagents]
+comet-navigator = "subagents/comet-navigator.md"
+`)}
+	_, err := Load(m)
+	if err == nil || !strings.Contains(err.Error(), "subagents/comet-navigator.md") {
+		t.Fatalf("expected missing-subagent-path error, got %v", err)
+	}
+}
+
 func TestLoadRejectsNameDirMismatch(t *testing.T) {
 	m := fixtureFS()
 	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "wrong"

@@ -14,3 +14,6 @@ comet-verify = "skills/comet-verify"
 comet-archive = "skills/comet-archive"
 comet-hotfix = "skills/comet-hotfix"
 comet-tweak = "skills/comet-tweak"
+
+[subagents]
+comet-navigator = "subagents/comet-navigator.md"

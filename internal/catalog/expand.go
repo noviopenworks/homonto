@@ -20,6 +20,13 @@ type ExpandedCommand struct {
 	Framework string
 }
 
+// ExpandedSubagent is one subagent reached by framework expansion, tagged with
+// the framework it originated from.
+type ExpandedSubagent struct {
+	Name      string
+	Framework string
+}
+
 // Expanded is one resource reached by framework expansion. It backs both
 // Expand and ExpandCommands, which differ only in the resource map selected.
 type Expanded struct {
@@ -112,6 +119,21 @@ func (c *Catalog) ExpandCommands(frameworkNames []string) ([]ExpandedCommand, er
 	out := make([]ExpandedCommand, len(res))
 	for i, e := range res {
 		out[i] = ExpandedCommand{Name: e.Name, Framework: e.Framework}
+	}
+	return out, nil
+}
+
+// ExpandSubagents returns the transitive, deduplicated set of subagents
+// reachable from the given framework names, sorted by subagent name, or an
+// error naming a dependency cycle.
+func (c *Catalog) ExpandSubagents(frameworkNames []string) ([]ExpandedSubagent, error) {
+	res, err := c.expandResources(frameworkNames, func(f Framework) map[string]string { return f.Subagents })
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ExpandedSubagent, len(res))
+	for i, e := range res {
+		out[i] = ExpandedSubagent{Name: e.Name, Framework: e.Framework}
 	}
 	return out, nil
 }
