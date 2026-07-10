@@ -835,7 +835,7 @@ Maps tasks.md 4.2 (state portion; the engine gating that consumes it lands in Ta
   - `func (s *State) CatalogVersionRecorded() string`
   - `func (s *State) SetCatalogVersion(v string)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `internal/state/state_test.go`:
 
@@ -870,12 +870,12 @@ func TestCatalogVersionOmittedWhenEmpty(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/state/ -run TestCatalogVersion -v`
 Expected: FAIL / build error — `CatalogVersionRecorded`, `SetCatalogVersion` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `internal/state/state.go`, change the `State` struct and add accessors. Replace:
 
@@ -905,12 +905,12 @@ func (s *State) CatalogVersionRecorded() string { return s.CatalogVersion }
 func (s *State) SetCatalogVersion(v string) { s.CatalogVersion = v }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/state/ -count=1 -v`
 Expected: PASS (new and existing tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/state/state.go internal/state/state_test.go
