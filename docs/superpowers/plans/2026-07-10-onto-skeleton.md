@@ -44,9 +44,9 @@ base-ref: 08834df8055bf35b1699a98942df4b44e9fbb980
 
 **Files:** modify `internal/ontocli/status.go`, `internal/ontocli/status_test.go`.
 
-- [ ] 3.1 (RED first) Append per-change `" — skeleton ok"` / `" — skeleton: missing <file>"` to each status line via `ontostate.ValidateSkeleton`; still read-only, non-aborting on one bad change. Tests: complete open skeleton → ok note; change missing tasks.md → missing note; the existing read-only tree-snapshot test still passes.
-- [ ] 3.2 GREEN; gofmt/vet clean.
-- [ ] 3.3 Commit: `feat(onto): 'onto status' reports skeleton validity`
+- [x] 3.1 (RED first) Append per-change `" — skeleton ok"` / `" — skeleton: missing <file>"` to each status line via `ontostate.ValidateSkeleton`; still read-only, non-aborting on one bad change. Tests: complete open skeleton → ok note; change missing tasks.md → missing note; the existing read-only tree-snapshot test still passes.
+- [x] 3.2 GREEN; gofmt/vet clean.
+- [x] 3.3 Commit: `feat(onto): 'onto status' reports skeleton validity`
 
 ## Task 4: regression and docs
 

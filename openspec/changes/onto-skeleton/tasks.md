@@ -13,8 +13,8 @@
 
 ## 3. status skeleton reporting
 
-- [ ] 3.1 (TDD, RED first) Extend `onto status` to append per-change "skeleton ok" / "skeleton: missing <file>" via `ontostate.ValidateSkeleton`, still read-only and non-aborting on one bad change. Tests: complete open skeleton → ok; missing tasks.md → missing note; read-only tree snapshot still holds
-- [ ] 3.2 Run → GREEN; gofmt/vet clean
+- [x] 3.1 (TDD, RED first) Extend `onto status` to append per-change "skeleton ok" / "skeleton: missing <file>" via `ontostate.ValidateSkeleton`, still read-only and non-aborting on one bad change. Tests: complete open skeleton → ok; missing tasks.md → missing note; read-only tree snapshot still holds
+- [x] 3.2 Run → GREEN; gofmt/vet clean
 
 ## 4. Regression and docs
 
