@@ -673,7 +673,7 @@ Maps tasks.md 2.3 and the materialization portion of 2.5.
 - Consumes: `Catalog.SkillPath` + `Catalog.fsys` (Task 2).
 - Produces: `func (c *Catalog) Materialize(dstRoot string, skillNames []string) error` — extracts each named skill's sub-FS into `dstRoot/<name>/`, removing any existing per-skill dir first so an upgrade cannot leave stale files.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/catalog/materialize_test.go`:
 
@@ -743,12 +743,12 @@ func TestMaterializeUnknownSkillErrors(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `go test ./internal/catalog/ -run TestMaterialize -v`
 Expected: FAIL / build error — `Materialize` undefined.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `internal/catalog/materialize.go`:
 
@@ -805,12 +805,12 @@ func (c *Catalog) Materialize(dstRoot string, skillNames []string) error {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `go test ./internal/catalog/ -count=1 -v`
 Expected: PASS (whole package, including Task 2 and 3 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/materialize.go internal/catalog/materialize_test.go
