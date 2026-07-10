@@ -560,9 +560,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		// Store the unresolved form + a non-secret hash of the resolved value.
 		st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 	}
-	// Fail fast on link conflicts before writing any file.
+	// Fail fast on link conflicts before writing any file. Both skill and
+	// command conflicts must be detected here, before any JSON write or state
+	// mutation below — otherwise a command conflict could let Apply partially
+	// write JSON and commit skill-link state before erroring.
 	links := a.links()
 	if _, err := link.Plan(links, a.managedRoots()...); err != nil {
+		return err
+	}
+	cmdLinks := a.commandLinks()
+	if _, err := link.Plan(cmdLinks, a.managedRoots()...); err != nil {
 		return err
 	}
 	if mjChanged {
@@ -611,11 +618,6 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 				return err
 			}
 		}
-	}
-	// Fail fast on command link conflicts before creating any link.
-	cmdLinks := a.commandLinks()
-	if _, err := link.Plan(cmdLinks, a.managedRoots()...); err != nil {
-		return err
 	}
 	for dst, src := range cmdLinks {
 		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {

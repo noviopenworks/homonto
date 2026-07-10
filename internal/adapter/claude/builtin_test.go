@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/state"
 )
@@ -188,5 +189,21 @@ func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(dst); string(b) != "user file" {
 		t.Fatal("conflict clobbered the user file")
+	}
+
+	// Apply must fail fast on the same command conflict BEFORE writing any
+	// file — not just Plan. a.commands is already populated by the Plan call
+	// above (set before its own conflict check), so build a ChangeSet with an
+	// unrelated setting write and confirm Apply rejects it without touching
+	// settings.json: a partial write (settings.json written, then erroring on
+	// the command link) would break the "fail fast before any write" invariant.
+	cs := adapter.ChangeSet{Tool: "claude", Changes: []adapter.Change{
+		{Action: "create", Key: "setting.foo", New: `"bar"`},
+	}}
+	if err := a.Apply(cs, resolver(), st); err == nil {
+		t.Fatal("expected Apply to fail fast on the command link conflict")
+	}
+	if _, err := os.Stat(a.settingsJSON()); !os.IsNotExist(err) {
+		t.Fatal("Apply wrote settings.json before failing on the command link conflict")
 	}
 }
