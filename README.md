@@ -83,9 +83,14 @@ source = "@slkiser/opencode-quota"        # npm package (the `plugin` array entr
 
 [settings.claude]
 model = "opus"
+theme = "dark"                            # TUI settings are top-level settings.json keys
 
 [settings.opencode]
 model = "anthropic/claude-opus-4-8"
+
+[tui.opencode]                            # → ~/.config/opencode/tui.json (separate file)
+theme = "gruvbox"
+scroll_speed = 3
 
 [models.claude.architectural]             # required for every model-enabled tool
 model = "opus"
