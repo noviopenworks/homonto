@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 4e3f938674e8358d1d18b01ea1164b09f5c41e08
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-11-agents-foundation-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -20,8 +20,8 @@ created_at: 2026-07-11
 verified_at: null
 archived: false
 direct_override: null
-handoff_context: null
-handoff_hash: null
+handoff_context: openspec/changes/agents-foundation/.comet/handoff/design-context.json
+handoff_hash: 6fa8ca5482b7ac631338d502b011ec7548645a1c75e376d7bcd19370202abdea
 classic_profile: full
 classic_migration: 1
 run_id: 4cf34841-e35a-4e51-a474-d36b5d32d531
