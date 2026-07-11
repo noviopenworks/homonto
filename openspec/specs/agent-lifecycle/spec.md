@@ -31,25 +31,32 @@ it SHALL say so. `homonto agents` with no subcommand SHALL show help.
 ### Requirement: homonto agents add installs a declared agent
 
 `homonto agents add <name>` SHALL install a declared `[agents.<name>]` agent into
-its target tools and record the installation in an agent lockfile at
-`.homonto/agents-lock.json`. This increment supports `local:<x>` sources only;
-`builtin:` and remote sources SHALL return a clear "not yet supported" error.
+its target tools and record the installation in `.homonto/agents-lock.json`. The
+agent's source SHALL be resolved as follows:
 
-For a `local:<x>` agent the command SHALL resolve `homonto/agents/<x>.md`
-(relative to the config directory), and for each target in the agent's targets
-install it into that tool's agent directory as `<name>.md`: `copy` mode writes the
-content, `link` mode symlinks the source. The command SHALL be:
+- `local:<x>` → `homonto/agents/<x>.md` (relative to the config directory);
+- `builtin:<x>` → the embedded catalog's curated agent content by name (an
+  unknown builtin name is an error);
+- any other scheme (e.g. remote) → a clear "not yet supported" error.
 
-- **conflict-safe**: if a destination already exists and is not a homonto-managed
-  install of this agent (not recorded in the lockfile), it SHALL refuse and
-  install nothing for that agent;
-- **idempotent**: a target already installed with matching content SHALL be a
-  no-op;
-- **recorded**: on success the lockfile SHALL record the agent's source, version,
-  mode, targets, and each target's installed path and content hash.
+For each target in the agent's targets it installs the resolved content into that
+tool's agent directory as `<name>.md` (`copy` writes the content, `link` symlinks
+a local source). The command SHALL be conflict-safe (refuse to clobber an
+unmanaged file, all-or-nothing per agent), idempotent, and record each target's
+path and content hash plus persist the base content to the blob store. An
+undeclared agent name, or an unresolvable source, SHALL be an error.
 
-An undeclared agent name SHALL be an error. A missing local source file SHALL be
-an error naming the expected path.
+#### Scenario: Add a builtin agent
+
+- **GIVEN** a `[agents.rev]` with `source = "builtin:<name>"` where `<name>` is a curated catalog agent
+- **WHEN** `homonto agents add rev` runs
+- **THEN** the catalog content is installed into each target and recorded in the lockfile
+
+#### Scenario: Add an unknown builtin agent is an error
+
+- **GIVEN** a `[agents.x]` with `source = "builtin:not-a-real-agent"`
+- **WHEN** `homonto agents add x` runs
+- **THEN** it errors that the builtin agent is unknown
 
 #### Scenario: Add a local copy-mode agent
 
@@ -57,23 +64,11 @@ an error naming the expected path.
 - **WHEN** `homonto agents add rev` runs
 - **THEN** `rev.md` is written into each tool's agent directory, the lockfile records the agent with each target's path and content hash, and the command reports the installs
 
-#### Scenario: Add is idempotent
-
-- **GIVEN** an already-installed agent with unchanged content
-- **WHEN** `homonto agents add <name>` runs again
-- **THEN** each target is a no-op and nothing is rewritten
-
 #### Scenario: Add refuses to clobber an unmanaged file
 
 - **GIVEN** a destination `<name>.md` that already exists and is not recorded in the lockfile
 - **WHEN** `homonto agents add <name>` runs
 - **THEN** it refuses naming the conflict and installs nothing for that agent
-
-#### Scenario: builtin source is not yet supported
-
-- **GIVEN** `[agents.x]` with `source = "builtin:x"`
-- **WHEN** `homonto agents add x` runs
-- **THEN** it returns a clear error that builtin sources are not yet supported
 
 #### Scenario: undeclared agent is an error
 
@@ -106,54 +101,26 @@ declared; a missing-on-disk install; and, newly, a **pending conflict** when a
 
 ### Requirement: homonto agents update re-materializes an installed agent
 
-`homonto agents update <name>` SHALL reconcile an already-installed declared
-`local:` agent with its current source. The agent MUST be declared and recorded
-in the lockfile; an undeclared or not-yet-installed agent SHALL be an error (the
-latter directing the user to `agents add`). `builtin:`/remote sources SHALL return
-a clear "not yet supported" error.
+`homonto agents update <name>` (and `--all`) SHALL reconcile an already-installed
+declared agent with its current source, resolving the source the same way as
+`agents add` (`local:` from `homonto/agents/`, `builtin:` from the embedded
+catalog, other schemes unsupported). The three-way merge, `.merged` conflict
+sidecar, base-blob advance, backup fallback, and idempotency SHALL apply to
+`builtin:` agents exactly as to `local:` — including auto-merging a user's local
+edits with a catalog upgrade to a builtin agent. An undeclared, not-yet-installed,
+or unresolvable-source agent SHALL be an error.
 
-For each declared target in `copy` mode, with `BASE` = the recorded base content
-(from the blob store), `LOCAL` = the on-disk file, and `UPSTREAM` = the current
-source, the command SHALL:
+#### Scenario: update merges a catalog upgrade into a builtin agent's local edits
 
-- no-op when the on-disk content already equals the source ("up to date");
-- when the base content is unavailable (no blob recorded, or the on-disk file is
-  missing), fall back to backup-before-overwrite (a genuine local edit is copied
-  to `<dst>.bak` before the source is written);
-- otherwise perform a three-way merge (`merge.Merge(BASE, LOCAL, UPSTREAM)`):
-  - **0 conflicts** → write the merged result to `<dst>` (backing up the prior
-    local to `<dst>.bak` when it changes), and advance the recorded base to
-    `UPSTREAM` (so the next update merges against the pristine source);
-  - **≥1 conflict** → leave the live `<dst>` unchanged, write the
-    merged-with-markers result to `<dst>.merged`, make no lockfile change, report
-    the conflict, and exit non-zero.
-
-`link`-mode targets are re-pointed only (no merge). The command SHALL remain
-idempotent for an already-reconciled agent.
-
-#### Scenario: non-overlapping local + upstream edits auto-merge
-
-- **GIVEN** an installed copy agent, a local edit to one region, and a source edit to a disjoint region
+- **GIVEN** an installed `builtin:` copy agent with a local edit, and a newer catalog whose content for that agent changed disjointly
 - **WHEN** `homonto agents update <name>` runs
-- **THEN** `<dst>` contains both edits, no `<dst>.merged` is created, and the recorded base advances to the source
+- **THEN** the local edit and the catalog change are three-way-merged (or a `<dst>.merged` sidecar is written on conflict)
 
-#### Scenario: overlapping edits conflict via a sidecar
+#### Scenario: update requires a prior install
 
-- **GIVEN** an installed copy agent whose local edit and source edit overlap
+- **GIVEN** a declared agent with no lockfile record
 - **WHEN** `homonto agents update <name>` runs
-- **THEN** the live `<dst>` is unchanged, a `<dst>.merged` with conflict markers is written, the lockfile is unchanged, and the command exits non-zero
-
-#### Scenario: update is idempotent
-
-- **GIVEN** an installed agent already equal to its source
-- **WHEN** `homonto agents update <name>` runs
-- **THEN** each target is a no-op and no `.merged`/`.bak` is created
-
-#### Scenario: missing base blob falls back to backup
-
-- **GIVEN** an installed copy agent with a local edit but no recorded base blob
-- **WHEN** `homonto agents update <name>` runs
-- **THEN** the prior local is backed up to `<dst>.bak` and the source overwrites `<dst>`
+- **THEN** it errors that the agent is not installed and points to `agents add`
 
 ### Requirement: Three-way merge engine
 

@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-11-agents-builtin-source-v
 branch_status: handled
 created_at: 2026-07-11
 verified_at: 2026-07-11
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/agents-builtin-source/.comet/handoff/design-context.json
 handoff_hash: 3b02a24ff3e9e7647b7677e5801eb6280f510c04c9109e92745f807803a8ee85

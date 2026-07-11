@@ -2,6 +2,7 @@
 change: agents-builtin-source
 design-doc: docs/superpowers/specs/2026-07-11-agents-builtin-source-design.md
 base-ref: 83874b75af7e9dfc2051ec03fd61a335a7db8ea0
+archived-with: 2026-07-11-agents-builtin-source
 ---
 
 # Plan: builtin agent source resolution (v2 #6a)

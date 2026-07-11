@@ -2,6 +2,8 @@
 comet_change: agents-builtin-source
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-agents-builtin-source
+status: final
 ---
 
 
