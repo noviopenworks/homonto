@@ -1,0 +1,6 @@
+{
+  "openspec_proposal": "openspec/changes/agents-foundation/proposal.md",
+  "openspec_design": "openspec/changes/agents-foundation/design.md",
+  "openspec_tasks": "openspec/changes/agents-foundation/tasks.md",
+  "openspec_delta_spec": "openspec/changes/agents-foundation/specs/agent-lifecycle/spec.md"
+}
