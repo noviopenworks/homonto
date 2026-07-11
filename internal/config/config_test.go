@@ -170,6 +170,21 @@ func TestLoadRejectsEmptyPluginSource(t *testing.T) {
 	}
 }
 
+// TestLoadRejectsDuplicatePluginSource: two decl names sharing one source would
+// collide on the single projected key (keyed by source), giving a
+// last-writer-wins, iteration-order-dependent plan. Load must reject it.
+func TestLoadRejectsDuplicatePluginSource(t *testing.T) {
+	doc := "[plugins.claude.hud]\nsource = \"hud@official\"\n" +
+		"[plugins.claude.hud-off]\nsource = \"hud@official\"\nenabled = false\n"
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("duplicate source accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "hud@official") {
+		t.Fatalf("error does not name the shared source: %v", err)
+	}
+}
+
 func TestLoadMissingFile(t *testing.T) {
 	if _, err := Load(filepath.Join(t.TempDir(), "nope.toml")); err == nil {
 		t.Fatal("expected error for missing file")

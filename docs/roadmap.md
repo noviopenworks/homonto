@@ -305,6 +305,19 @@ Plugin support expands from simple references to declarations with configuration
 Claude and OpenCode keep separate plugin schemas because their plugin systems do
 not map one-to-one.
 
+**Status (2026-07-11, first increment merged to `main`):** The plugin
+*declaration model* has landed. `homonto.toml` now declares plugins as
+`[plugins.<tool>.<name>]` tables with a required `source` and an optional
+`enabled` flag (default true), replacing the prior bare-name lists (a breaking,
+pre-release schema change). Both adapters project enable **and** disable — Claude
+writes `enabledPlugins[<source>] = true|false` (disable is now expressible, not
+just absence) and OpenCode adds/removes the `source` in its `plugin` array,
+surgically and idempotently; a duplicate `source` across two declarations is
+rejected at load to keep plans deterministic. Remaining v1.2 increments:
+per-plugin `config` → Claude `pluginConfigs`; Claude marketplace registration
+(`extraKnownMarketplaces`); and OpenCode `config` handling (OpenCode has no
+native per-plugin config).
+
 Scope:
 
 - Declare plugins per target tool.

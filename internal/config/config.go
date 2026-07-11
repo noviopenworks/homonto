@@ -424,6 +424,10 @@ func Load(path string) (*Config, error) {
 		{"plugins.claude", c.Plugins.Claude},
 		{"plugins.opencode", c.Plugins.OpenCode},
 	} {
+		// Both adapters project keyed by source, so two decl names sharing a
+		// source would collide on one projected key with last-writer-wins over
+		// random map iteration order — a non-deterministic plan. Reject it.
+		seenSource := map[string]string{} // source -> first decl name
 		for declName, pl := range tool.m {
 			if err := validateKey(tool.name, declName); err != nil {
 				return nil, err
@@ -434,6 +438,10 @@ func Load(path string) (*Config, error) {
 			if strings.TrimSpace(pl.Source) == "" {
 				return nil, fmt.Errorf("parse config: %s plugin %q has an empty source", tool.name, declName)
 			}
+			if prev, dup := seenSource[pl.Source]; dup {
+				return nil, fmt.Errorf("parse config: %s plugins %q and %q share source %q", tool.name, prev, declName, pl.Source)
+			}
+			seenSource[pl.Source] = declName
 		}
 	}
 	// Settings keys that homonto itself manages in the same tool file would
