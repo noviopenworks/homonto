@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-11-plugin-declaration-mode
 branch_status: handled
 created_at: 2026-07-11
 verified_at: 2026-07-11
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/plugin-declaration-model/.comet/handoff/design-context.json
 handoff_hash: 25546ae298c2e7c513d2d8836442357d70f431b125a30f3b288c09ab278595c7

@@ -2,6 +2,8 @@
 comet_change: plugin-declaration-model
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-plugin-declaration-model
+status: final
 ---
 
 # Plugin Declaration Model — Technical Design

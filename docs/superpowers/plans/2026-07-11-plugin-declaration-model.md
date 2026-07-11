@@ -2,6 +2,7 @@
 change: plugin-declaration-model
 design-doc: docs/superpowers/specs/2026-07-11-plugin-declaration-model-design.md
 base-ref: 4d2da77c910b1714404aabe2f0dcbcaaf71c4640
+archived-with: 2026-07-11-plugin-declaration-model
 ---
 
 # Plan: plugin declaration model (v1.2 #1)
