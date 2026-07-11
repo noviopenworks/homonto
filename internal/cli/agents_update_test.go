@@ -424,3 +424,55 @@ targets = ["claude"]
 		t.Fatalf("symlink must point at source %s, got %s", srcPath, target)
 	}
 }
+
+// TestAgentsUpdateKeepsDeDeclaredTargetRecord: removing a target from the config
+// then running `agents update` must NOT drop the prior install's lockfile record
+// while its file remains on disk. Otherwise Homonto forgets it owns the file and
+// a later prune cannot reclaim it. The record is kept (flagged for prune), and a
+// subsequent prune then removes both the file and the record.
+func TestAgentsUpdateKeepsDeDeclaredTargetRecord(t *testing.T) {
+	home := t.TempDir()
+	both := "[agents.rev]\nsource = \"local:rev\"\nmode = \"copy\"\ntargets = [\"claude\", \"opencode\"]\n"
+	cfg, cfgDir := addWorkspace(t, both, map[string]string{"rev": "# rev v1\n"})
+
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+	ocDst := opencodeDst(home, "rev")
+	if _, err := os.Stat(ocDst); err != nil {
+		t.Fatalf("opencode install should exist after add: %v", err)
+	}
+
+	// De-declare opencode: claude only.
+	claudeOnly := "[agents.rev]\nsource = \"local:rev\"\nmode = \"copy\"\ntargets = [\"claude\"]\n"
+	if err := os.WriteFile(cfg, []byte(claudeOnly), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := runCmd(t, home, "", "agents", "update", "rev", "--config", cfg); err != nil {
+		t.Fatalf("update: %v\n%s", err, out)
+	}
+
+	// The opencode file is still on disk, so ownership must NOT be forgotten.
+	if _, err := os.Stat(ocDst); err != nil {
+		t.Fatalf("de-declared opencode file should still be on disk: %v", err)
+	}
+	lock, err := agentlock.Load(filepath.Join(cfgDir, ".homonto"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lock.Agents["rev"].Installed["opencode"]; !ok {
+		t.Fatalf("update dropped the de-declared opencode record while the file remains on disk (ownership lost)")
+	}
+
+	// Proof it is flagged for prune: prune now reclaims the file and the record.
+	if out, err := runCmd(t, home, "", "agents", "prune", "--config", cfg); err != nil {
+		t.Fatalf("prune: %v\n%s", err, out)
+	}
+	if _, err := os.Stat(ocDst); !os.IsNotExist(err) {
+		t.Fatalf("prune should have removed the de-declared opencode file")
+	}
+	lock2, _ := agentlock.Load(filepath.Join(cfgDir, ".homonto"))
+	if _, ok := lock2.Agents["rev"].Installed["opencode"]; ok {
+		t.Fatalf("prune should have dropped the opencode record after removing the file")
+	}
+}

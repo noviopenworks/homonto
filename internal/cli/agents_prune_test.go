@@ -310,3 +310,49 @@ func TestAgentsPruneDryRun(t *testing.T) {
 		t.Fatalf("dry run must keep the lockfile entry")
 	}
 }
+
+// TestAgentsPruneDeletionFailureKeepsRecord: if os.Remove of the install cannot
+// succeed, prune must NOT report it "removed" or drop the lockfile record.
+// Ownership is retained so a later prune can retry. Complements the existing
+// backup-failure test, which only covers a failed .bak write.
+func TestAgentsPruneDeletionFailureKeepsRecord(t *testing.T) {
+	home := t.TempDir()
+	cfg, cfgDir := addWorkspace(t, copyAgentTOML, map[string]string{"rev": "# rev\n"})
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+	dst := claudeDst(home, "rev")
+
+	// Force os.Remove(dst) to fail deterministically, even under root: replace the
+	// install file with a NON-EMPTY directory (rmdir refuses with ENOTEMPTY).
+	if err := os.Remove(dst); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(dst, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "blocker"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make rev an orphan so prune tries to remove it.
+	if err := os.WriteFile(cfg, []byte("\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "prune", "--config", cfg)
+	if err != nil {
+		t.Fatalf("prune should not hard-error on a deletion failure: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "removed "+dst) {
+		t.Fatalf("prune must not report a failed deletion as removed:\n%s", out)
+	}
+	if !strings.Contains(out, "SKIPPED") {
+		t.Fatalf("prune must report the skipped file, got:\n%s", out)
+	}
+	// The lockfile record must be kept (ownership retained for a retry).
+	lock, _ := agentlock.Load(filepath.Join(cfgDir, ".homonto"))
+	if _, ok := lock.Agents["rev"]; !ok {
+		t.Fatalf("record must be kept when the file could not be removed")
+	}
+}

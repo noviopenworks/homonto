@@ -87,8 +87,18 @@ func agentsPruneCmd() *cobra.Command {
 					}
 					actions = append(actions, fmt.Sprintf("backed up %s to %s.bak", ti.Path, ti.Path))
 				}
-				os.Remove(ti.Path)
-				os.Remove(ti.Path + ".merged")
+				// Remove the optional conflict sidecar first (a missing one is
+				// fine), then the install itself. A real deletion failure keeps the
+				// file AND its lockfile record so a retry can prune it — ownership is
+				// never dropped and a failed removal is never reported as "removed".
+				if err := os.Remove(ti.Path + ".merged"); err != nil && !os.IsNotExist(err) {
+					actions = append(actions, fmt.Sprintf("SKIPPED %s: could not remove %s.merged (%v); file kept", ti.Path, ti.Path, err))
+					return false
+				}
+				if err := os.Remove(ti.Path); err != nil && !os.IsNotExist(err) {
+					actions = append(actions, fmt.Sprintf("SKIPPED %s: remove failed (%v); file kept", ti.Path, err))
+					return false
+				}
 				actions = append(actions, fmt.Sprintf("removed %s", ti.Path))
 				return true
 			}
@@ -680,6 +690,21 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 			installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
 		}
 		cmd.Printf("%s (%s): %s %s\n", name, tool, status, dst)
+	}
+
+	// Carry forward install records for targets that were removed from the
+	// config: the file may still be on disk, so we must not forget we own it.
+	// Rebuilding installedRec from the declared targets alone would silently drop
+	// that ownership; a later `agents prune` reconciles these de-declared targets
+	// (removing both the file and the record).
+	declaredSet := make(map[string]bool, len(targets))
+	for _, t := range targets {
+		declaredSet[t] = true
+	}
+	for tool, rec := range inst.Installed {
+		if !declaredSet[tool] {
+			installedRec[tool] = rec
+		}
 	}
 
 	// Persist the installed base content once (all targets share it) so a
