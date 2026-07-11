@@ -1,5 +1,6 @@
 # Keep the e2e build context lean and hermetic: exclude VCS, local state, the
-# checked-in binary, and tooling caches. Only source is needed to `go build`.
+# checked-in binary, and tooling caches. Source is needed to `go build`, plus
+# LICENSE and README.md which the release-packaging suite bundles into archives.
 .git
 homonto
 graphify-out
@@ -7,3 +8,4 @@ graphify-out
 .homonto
 docs
 *.md
+!README.md

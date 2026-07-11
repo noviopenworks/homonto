@@ -1,7 +1,12 @@
-# End-to-end smoke image: builds the real homonto binary and runs a disposable
-# `apply` against a throwaway $HOME inside the container, so the host system is
-# never touched. Built and run by scripts/docker-test.sh (and CI).
+# Dual-binary end-to-end image: builds BOTH the real homonto and onto binaries
+# and runs five diagnosable suites against a throwaway $HOME inside the container,
+# so the host system is never touched. Built and run by scripts/docker-test.sh
+# (and CI). The release-packaging suite cross-compiles every target, so the image
+# carries zip (windows archives) and git (onto's worktree checks).
 FROM golang:1.23
+
+RUN apt-get update && apt-get install -y --no-install-recommends zip git \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
@@ -9,8 +14,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build the binary from the full source tree.
+# Build both binaries from the full source tree.
 COPY . .
-RUN go build -o /usr/local/bin/homonto .
+RUN go build -o /usr/local/bin/homonto . \
+    && go build -o /usr/local/bin/onto ./cmd/onto
 
-ENTRYPOINT ["sh", "/src/test/docker/smoke.sh"]
+ENTRYPOINT ["sh", "/src/test/docker/run-all.sh"]
