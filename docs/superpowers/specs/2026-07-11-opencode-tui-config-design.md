@@ -2,6 +2,8 @@
 comet_change: opencode-tui-config
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-opencode-tui-config
+status: final
 ---
 
 # OpenCode tui.json Config — Technical Design

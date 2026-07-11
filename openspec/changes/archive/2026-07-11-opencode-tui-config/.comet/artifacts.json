@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/opencode-tui-config/tasks.md",
   "openspec_delta_spec": "openspec/changes/opencode-tui-config/specs/config-model/spec.md",
   "handoff_context": "openspec/changes/opencode-tui-config/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/opencode-tui-config/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/opencode-tui-config/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-11-opencode-tui-config"
 }

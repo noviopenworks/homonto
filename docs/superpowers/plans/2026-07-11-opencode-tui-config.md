@@ -2,6 +2,7 @@
 change: opencode-tui-config
 design-doc: docs/superpowers/specs/2026-07-11-opencode-tui-config-design.md
 base-ref: 90d86a1aa37265b2bbfa13e04a7ab1563883a890
+archived-with: 2026-07-11-opencode-tui-config
 ---
 
 # Plan: OpenCode tui.json config (v1.3 #1)
