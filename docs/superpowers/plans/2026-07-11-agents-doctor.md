@@ -2,6 +2,7 @@
 change: agents-doctor
 design-doc: docs/superpowers/specs/2026-07-11-agents-doctor-design.md
 base-ref: ed2ecd501c13bf977bfdc68b2f5e40c80e7e1b5c
+archived-with: 2026-07-11-agents-doctor
 ---
 
 # Plan: agents doctor (v2 #3)
