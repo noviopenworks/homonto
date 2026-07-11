@@ -313,10 +313,14 @@ pre-release schema change). Both adapters project enable **and** disable — Cla
 writes `enabledPlugins[<source>] = true|false` (disable is now expressible, not
 just absence) and OpenCode adds/removes the `source` in its `plugin` array,
 surgically and idempotently; a duplicate `source` across two declarations is
-rejected at load to keep plans deterministic. Remaining v1.2 increments:
-per-plugin `config` → Claude `pluginConfigs`; Claude marketplace registration
-(`extraKnownMarketplaces`); and OpenCode `config` handling (OpenCode has no
-native per-plugin config).
+rejected at load to keep plans deterministic. **Per-plugin config projection has
+also landed (v1.2 #2):** a Claude plugin's optional `config` table projects to
+`pluginConfigs.<source>.options` in `settings.json` (a new managed namespace,
+surgical/idempotent/pruned/adoptable); an OpenCode plugin declaring `config` is
+rejected at load, since OpenCode has no per-plugin config location on disk (no
+silently-dropped config). Remaining v1.2 increment: Claude marketplace
+registration (`extraKnownMarketplaces`), which needs a marketplace-declaration
+model.
 
 Scope:
 

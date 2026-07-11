@@ -72,6 +72,7 @@ scope = "project"                         # required: user | project (no default
 [plugins.claude.claude-hud]
 source = "claude-hud@official"            # name@marketplace (enabledPlugins key)
 # enabled = false                        # optional; omit → enabled
+# config = { compact = true }            # optional; → pluginConfigs.<source>.options (claude only)
 
 [plugins.opencode.opencode-quota]
 source = "@slkiser/opencode-quota"        # npm package (the `plugin` array entry)
