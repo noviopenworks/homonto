@@ -9,6 +9,13 @@ set -eu
 
 VERSION="${1:?usage: build-release.sh <version>}"
 
+# A '/' in the version would nest archives under dist/<...>/ and the flat
+# dist/*.tar.gz / dist/*.zip globs (SHA256SUMS + the release publish step) would
+# silently miss them, yielding an incomplete release. Reject it up front.
+case "$VERSION" in
+  */*) echo "build-release: version must not contain '/': $VERSION" >&2; exit 1 ;;
+esac
+
 # Six targets: macOS ships amd64+arm64; Linux and Windows cover both too.
 TARGETS="linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64"
 

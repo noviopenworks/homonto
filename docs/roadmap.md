@@ -80,13 +80,24 @@ still open, as detailed below.
    gate on it), or `healthy` and exit 0 otherwise. It writes nothing and
    imports none of homonto's projection pipeline, as the peer to `homonto
    doctor`'s installation/projection health. The `onto` binary now exposes
-   advance / close / doctor / init / new / status / version. What remains:
-   (#5) release packaging must still cross-compile and publish **both**
-   binaries with a shared `SHA256SUMS` — packaging work has not started.
+   advance / close / doctor / init / new / status / version. Dual-binary
+   release packaging has also landed (#5): the release pipeline now ships
+   **both** binaries. A shared, locally-runnable `scripts/build-release.sh`
+   cross-compiles `homonto` and `onto` for all six OS/arch targets as
+   separate per-binary archives (12 in total), each version-stamped via its
+   own package (`internal/cli`, `internal/ontocli`), under one shared
+   `SHA256SUMS`; `release.yml` calls the script, and `ci.yml` gained an
+   `onto` version-stamp smoke. **This completes the onto binary work (#1–#5)
+   and the last release-gate packaging task.** What remains before the
+   `v0.1.0-rc.1` tag is the maintainer's action to cut it (plus any
+   remaining release-gate coverage the maintainer wants — e.g. the Docker
+   smoke tests enumerated in the dual-binary design's release gate).
 
 Skills, command, and subagent projection have all landed on `main` (see v1.1
-below); the `onto` binary plus dual-binary packaging are what remain before
-the maintainer-owned `v0.1.0-rc.1` tag.
+below), and the dual-binary `homonto` + `onto` product — foundation,
+framework install, workflow engine (create/advance/close), doctor, and
+release packaging — is complete on `main`. The maintainer-owned
+`v0.1.0-rc.1` tag is the remaining gate.
 
 ## Roadmap Strategy
 

@@ -15,33 +15,33 @@ packaging E2E.
 
 ## Task 1: packaging script + workflow rewiring
 
-- [ ] 1.1 Add `scripts/build-release.sh` per the Design Doc: `#!/usr/bin/env
+- [x] 1.1 Add `scripts/build-release.sh` per the Design Doc: `#!/usr/bin/env
   bash`, `set -eu`, `VERSION="${1:?usage: build-release.sh <version>}"`,
   `build_one(name, buildpath, versionpkg, goos, goarch)` helper, loop the six
   targets building homonto (`.` / `internal/cli`) and onto (`./cmd/onto` /
   `internal/ontocli`) as separate archives (`.zip`+`.exe` for windows,
   `.tar.gz` otherwise), then `sha256sum ./*.tar.gz ./*.zip > SHA256SUMS`.
   `chmod +x`. Verify `bash -n` and `shellcheck` clean.
-- [ ] 1.2 Rewire `.github/workflows/release.yml`: collapse the "build release
+- [x] 1.2 Rewire `.github/workflows/release.yml`: collapse the "build release
   artifacts" inline loop + "checksums" step into one step running
   `scripts/build-release.sh "${VERSION}"` (VERSION from `github.ref_name`).
   Leave verify/publish/prerelease/notes and the publish glob unchanged.
-- [ ] 1.3 Extend `.github/workflows/ci.yml`: add an `onto` version-stamp smoke
+- [x] 1.3 Extend `.github/workflows/ci.yml`: add an `onto` version-stamp smoke
   after the homonto one (build `./cmd/onto` with the `internal/ontocli.Version=
   ci-smoke` ldflag; assert `onto version` prints `ci-smoke`).
-- [ ] 1.4 Commit: `build(release): ship both homonto and onto binaries (separate archives, shared SHA256SUMS)`
+- [x] 1.4 Commit: `build(release): ship both homonto and onto binaries (separate archives, shared SHA256SUMS)`
 
 ## Task 2: Verification and docs
 
-- [ ] 2.1 Local packaging E2E (Design Doc "Verification"): `bash
+- [x] 2.1 Local packaging E2E (Design Doc "Verification"): `bash
   scripts/build-release.sh v0.0.0-test` in a clean tree → assert 12 archives (6
   homonto + 6 onto) + `SHA256SUMS`; `sha256sum -c SHA256SUMS` passes; extract
   the linux/amd64 pair → right binary + LICENSE + README each, and the extracted
   binaries report `v0.0.0-test`; a windows archive is a `.zip` with `.exe`.
   Confirm `go build ./...`, `go test ./... -count=1`, `go vet ./...`, `gofmt -l
   .` (empty) all still pass. Clean up the throwaway `dist/`.
-- [ ] 2.2 Update `docs/roadmap.md` + `docs/release-notes.md`: #5 landed — release
+- [x] 2.2 Update `docs/roadmap.md` + `docs/release-notes.md`: #5 landed — release
   ships both binaries; onto binary work (#1–#5) COMPLETE; remaining for
   `v0.1.0-rc.1` is the maintainer tag + any remaining release-gate coverage. No
   over-claim (no tag cut).
-- [ ] 2.3 Commit all changes.
+- [x] 2.3 Commit all changes.
