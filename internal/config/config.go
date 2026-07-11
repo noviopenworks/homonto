@@ -44,6 +44,10 @@ func (r Resource) TargetsOrAll() []string {
 type NamedResource struct {
 	Name     string
 	Resource Resource
+	// Mode is the subagent projection mode ("link"|"copy"); empty means link and
+	// is the only value skills/commands ever carry. It lets the adapters route a
+	// copy-mode subagent to the content-file path instead of the symlink path.
+	Mode string
 }
 
 // Subagent is a declarative agent projected by `apply` (distinct from the shared
@@ -195,7 +199,7 @@ func (c *Config) SubagentEntriesForTool(tool string) []NamedResource {
 	var out []NamedResource
 	for name, s := range c.Subagents {
 		if containsString(s.TargetsOrAll(), tool) {
-			out = append(out, NamedResource{Name: name, Resource: s.asResource()})
+			out = append(out, NamedResource{Name: name, Resource: s.asResource(), Mode: s.ModeOrDefault()})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
@@ -271,6 +275,7 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 					Scope:   fwRes.Scope,
 					Targets: fwRes.Targets,
 				},
+				Mode: "link", // framework-expanded resources project as symlinks
 			}
 			if prev, ok := byName[es.Name]; ok {
 				if !sameResource(prev.Resource, nr.Resource) {
@@ -417,6 +422,7 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 					Scope:   fwRes.Scope,
 					Targets: fwRes.Targets,
 				},
+				Mode: "link", // framework-expanded resources project as symlinks
 			}
 			if prev, ok := byName[es.Name]; ok {
 				if !sameResource(prev.Resource, nr.Resource) {

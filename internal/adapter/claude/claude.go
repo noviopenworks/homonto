@@ -201,6 +201,9 @@ func (a *Adapter) subagentSource(entry config.NamedResource) string {
 func (a *Adapter) subagentLinks() map[string]string {
 	out := map[string]string{}
 	for _, entry := range a.subagents {
+		if entry.Mode == "copy" {
+			continue // copy-mode subagents are projected as content files, not links
+		}
 		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = a.subagentSource(entry)
 	}
 	return out
