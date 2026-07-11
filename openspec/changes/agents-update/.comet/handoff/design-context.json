@@ -1,0 +1,14 @@
+{
+  "change": "agents-update",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "61d9278a8a046f6a86d31104c1cb9c6860e97c97aeeaca8989a7cbd6fd1c55a9",
+  "files": [
+    { "path": "openspec/changes/agents-update/proposal.md", "sha256": "beebb8de74600ae2651834c463a29c9f9a6921740e799b0f84ca308d88d854f5" },
+    { "path": "openspec/changes/agents-update/design.md", "sha256": "5828441bce539494bb12d1a67dcf558410765068db48519e09b34c6611c83520" },
+    { "path": "openspec/changes/agents-update/tasks.md", "sha256": "9bb17ac0b9de6bb0e551d175d341dcdbbebcc04a15bc8c7c51f6f4589d900e99" },
+    { "path": "openspec/changes/agents-update/specs/agent-lifecycle/spec.md", "sha256": "9cab6fd0971b65dd702257130f006beeb713d1ecf22defd87094f7f38b337f37" }
+  ]
+}
