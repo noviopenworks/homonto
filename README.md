@@ -103,11 +103,13 @@ targets = ["claude", "opencode"]          # optional; default both
 mode = "copy"                             # optional; copy | link (default link)
 ```
 
-Inspect declared agents with `homonto agents list` (read-only), and install a
+Inspect declared agents with `homonto agents list` (read-only), install a
 `local:` agent into its target tools with `homonto agents add <name>`
-(conflict-safe and idempotent; records `.homonto/agents-lock.json`). Further
-lifecycle (`update`/`pin`/`doctor`/`migrate`, builtin/remote sources) is future
-v2 work.
+(conflict-safe and idempotent; records `.homonto/agents-lock.json`), and check
+health with `homonto agents doctor` (read-only; reports declared-vs-installed
+drift — missing, orphaned, source-changed, or modified-on-disk — and exits
+non-zero on any finding). Further lifecycle (`update`/`pin`/`migrate`, builtin/
+remote sources) is future v2 work.
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels
