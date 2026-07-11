@@ -61,26 +61,26 @@ func TestAgentsUpdateSourceChangedInstallUntouched(t *testing.T) {
 	}
 }
 
-// TestAgentsUpdateBacksUpLocalEdit: when a target copy was locally edited AND the
-// source also changed, update writes the new source to the target and preserves
-// the local edit in <dst>.bak.
+// TestAgentsUpdateBacksUpLocalEdit: on a CLEAN three-way merge (disjoint local
+// and source edits) the merged result is written to <dst> and the pre-merge
+// local is preserved in <dst>.bak.
 func TestAgentsUpdateBacksUpLocalEdit(t *testing.T) {
 	home := t.TempDir()
-	old := "# Rev agent v1\n"
+	old := "alpha\nbeta\ngamma\n"
 	cfg, cfgDir := addWorkspace(t, copyAgentTOML, map[string]string{"rev": old})
 
 	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
 		t.Fatalf("agents add: %v\n%s", err, out)
 	}
 
-	// Locally edit the claude copy (X), differing from the recorded install.
-	localX := "# LOCAL edit by user\n"
+	// Locally edit line 1 of the claude copy (disjoint from the source edit).
+	localX := "ALPHA-LOCAL\nbeta\ngamma\n"
 	claudeDst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "rev.md")
 	if err := os.WriteFile(claudeDst, []byte(localX), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Change the source to Y.
-	srcY := "# Rev agent v2\n"
+	// Change source line 3 (disjoint from the local edit) → clean merge.
+	srcY := "alpha\nbeta\nGAMMA-SOURCE\n"
 	srcPath := filepath.Join(cfgDir, "homonto", "agents", "rev.md")
 	if err := os.WriteFile(srcPath, []byte(srcY), 0o644); err != nil {
 		t.Fatal(err)
@@ -91,15 +91,165 @@ func TestAgentsUpdateBacksUpLocalEdit(t *testing.T) {
 		t.Fatalf("update: %v\n%s", err, out)
 	}
 
-	if got, _ := os.ReadFile(claudeDst); string(got) != srcY {
-		t.Fatalf("claude dst must hold new source Y, got:\n%s", got)
+	got, _ := os.ReadFile(claudeDst)
+	if !strings.Contains(string(got), "ALPHA-LOCAL") || !strings.Contains(string(got), "GAMMA-SOURCE") {
+		t.Fatalf("claude dst must hold the merged result with both edits, got:\n%s", got)
 	}
 	bak, berr := os.ReadFile(claudeDst + ".bak")
 	if berr != nil {
-		t.Fatalf("local edit must be backed up to %s.bak: %v", claudeDst, berr)
+		t.Fatalf("pre-merge local must be backed up to %s.bak: %v", claudeDst, berr)
 	}
 	if string(bak) != localX {
-		t.Fatalf("%s.bak must preserve the local edit X, got:\n%s", claudeDst, bak)
+		t.Fatalf("%s.bak must preserve the pre-merge local X, got:\n%s", claudeDst, bak)
+	}
+}
+
+// TestAgentsUpdateDisjointEditsAutoMerge: a local edit and a disjoint source edit
+// three-way merge cleanly — <dst> ends up with BOTH edits, no <dst>.merged is
+// created, and the recorded base advances to the source (doctor is healthy after).
+func TestAgentsUpdateDisjointEditsAutoMerge(t *testing.T) {
+	home := t.TempDir()
+	base := "line1\nline2\nline3\nline4\nline5\nline6\n"
+	toml := "[agents.rev]\nsource=\"local:rev\"\nmode=\"copy\"\ntargets=[\"claude\"]\n"
+	cfg, cfgDir := addWorkspace(t, toml, map[string]string{"rev": base})
+
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+
+	dst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "rev.md")
+	localEdit := "LOCALEDIT1\nline2\nline3\nline4\nline5\nline6\n"
+	if err := os.WriteFile(dst, []byte(localEdit), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	newSrc := "line1\nline2\nline3\nline4\nline5\nline6-UPSTREAM\n"
+	srcPath := filepath.Join(cfgDir, "homonto", "agents", "rev.md")
+	if err := os.WriteFile(srcPath, []byte(newSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "update", "rev", "--config", cfg)
+	if err != nil {
+		t.Fatalf("clean auto-merge must succeed, got %v\n%s", err, out)
+	}
+
+	got, _ := os.ReadFile(dst)
+	if !strings.Contains(string(got), "LOCALEDIT1") || !strings.Contains(string(got), "line6-UPSTREAM") {
+		t.Fatalf("merged dst must contain BOTH edits, got:\n%s", got)
+	}
+	if _, err := os.Stat(dst + ".merged"); !os.IsNotExist(err) {
+		t.Fatalf("clean auto-merge must NOT create %s.merged", dst)
+	}
+
+	// Base advanced to the new source → doctor is healthy (exit 0, no findings).
+	dout, derr := runCmd(t, home, "", "agents", "doctor", "--config", cfg)
+	if derr != nil {
+		t.Fatalf("doctor after clean merge must be healthy, got %v\n%s", derr, dout)
+	}
+	if dout != "healthy\n" {
+		t.Fatalf("doctor after clean merge must print exactly \"healthy\", got:\n%q", dout)
+	}
+}
+
+// TestAgentsUpdateOverlappingConflictSidecar: when the local edit and the source
+// edit overlap, the live <dst> is left UNCHANGED, a <dst>.merged sidecar with
+// conflict markers is written, the lockfile entry stays at the prior base, and
+// the command exits non-zero.
+func TestAgentsUpdateOverlappingConflictSidecar(t *testing.T) {
+	home := t.TempDir()
+	base := "line1\nline2\nline3\nline4\n"
+	toml := "[agents.rev]\nsource=\"local:rev\"\nmode=\"copy\"\ntargets=[\"claude\"]\n"
+	cfg, cfgDir := addWorkspace(t, toml, map[string]string{"rev": base})
+
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+
+	dst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "rev.md")
+	localEdit := "line1\nline2\nLOCAL3\nline4\n"
+	if err := os.WriteFile(dst, []byte(localEdit), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	newSrc := "line1\nline2\nUPSTREAM3\nline4\n"
+	srcPath := filepath.Join(cfgDir, "homonto", "agents", "rev.md")
+	if err := os.WriteFile(srcPath, []byte(newSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "update", "rev", "--config", cfg)
+	if err == nil {
+		t.Fatalf("overlapping conflict must exit non-zero, got:\n%s", out)
+	}
+
+	// Live dst is untouched — still exactly the local edit.
+	if got, _ := os.ReadFile(dst); string(got) != localEdit {
+		t.Fatalf("live dst must be UNCHANGED on conflict, got:\n%s", got)
+	}
+	// Sidecar exists with git-style conflict markers.
+	m, merr := os.ReadFile(dst + ".merged")
+	if merr != nil {
+		t.Fatalf(".merged sidecar must be written on conflict: %v", merr)
+	}
+	if !strings.Contains(string(m), "<<<<<<<") || !strings.Contains(string(m), ">>>>>>>") {
+		t.Fatalf("%s.merged must contain conflict markers, got:\n%s", dst, m)
+	}
+	// Lockfile entry for the conflicted target stays at the prior base hash.
+	lock, err := agentlock.Load(filepath.Join(cfgDir, ".homonto"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := lock.Agents["rev"].Installed["claude"].Hash; got != agentlock.HashContent([]byte(base)) {
+		t.Fatalf("conflicted target lockfile hash must stay prev (base), got %s", got)
+	}
+}
+
+// TestAgentsUpdateMissingBaseFallsBackToBackup: when the base blob is gone, a
+// three-way merge is impossible, so update falls back to backup-before-overwrite —
+// the local edit lands in <dst>.bak and the source overwrites <dst>.
+func TestAgentsUpdateMissingBaseFallsBackToBackup(t *testing.T) {
+	home := t.TempDir()
+	base := "# v1\n"
+	toml := "[agents.rev]\nsource=\"local:rev\"\nmode=\"copy\"\ntargets=[\"claude\"]\n"
+	cfg, cfgDir := addWorkspace(t, toml, map[string]string{"rev": base})
+
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+
+	// Delete the recorded base blob so no ancestor is available.
+	homontoDir := filepath.Join(cfgDir, ".homonto")
+	baseHash := agentlock.HashContent([]byte(base))
+	if err := os.Remove(filepath.Join(homontoDir, "agents-blobs", baseHash)); err != nil {
+		t.Fatal(err)
+	}
+
+	dst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "rev.md")
+	localEdit := "# local edit\n"
+	if err := os.WriteFile(dst, []byte(localEdit), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	newSrc := "# v2\n"
+	srcPath := filepath.Join(cfgDir, "homonto", "agents", "rev.md")
+	if err := os.WriteFile(srcPath, []byte(newSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "update", "rev", "--config", cfg)
+	if err != nil {
+		t.Fatalf("missing-base fallback must succeed, got %v\n%s", err, out)
+	}
+	if got, _ := os.ReadFile(dst); string(got) != newSrc {
+		t.Fatalf("fallback must overwrite dst with the source, got:\n%s", got)
+	}
+	bak, berr := os.ReadFile(dst + ".bak")
+	if berr != nil {
+		t.Fatalf("fallback must back up the local edit to %s.bak: %v", dst, berr)
+	}
+	if string(bak) != localEdit {
+		t.Fatalf("%s.bak must preserve the local edit, got:\n%s", dst, bak)
+	}
+	if _, err := os.Stat(dst + ".merged"); !os.IsNotExist(err) {
+		t.Fatalf("fallback must NOT create %s.merged", dst)
 	}
 }
 
@@ -174,6 +324,9 @@ func TestAgentsUpdateIsIdempotent(t *testing.T) {
 	}
 	if _, err := os.Stat(claudeDst + ".bak"); !os.IsNotExist(err) {
 		t.Fatalf("idempotent update must NOT create %s.bak", claudeDst)
+	}
+	if _, err := os.Stat(claudeDst + ".merged"); !os.IsNotExist(err) {
+		t.Fatalf("idempotent update must NOT create %s.merged", claudeDst)
 	}
 	fiAfter, err := os.Stat(claudeDst)
 	if err != nil {
