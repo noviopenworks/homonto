@@ -69,6 +69,10 @@ env = { BRAVE_API_KEY = "${pass:ai/brave}" }
 source = "local:graphify"                 # local:<name> → homonto/skills/<name>
 scope = "project"                         # required: user | project (no default)
 
+[marketplaces.claude.official]            # → extraKnownMarketplaces (claude only)
+source = "github"                         # github | url | git-subdir | directory
+repo = "anthropics/claude-plugins"        # locator for the source type
+
 [plugins.claude.claude-hud]
 source = "claude-hud@official"            # name@marketplace (enabledPlugins key)
 # enabled = false                        # optional; omit → enabled
