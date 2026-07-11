@@ -146,9 +146,18 @@ Each step is independently shippable and green; the `[agents]` surface is remove
 only in the last step, after `[subagents]` reaches full parity.
 
 1. **Subagent model gains `mode` + `version`.** Add `Mode` (`copy`|`link`, default
-   `link` = today's symlink) and `Version` to the subagent `Resource`, validated.
+   `link` = today's symlink) and `Version` to the subagent model, validated.
    Purely additive; symlink projection unchanged. Default subagent `scope` becomes
-   `project`.
+   `project` (additive — subagent scope is *required* today, `config.go:604`, so
+   defaulting an omitted value relocates no existing install).
+   **Constraint discovered:** `config.Resource` is shared by frameworks, skills,
+   commands, AND subagents (`Config.{Frameworks,Skills,Commands,Subagents}` are all
+   `map[string]Resource`), and skills/commands also *require* scope. So `Mode`,
+   `Version`, and the project scope-default **must not** be added to the shared
+   `Resource` blanket — either give subagents their own struct (e.g. `Subagent`
+   with the extra fields) or gate the new validation on the subagent kind only.
+   The dedicated-struct route is cleaner and mirrors how `Agent` is already
+   separate; it is the recommended first move of the re-architecture.
 2. **Copy-mode subagent projection in `apply`.** A `mode=copy` subagent is
    materialized as a real file (not a symlink); `apply` records its base hash in
    `state.json` and stores the base content in the existing `agentblob` store.
