@@ -319,6 +319,40 @@ func loadDoc(t *testing.T, doc string) error {
 	return err
 }
 
+// TestSubagentScopeDefaultsToProject: an omitted [subagents.<name>] scope is no
+// longer an error — it defaults to project (Option C step 1). An explicit scope
+// is still honored, and skills/commands still require scope.
+func TestSubagentScopeDefaultsToProject(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) (*Config, error) {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return Load(p)
+	}
+
+	c, err := load("[subagents.architect]\nsource=\"builtin:architect\"\n" + validModelsBothTools())
+	if err != nil {
+		t.Fatalf("omitted subagent scope should default to project, not error: %v", err)
+	}
+	if got := c.Subagents["architect"].Scope; got != "project" {
+		t.Fatalf("omitted subagent scope = %q, want \"project\"", got)
+	}
+
+	c2, err := load("[subagents.architect]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + validModelsBothTools())
+	if err != nil {
+		t.Fatalf("explicit subagent scope: %v", err)
+	}
+	if got := c2.Subagents["architect"].Scope; got != "user" {
+		t.Fatalf("explicit subagent scope = %q, want \"user\"", got)
+	}
+
+	// Skills still require an explicit scope.
+	if err := loadDoc(t, "[skills.s]\nsource=\"local:s\"\n"); err == nil {
+		t.Fatal("a skill with no scope must still be rejected")
+	}
+}
+
 // TestLoadRejectsUnknownTargets reproduces NEXT_AGENT gap #3: an MCP whose
 // targets name a tool that is not claude/opencode matches no adapter and is
 // silently projected nowhere. Load must fail naming the unknown target.

@@ -434,6 +434,17 @@ func Load(path string) (*Config, error) {
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	// Subagents default to project scope when omitted (skills and commands still
+	// require an explicit scope). Normalize before validation so downstream
+	// projection sees a concrete scope. This is the first, additive step of the
+	// [agents]/[subagents] reconciliation (Option C) — see
+	// docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md.
+	for name, r := range c.Subagents {
+		if r.Scope == "" {
+			r.Scope = "project"
+			c.Subagents[name] = r
+		}
+	}
 	for kind, resources := range map[string]map[string]Resource{
 		"frameworks": c.Frameworks,
 		"skills":     c.Skills,
