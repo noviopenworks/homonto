@@ -262,11 +262,21 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	for _, pl := range c.Plugins.OpenCode {
 		src := pl.Source
+		_, inState := st.Get("opencode", "plugin."+src)
+		if !pl.IsEnabled() {
+			// Disabled: ensure absent, but only ever remove a homonto-managed
+			// entry (recorded in state). A present-but-unmanaged source, or one
+			// already absent, is left untouched — no change emitted.
+			if arrayHas(doc, "plugin", src) && inState {
+				cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "plugin." + src, Old: adapter.SecretRedaction})
+			}
+			continue
+		}
 		if arrayHas(doc, "plugin", src) {
 			// Present on disk. If recorded, steady-state noop; otherwise adopt it
 			// into state so pruning and drift can see it (plugin names are plain,
 			// never secret-bearing).
-			if _, inState := st.Get("opencode", "plugin."+src); inState {
+			if inState {
 				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: "plugin." + src})
 			} else {
 				cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "plugin." + src, New: mustJSON(src)})
