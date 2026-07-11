@@ -252,6 +252,35 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 			out["pluginconfig."+pl.Source] = mustJSON(map[string]any{"options": pl.Config})
 		}
 	}
+	for name, mk := range c.Marketplaces.Claude {
+		// extraKnownMarketplaces[<name>] carries the whole {source:…} object so
+		// write and read-back stay symmetric (see current()).
+		out["marketplace."+name] = mustJSON(marketplaceValue(mk))
+	}
+	return out
+}
+
+// marketplaceValue builds the canonical extraKnownMarketplaces value for a
+// declared marketplace. Only the type-relevant locator fields are emitted, so a
+// github marketplace never carries an empty url/path that would differ from an
+// adopted on-disk entry. autoUpdate is present only when auto_update was set.
+func marketplaceValue(mk config.Marketplace) map[string]any {
+	src := map[string]any{"source": mk.Source}
+	switch mk.Source {
+	case "github":
+		src["repo"] = mk.Repo
+	case "url":
+		src["url"] = mk.URL
+	case "git-subdir":
+		src["url"] = mk.URL
+		src["path"] = mk.Path
+	case "directory":
+		src["path"] = mk.Path
+	}
+	out := map[string]any{"source": src}
+	if mk.AutoUpdate != nil {
+		out["autoUpdate"] = *mk.AutoUpdate
+	}
 	return out
 }
 
@@ -486,13 +515,17 @@ func (a *Adapter) current() (map[string]string, error) {
 	for k, v := range objMembers(sj, "pluginConfigs") {
 		out["pluginconfig."+k] = v
 	}
+	for k, v := range objMembers(sj, "extraKnownMarketplaces") {
+		out["marketplace."+k] = v
+	}
 	var m map[string]json.RawMessage
 	_ = json.Unmarshal(sj, &m)
 	for k, raw := range m {
-		// pluginConfigs is surfaced above as pluginconfig.*; excluding it here
-		// (alongside the other managed top-level objects) keeps it from also
-		// leaking as a setting.* key, which would make every plan non-idempotent.
-		if k == "mcpServers" || k == "enabledPlugins" || k == "pluginConfigs" {
+		// pluginConfigs/extraKnownMarketplaces are surfaced above as
+		// pluginconfig.*/marketplace.*; excluding them here (alongside the other
+		// managed top-level objects) keeps them from also leaking as a setting.*
+		// key, which would make every plan non-idempotent.
+		if k == "mcpServers" || k == "enabledPlugins" || k == "pluginConfigs" || k == "extraKnownMarketplaces" {
 			continue
 		}
 		out["setting."+k] = string(raw)
@@ -629,6 +662,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			case hasPrefix(c.Key, "pluginconfig."):
 				sj, err = jsonutil.DeleteJSON(sj, "pluginConfigs."+jsonutil.EscapePath(trim(c.Key, "pluginconfig.")))
 				sjChanged = true
+			case hasPrefix(c.Key, "marketplace."):
+				sj, err = jsonutil.DeleteJSON(sj, "extraKnownMarketplaces."+jsonutil.EscapePath(trim(c.Key, "marketplace.")))
+				sjChanged = true
 			case hasPrefix(c.Key, "plugin."):
 				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
 				sjChanged = true
@@ -701,6 +737,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			sjChanged = true
 		case hasPrefix(c.Key, "pluginconfig."):
 			sj, err = jsonutil.SetJSON(sj, "pluginConfigs."+jsonutil.EscapePath(trim(c.Key, "pluginconfig.")), val)
+			sjChanged = true
+		case hasPrefix(c.Key, "marketplace."):
+			sj, err = jsonutil.SetJSON(sj, "extraKnownMarketplaces."+jsonutil.EscapePath(trim(c.Key, "marketplace.")), val)
 			sjChanged = true
 		case hasPrefix(c.Key, "plugin."):
 			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
