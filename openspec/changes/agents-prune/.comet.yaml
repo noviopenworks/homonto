@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: design
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 0429ba21226e6a7233cfb32a4a0eaef208bae9f2
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-11-agents-prune-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-11
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/agents-prune/.comet/handoff/design-context.json
+handoff_hash: e62d2d9449f31d489d71dc33400446fe0209fd3b947a936663c6e246588371d3
+classic_profile: full
+classic_migration: 1
+run_id: e7a9a19d-935c-4256-a599-667b502a0d2c
