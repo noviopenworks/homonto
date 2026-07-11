@@ -8,13 +8,13 @@ subagent_dispatch: null
 tdd_mode: direct
 review_mode: standard
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: 7f74cb7a959aef23baae500c609ea33c22dd1986
 design_doc: docs/superpowers/specs/2026-07-11-onto-release-packaging-design.md
 plan: docs/superpowers/plans/2026-07-11-onto-release-packaging.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-11-onto-release-packaging-verify.md
 branch_status: pending
 created_at: 2026-07-11
 verified_at: null
