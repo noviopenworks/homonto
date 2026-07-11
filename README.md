@@ -95,7 +95,16 @@ scroll_speed = 3
 [models.claude.architectural]             # required for every model-enabled tool
 model = "opus"
 variant = "max"
+
+[agents.review]                           # v2 lifecycle-managed agent (declare-only for now)
+source = "builtin:review-agent"           # builtin:<name> | local:<name>
+version = "1.2.0"                         # optional; omit → unpinned
+targets = ["claude", "opencode"]          # optional; default both
+mode = "copy"                             # optional; copy | link (default link)
 ```
+
+Inspect declared agents with `homonto agents list` (read-only). Lifecycle
+mutation (`add`/`update`/`pin`/`migrate`) is future v2 work.
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels

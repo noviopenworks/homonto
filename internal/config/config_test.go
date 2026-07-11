@@ -1095,6 +1095,19 @@ func TestAgentsRejectInvalidSource(t *testing.T) {
 	}
 }
 
+// TestAgentsRejectTraversalName: an agent name with path components is rejected
+// (agents are projected to files named by the agent name in later increments, so
+// a "../x" name must not survive declaration).
+func TestAgentsRejectTraversalName(t *testing.T) {
+	err := loadDoc(t, "[agents.\"../evil\"]\nsource = \"builtin:x\"\n")
+	if err == nil {
+		t.Fatalf("traversal agent name accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "not a plain name") {
+		t.Fatalf("error does not flag the bad name: %v", err)
+	}
+}
+
 // TestAgentsRejectInvalidMode: a mode outside copy/link is rejected, naming the
 // agent and the offending mode.
 func TestAgentsRejectInvalidMode(t *testing.T) {

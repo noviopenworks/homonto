@@ -621,7 +621,11 @@ func validateResources(kind string, resources map[string]Resource) error {
 // [agents.<name>] lifecycle agent.
 func validateAgents(agents map[string]Agent) error {
 	for name, ag := range agents {
-		if err := validateKey("agents", name); err != nil {
+		// Use the stricter resource-name guard (rejects "/", "\", ".", "..")
+		// like [subagents]: lifecycle-managed agents are projected to files named
+		// by the agent name in later v2 increments, so a path-traversal name must
+		// be rejected at declaration, not once projection lands.
+		if err := validateResourceName("agents", name); err != nil {
 			return err
 		}
 		label := "agents." + name
