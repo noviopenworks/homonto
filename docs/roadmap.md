@@ -218,22 +218,22 @@ gate remains open without a recorded exception.
 
 [design-verify]: https://github.com/noviopenworks/homonto/blob/main/docs/superpowers/specs/2026-07-11-documentation-single-source-design.md
 
-### 3. Scaffold And Contract Drift — *open*
+### 3. Scaffold And Contract Drift — *done (2026-07-11, `0de68cf`, `d352687`)*
 
-- **Problem:** scaffolded plugin examples, `agents`/`doctor` help, and
-  remediation text drift from the implemented command surface; six OpenSpec
-  main specs carry generated `TBD` Purpose sections.
-- **Scope:** replace obsolete plugin examples; correct help/remediation copy;
-  write concrete Purpose sections; correct OpenSpec claims about builtin
-  catalog support, agent effective mode, and the command surface.
-- **Dependencies:** item 2 (authority established first).
-- **Primary files:** scaffold templates under `catalog/`, `internal/cli`
-  command help, `openspec/specs/*/spec.md`.
-- **Acceptance:** scaffolds compile/run against current source; every OpenSpec
-  main spec has a concrete Purpose and no stale capability claim.
-- **Verify:** scaffolded `homonto init` output applies cleanly; OpenSpec
-  purpose scan finds no `TBD`.
-- **Exit gate:** no documented command or schema contradicts source.
+- **Problem:** scaffolded plugin/model examples, `agents`/`doctor` help, and
+  remediation text drifted from the implemented command surface; six OpenSpec
+  main specs carried generated `TBD` Purpose sections.
+- **Outcome:** the removed list-style `[plugins]` example was replaced with the
+  per-plugin table form, and `[models.opencode.*]` routes were added so the
+  fully-uncommented scaffold loads and plans cleanly; the scaffold regression
+  test now runs the reconstructed config through the real `config.Load`
+  (parse+validate). The six `TBD` Purpose sections were written and the stale
+  OpenSpec claims (builtin catalog support, builtin-agent effective mode,
+  command surface) corrected during item 2. `agents --help` lists the full
+  add/list/doctor/update[--all]/prune surface.
+- **Verify:** `go test ./internal/scaffold/ -run TestScaffoldExamples`;
+  `rg -n 'TBD' openspec/specs` → empty; uncommented `homonto init` output
+  `plan`s with exit 0.
 
 ### 4. Dual-Binary Docker End-to-End — *open*
 
