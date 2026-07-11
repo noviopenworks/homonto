@@ -76,7 +76,7 @@ repository and one module.
 | `homonto agents add` | Implemented | Copy/link install; lockfile + base blob recorded. |
 | `homonto agents doctor` | Implemented | Per-agent health reporting. |
 | `homonto agents update` / `--all` | Implemented | Three-way merge; conflict sidecar; bulk mode. |
-| `homonto agents prune` | **Partial** | Deletion-error defect — see [Partial And Unsafe Behavior](#partial-and-unsafe-behavior). |
+| `homonto agents prune` | Implemented | Deletion failure keeps the file + lockfile record (regression-tested). |
 | Claude + OpenCode MCP/settings projection | Implemented | Surgical managed-key updates. |
 | Reference-only secrets | Implemented | Resolved after confirm, never stored (`ADR 0002`). |
 | Atomic writes + adoption + pruning + drift | Implemented | `ADR 0003`, `ADR 0004`, `ADR 0009`, `ADR 0010`. |
@@ -103,37 +103,12 @@ repository and one module.
 These are known defects or unsafe paths that block the first public release.
 Each names the exact source location and the missing invariant.
 
-### Agent ownership: de-declared target records dropped on update
-
-`runAgentUpdate` at `internal/cli/agents.go:585-590` initializes
-`installedRec` to an empty map and writes entries only for the agent's
-*currently-declared* targets. When a target is removed from the config and
-`agents update` runs, the prior install record is silently dropped from the
-lockfile — even though the file may still be on disk. The result is an
-**untracked install**: Homonto no longer remembers it owns the file, so
-`status`, `doctor`, and a later `prune` cannot reason about it correctly.
-
-- **Invariant violated:** never forget ownership while a managed file remains
-  on disk.
-- **Fix scope:** carry forward prior records for de-declared targets (mark them
-  for prune) instead of rebuilding `installedRec` from declared targets only.
-- **Status:** open — no source fix, no focused regression test.
-
-### Agent ownership: prune deletion failures ignored
-
-`pruneFile` at `internal/cli/agents.go:90-91` calls `os.Remove(ti.Path)` and
-`os.Remove(ti.Path+".merged")` and **discards both return values**. A failed
-deletion (permission, read-only filesystem, etc.) is therefore reported as
-`removed`, the lockfile record is deleted, and ownership is lost. The existing
-test `TestAgentsPruneBackupFailureKeepsFile` in
-`internal/cli/agents_prune_test.go` covers **backup** failure only; no test
-covers **deletion** failure.
-
-- **Invariant violated:** failed deletion cannot produce a false "removed"
-  report or drop ownership.
-- **Fix scope:** check both `os.Remove` errors; on failure keep the record and
-  return `false` so the agent is not reported pruned.
-- **Status:** open — no source fix, no focused regression test.
+> **Resolved 2026-07-11 (backlog item 1, commit `b21b04e`).** The two
+> agent-ownership defects — de-declared target records dropped by
+> `runAgentUpdate`, and `pruneFile` ignoring `os.Remove` errors — are fixed and
+> covered by `TestAgentsUpdateKeepsDeDeclaredTargetRecord` and
+> `TestAgentsPruneDeletionFailureKeepsRecord`. `go test ./internal/cli/ -run
+> 'AgentsPrune|AgentsUpdate' -count=1 -race` is green.
 
 ### Docker image builds `homonto` only
 
@@ -173,15 +148,19 @@ direction.
 ## Current Release Gate
 
 `v0.1.0` is **not yet cut** (`git tag --list` is empty). Four release-integrity
-items must close before `v0.1.0-rc.1`. All four are **open**.
+items must close before `v0.1.0-rc.1`. Two are **closed**; two remain **open**.
 
-- [ ] **1. Agent ownership safety.** Exit gate: de-declared target records
-  survive `agents update`; deletion failure is treated as prune failure and
-  retains ownership; focused regression tests cover both invariants.
-  *See backlog item 1.*
-- [ ] **2. Documentation truth.** Exit gate: one status authority (this file);
-  no stale capability claims in README, guides, or OpenSpec main specs; test
-  counts and release status stated in one place. *See backlog item 2.*
+- [x] **1. Agent ownership safety.** De-declared target records survive `agents
+  update`; deletion failure is treated as prune failure and retains ownership;
+  regression tests `TestAgentsUpdateKeepsDeDeclaredTargetRecord` +
+  `TestAgentsPruneDeletionFailureKeepsRecord` cover both invariants (commit
+  `b21b04e`; `go test ./internal/cli/ -run 'AgentsPrune|AgentsUpdate' -race` →
+  green, 2026-07-11). *See backlog item 1.*
+- [x] **2. Documentation truth.** One status authority (this file); transitional
+  `docs/specs/` migrated into `openspec/specs/`, Superpowers history consolidated
+  into OpenSpec archives, legacy `docs/changes/` + `road-to-release.md` removed,
+  duplicate bundled skills removed; stale-phrase scan + markdown link check clean
+  (commits through `7826682`, 2026-07-11). *See backlog item 2.*
 - [ ] **3. Dual-binary Docker E2E.** Exit gate: the Docker image builds both
   `homonto` and `onto`; five suites (`homonto-core`, `homonto-expanded`,
   `homonto-agents`, `onto-lifecycle`, `release-packaging`) pass against
@@ -196,11 +175,15 @@ items must close before `v0.1.0-rc.1`. All four are **open**.
 Dependency-ordered. Later work is not ready while an earlier safety or release
 gate remains open without a recorded exception.
 
-### 1. Agent Ownership Safety — *open*
+### 1. Agent Ownership Safety — *done (2026-07-11, `b21b04e`)*
 
-- **Problem:** two ownership defects (above) can silently drop lockfile
-  records while files remain on disk, breaking the never-forget-ownership
+- **Problem:** two ownership defects (above) could silently drop lockfile
+  records while files remained on disk, breaking the never-forget-ownership
   invariant.
+- **Outcome:** both fixed with focused regression tests
+  (`TestAgentsUpdateKeepsDeDeclaredTargetRecord`,
+  `TestAgentsPruneDeletionFailureKeepsRecord`); `go test ./internal/cli/ -run
+  'AgentsPrune|AgentsUpdate' -count=1 -race` green.
 - **Scope:** preserve de-declared target records across `agents update`; treat
   primary and sidecar deletion failure as prune failure; add focused
   regression tests for both. Non-goal: reconciling `[agents]` vs `[subagents]`
@@ -215,11 +198,11 @@ gate remains open without a recorded exception.
 - **Verify:** `go test ./internal/cli/ -run 'AgentsPrune|AgentsUpdate' -count=1 -race`.
 - **Exit gate:** both invariants hold under tests; full suite green.
 
-### 2. Documentation Consolidation — *in progress (this change)*
+### 2. Documentation Consolidation — *done (2026-07-11, through `7826682`)*
 
-- **Problem:** project truth is scattered and partly contradictory across
+- **Problem:** project truth was scattered and partly contradictory across
   README, two release docs, `docs/specs/`, OpenSpec, guides, and historical
-  plans; some sources claim safety work the source does not implement.
+  plans; some sources claimed safety work the source did not implement.
 - **Scope:** make this roadmap the standalone truth; delete competing status
   docs; migrate unique requirements into `openspec/specs/`; consolidate
   Superpowers history into OpenSpec archives; remove duplicate bundled skills.
@@ -433,8 +416,8 @@ Each entry was run from the repository root on **2026-07-11** by the
 documentation-consolidation change. Re-run any of them to re-verify the
 baseline.
 
-- [x] `go test ./... -count=1` → **443 passed in 26 packages** (2026-07-11).
-- [x] `go test -race ./... -count=1` → **443 passed in 26 packages**, race detector clean (2026-07-11).
+- [x] `go test ./... -count=1` → **446 passed in 26 packages** (2026-07-11; +3 regression tests from backlog items 1 and 3).
+- [x] `go test -race ./... -count=1` → **446 passed in 26 packages**, race detector clean (2026-07-11).
 - [x] `go vet ./...` → clean (no issues).
 - [x] `go build ./...` → success (both `homonto` and `onto` build).
 - [x] `./scripts/docker-test.sh` → `SMOKE PASS` (homonto core smoke).
