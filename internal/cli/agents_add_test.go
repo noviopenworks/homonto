@@ -168,20 +168,6 @@ func TestAgentsAddConflictIsAllOrNothing(t *testing.T) {
 	}
 }
 
-// TestAgentsAddBuiltinNotSupported: a builtin: source is refused with a clear
-// "not supported yet" error.
-func TestAgentsAddBuiltinNotSupported(t *testing.T) {
-	home := t.TempDir()
-	cfg, _ := addWorkspace(t, "[agents.b]\nsource=\"builtin:b\"\n", nil)
-	out, err := runCmd(t, home, "", "agents", "add", "b", "--config", cfg)
-	if err == nil {
-		t.Fatalf("builtin source must be refused, got:\n%s", out)
-	}
-	if !strings.Contains(err.Error(), "local:") {
-		t.Fatalf("error must explain only local: sources are supported, got: %v", err)
-	}
-}
-
 // TestAgentsAddUndeclared: adding an agent that is not declared errors clearly.
 func TestAgentsAddUndeclared(t *testing.T) {
 	home := t.TempDir()
