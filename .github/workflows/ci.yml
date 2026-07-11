@@ -4,82 +4,22 @@ on:
   push:
   pull_request:
 
-# Least-privilege by default: CI only reads the repo. Jobs that need more must
-# opt in explicitly (none do today).
+# Least-privilege by default: CI only reads the repo.
 permissions:
   contents: read
 
 jobs:
-  test:
+  # One shared gate drives CI, local rehearsal, and release publication
+  # (scripts/gate.sh), so no path runs a weaker check set than another. It covers
+  # gofmt, mod-tidy, vet, build, test, race, version-stamp + cli smoke,
+  # govulncheck, and the dual-binary Docker E2E (five suites incl. release
+  # packaging). ubuntu-latest ships a Docker daemon, which the E2E suites need.
+  gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
-
-      - name: gofmt
-        run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "these files are not gofmt-formatted:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: go mod tidy -diff
-        run: go mod tidy -diff
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: go build
-        run: go build ./...
-
-      - name: go test
-        run: go test ./...
-
-      - name: go test -race
-        run: go test -race ./...
-
-      - name: version stamp smoke
-        run: |
-          go build -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=ci-smoke" -o /tmp/homonto .
-          # homonto prints via cobra's Print* (stderr), so capture both streams.
-          /tmp/homonto version 2>&1 | tee /dev/stderr | grep -q "ci-smoke" || { echo "version not stamped"; exit 1; }
-
-      - name: onto version stamp smoke
-        run: |
-          go build -ldflags "-X github.com/noviopenworks/homonto/internal/ontocli.Version=ci-smoke" -o /tmp/onto ./cmd/onto
-          # onto prints via cobra's Print* too; capture both streams defensively.
-          /tmp/onto version 2>&1 | tee /dev/stderr | grep -q "ci-smoke" || { echo "onto version not stamped"; exit 1; }
-
-      - name: cli smoke
-        run: |
-          # Minimal current-format config (the removed [skills] own=[] list no
-          # longer parses). An MCP needs no on-disk source, so plan resolves and
-          # prints a real diff without touching the filesystem.
-          printf '[mcps.demo]\ncommand = ["true"]\n' > /tmp/homonto.toml
-          /tmp/homonto --config /tmp/homonto.toml plan
-
-  # End-to-end: run a real `apply` inside a throwaway container so mutating $HOME
-  # is safe. The `test` job's cli smoke only covers `plan` (a dry run); this is
-  # the only coverage of the compiled binary's apply against a real home.
-  docker-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: docker apply smoke
-        run: ./scripts/docker-test.sh
-
-  # Scan dependencies (and the standard library) for known vulnerabilities.
-  # Kept in its own job so a vuln advisory is a clear, isolated signal.
-  govulncheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-      - name: govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - name: gate
+        run: ./scripts/gate.sh

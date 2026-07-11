@@ -25,12 +25,13 @@ jobs:
         with:
           go-version: "1.23"
 
-      # Guard: never ship a tag that does not pass the same gates as CI.
-      - name: verify
-        run: |
-          test -z "$(gofmt -l .)"
-          go vet ./...
-          go test ./...
+      # Guard: never ship a tag that does not pass the COMPLETE gate. This is the
+      # same scripts/gate.sh that CI and local rehearsal run — race, mod-tidy,
+      # vet, build, test, version stamps, cli smoke, govulncheck, and the
+      # dual-binary Docker E2E (incl. release-packaging smoke) — so a tag can
+      # never publish on a weaker gate than a pull request.
+      - name: gate
+        run: ./scripts/gate.sh
 
       # Build, package, and checksum BOTH binaries (homonto + onto) for every
       # target. The packaging logic lives in scripts/build-release.sh so it is
