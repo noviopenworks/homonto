@@ -79,6 +79,13 @@ type Settings struct {
 	OpenCode map[string]any `toml:"opencode"`
 }
 
+// TUI declares per-tool TUI settings projected to a tool-native TUI file. Only
+// OpenCode has a separate TUI file (~/.config/opencode/tui.json); Claude's TUI
+// settings are ordinary settings.json keys covered by [settings.claude].
+type TUI struct {
+	OpenCode map[string]any `toml:"opencode"`
+}
+
 // Marketplace is one declared Claude plugin marketplace. Source selects which
 // locator fields are meaningful: github→Repo, url→URL, git-subdir→URL+Path,
 // directory→Path. AutoUpdate is optional (nil == omitted).
@@ -104,6 +111,7 @@ type Config struct {
 	Models       ModelConfig         `toml:"models"`
 	Plugins      Plugins             `toml:"plugins"`
 	Settings     Settings            `toml:"settings"`
+	TUI          TUI                 `toml:"tui"`
 	Marketplaces Marketplaces        `toml:"marketplaces"`
 }
 
@@ -527,6 +535,14 @@ func Load(path string) (*Config, error) {
 		}
 		if k == "mcp" || k == "plugin" {
 			return nil, fmt.Errorf("parse config: settings.opencode key %q is reserved (homonto manages %s there); rename it", k, k)
+		}
+	}
+	// [tui.opencode] keys project into a second managed file (tui.json). Reject
+	// index-like/empty names for the same JSON-array-corruption reason as
+	// [settings.opencode].
+	for k := range c.TUI.OpenCode {
+		if err := validateKey("tui.opencode", k); err != nil {
+			return nil, err
 		}
 	}
 	return &c, nil

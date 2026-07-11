@@ -269,6 +269,46 @@ func TestLoadRejectsIndexLikeNames(t *testing.T) {
 	}
 }
 
+// TestLoadParsesTUIOpenCode: a [tui.opencode] table parses into TUI.OpenCode as
+// a free-form map, mirroring [settings.opencode]. These keys project to a
+// second managed file (~/.config/opencode/tui.json).
+func TestLoadParsesTUIOpenCode(t *testing.T) {
+	doc := "[tui.opencode]\ntheme = \"gruvbox\"\nscroll_speed = 3\n"
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got := c.TUI.OpenCode["theme"]; got != "gruvbox" {
+		t.Fatalf("tui.opencode theme = %#v; want \"gruvbox\"", got)
+	}
+	if got, ok := c.TUI.OpenCode["scroll_speed"].(int64); !ok || got != 3 {
+		t.Fatalf("tui.opencode scroll_speed = %#v; want int64(3)", c.TUI.OpenCode["scroll_speed"])
+	}
+}
+
+// TestLoadRejectsTUIIndexLikeName: like [settings.opencode], a [tui.opencode]
+// key that sjson would treat as an array index ("0", "-1") or an empty key
+// would corrupt tui.json. Load must reject it naming the offending entry.
+func TestLoadRejectsTUIIndexLikeName(t *testing.T) {
+	for _, tc := range []struct{ label, doc, name string }{
+		{"tui zero", "[tui.opencode]\n\"0\" = \"x\"\n", "0"},
+		{"tui minus-one", "[tui.opencode]\n\"-1\" = \"x\"\n", "-1"},
+		{"tui empty", "[tui.opencode]\n\"\" = \"x\"\n", ""},
+	} {
+		err := loadDoc(t, tc.doc)
+		if err == nil {
+			t.Fatalf("%s: name %q accepted; want load error", tc.label, tc.name)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.name)) {
+			t.Fatalf("%s: error does not name the entry %q: %v", tc.label, tc.name, err)
+		}
+	}
+}
+
 func loadDoc(t *testing.T, doc string) error {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "homonto.toml")
