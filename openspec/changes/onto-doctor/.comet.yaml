@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 088af3e0c328e22fc3e2f3bf192dcfb7aff06579
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-11-onto-doctor-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -20,8 +20,8 @@ created_at: 2026-07-11
 verified_at: null
 archived: false
 direct_override: null
-handoff_context: null
-handoff_hash: null
+handoff_context: openspec/changes/onto-doctor/.comet/handoff/design-context.json
+handoff_hash: db19208b84b5770064b63e5bb25638e70ced6b18d29c82a75e276fcb4ea27b2b
 classic_profile: full
 classic_migration: 1
 run_id: 82860fb8-6e80-49e8-a2bf-91bdae0fffe3
