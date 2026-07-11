@@ -1,0 +1,106 @@
+package ontocli
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/noviopenworks/homonto/internal/ontostate"
+	"github.com/spf13/cobra"
+)
+
+// doctorCmd builds the "onto doctor" subcommand: a strictly read-only,
+// config-independent workspace-health diagnostic. Unlike init/new/close it is
+// NOT gated on the framework install — a missing docs layout is a finding, not
+// a refusal. It writes nothing and imports none of homonto's projection
+// packages.
+func doctorCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "doctor",
+		Short: "Report onto workflow/project health (read-only)",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDoctor(cmd, dir)
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root to inspect")
+	return cmd
+}
+
+// runDoctor accumulates health findings in a fixed order — docs layout, active
+// changes, archive layout — printing each to stdout. It performs zero writes
+// and never calls gate(). On a healthy workspace it prints "healthy" and
+// returns nil; otherwise it prints every finding and returns a summary error so
+// main exits non-zero.
+func runDoctor(cmd *cobra.Command, root string) error {
+	var findings []string
+
+	// 1. docs layout: every directory in docsLayout must exist as a directory.
+	for _, d := range docsLayout {
+		info, err := os.Stat(filepath.Join(root, d))
+		if err != nil || !info.IsDir() {
+			findings = append(findings, "docs layout: missing directory "+d)
+		}
+	}
+
+	// 2. active changes: the single "*" cannot cross a path separator, so it
+	// matches only direct children of docs/changes/ and never reaches archived
+	// changes at docs/changes/archive/<name>/.
+	active, _ := filepath.Glob(filepath.Join(root, "docs", "changes", "*", "onto-state.yaml"))
+	for _, path := range active {
+		changeDir := filepath.Dir(path)
+		name := filepath.Base(changeDir)
+
+		st, err := ontostate.Load(path)
+		if err != nil {
+			findings = append(findings, fmt.Sprintf("%s: invalid onto-state.yaml: %v", name, err))
+			continue
+		}
+		phase, err := st.DerivePhase()
+		if err != nil {
+			findings = append(findings, fmt.Sprintf("%s: cannot derive phase: %v", name, err))
+			continue
+		}
+		if err := ontostate.ValidateSkeleton(changeDir); err != nil {
+			findings = append(findings, fmt.Sprintf("%s: phase %s missing artifact: %v", name, phase, err))
+		}
+		if unresolved := ontostate.DepsResolved(root, st.Deps); len(unresolved) > 0 {
+			findings = append(findings, fmt.Sprintf("%s: unresolved dependencies: %v", name, unresolved))
+		}
+		if st.Archived {
+			findings = append(findings, name+": active change marked archived: true (belongs under docs/changes/archive/)")
+		}
+	}
+
+	// 3. archive layout: each archive/<name> directory must hold a valid
+	// onto-state.yaml marked archived:true. Stray non-directory entries are
+	// ignored.
+	entries, _ := filepath.Glob(filepath.Join(root, "docs", "changes", "archive", "*"))
+	for _, entry := range entries {
+		info, err := os.Stat(entry)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		name := filepath.Base(entry)
+		st, err := ontostate.Load(filepath.Join(entry, "onto-state.yaml"))
+		if err != nil {
+			findings = append(findings, fmt.Sprintf("archive/%s: invalid or missing onto-state.yaml: %v", name, err))
+			continue
+		}
+		if !st.Archived {
+			findings = append(findings, "archive/"+name+": not marked archived: true")
+		}
+	}
+
+	// verdict
+	if len(findings) == 0 {
+		cmd.Println("healthy")
+		return nil
+	}
+	for _, f := range findings {
+		cmd.Println(f)
+	}
+	return fmt.Errorf("onto doctor: %d problem(s) found", len(findings))
+}
