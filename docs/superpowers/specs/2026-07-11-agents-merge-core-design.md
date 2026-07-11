@@ -2,6 +2,8 @@
 comet_change: agents-merge-core
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-agents-merge-core
+status: final
 ---
 
 

@@ -2,6 +2,7 @@
 change: agents-merge-core
 design-doc: docs/superpowers/specs/2026-07-11-agents-merge-core-design.md
 base-ref: 8059cbdeb33b1fc984f795815385209e39989ceb
+archived-with: 2026-07-11-agents-merge-core
 ---
 
 # Plan: agents merge core (v2 #5a)
