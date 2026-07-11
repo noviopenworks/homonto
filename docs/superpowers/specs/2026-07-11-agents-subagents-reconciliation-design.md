@@ -145,6 +145,15 @@ changes, not a single edit.
 Each step is independently shippable and green; the `[agents]` surface is removed
 only in the last step, after `[subagents]` reaches full parity.
 
+> **Landed so far (2026-07-11):** step 1a — omitted `[subagents]` scope defaults
+> to `project` (`7fba2dc`); and a safety guard rejecting a name declared in both
+> `[agents]` and `[subagents]` (`4f28565`, closes design problem #1 for the
+> transition). Blob GC (`3529ce7`) is also done. **The coupled core below —
+> dedicated `Subagent` type + copy-mode projection + apply-time three-way merge —
+> is the remaining work; it delivers value only when steps 1b–3 land together and
+> re-plumbs the deterministic `apply` path, so it should be built as a focused
+> comet change with per-step TDD, not piecemeal.**
+
 1. **Subagent model gains `mode` + `version`.** Add `Mode` (`copy`|`link`, default
    `link` = today's symlink) and `Version` to the subagent model, validated.
    Purely additive; symlink projection unchanged. Default subagent `scope` becomes

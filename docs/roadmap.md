@@ -328,7 +328,9 @@ gate remains open without a recorded exception.
   migration, project default scope) with a 6-step apply-preserving plan —
   `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md`.
 - **Implementation started:** step 1a landed (`7fba2dc`) — an omitted
-  `[subagents.<name>]` scope now defaults to `project`.
+  `[subagents.<name>]` scope now defaults to `project`; and a load-time guard
+  (`4f28565`) rejects a name declared in both `[agents]` and `[subagents]`
+  (closes the collision bug for the transition).
 - **Remaining (implementation, sequenced):** (1b) dedicated `Subagent` struct
   carrying `mode`+`version` (the shared `Resource` type can't); (2–3) **copy-mode
   subagent projection + apply-time three-way merge** (the core: re-plumbs the
