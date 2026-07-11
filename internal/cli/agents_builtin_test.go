@@ -58,6 +58,28 @@ targets = ["claude"]
 	}
 }
 
+// TestAgentsAddBuiltinDefaultsToCopy: a builtin agent with NO explicit mode must
+// default to copy (link is impossible for builtin), not hit the builtin+link
+// error, and must install the catalog content and record mode "copy".
+func TestAgentsAddBuiltinDefaultsToCopy(t *testing.T) {
+	home := t.TempDir()
+	toml := "[agents.cr]\nsource = \"builtin:code-reviewer\"\ntargets = [\"claude\"]\n" // no mode
+	cfg, cfgDir := addWorkspace(t, toml, nil)
+
+	out, err := runCmd(t, home, "", "agents", "add", "cr", "--config", cfg)
+	if err != nil {
+		t.Fatalf("builtin agent with no mode must install (copy default): %v\n%s", err, out)
+	}
+	dst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "cr.md")
+	if got, rerr := os.ReadFile(dst); rerr != nil || !strings.Contains(string(got), codeReviewerSnippet) {
+		t.Fatalf("builtin content not installed: err=%v content=%q", rerr, got)
+	}
+	lock, _ := agentlock.Load(filepath.Join(cfgDir, ".homonto"))
+	if lock.Agents["cr"].Mode != "copy" {
+		t.Fatalf("builtin with no mode must record mode=copy, got %q", lock.Agents["cr"].Mode)
+	}
+}
+
 // TestAgentsAddUnknownBuiltinIsError: an unknown builtin agent name errors
 // clearly.
 func TestAgentsAddUnknownBuiltinIsError(t *testing.T) {

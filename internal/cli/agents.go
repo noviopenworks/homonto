@@ -236,8 +236,9 @@ func agentsAddCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("agents add: agent %q is not declared", name)
 			}
-			if ag.ModeOrDefault() == "link" && strings.HasPrefix(ag.Source, "builtin:") {
-				return fmt.Errorf("agents add: %q uses builtin: with link mode, but builtin sources have no local path to link; use mode=copy", name)
+			mode, err := agentMode(name, ag)
+			if err != nil {
+				return fmt.Errorf("agents add: %w", err)
 			}
 			content, err := resolveAgentSource(ag, cfgDir)
 			if err != nil {
@@ -253,7 +254,6 @@ func agentsAddCmd() *cobra.Command {
 				return err
 			}
 			home, _ := os.UserHomeDir()
-			mode := ag.ModeOrDefault()
 			targets := ag.TargetsOrAll()
 			prevInstalled := lock.Agents[name].Installed
 
@@ -431,8 +431,9 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 	if !ok {
 		return false, fmt.Errorf("agents update: agent %q is not declared", name)
 	}
-	if ag.ModeOrDefault() == "link" && strings.HasPrefix(ag.Source, "builtin:") {
-		return false, fmt.Errorf("agents update: %q uses builtin: with link mode, but builtin sources have no local path to link; use mode=copy", name)
+	mode, err := agentMode(name, ag)
+	if err != nil {
+		return false, fmt.Errorf("agents update: %w", err)
 	}
 
 	inst, installed := lock.Agents[name]
@@ -445,11 +446,9 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 		return false, fmt.Errorf("agents update: %w", err)
 	}
 	// srcPath is the local source path used by link mode; link only runs for
-	// local: sources (builtin: + link is rejected above).
+	// local: sources (builtin: is copy-only).
 	srcPath := filepath.Join(cfgDir, "homonto", "agents", strings.TrimPrefix(ag.Source, "local:")+".md")
 	hash := agentlock.HashContent(content)
-
-	mode := ag.ModeOrDefault()
 	targets := ag.TargetsOrAll()
 	installedRec := map[string]agentlock.Install{}
 	for _, tool := range sortedStrings(targets) {
@@ -570,6 +569,21 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 // local:<x> reads homonto/agents/<x>.md under the config dir; builtin:<x> reads
 // the embedded catalog's curated agent content by name (unknown name is an
 // error); any other scheme is not yet supported (remote deferred).
+// agentMode returns the effective materialize mode for an agent. A builtin:
+// source has no stable on-disk path to symlink, so it is copy-only: an explicit
+// mode=link on a builtin agent is an error, and an unspecified mode defaults to
+// copy (rather than the general link default). local: agents keep the normal
+// mode default.
+func agentMode(name string, ag config.Agent) (string, error) {
+	if strings.HasPrefix(ag.Source, "builtin:") {
+		if ag.Mode == "link" {
+			return "", fmt.Errorf("%q uses builtin: with link mode, but builtin sources have no local path to link; use mode=copy", name)
+		}
+		return "copy", nil
+	}
+	return ag.ModeOrDefault(), nil
+}
+
 func resolveAgentSource(ag config.Agent, cfgDir string) ([]byte, error) {
 	switch {
 	case strings.HasPrefix(ag.Source, "local:"):
