@@ -246,14 +246,10 @@ designs and implementation plans live under `docs/superpowers/`.
 - `openspec/specs/` — living capability specs (SHALL + scenarios)
 - `docs/adr/` — accepted / superseded architecture decisions
 - `openspec/changes/` — active Comet/OpenSpec change workspaces (+ archive)
-- `docs/changes/` — legacy Onto workspaces (historical, do not open new work)
 - `docs/guides/` — user-facing guides
 - `docs/release-checklist.md` — how to cut a release
 
 Start with `/comet`. Full guide: [docs/guides/comet-workflow.md](docs/guides/comet-workflow.md).
-
-The older `docs/changes/` Onto workspaces are historical. Do not open new work
-there.
 
 Future agents should start with `/comet` — it inspects `openspec/changes/` and
 each active change's `.comet.yaml` for current state — before trusting older

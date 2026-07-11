@@ -1,8 +1,8 @@
 # Release Checklist
 
 The repeatable steps for cutting a dual-binary `homonto` + `onto` release. This
-is the operational companion to [`road-to-release.md`](road-to-release.md): the
-road-to-release file is the gate for *whether* to release; this file is *how*.
+is the operational companion to the [roadmap](roadmap.md): the roadmap's release
+gate decides *whether* to release; this file is *how*.
 
 Releases are driven by the `release` GitHub workflow
 (`.github/workflows/release.yml`), which triggers on any pushed `v*` tag. For the

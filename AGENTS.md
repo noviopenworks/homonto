@@ -1,9 +1,9 @@
 # Development Instructions
 
 Start new development with `/comet`; inspect active change state before
-starting separate change work. Treat `openspec/changes/` as active work,
-`docs/superpowers/` as design and implementation planning, and
-`docs/changes/` as historical only.
+starting separate change work. Treat `openspec/changes/` as active work and
+`docs/superpowers/` as active design and implementation planning; completed
+change history lives in `openspec/changes/archive/`.
 
 When `.codegraph/` exists, use CodeGraph before grep, glob, or direct reads to
 locate and understand code. If it is absent or unavailable, continue with the
