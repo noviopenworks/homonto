@@ -38,7 +38,7 @@ func TestOpenCodeProjectsMCPAndPreservesKeys(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 	c := &config.Config{
 		MCPs:    map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"opencode"}}},
-		Plugins: config.Plugins{OpenCode: []string{"@slkiser/opencode-quota"}},
+		Plugins: config.Plugins{OpenCode: map[string]config.Plugin{"quota": {Source: "@slkiser/opencode-quota"}}},
 	}
 
 	cs, err := a.Plan(c, st)
@@ -153,7 +153,7 @@ func TestOpenCodeAdoptOnlyApplyLeavesFileByteIdentical(t *testing.T) {
 	st, _ := state.Load(t.TempDir()) // empty state → declared matches yield adopt
 	c := &config.Config{
 		Settings: config.Settings{OpenCode: map[string]any{"theme": "x"}},
-		Plugins:  config.Plugins{OpenCode: []string{"existing"}},
+		Plugins:  config.Plugins{OpenCode: map[string]config.Plugin{"existing": {Source: "existing"}}},
 	}
 
 	cs, err := a.Plan(c, st)

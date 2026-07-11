@@ -58,7 +58,7 @@ func TestOpenCodeAdoptSettingRecordsState(t *testing.T) {
 // must be planned as `adopt` (not `noop`); applying it records state.
 func TestOpenCodeAdoptPluginRecordsState(t *testing.T) {
 	home := t.TempDir()
-	c := &config.Config{Plugins: config.Plugins{OpenCode: []string{"@x/quota"}}}
+	c := &config.Config{Plugins: config.Plugins{OpenCode: map[string]config.Plugin{"quota": {Source: "@x/quota"}}}}
 	a := seedDisk(t, home, c)
 
 	st, _ := state.Load(t.TempDir())
@@ -171,7 +171,7 @@ func TestOpenCodeAdoptedKeysArePruneable(t *testing.T) {
 	home := t.TempDir()
 	c := &config.Config{
 		Settings: config.Settings{OpenCode: map[string]any{"theme": "dark"}},
-		Plugins:  config.Plugins{OpenCode: []string{"@x/quota"}},
+		Plugins:  config.Plugins{OpenCode: map[string]config.Plugin{"quota": {Source: "@x/quota"}}},
 	}
 	a := seedDisk(t, home, c)
 

@@ -14,7 +14,7 @@ func observeCfg() *config.Config {
 	c := cfgWithSkills("user", "onto")
 	c.MCPs = map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"claude"}}}
 	c.Settings = config.Settings{Claude: map[string]any{"model": "opus"}}
-	c.Plugins = config.Plugins{Claude: []string{"repo-plugin"}}
+	c.Plugins = config.Plugins{Claude: map[string]config.Plugin{"repo-plugin": {Source: "repo-plugin"}}}
 	return c
 }
 

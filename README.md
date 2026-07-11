@@ -69,9 +69,12 @@ env = { BRAVE_API_KEY = "${pass:ai/brave}" }
 source = "local:graphify"                 # local:<name> → homonto/skills/<name>
 scope = "project"                         # required: user | project (no default)
 
-[plugins]
-claude = ["claude-hud@official"]          # marketplace entries
-opencode = ["@slkiser/opencode-quota"]    # npm packages
+[plugins.claude.claude-hud]
+source = "claude-hud@official"            # name@marketplace (enabledPlugins key)
+# enabled = false                        # optional; omit → enabled
+
+[plugins.opencode.opencode-quota]
+source = "@slkiser/opencode-quota"        # npm package (the `plugin` array entry)
 
 [settings.claude]
 model = "opus"

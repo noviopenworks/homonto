@@ -74,7 +74,7 @@ func TestOpenCodeRemovedPluginIsRemovedFromArray(t *testing.T) {
 
 	a := New(home, t.TempDir())
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Plugins: config.Plugins{OpenCode: []string{"@x/quota"}}}
+	c := &config.Config{Plugins: config.Plugins{OpenCode: map[string]config.Plugin{"quota": {Source: "@x/quota"}}}}
 
 	cs, _ := a.Plan(c, st)
 	if err := a.Apply(cs, noSecret(), st); err != nil {

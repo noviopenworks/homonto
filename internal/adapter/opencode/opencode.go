@@ -260,18 +260,29 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		disk, hasDisk := jsonutil.GetJSON(doc, jsonutil.EscapePath(k))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
-	for _, p := range c.Plugins.OpenCode {
-		if arrayHas(doc, "plugin", p) {
+	for _, pl := range c.Plugins.OpenCode {
+		src := pl.Source
+		_, inState := st.Get("opencode", "plugin."+src)
+		if !pl.IsEnabled() {
+			// Disabled: ensure absent, but only ever remove a homonto-managed
+			// entry (recorded in state). A present-but-unmanaged source, or one
+			// already absent, is left untouched — no change emitted.
+			if arrayHas(doc, "plugin", src) && inState {
+				cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "plugin." + src, Old: adapter.SecretRedaction})
+			}
+			continue
+		}
+		if arrayHas(doc, "plugin", src) {
 			// Present on disk. If recorded, steady-state noop; otherwise adopt it
 			// into state so pruning and drift can see it (plugin names are plain,
 			// never secret-bearing).
-			if _, inState := st.Get("opencode", "plugin."+p); inState {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: "plugin." + p})
+			if inState {
+				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: "plugin." + src})
 			} else {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "plugin." + p, New: mustJSON(p)})
+				cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "plugin." + src, New: mustJSON(src)})
 			}
 		} else {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "plugin." + p, New: mustJSON(p)})
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "plugin." + src, New: mustJSON(src)})
 		}
 	}
 	ops, err := link.Plan(a.links(), a.managedRoots()...)
@@ -409,8 +420,8 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for k := range c.Settings.OpenCode {
 		declared["setting."+k] = true
 	}
-	for _, p := range c.Plugins.OpenCode {
-		declared["plugin."+p] = true
+	for _, pl := range c.Plugins.OpenCode {
+		declared["plugin."+pl.Source] = true
 	}
 	for _, entry := range a.skills {
 		declared["skill."+entry.Name] = true

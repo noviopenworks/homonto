@@ -40,9 +40,12 @@ targets = ["opencode"]
 source = "builtin:architect"
 scope = "project"
 
-[plugins]
-claude = ["claude-hud@official"]
-opencode = ["@slkiser/opencode-quota"]
+[plugins.claude.claude-hud]
+source = "claude-hud@official"
+enabled = true
+
+[plugins.opencode.quota]
+source = "@slkiser/opencode-quota"
 
 [settings.claude]
 model = "opus"
@@ -117,6 +120,69 @@ func TestLoad(t *testing.T) {
 	if got := c.Models.Claude["architectural"].Variant; got != "max" {
 		t.Fatalf("claude architectural variant = %q", got)
 	}
+	// Plugin declaration tables parse into per-tool maps keyed by decl name,
+	// carrying source and (default-true) enabled.
+	if got := c.Plugins.Claude["claude-hud"]; got.Source != "claude-hud@official" || !got.IsEnabled() {
+		t.Fatalf("claude plugin claude-hud = %#v", got)
+	}
+	oc := c.Plugins.OpenCode["quota"]
+	if oc.Source != "@slkiser/opencode-quota" || !oc.IsEnabled() {
+		t.Fatalf("opencode plugin quota = %#v (enabled default should be true)", oc)
+	}
+}
+
+// TestLoadPluginEnabledSemantics covers the enabled flag: omitted defaults to
+// true (enabled), false disables.
+func TestLoadPluginEnabledSemantics(t *testing.T) {
+	doc := "[plugins.claude.on]\nsource = \"on@m\"\n" +
+		"[plugins.claude.off]\nsource = \"off@m\"\nenabled = false\n"
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !c.Plugins.Claude["on"].IsEnabled() {
+		t.Fatalf("plugin with omitted enabled should default enabled")
+	}
+	if c.Plugins.Claude["off"].IsEnabled() {
+		t.Fatalf("plugin with enabled=false should be disabled")
+	}
+}
+
+// TestLoadRejectsEmptyPluginSource: a plugin declaration whose source is empty
+// (or whitespace) cannot project anywhere, so Load must fail naming the plugin.
+func TestLoadRejectsEmptyPluginSource(t *testing.T) {
+	for _, tc := range []struct{ label, doc, name string }{
+		{"claude missing source", "[plugins.claude.hud]\n", "hud"},
+		{"claude empty source", "[plugins.claude.hud]\nsource = \"\"\n", "hud"},
+		{"opencode whitespace source", "[plugins.opencode.q]\nsource = \"   \"\n", "q"},
+	} {
+		err := loadDoc(t, tc.doc)
+		if err == nil {
+			t.Fatalf("%s: empty source accepted; want load error", tc.label)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.name)) {
+			t.Fatalf("%s: error does not name the plugin %q: %v", tc.label, tc.name, err)
+		}
+	}
+}
+
+// TestLoadRejectsDuplicatePluginSource: two decl names sharing one source would
+// collide on the single projected key (keyed by source), giving a
+// last-writer-wins, iteration-order-dependent plan. Load must reject it.
+func TestLoadRejectsDuplicatePluginSource(t *testing.T) {
+	doc := "[plugins.claude.hud]\nsource = \"hud@official\"\n" +
+		"[plugins.claude.hud-off]\nsource = \"hud@official\"\nenabled = false\n"
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("duplicate source accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "hud@official") {
+		t.Fatalf("error does not name the shared source: %v", err)
+	}
 }
 
 func TestLoadMissingFile(t *testing.T) {
@@ -137,8 +203,8 @@ func TestLoadRejectsIndexLikeNames(t *testing.T) {
 		{"mcp minus-one", "[mcps.\"-1\"]\ncommand = [\"x\"]\n", "-1"},
 		{"claude setting", "[settings.claude]\n\"0\" = \"x\"\n", "0"},
 		{"opencode setting", "[settings.opencode]\n\"-1\" = \"x\"\n", "-1"},
-		{"claude plugin", "[plugins]\nclaude = [\"7\"]\n", "7"},
-		{"opencode plugin", "[plugins]\nopencode = [\"\"]\n", ""},
+		{"claude plugin", "[plugins.claude.\"7\"]\nsource = \"x\"\n", "7"},
+		{"opencode plugin", "[plugins.opencode.\"\"]\nsource = \"x\"\n", ""},
 	}
 	for _, tc := range bad {
 		p := filepath.Join(t.TempDir(), "homonto.toml")
