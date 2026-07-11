@@ -100,8 +100,9 @@ repository and one module.
 
 ## Partial And Unsafe Behavior
 
-These are known defects or unsafe paths that block the first public release.
-Each names the exact source location and the missing invariant.
+The defects that blocked the first public release are now all **resolved**
+(recorded here with their fix evidence for auditability); no open release-
+blocking defect remains.
 
 > **Resolved 2026-07-11 (backlog item 1, commit `b21b04e`).** The two
 > agent-ownership defects — de-declared target records dropped by
@@ -110,21 +111,16 @@ Each names the exact source location and the missing invariant.
 > `TestAgentsPruneDeletionFailureKeepsRecord`. `go test ./internal/cli/ -run
 > 'AgentsPrune|AgentsUpdate' -count=1 -race` is green.
 
-### Docker image builds `homonto` only
-
-`test/docker/Dockerfile` runs `go build -o /usr/local/bin/homonto .` and the
-smoke script exercises only `homonto`. There is no `onto` binary in the image
-and no lifecycle suite for either binary's expanded surface (catalog
-materialization, agents, onto phases, release packaging).
-
-### Release workflow gate weaker than CI
-
-`.github/workflows/release.yml` `verify` step runs only `gofmt -l`, `go vet`,
-and `go test`. It **omits** `go test -race`, `go mod tidy -diff`, the Docker
-E2E, and `govulncheck` — all of which CI (`ci.yml`) runs. A pushed tag can
-therefore publish artifacts on a weaker gate than a normal pull request.
-There is also no single shared gate command; local rehearsal and CI inline
-overlapping but not identical checks.
+> **Resolved 2026-07-11.** The two remaining release-integrity gaps below are
+> now closed:
+>
+> - **Docker image built `homonto` only** → the image builds both binaries and
+>   runs five suites (`homonto-core`, `homonto-expanded`, `homonto-agents`,
+>   `onto-lifecycle`, `release-packaging`) covering catalog materialization,
+>   agents, onto phases, and release packaging (commit `cb4b898`).
+> - **Release workflow gate weaker than CI** → `scripts/gate.sh` is the single
+>   shared gate; `ci.yml` and `release.yml` both run it, so a tag cannot publish
+>   on a weaker gate than a PR (commit `7c593c5`).
 
 ## Not Implemented
 
@@ -148,7 +144,9 @@ direction.
 ## Current Release Gate
 
 `v0.1.0` is **not yet cut** (`git tag --list` is empty). Four release-integrity
-items must close before `v0.1.0-rc.1`. Two are **closed**; two remain **open**.
+items must close before `v0.1.0-rc.1`. **All four are closed** — the remaining
+step is cutting and dogfood-verifying `v0.1.0-rc.1` itself (backlog item 7),
+which is a maintainer-owned tag push.
 
 - [x] **1. Agent ownership safety.** De-declared target records survive `agents
   update`; deletion failure is treated as prune failure and retains ownership;
@@ -161,14 +159,17 @@ items must close before `v0.1.0-rc.1`. Two are **closed**; two remain **open**.
   into OpenSpec archives, legacy `docs/changes/` + `road-to-release.md` removed,
   duplicate bundled skills removed; stale-phrase scan + markdown link check clean
   (commits through `7826682`, 2026-07-11). *See backlog item 2.*
-- [ ] **3. Dual-binary Docker E2E.** Exit gate: the Docker image builds both
-  `homonto` and `onto`; five suites (`homonto-core`, `homonto-expanded`,
-  `homonto-agents`, `onto-lifecycle`, `release-packaging`) pass against
-  disposable state. *See backlog item 4.*
-- [ ] **4. Unified release gate.** Exit gate: one shared gate command drives
-  local rehearsal, CI, and release publication; a tag cannot publish unless
-  the complete gate (race, mod-tidy, vet, build, test, Docker E2E,
-  govulncheck, packaging smoke) passes. *See backlog items 5–6.*
+- [x] **3. Dual-binary Docker E2E.** The image builds both `homonto` and `onto`;
+  five suites (`homonto-core`, `homonto-expanded`, `homonto-agents`,
+  `onto-lifecycle`, `release-packaging`) pass against disposable state
+  (`./scripts/docker-test.sh` → `ALL SUITES PASS`, commit `cb4b898`,
+  2026-07-11). *See backlog item 4.*
+- [x] **4. Unified release gate.** One shared command `scripts/gate.sh` drives
+  local rehearsal, CI (`ci.yml`), and release publication (`release.yml`); it
+  runs race, mod-tidy, vet, build, test, version-stamp + cli smoke, govulncheck,
+  and the Docker E2E incl. packaging smoke — so a tag cannot publish on a weaker
+  gate than a PR (`ALL GATE CHECKS PASSED`, commit `7c593c5`, 2026-07-11).
+  *See backlog items 5–6.*
 
 ## Implementation Backlog
 
@@ -235,11 +236,14 @@ gate remains open without a recorded exception.
   `rg -n 'TBD' openspec/specs` → empty; uncommented `homonto init` output
   `plan`s with exit 0.
 
-### 4. Dual-Binary Docker End-to-End — *open*
+### 4. Dual-Binary Docker End-to-End — *done (2026-07-11, `cb4b898`)*
 
-- **Problem:** the Docker image and smoke cover only `homonto` core; no
-  evidence for `onto`, expanded `homonto` projection, agents, or release
-  packaging.
+- **Outcome:** the image builds both binaries and runs the five suites below;
+  `./scripts/docker-test.sh` → `ALL SUITES PASS`. Each suite asserts files,
+  links, lockfile, state, and exit codes against disposable state.
+- **Problem (historical):** the Docker image and smoke covered only `homonto`
+  core; no evidence for `onto`, expanded `homonto` projection, agents, or
+  release packaging.
 - **Scope:** build both binaries in the image; add five diagnosable suites
   with file/lock/state/exit-code assertions (stdout matching only for output
   contracts).
@@ -260,33 +264,26 @@ gate remains open without a recorded exception.
 - **Verify:** `./scripts/docker-test.sh` runs all suites; exits 0.
 - **Exit gate:** five suites green on CI.
 
-### 5. Release Artifact Smoke — *open*
+### 5. Release Artifact Smoke — *done (2026-07-11, `cb4b898`)*
 
-- **Problem:** no suite verifies the published archives, checksums,
-  extraction, or stamped version strings.
-- **Scope:** smoke the 12 cross-compiled archives (3 OS × 2 arch × 2
-  binaries), `SHA256SUMS`, archive extraction, and disposable-home
-  `version`/`init`/`plan`/`apply`/`status`.
-- **Dependencies:** item 4 (packaging suite reuses the dual-binary image).
-- **Primary files:** `scripts/build-release.sh`, `docs/release-checklist.md`.
-- **Acceptance:** a built release tree passes extraction + checksum + smoke.
-- **Verify:** `scripts/build-release.sh "$(git describe)"` then archive smoke.
-- **Exit gate:** release artifacts smoke-clean before any tag.
+- **Outcome:** the `release-packaging` E2E suite runs `scripts/build-release.sh`,
+  asserts all 12 cross-compiled archives (3 OS × 2 arch × 2 binaries) plus a
+  12-line `SHA256SUMS`, verifies the checksums, extracts the native archives,
+  checks both binaries report the stamped version, and runs a disposable-home
+  `version`/`init`/`plan`/`apply`/`status` smoke of an **extracted** binary.
+- **Verify:** `./scripts/docker-test.sh` (the `release-packaging` suite).
 
-### 6. Unified Release Gate — *open*
+### 6. Unified Release Gate — *done (2026-07-11, `7c593c5`)*
 
-- **Problem:** local rehearsal, CI, and release publication run different
-  check sets; the release workflow's gate is strictly weaker than CI.
-- **Scope:** one repository command (script/Makefile target) drives all three
-  paths; release publication depends on the complete gate; prevent publishing
-  while a CI job is failing or pending.
-- **Dependencies:** items 4–5 (gate includes Docker E2E and packaging smoke).
-- **Primary files:** `.github/workflows/release.yml`,
-  `.github/workflows/ci.yml`, new shared gate script.
-- **Acceptance:** the release workflow invokes the same command CI and local
-  rehearsal use.
-- **Verify:** tag a dry-run; confirm the gate runs end-to-end.
-- **Exit gate:** a tag cannot publish unless the complete gate passes.
+- **Outcome:** `scripts/gate.sh` is the single gate — gofmt, mod-tidy, vet,
+  build, test, race, version-stamp + cli smoke, govulncheck, and the dual-binary
+  Docker E2E (incl. release-packaging smoke). `ci.yml` runs it in one job and
+  `release.yml`'s pre-publish step runs the same script, so a tag cannot publish
+  on a weaker gate than a PR.
+- **Verify:** `./scripts/gate.sh` → `ALL GATE CHECKS PASSED` (run locally
+  2026-07-11).
+- **Problem (historical):** local rehearsal, CI, and release publication ran
+  different check sets; the release workflow's gate was strictly weaker than CI.
 
 ### 7. Release Candidate — *open*
 
