@@ -1,29 +1,25 @@
 # Architecture Decision Records
 
 `docs/adr/` holds **accepted or superseded** decisions only, one file per
-decision: `NNNN-<slug>.md`.
+decision: `NNNN-<slug>.md`. It is decision *history* — a record of what was
+decided and why, kept even after a decision is superseded.
 
 ## Staging rule
 
-ADRs are drafted inside a change workspace
-(`docs/changes/<name>/adr/<slug>.md`) with `Status: Proposed` and **no
-number**. At close, `onto-close` assigns the next free global number and
-moves the draft here with `Status: Accepted`. This keeps `docs/adr/` free of
-abandoned-change noise and avoids number collisions between parallel changes.
+New ADRs are drafted inside an active OpenSpec change (staged with the change's
+design artifacts, `Status: Proposed`, and no number). The number is assigned
+only when the change is archived, which keeps `docs/adr/` free of
+abandoned-change noise and avoids collisions between parallel changes.
 
 ## Numbering
 
 - Four digits, zero-padded, strictly increasing: `0001`, `0002`, …
-- The next number = highest existing number in `docs/adr/` + 1, assigned
-  **only at close** by `onto-close`. Drafts in change workspaces are
-  unnumbered (`<slug>.md`).
-- Numbers are never reused. A superseded ADR keeps its file; its Status
-  becomes `Superseded by NNNN`.
+- The next number = highest existing number in `docs/adr/` + 1, assigned when
+  the producing change is archived.
+- Numbers are never reused. A superseded ADR keeps its file; its Status becomes
+  `Superseded by NNNN`.
 
 ## Template
-
-Canonical template: `onto-design/references/adr-draft.md` (drafts use
-`Status: Proposed`; the fields below are lint-checked at close).
 
 ```markdown
 # <Title, imperative: "Adopt X", "Use Y for Z">

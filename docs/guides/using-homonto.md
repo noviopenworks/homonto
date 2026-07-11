@@ -4,11 +4,14 @@ homonto declaratively manages the configuration of your AI CLI tools — today
 **Claude Code** and **OpenCode**. You describe the MCP servers, skills, plugins,
 and settings you want in one `homonto.toml`, and homonto projects that desired
 state into each tool's own config files, surgically and reversibly.
-The first public release is gated on adding a sibling `onto` binary for the
-spec-driven workflow; current source still exposes the `homonto` CLI only.
+The repository builds two binaries: `homonto` (this declarative
+installer/projector) and `onto`, the spec-driven workflow operator — both from
+source (see [the onto workflow guide](onto-workflow.md)).
 
-It is Terraform-shaped: **edit config → `plan` → `apply`**. There are no
-imperative `add`/`remove` commands — the file is the source of truth.
+It is Terraform-shaped: **edit config → `plan` → `apply`** — `homonto.toml` is
+the source of truth. The one imperative surface is the lifecycle-managed agent
+group (`homonto agents add`/`update`/`prune`), which reconciles declared
+`[agents.<name>]` tables against installed files.
 
 ## Install
 
@@ -65,10 +68,14 @@ source = "local:graphify"          # local:<name> → homonto/skills/<name>
 scope = "user"                     # user: ~/.claude, ~/.config/opencode
                                    # project: <repo>/.claude, <repo>/.opencode
 
-# Per-tool plugins.
-[plugins]
-claude   = ["claude-hud@official"]
-opencode = ["@slkiser/opencode-quota"]
+# Per-tool plugins — one table per plugin.
+[plugins.claude.claude-hud]
+source = "claude-hud@official"     # name@marketplace
+# enabled = false                  # optional; omit → enabled
+# config = { compact = true }      # optional; claude only → pluginConfigs.<source>.options
+
+[plugins.opencode.opencode-quota]
+source = "@slkiser/opencode-quota" # npm package name
 
 # Per-tool settings, merged into each tool's settings file.
 [settings.claude]
@@ -77,6 +84,12 @@ model = "opus"
 [settings.opencode]
 model = "anthropic/claude-opus-4-8"
 ```
+
+**Model routes.** Any config that enables a model-backed tool must declare
+**all three** routes for it — `[models.<tool>.architectural]`,
+`[models.<tool>.coding]`, and `[models.<tool>.trivial]` — a partial set is
+rejected at load. See the roadmap's [capability
+matrix](../roadmap.md#implemented-capability-matrix).
 
 **Targets.** An MCP with no `targets` applies to both `claude` and `opencode`;
 an explicit list restricts it. Only `claude` and `opencode` are valid — a typo
@@ -196,8 +209,9 @@ When neither is present: `No drift.`
   `.claude/agents/`) and OpenCode's `agent/` (user:
   `~/.config/opencode/agent/`, project: `.opencode/agent/`) — with `doctor`
   verifying both tools' links.
-- The standalone `onto` binary is planned for the first public tag; current
-  source only ships the `homonto` CLI and dogfooded onto skills.
+- The standalone `onto` binary ships alongside `homonto` (built from
+  `cmd/onto/`); it operates the spec-driven workflow (`init`, `new`, `status`,
+  `advance`, `close`, `doctor`). See [the onto workflow guide](onto-workflow.md).
 - Writing `opencode.jsonc` removes comments (whole-document JSONC
   normalization).
 - Skill symlinks store an absolute target, so if you **move or rename your

@@ -242,12 +242,13 @@ and Comet state/scripts bind the phases together. New development starts with
 `/comet`; active changes live under `openspec/changes/`, and deep technical
 designs and implementation plans live under `docs/superpowers/`.
 
-- `docs/adr/` — accepted architecture decisions
-- `docs/specs/` — living capability specs (SHALL + scenarios)
+- `docs/roadmap.md` — project status, release gate, and implementation backlog (the single source of truth)
+- `openspec/specs/` — living capability specs (SHALL + scenarios)
+- `docs/adr/` — accepted / superseded architecture decisions
 - `openspec/changes/` — active Comet/OpenSpec change workspaces (+ archive)
 - `docs/changes/` — legacy Onto workspaces (historical, do not open new work)
 - `docs/guides/` — user-facing guides
-- `docs/road-to-release.md` — the release gate; `docs/release-checklist.md` — how to cut a release
+- `docs/release-checklist.md` — how to cut a release
 
 Start with `/comet`. Full guide: [docs/guides/comet-workflow.md](docs/guides/comet-workflow.md).
 
