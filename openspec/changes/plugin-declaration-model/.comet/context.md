@@ -3,7 +3,7 @@
 - Change: plugin-declaration-model
 - Phase: design
 - Mode: compact
-- Context hash: 334705d72412297064702763896d6c0e9f136dffa51081a5a9092635bec2e5e2
+- Context hash: 25546ae298c2e7c513d2d8836442357d70f431b125a30f3b288c09ab278595c7
 
 Generated-by: comet-handoff.sh
 
@@ -275,8 +275,8 @@ preserved: `settings.claude.enabledPlugins` and `settings.opencode.plugin` (and
 ## openspec/changes/plugin-declaration-model/specs/tool-adapters/spec.md
 
 - Source: openspec/changes/plugin-declaration-model/specs/tool-adapters/spec.md
-- Lines: 1-44
-- SHA256: 6ea12171801037f994aca6529b255a7743f0058074a1c630b5ca0f04dd3a5960
+- Lines: 1-47
+- SHA256: 1da9da49179cc293c503c10e7381033e3d8d997ec8f4b5bee1d314143def1ae2
 
 ```md
 ## ADDED Requirements
@@ -286,7 +286,10 @@ preserved: `settings.claude.enabledPlugins` and `settings.opencode.plugin` (and
 Both adapters SHALL project declared plugins from the
 `[plugins.<tool>.<name>]` model, honoring each plugin's `source` and `enabled`
 flag, surgically (unmanaged keys/entries preserved) and idempotently. A plugin's
-projected state SHALL be keyed by its declaration name (`plugin.<name>`).
+projected state SHALL be keyed by its `source` (`plugin.<source>`), so the
+managed state key and the on-disk key (`enabledPlugins.<source>` for Claude, the
+`plugin` array value for OpenCode) coincide; the `[plugins.<tool>.<name>]`
+declaration name is an organizational label this increment.
 
 - **Claude**: for each declared Claude plugin, the adapter SHALL set
   `enabledPlugins[<source>]` to the plugin's `enabled` value in
