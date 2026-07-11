@@ -2,6 +2,8 @@
 comet_change: agents-foundation
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-agents-foundation
+status: final
 ---
 
 # Agents Foundation — Technical Design

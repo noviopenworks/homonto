@@ -2,6 +2,7 @@
 change: agents-foundation
 design-doc: docs/superpowers/specs/2026-07-11-agents-foundation-design.md
 base-ref: b4406fdf853d2ed0ca8996a192cb29262314098e
+archived-with: 2026-07-11-agents-foundation
 ---
 
 # Plan: agents foundation (v2 #1)
