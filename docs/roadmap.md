@@ -411,11 +411,17 @@ agent directories (per its `copy`/`link` mode), conflict-safe (refuses to
 clobber an unmanaged file, all-or-nothing per agent) and idempotent (an unchanged
 target is a no-op), recording each install (source, version, mode, targets, and
 per-target path + content hash) in a new `.homonto/agents-lock.json` lockfile —
-the installed-state ground truth the rest of v2 builds on. Remaining v2 work
-(deferred): `builtin:`/remote sources; `update`/`pin`/`doctor`/`migrate`;
-compatibility checks per target; local-edit conflict detection and
-three-way-merge/backup on update; a per-agent scope; and the eventual
-`[agents]`-vs-`[subagents]` reconciliation.
+the installed-state ground truth the rest of v2 builds on. A read-only health
+check has also landed: `homonto agents doctor` compares declared agents (config)
+against installed (`agents-lock.json`) and disk, reporting each drift — declared-
+but-not-installed, orphaned (de-declared), source-changed (a `local:` provider
+file whose hash no longer matches the install), target-not-installed / no-longer-
+targeted, missing-on-disk, and `copy`-mode modified-on-disk — printing `healthy`
+and exit 0 when clean, or the findings and a non-zero exit otherwise (the peer of
+`homonto doctor`/`onto doctor`). Remaining v2 work (deferred): `builtin:`/remote
+sources; `update`/`pin`/`migrate` (which act on the drift `doctor` reports);
+compatibility checks per target; three-way-merge/backup on update; a per-agent
+scope; and the eventual `[agents]`-vs-`[subagents]` reconciliation.
 
 Scope:
 
