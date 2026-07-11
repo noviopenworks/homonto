@@ -241,7 +241,9 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		out["setting."+k] = mustJSON(v)
 	}
 	for _, pl := range c.Plugins.Claude {
-		out["plugin."+pl.Source] = `true`
+		// Source-keyed: enabledPlugins[<source>] carries the plugin's enabled
+		// value, so a disabled plugin emits a managed `false` (not absence).
+		out["plugin."+pl.Source] = mustJSON(pl.IsEnabled())
 	}
 	return out
 }
