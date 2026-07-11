@@ -82,116 +82,78 @@ an error naming the expected path.
 
 ### Requirement: homonto agents doctor reports agent health
 
-`homonto agents doctor` SHALL be a read-only command that loads the config
-(declared agents) and `.homonto/agents-lock.json` (installed agents) and reports
-each drift as a finding. It SHALL write nothing. It SHALL check:
+`homonto agents doctor` SHALL remain a read-only command reporting declared-vs-
+installed drift with a non-zero exit on any problem finding. In the three-way-
+merge model a locally-edited install (on-disk content differing from the recorded
+base) is a normal, mergeable state and SHALL NOT be a problem finding. Doctor
+SHALL still report: a declared-but-not-installed agent; an orphaned lockfile
+agent; a `local:` source whose content differs from the recorded base ("source
+changed"); a target declared-but-not-installed or installed-but-no-longer-
+declared; a missing-on-disk install; and, newly, a **pending conflict** when a
+`<dst>.merged` sidecar exists.
 
-- a declared agent absent from the lockfile is **not installed**;
-- a lockfile-recorded agent absent from the config is **orphaned**;
-- a `local:` agent whose `homonto/agents/<source>.md` content hash differs from
-  the recorded install hash (or whose source file is missing) has a **source
-  drift**;
-- a target the agent declares but has no lockfile install entry is a **target not
-  installed**;
-- a lockfile install entry for a target the agent no longer declares is a
-  **target no longer declared**;
-- a recorded install path that no longer exists on disk is **missing on disk**;
-- a `copy`-mode install whose on-disk content hash differs from the recorded hash
-  is **modified on disk**.
+#### Scenario: locally-modified install is not a problem
 
-On a healthy workspace it SHALL print `healthy` and exit 0. When one or more
-findings exist it SHALL print each finding and exit non-zero.
-
-#### Scenario: healthy workspace
-
-- **GIVEN** a config whose declared agents are all installed, undrifted, and unmodified per the lockfile and disk
+- **GIVEN** an installed agent whose on-disk file was edited but whose source is unchanged
 - **WHEN** `homonto agents doctor` runs
-- **THEN** it prints `healthy` and exits 0
+- **THEN** it does not report a problem for the local edit and (absent other issues) exits 0
 
-#### Scenario: declared but not installed
+#### Scenario: a pending merge conflict is reported
 
-- **GIVEN** a `[agents.<name>]` with no lockfile record
+- **GIVEN** a `<dst>.merged` sidecar left by a conflicted `agents update`
 - **WHEN** `homonto agents doctor` runs
-- **THEN** it reports the agent as not installed and exits non-zero
-
-#### Scenario: orphaned install
-
-- **GIVEN** a lockfile agent that is no longer declared in the config
-- **WHEN** `homonto agents doctor` runs
-- **THEN** it reports the agent as orphaned and exits non-zero
-
-#### Scenario: source drift
-
-- **GIVEN** an installed `local:` agent whose source file content changed since install
-- **WHEN** `homonto agents doctor` runs
-- **THEN** it reports the source drift and exits non-zero
-
-#### Scenario: modified on disk
-
-- **GIVEN** a copy-mode installed agent whose on-disk file content was edited
-- **WHEN** `homonto agents doctor` runs
-- **THEN** it reports the file as modified on disk and exits non-zero
-
-#### Scenario: missing on disk
-
-- **GIVEN** a recorded install whose file was deleted
-- **WHEN** `homonto agents doctor` runs
-- **THEN** it reports the file as missing on disk and exits non-zero
-
-#### Scenario: read-only
-
-- **WHEN** `homonto agents doctor` runs
-- **THEN** it writes no files and mutates nothing
+- **THEN** it reports the target as conflicted (pointing at `<dst>.merged`) and exits non-zero
 
 ### Requirement: homonto agents update re-materializes an installed agent
 
-`homonto agents update <name>` SHALL re-install an already-installed declared
-agent from its current source and refresh `.homonto/agents-lock.json`. The agent
-MUST be declared and recorded in the lockfile; an undeclared or not-yet-installed
-agent SHALL be an error (the latter directing the user to `agents add`). This
-increment supports `local:<x>` sources only; `builtin:`/remote sources SHALL
-return a clear "not yet supported" error.
+`homonto agents update <name>` SHALL reconcile an already-installed declared
+`local:` agent with its current source. The agent MUST be declared and recorded
+in the lockfile; an undeclared or not-yet-installed agent SHALL be an error (the
+latter directing the user to `agents add`). `builtin:`/remote sources SHALL return
+a clear "not yet supported" error.
 
-For each of the agent's declared targets the command SHALL re-materialize per the
-agent's mode: `copy` writes the current `homonto/agents/<x>.md` content; `link`
-ensures the symlink points at the source. It SHALL be:
+For each declared target in `copy` mode, with `BASE` = the recorded base content
+(from the blob store), `LOCAL` = the on-disk file, and `UPSTREAM` = the current
+source, the command SHALL:
 
-- **backup-preserving**: before overwriting a `copy`-mode target whose on-disk
-  content differs from the recorded hash (a local edit), the current file SHALL be
-  copied to `<path>.bak`;
-- **idempotent**: a target already matching the source SHALL be a no-op;
-- **recorded**: the lockfile SHALL be refreshed with each target's new content
-  hash.
+- no-op when the on-disk content already equals the source ("up to date");
+- when the base content is unavailable (no blob recorded, or the on-disk file is
+  missing), fall back to backup-before-overwrite (a genuine local edit is copied
+  to `<dst>.bak` before the source is written);
+- otherwise perform a three-way merge (`merge.Merge(BASE, LOCAL, UPSTREAM)`):
+  - **0 conflicts** → write the merged result to `<dst>` (backing up the prior
+    local to `<dst>.bak` when it changes), and advance the recorded base to
+    `UPSTREAM` (so the next update merges against the pristine source);
+  - **≥1 conflict** → leave the live `<dst>` unchanged, write the
+    merged-with-markers result to `<dst>.merged`, make no lockfile change, report
+    the conflict, and exit non-zero.
 
-#### Scenario: update re-materializes a changed source
+`link`-mode targets are re-pointed only (no merge). The command SHALL remain
+idempotent for an already-reconciled agent.
 
-- **GIVEN** an installed copy-mode `local:` agent whose source file content changed since install
+#### Scenario: non-overlapping local + upstream edits auto-merge
+
+- **GIVEN** an installed copy agent, a local edit to one region, and a source edit to a disjoint region
 - **WHEN** `homonto agents update <name>` runs
-- **THEN** each target file is rewritten to the new source content and the lockfile hash is refreshed
+- **THEN** `<dst>` contains both edits, no `<dst>.merged` is created, and the recorded base advances to the source
 
-#### Scenario: update backs up a locally-modified install
+#### Scenario: overlapping edits conflict via a sidecar
 
-- **GIVEN** an installed copy-mode agent whose on-disk file was edited (differs from the recorded hash)
+- **GIVEN** an installed copy agent whose local edit and source edit overlap
 - **WHEN** `homonto agents update <name>` runs
-- **THEN** the current file is copied to `<path>.bak` before the source content overwrites it
+- **THEN** the live `<dst>` is unchanged, a `<dst>.merged` with conflict markers is written, the lockfile is unchanged, and the command exits non-zero
 
 #### Scenario: update is idempotent
 
-- **GIVEN** an installed agent already matching its source
+- **GIVEN** an installed agent already equal to its source
 - **WHEN** `homonto agents update <name>` runs
-- **THEN** each target is a no-op and no `.bak` is created
+- **THEN** each target is a no-op and no `.merged`/`.bak` is created
 
-#### Scenario: update requires a prior install
+#### Scenario: missing base blob falls back to backup
 
-- **GIVEN** a declared agent with no lockfile record
+- **GIVEN** an installed copy agent with a local edit but no recorded base blob
 - **WHEN** `homonto agents update <name>` runs
-- **THEN** it errors that the agent is not installed and points to `agents add`
-
-#### Scenario: builtin source is not yet supported
-
-- **GIVEN** an installed-or-declared `builtin:` agent
-- **WHEN** `homonto agents update <name>` runs
-- **THEN** it returns a clear error that builtin sources are not yet supported
+- **THEN** the prior local is backed up to `<dst>.bak` and the source overwrites `<dst>`
 
 ### Requirement: Three-way merge engine
 
