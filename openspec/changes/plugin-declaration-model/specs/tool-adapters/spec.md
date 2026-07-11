@@ -5,7 +5,10 @@
 Both adapters SHALL project declared plugins from the
 `[plugins.<tool>.<name>]` model, honoring each plugin's `source` and `enabled`
 flag, surgically (unmanaged keys/entries preserved) and idempotently. A plugin's
-projected state SHALL be keyed by its declaration name (`plugin.<name>`).
+projected state SHALL be keyed by its `source` (`plugin.<source>`), so the
+managed state key and the on-disk key (`enabledPlugins.<source>` for Claude, the
+`plugin` array value for OpenCode) coincide; the `[plugins.<tool>.<name>]`
+declaration name is an organizational label this increment.
 
 - **Claude**: for each declared Claude plugin, the adapter SHALL set
   `enabledPlugins[<source>]` to the plugin's `enabled` value in
