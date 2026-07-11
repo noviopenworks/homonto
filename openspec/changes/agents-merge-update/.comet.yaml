@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: design
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 94ab11e5d1cabf74bce7d0e09fc21a52d012d2c9
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-11-agents-merge-update-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-11
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/agents-merge-update/.comet/handoff/design-context.json
+handoff_hash: 7dfed52a760122b83156281aef8edd216a849f56d106cc086b001c3ed144daba
+classic_profile: full
+classic_migration: 1
+run_id: 9a646605-a6f3-43ce-966e-5f186583ae9c
