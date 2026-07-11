@@ -46,6 +46,31 @@ type NamedResource struct {
 	Resource Resource
 }
 
+// Agent is a v2 lifecycle-managed agent (distinct from the v1 [subagents]
+// symlink Resource): it carries version + mode for update/migration later.
+type Agent struct {
+	Source  string   `toml:"source"`  // builtin:<name> | local:<name>
+	Version string   `toml:"version"` // optional; empty = unpinned
+	Targets []string `toml:"targets"` // optional; empty = both tools
+	Mode    string   `toml:"mode"`    // optional; copy | link (empty = link)
+}
+
+// TargetsOrAll returns the explicit targets, or all tools when none are set.
+func (a Agent) TargetsOrAll() []string {
+	if len(a.Targets) == 0 {
+		return []string{"claude", "opencode"}
+	}
+	return a.Targets
+}
+
+// ModeOrDefault returns the lifecycle mode, defaulting to link when unset.
+func (a Agent) ModeOrDefault() string {
+	if a.Mode == "" {
+		return "link"
+	}
+	return a.Mode
+}
+
 type ModelRoute struct {
 	Model   string `toml:"model"`
 	Effort  string `toml:"effort"`
@@ -113,6 +138,7 @@ type Config struct {
 	Settings     Settings            `toml:"settings"`
 	TUI          TUI                 `toml:"tui"`
 	Marketplaces Marketplaces        `toml:"marketplaces"`
+	Agents       map[string]Agent    `toml:"agents"`
 }
 
 func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
@@ -421,6 +447,9 @@ func Load(path string) (*Config, error) {
 	if err := validateModels(&c); err != nil {
 		return nil, err
 	}
+	if err := validateAgents(c.Agents); err != nil {
+		return nil, err
+	}
 	// Every other name becomes a key written into a tool's JSON file. sjson
 	// treats index-like segments ("0", "-1") as array positions, silently
 	// turning the containing object into a JSON ARRAY; empty names address
@@ -580,6 +609,31 @@ func validateResources(kind string, resources map[string]Resource) error {
 			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, r.Source)
 		}
 		for _, target := range r.Targets {
+			if target != "claude" && target != "opencode" {
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
+			}
+		}
+	}
+	return nil
+}
+
+// validateAgents checks name, source, mode, and targets for every declared
+// [agents.<name>] lifecycle agent.
+func validateAgents(agents map[string]Agent) error {
+	for name, ag := range agents {
+		if err := validateKey("agents", name); err != nil {
+			return err
+		}
+		label := "agents." + name
+		if !validSource(ag.Source) {
+			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, ag.Source)
+		}
+		switch ag.Mode {
+		case "", "copy", "link":
+		default:
+			return fmt.Errorf("parse config: %s mode %q is invalid; valid values are \"copy\" and \"link\"", label, ag.Mode)
+		}
+		for _, target := range ag.Targets {
 			if target != "claude" && target != "opencode" {
 				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
 			}

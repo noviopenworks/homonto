@@ -1038,3 +1038,83 @@ func TestLoadRejectsReservedMarketplaceSetting(t *testing.T) {
 		t.Fatalf("error does not name the key: %v", err)
 	}
 }
+
+// TestAgentsParseFullDeclaration: a fully specified [agents.<name>] parses into
+// c.Agents with source/version/targets/mode preserved verbatim.
+func TestAgentsParseFullDeclaration(t *testing.T) {
+	c := loadTOML(t, `
+[agents.review]
+source = "builtin:review-agent"
+version = "1.2.0"
+targets = ["claude", "opencode"]
+mode = "copy"
+`)
+	ag, ok := c.Agents["review"]
+	if !ok {
+		t.Fatalf("agent %q not parsed; got %v", "review", c.Agents)
+	}
+	if ag.Source != "builtin:review-agent" {
+		t.Fatalf("source = %q; want builtin:review-agent", ag.Source)
+	}
+	if ag.Version != "1.2.0" {
+		t.Fatalf("version = %q; want 1.2.0", ag.Version)
+	}
+	if got := ag.TargetsOrAll(); len(got) != 2 || got[0] != "claude" || got[1] != "opencode" {
+		t.Fatalf("targets = %v; want [claude opencode]", got)
+	}
+	if ag.ModeOrDefault() != "copy" {
+		t.Fatalf("mode = %q; want copy", ag.ModeOrDefault())
+	}
+}
+
+// TestAgentDefaults: an agent with only a source is unpinned, targets both
+// tools, and defaults to link mode.
+func TestAgentDefaults(t *testing.T) {
+	c := loadTOML(t, "[agents.solo]\nsource = \"local:x\"\n")
+	ag := c.Agents["solo"]
+	if ag.Version != "" {
+		t.Fatalf("version = %q; want empty (unpinned)", ag.Version)
+	}
+	if got := ag.TargetsOrAll(); len(got) != 2 || got[0] != "claude" || got[1] != "opencode" {
+		t.Fatalf("default targets = %v; want [claude opencode]", got)
+	}
+	if ag.ModeOrDefault() != "link" {
+		t.Fatalf("default mode = %q; want link", ag.ModeOrDefault())
+	}
+}
+
+// TestAgentsRejectInvalidSource: a non builtin:/local: source is rejected,
+// naming the agent.
+func TestAgentsRejectInvalidSource(t *testing.T) {
+	err := loadDoc(t, "[agents.review]\nsource = \"https://example.com/x\"\n")
+	if err == nil {
+		t.Fatalf("invalid source accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "review") || !strings.Contains(err.Error(), "source") {
+		t.Fatalf("error does not name the agent+source: %v", err)
+	}
+}
+
+// TestAgentsRejectInvalidMode: a mode outside copy/link is rejected, naming the
+// agent and the offending mode.
+func TestAgentsRejectInvalidMode(t *testing.T) {
+	err := loadDoc(t, "[agents.review]\nsource = \"builtin:x\"\nmode = \"symlink\"\n")
+	if err == nil {
+		t.Fatalf("invalid mode accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "review") || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("error does not name the agent+mode: %v", err)
+	}
+}
+
+// TestAgentsRejectUnknownTarget: a target naming a tool other than
+// claude/opencode is rejected, naming the offending target.
+func TestAgentsRejectUnknownTarget(t *testing.T) {
+	err := loadDoc(t, "[agents.review]\nsource = \"builtin:x\"\ntargets = [\"vscode\"]\n")
+	if err == nil {
+		t.Fatalf("unknown target accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "vscode") {
+		t.Fatalf("error does not name the unknown target: %v", err)
+	}
+}
