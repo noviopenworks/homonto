@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 7f74cb7a959aef23baae500c609ea33c22dd1986
 design_doc: docs/superpowers/specs/2026-07-11-onto-release-packaging-design.md
 plan: docs/superpowers/plans/2026-07-11-onto-release-packaging.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-11-onto-release-packaging-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-11
-verified_at: null
+verified_at: 2026-07-11
 archived: false
 direct_override: null
 handoff_context: openspec/changes/onto-release-packaging/.comet/handoff/design-context.json
