@@ -175,3 +175,14 @@ func (c *Catalog) SubagentPath(name string) (string, bool) {
 	p, ok := c.subagents[name]
 	return p, ok
 }
+
+// SubagentContent returns a builtin subagent/agent's content by name from the
+// catalog filesystem, and whether the name is known.
+func (c *Catalog) SubagentContent(name string) ([]byte, bool, error) {
+	p, ok := c.subagents[name]
+	if !ok {
+		return nil, false, nil
+	}
+	b, err := fs.ReadFile(c.fsys, p)
+	return b, true, err
+}

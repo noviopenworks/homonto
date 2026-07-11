@@ -133,6 +133,28 @@ comet-navigator = "subagents/comet-navigator.md"
 	}
 }
 
+// TestSubagentContentReadsBuiltin: SubagentContent returns a known subagent's
+// bytes with ok=true, and (nil,false,nil) for an unknown name.
+func TestSubagentContentReadsBuiltin(t *testing.T) {
+	m := fixtureFS()
+	m["subagents/x.md"] = &fstest.MapFile{Data: []byte("hello builtin")}
+	c, err := Load(m)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	b, ok, err := c.SubagentContent("x")
+	if err != nil || !ok {
+		t.Fatalf("SubagentContent(x) = ok %v err %v", ok, err)
+	}
+	if string(b) != "hello builtin" {
+		t.Fatalf("content = %q", b)
+	}
+	b2, ok2, err2 := c.SubagentContent("nope")
+	if b2 != nil || ok2 || err2 != nil {
+		t.Fatalf("SubagentContent(nope) = (%q, %v, %v); want (nil,false,nil)", b2, ok2, err2)
+	}
+}
+
 func TestLoadRejectsNameDirMismatch(t *testing.T) {
 	m := fixtureFS()
 	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "wrong"
