@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-11-agents-update-all-verif
 branch_status: handled
 created_at: 2026-07-11
 verified_at: 2026-07-11
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/agents-update-all/.comet/handoff/design-context.json
 handoff_hash: 8d6d410776c93b8c96cf4e0c83acbb3e56bdaf0dcbf32b0e9a0d22b262415b41

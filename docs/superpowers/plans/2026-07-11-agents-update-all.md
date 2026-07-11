@@ -2,6 +2,7 @@
 change: agents-update-all
 design-doc: docs/superpowers/specs/2026-07-11-agents-update-all-design.md
 base-ref: f1e0661b56619cd899d40cc829c9d356f4b28663
+archived-with: 2026-07-11-agents-update-all
 ---
 
 # Plan: agents update --all (v2 #5c)
