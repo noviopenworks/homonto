@@ -322,11 +322,16 @@ gate remains open without a recorded exception.
 ### 9. Resource Coherence — *partial (blob GC done 2026-07-11, `3529ce7`)*
 
 - **Done:** safe content-addressed blob GC — `agentblob.Reclaim` + `homonto
-  agents gc [--dry-run]` reclaims base blobs no lockfile install references.
-- **Remaining (needs an architectural decision):** reconcile `[agents]` and
-  `[subagents]` with a migration path; define per-agent scope and relocation;
-  add target compatibility metadata; make `.merged` resolution explicit and
-  recoverable.
+  agents gc [--dry-run]` reclaims base blobs no lockfile install references. The
+  `[agents]`/`[subagents]` reconciliation is **designed and direction-approved**
+  (Option C: collapse into declarative `[subagents]`+`apply`, auto-supersede
+  migration, project default scope) with a 6-step apply-preserving plan —
+  `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md`.
+- **Remaining (implementation):** execute the Option-C plan as sequenced comet
+  changes — it is a breaking re-architecture that removes the `homonto agents`
+  command surface and folds versioning + three-way merge into `apply`; start with
+  a dedicated `Subagent` struct (the shared `Resource` type can't carry the new
+  fields). Also: target compatibility metadata.
 - **Problem:** `[agents]` and `[subagents]` overlap without a documented
   ownership/lifecycle model; no per-agent scope; conflict resolution is not
   fully recoverable.
