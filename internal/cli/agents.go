@@ -28,6 +28,7 @@ func agentsCmd() *cobra.Command {
 	cmd.AddCommand(agentsUpdateCmd())
 	cmd.AddCommand(agentsDoctorCmd())
 	cmd.AddCommand(agentsPruneCmd())
+	cmd.AddCommand(agentsGCCmd())
 	return cmd
 }
 

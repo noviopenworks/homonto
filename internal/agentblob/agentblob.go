@@ -7,6 +7,7 @@ package agentblob
 import (
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/agentlock"
 	"github.com/noviopenworks/homonto/internal/fsutil"
@@ -27,6 +28,40 @@ func Put(homontoDir string, content []byte) (hash string, err error) {
 		return "", err
 	}
 	return hash, nil
+}
+
+// Reclaim removes stored base blobs whose hash is not in referenced — the set of
+// content hashes any lockfile install still points at. It is safe: content is
+// addressed by hash, so an unreferenced blob can never be needed again (the only
+// blob a future three-way update reads is the current recorded base,
+// Install.Hash). With dryRun it removes nothing and only reports what would go.
+// Returns the affected hashes, sorted. A missing store is empty (no error).
+func Reclaim(homontoDir string, referenced map[string]bool, dryRun bool) ([]string, error) {
+	d := dir(homontoDir)
+	ents, err := os.ReadDir(d)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var dead []string
+	for _, e := range ents {
+		if e.IsDir() || referenced[e.Name()] {
+			continue
+		}
+		dead = append(dead, e.Name())
+	}
+	sort.Strings(dead)
+	if dryRun {
+		return dead, nil
+	}
+	for _, h := range dead {
+		if err := os.Remove(filepath.Join(d, h)); err != nil {
+			return nil, err
+		}
+	}
+	return dead, nil
 }
 
 // Get reads the blob for hash. A missing blob returns (nil, false, nil); any
