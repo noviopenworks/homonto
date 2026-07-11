@@ -2,6 +2,7 @@
 change: onto-release-packaging
 design-doc: docs/superpowers/specs/2026-07-11-onto-release-packaging-design.md
 base-ref: 5ccee3f8b35cb9608fca1bc5d5bb16134330c9f4
+archived-with: 2026-07-11-onto-release-packaging
 ---
 
 # Plan: dual-binary release packaging (#5)

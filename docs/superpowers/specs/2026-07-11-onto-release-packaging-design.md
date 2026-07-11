@@ -2,6 +2,8 @@
 comet_change: onto-release-packaging
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-onto-release-packaging
+status: final
 ---
 
 # Dual-Binary Release Packaging — Technical Design
