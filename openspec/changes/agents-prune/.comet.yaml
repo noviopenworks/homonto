@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 0429ba21226e6a7233cfb32a4a0eaef208bae9f2
 design_doc: docs/superpowers/specs/2026-07-11-agents-prune-design.md
 plan: docs/superpowers/plans/2026-07-11-agents-prune.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-11-agents-prune-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-11
-verified_at: null
+verified_at: 2026-07-11
 archived: false
 direct_override: null
 handoff_context: openspec/changes/agents-prune/.comet/handoff/design-context.json
