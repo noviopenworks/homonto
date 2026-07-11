@@ -30,9 +30,10 @@ var files = map[string]string{
 # source = "builtin:architect"
 # scope = "project"
 
-# [plugins]
-# claude = ["claude-hud@official"]
-# opencode = ["@slkiser/opencode-quota"]
+# [plugins.claude.claude-hud]
+# source = "claude-hud@official"       # name@marketplace
+# [plugins.opencode.opencode-quota]
+# source = "@slkiser/opencode-quota"   # npm package
 
 # [settings.claude]
 # model = "opus"
