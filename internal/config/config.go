@@ -79,16 +79,32 @@ type Settings struct {
 	OpenCode map[string]any `toml:"opencode"`
 }
 
+// Marketplace is one declared Claude plugin marketplace. Source selects which
+// locator fields are meaningful: github→Repo, url→URL, git-subdir→URL+Path,
+// directory→Path. AutoUpdate is optional (nil == omitted).
+type Marketplace struct {
+	Source     string `toml:"source"`      // github | url | git-subdir | directory
+	Repo       string `toml:"repo"`        // github
+	URL        string `toml:"url"`         // url, git-subdir
+	Path       string `toml:"path"`        // git-subdir, directory
+	AutoUpdate *bool  `toml:"auto_update"` // optional
+}
+
+type Marketplaces struct {
+	Claude map[string]Marketplace `toml:"claude"`
+}
+
 // Config is the tool-agnostic desired state parsed from homonto.toml.
 type Config struct {
-	MCPs       map[string]MCP      `toml:"mcps"`
-	Frameworks map[string]Resource `toml:"frameworks"`
-	Skills     map[string]Resource `toml:"skills"`
-	Commands   map[string]Resource `toml:"commands"`
-	Subagents  map[string]Resource `toml:"subagents"`
-	Models     ModelConfig         `toml:"models"`
-	Plugins    Plugins             `toml:"plugins"`
-	Settings   Settings            `toml:"settings"`
+	MCPs         map[string]MCP      `toml:"mcps"`
+	Frameworks   map[string]Resource `toml:"frameworks"`
+	Skills       map[string]Resource `toml:"skills"`
+	Commands     map[string]Resource `toml:"commands"`
+	Subagents    map[string]Resource `toml:"subagents"`
+	Models       ModelConfig         `toml:"models"`
+	Plugins      Plugins             `toml:"plugins"`
+	Settings     Settings            `toml:"settings"`
+	Marketplaces Marketplaces        `toml:"marketplaces"`
 }
 
 func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
@@ -450,6 +466,34 @@ func Load(path string) (*Config, error) {
 			seenSource[pl.Source] = declName
 		}
 	}
+	// Marketplace declarations project to extraKnownMarketplaces.<name>. Each
+	// source kind requires its locator field(s); an unknown source or a missing
+	// locator projects nothing meaningful, so fail fast naming the marketplace.
+	for name, mk := range c.Marketplaces.Claude {
+		if err := validateKey("marketplaces.claude", name); err != nil {
+			return nil, err
+		}
+		switch mk.Source {
+		case "github":
+			if mk.Repo == "" {
+				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"github\" is missing required \"repo\"", name)
+			}
+		case "url":
+			if mk.URL == "" {
+				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"url\" is missing required \"url\"", name)
+			}
+		case "git-subdir":
+			if mk.URL == "" || mk.Path == "" {
+				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"git-subdir\" is missing required \"url\" and/or \"path\"", name)
+			}
+		case "directory":
+			if mk.Path == "" {
+				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"directory\" is missing required \"path\"", name)
+			}
+		default:
+			return nil, fmt.Errorf("parse config: marketplaces.claude %q has unknown source %q; valid sources are \"github\", \"url\", \"git-subdir\", \"directory\"", name, mk.Source)
+		}
+	}
 	// Settings keys that homonto itself manages in the same tool file would
 	// collide with its own writes: claude projects plugins as `enabledPlugins`
 	// into settings.json; opencode projects MCPs and plugins as the `mcp` and
@@ -472,6 +516,9 @@ func Load(path string) (*Config, error) {
 		}
 		if k == "pluginConfigs" {
 			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages pluginConfigs via [plugins.claude.<name>.config]); declare per-plugin config there instead", k)
+		}
+		if k == "extraKnownMarketplaces" {
+			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages marketplaces via [marketplaces.claude.<name>]); declare the marketplace there instead", k)
 		}
 	}
 	for k := range c.Settings.OpenCode {
