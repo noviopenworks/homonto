@@ -62,6 +62,47 @@ func TestAgentsUpdateAllMergesEveryInstalled(t *testing.T) {
 	}
 }
 
+// TestAgentsUpdateAllPerAgentErrorIsolated: a per-agent hard error (a missing
+// source file) is reported for that agent and counted, but does not abort the
+// run — the other agent is still processed and the command exits non-zero.
+func TestAgentsUpdateAllPerAgentErrorIsolated(t *testing.T) {
+	home := t.TempDir()
+	cfg, cfgDir := addWorkspace(t, twoAgentTOML, map[string]string{
+		"a": "# agent a v1\n",
+		"b": "# agent b v1\n",
+	})
+	for _, name := range []string{"a", "b"} {
+		if out, err := runCmd(t, home, "", "agents", "add", name, "--config", cfg); err != nil {
+			t.Fatalf("agents add %s: %v\n%s", name, err, out)
+		}
+	}
+	// Delete agent a's source file so its update hard-errors; change b's source
+	// so b cleanly refreshes.
+	if err := os.Remove(filepath.Join(cfgDir, "homonto", "agents", "a.md")); err != nil {
+		t.Fatal(err)
+	}
+	newB := "# agent b v2\n"
+	if err := os.WriteFile(filepath.Join(cfgDir, "homonto", "agents", "b.md"), []byte(newB), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "update", "--all", "--config", cfg)
+	if err == nil {
+		t.Fatalf("update --all must exit non-zero when an agent errors\n%s", out)
+	}
+	if !strings.Contains(out, "a: error:") {
+		t.Fatalf("the errored agent must be reported, got:\n%s", out)
+	}
+	if !strings.Contains(out, "errored") {
+		t.Fatalf("summary must include an errored count, got:\n%s", out)
+	}
+	// b was still processed despite a's error.
+	bDst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "b.md")
+	if got, _ := os.ReadFile(bDst); string(got) != newB {
+		t.Fatalf("b must still be updated despite a's error, got:\n%s", got)
+	}
+}
+
 // TestAgentsUpdateAllConflictExitsNonZeroOthersProcessed: with one conflicting
 // agent and one cleanly-mergeable agent, `agents update --all` writes a .merged
 // sidecar for the conflict and exits non-zero, but STILL processes the other.

@@ -385,7 +385,7 @@ func agentsUpdateCmd() *cobra.Command {
 			// --all: merge every installed agent, isolating per-agent errors.
 			anyConflict := false
 			hadError := false
-			processed, conflicted, skipped := 0, 0, 0
+			processed, conflicted, skipped, errored := 0, 0, 0, 0
 			for _, name := range sortedKeysAgents(lock.Agents) {
 				if _, ok := c.Agents[name]; !ok {
 					cmd.Printf("%s: skipped (no longer declared)\n", name)
@@ -396,6 +396,7 @@ func agentsUpdateCmd() *cobra.Command {
 				if uerr != nil {
 					cmd.Printf("%s: error: %v\n", name, uerr)
 					hadError = true
+					errored++
 					continue
 				}
 				processed++
@@ -407,7 +408,7 @@ func agentsUpdateCmd() *cobra.Command {
 			if err := lock.Save(homontoDir); err != nil {
 				return err
 			}
-			cmd.Printf("agents update --all: %d processed, %d conflicted, %d skipped\n", processed, conflicted, skipped)
+			cmd.Printf("agents update --all: %d processed, %d conflicted, %d skipped, %d errored\n", processed, conflicted, skipped, errored)
 			if anyConflict || hadError {
 				return fmt.Errorf("agents update --all: one or more agents had conflicts or errors")
 			}
