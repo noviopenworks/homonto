@@ -327,11 +327,16 @@ gate remains open without a recorded exception.
   (Option C: collapse into declarative `[subagents]`+`apply`, auto-supersede
   migration, project default scope) with a 6-step apply-preserving plan —
   `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md`.
-- **Remaining (implementation):** execute the Option-C plan as sequenced comet
-  changes — it is a breaking re-architecture that removes the `homonto agents`
-  command surface and folds versioning + three-way merge into `apply`; start with
-  a dedicated `Subagent` struct (the shared `Resource` type can't carry the new
-  fields). Also: target compatibility metadata.
+- **Implementation started:** step 1a landed (`7fba2dc`) — an omitted
+  `[subagents.<name>]` scope now defaults to `project`.
+- **Remaining (implementation, sequenced):** (1b) dedicated `Subagent` struct
+  carrying `mode`+`version` (the shared `Resource` type can't); (2–3) **copy-mode
+  subagent projection + apply-time three-way merge** (the core: re-plumbs the
+  deterministic apply path with base blobs + `.merged` sidecars — the highest-risk
+  increment, do via comet with per-step TDD); (4) status/doctor + GC re-home;
+  (5) auto-supersede `[agents]`→`[subagents]` at load; (6) remove the
+  `homonto agents` command surface + `config.Agent` + `internal/agentlock`. Plan:
+  `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md` §8.
 - **Problem:** `[agents]` and `[subagents]` overlap without a documented
   ownership/lifecycle model; no per-agent scope; conflict resolution is not
   fully recoverable.
