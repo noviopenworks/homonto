@@ -99,6 +99,13 @@ func (a *Adapter) cfgFile() string {
 	return filepath.Join(a.home, ".config", "opencode", "opencode.jsonc")
 }
 
+// tuiFile is the second managed file: OpenCode reads TUI settings from a
+// separate ~/.config/opencode/tui.json. [tui.opencode] keys project here under
+// the "tui." state namespace, independent of opencode.jsonc.
+func (a *Adapter) tuiFile() string {
+	return filepath.Join(a.home, ".config", "opencode", "tui.json")
+}
+
 // skillsDir is the directory owned-skill symlinks live in for the given scope.
 func (a *Adapter) skillsDir(scope string) string {
 	return skillpath.Dir("opencode", scope, a.home, a.projectRoot)
@@ -245,6 +252,10 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
+	tuiDoc, err := readStandardized(a.tuiFile())
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
 	cs := adapter.ChangeSet{Tool: "opencode"}
 
 	// Config-supplied names are escaped so reads (and Apply's writes, which
@@ -258,6 +269,14 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		key := "setting." + k
 		want := mustJSON(v)
 		disk, hasDisk := jsonutil.GetJSON(doc, jsonutil.EscapePath(k))
+		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
+	}
+	// [tui.opencode] keys project into the second managed file (tui.json). The
+	// "tui." namespace reuses planKey/state machinery verbatim against tuiDoc.
+	for k, v := range c.TUI.OpenCode {
+		key := "tui." + k
+		want := mustJSON(v)
+		disk, hasDisk := jsonutil.GetJSON(tuiDoc, jsonutil.EscapePath(k))
 		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
 	}
 	for _, pl := range c.Plugins.OpenCode {
@@ -420,6 +439,9 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for k := range c.Settings.OpenCode {
 		declared["setting."+k] = true
 	}
+	for k := range c.TUI.OpenCode {
+		declared["tui."+k] = true
+	}
 	for _, pl := range c.Plugins.OpenCode {
 		declared["plugin."+pl.Source] = true
 	}
@@ -498,6 +520,10 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	tuiDoc, err := readStandardized(a.tuiFile())
+	if err != nil {
+		return nil, err
+	}
 	out := map[string]string{}
 	for _, key := range st.Keys("opencode") {
 		switch {
@@ -507,6 +533,10 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 			}
 		case hasPrefix(key, "setting."):
 			if v, ok := jsonutil.GetJSON(doc, jsonutil.EscapePath(trim(key, "setting."))); ok {
+				out[key] = secret.Hash(jsonutil.Canonical(v))
+			}
+		case hasPrefix(key, "tui."):
+			if v, ok := jsonutil.GetJSON(tuiDoc, jsonutil.EscapePath(trim(key, "tui."))); ok {
 				out[key] = secret.Hash(jsonutil.Canonical(v))
 			}
 		case hasPrefix(key, "plugin."):
@@ -576,10 +606,17 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if err != nil {
 		return err
 	}
+	tuiDoc, err := readStandardized(a.tuiFile())
+	if err != nil {
+		return err
+	}
 	// Write opencode.jsonc only when a managed key in it actually changed.
 	// adopt/noop are state-only and must leave the file byte-for-byte untouched
-	// (JSONC comments preserved); skill.* is symlink work, not JSON.
+	// (JSONC comments preserved); skill.* is symlink work, not JSON. tuiChanged
+	// gates tui.json's write independently, so a change to one file never
+	// rewrites the other.
 	docChanged := false
+	tuiChanged := false
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
 			continue
@@ -618,6 +655,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			case hasPrefix(c.Key, "setting."):
 				doc, err = jsonutil.DeleteJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")))
 				docChanged = true
+			case hasPrefix(c.Key, "tui."):
+				tuiDoc, err = jsonutil.DeleteJSON(tuiDoc, jsonutil.EscapePath(trim(c.Key, "tui.")))
+				tuiChanged = true
 			case hasPrefix(c.Key, "plugin."):
 				doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
 				docChanged = true
@@ -686,6 +726,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 		case hasPrefix(c.Key, "setting."):
 			doc, err = jsonutil.SetJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
 			docChanged = true
+		case hasPrefix(c.Key, "tui."):
+			tuiDoc, err = jsonutil.SetJSON(tuiDoc, jsonutil.EscapePath(trim(c.Key, "tui.")), val)
+			tuiChanged = true
 		case hasPrefix(c.Key, "plugin."):
 			doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin."))
 			docChanged = true
@@ -713,6 +756,11 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	}
 	if docChanged {
 		if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
+			return err
+		}
+	}
+	if tuiChanged {
+		if err := fsutil.WriteAtomic(a.tuiFile(), tuiDoc); err != nil {
 			return err
 		}
 	}

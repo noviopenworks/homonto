@@ -358,6 +358,19 @@ Non-goals:
 Homonto manages Claude/OpenCode TUI-related configuration. This phase does not
 add an interactive Homonto TUI.
 
+**Status (2026-07-11, first increment merged to `main`):** The OpenCode
+`tui.json` target has landed. Research established that Claude's TUI settings
+(`theme`, `statusLine`, `tui`, `editorMode`, …) are all top-level `settings.json`
+keys **already covered** by the existing `[settings.claude]` projection — so
+Claude needs no new code. OpenCode's TUI settings live in a **separate file**
+`~/.config/opencode/tui.json`; homonto now projects a top-level `[tui.opencode]`
+table there as a **second managed config file** in the OpenCode adapter
+(surgical/idempotent/pruned/adoptable, with a `tui.<key>` state namespace),
+independent of `opencode.jsonc` (a TUI-only change never rewrites it). This
+establishes the "two managed files per adapter" pattern. Remaining v1.3 work:
+richer keybind/layout handling and theme-file management if wanted, and
+fixtures per target config shape.
+
 Scope:
 
 - Themes and display preferences.
