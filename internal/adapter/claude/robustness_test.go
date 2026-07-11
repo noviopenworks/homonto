@@ -84,7 +84,7 @@ func TestPluginNameWithSpecialsLandsAsLiteralKey(t *testing.T) {
 	home := t.TempDir()
 	a := New(home, t.TempDir())
 	st, _ := state.Load(t.TempDir())
-	c := &config.Config{Plugins: config.Plugins{Claude: []string{"foo@bar.dots"}}}
+	c := &config.Config{Plugins: config.Plugins{Claude: map[string]config.Plugin{"foo": {Source: "foo@bar.dots"}}}}
 
 	cs, err := a.Plan(c, st)
 	if err != nil {

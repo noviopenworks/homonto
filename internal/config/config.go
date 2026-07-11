@@ -57,9 +57,20 @@ type ModelConfig struct {
 	OpenCode map[string]ModelRoute `toml:"opencode"`
 }
 
+// Plugin is one declared plugin. Source is the tool-native identifier: for
+// claude the "name@marketplace" key used in enabledPlugins; for opencode the
+// npm package / local plugin path placed in the `plugin` array.
+type Plugin struct {
+	Source  string `toml:"source"`
+	Enabled *bool  `toml:"enabled"` // nil == true (default enabled)
+}
+
+// IsEnabled reports whether the plugin is enabled (default true when omitted).
+func (p Plugin) IsEnabled() bool { return p.Enabled == nil || *p.Enabled }
+
 type Plugins struct {
-	Claude   []string `toml:"claude"`
-	OpenCode []string `toml:"opencode"`
+	Claude   map[string]Plugin `toml:"claude"`
+	OpenCode map[string]Plugin `toml:"opencode"`
 }
 
 type Settings struct {
@@ -406,14 +417,23 @@ func Load(path string) (*Config, error) {
 			}
 		}
 	}
-	for _, p := range c.Plugins.Claude {
-		if err := validateKey("plugins.claude", p); err != nil {
-			return nil, err
-		}
-	}
-	for _, p := range c.Plugins.OpenCode {
-		if err := validateKey("plugins.opencode", p); err != nil {
-			return nil, err
+	for _, tool := range []struct {
+		name string
+		m    map[string]Plugin
+	}{
+		{"plugins.claude", c.Plugins.Claude},
+		{"plugins.opencode", c.Plugins.OpenCode},
+	} {
+		for declName, pl := range tool.m {
+			if err := validateKey(tool.name, declName); err != nil {
+				return nil, err
+			}
+			// A plugin with no source projects nothing (no enabledPlugins key /
+			// no plugin-array value), so a declared plugin would silently do
+			// nothing. Fail fast naming the plugin.
+			if strings.TrimSpace(pl.Source) == "" {
+				return nil, fmt.Errorf("parse config: %s plugin %q has an empty source", tool.name, declName)
+			}
 		}
 	}
 	// Settings keys that homonto itself manages in the same tool file would

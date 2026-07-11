@@ -240,8 +240,8 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	for k, v := range c.Settings.Claude {
 		out["setting."+k] = mustJSON(v)
 	}
-	for _, p := range c.Plugins.Claude {
-		out["plugin."+p] = `true`
+	for _, pl := range c.Plugins.Claude {
+		out["plugin."+pl.Source] = `true`
 	}
 	return out
 }

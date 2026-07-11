@@ -21,7 +21,7 @@ func applyObserveCfg(t *testing.T, home, content string) (*Adapter, *state.State
 	c := cfgWithSkills("user", "onto")
 	c.MCPs = map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"opencode"}}}
 	c.Settings = config.Settings{OpenCode: map[string]any{"theme": "dark"}}
-	c.Plugins = config.Plugins{OpenCode: []string{"@slkiser/opencode-quota"}}
+	c.Plugins = config.Plugins{OpenCode: map[string]config.Plugin{"quota": {Source: "@slkiser/opencode-quota"}}}
 	cs, err := a.Plan(c, st)
 	if err != nil {
 		t.Fatalf("plan: %v", err)
