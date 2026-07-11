@@ -332,6 +332,13 @@ gate remains open without a recorded exception.
   rejected, `4f28565`); step 1b (dedicated `config.Subagent` type with
   `mode`+`version`, behavior-preserving, `mode=copy` gated until step 2,
   `67c07c7`). All green under `-race`.
+- **Adapter-layer core, in progress:** the reusable conflict-safe content-file
+  reconciler `internal/copyfile` (the copy-mode analogue of `internal/link`) is
+  built and fully unit-tested (`e4ce6f5`), isolated/unwired so it lands with zero
+  apply-pipeline risk. **Next:** wire it into the claude+opencode adapters'
+  Plan/Apply/ObserveHashes/prune for `mode=copy` subagents (removing the
+  `mode=copy` load gate), then (3) layer `internal/merge` on its `local-edit`
+  action with base blobs + `.merged` sidecars.
 - **Remaining (adapter-layer core):** (2–3) copy-mode subagent projection as a
   *managed content-file* mechanism (real files + hash state + apply-time
   three-way merge with base blobs + `.merged` sidecars) — a new projection path
