@@ -132,6 +132,57 @@ func TestPlanPruneAndPruneLocalEdit(t *testing.T) {
 	}
 }
 
+func TestApplyWritesPrunesAndRecords(t *testing.T) {
+	dir := t.TempDir()
+	create := filepath.Join(dir, "create.md")
+	update := filepath.Join(dir, "update.md")
+	noop := filepath.Join(dir, "noop.md")
+	prune := filepath.Join(dir, "prune.md")
+	foreign := filepath.Join(dir, "foreign.md")
+
+	write(t, update, []byte("old"))
+	write(t, noop, []byte("same"))
+	write(t, prune, []byte("gone"))
+	write(t, foreign, []byte("user data"))
+
+	ops := []Op{
+		{Dst: create, Action: Create, Content: []byte("new")},
+		{Dst: update, Action: Update, Content: []byte("newer")},
+		{Dst: noop, Action: Noop, Content: []byte("same")},
+		{Dst: prune, Action: Prune},
+		{Dst: foreign, Action: Conflict, Content: []byte("ours")},
+	}
+	rec, pruned, err := Apply(ops)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(create); string(b) != "new" {
+		t.Fatalf("create not written: %q", b)
+	}
+	if b, _ := os.ReadFile(update); string(b) != "newer" {
+		t.Fatalf("update not written: %q", b)
+	}
+	if _, err := os.Stat(prune); !os.IsNotExist(err) {
+		t.Fatal("prune did not remove the file")
+	}
+	// A Conflict op must never touch the foreign file.
+	if b, _ := os.ReadFile(foreign); string(b) != "user data" {
+		t.Fatalf("conflict op clobbered a foreign file: %q", b)
+	}
+	// Recorded hashes cover create/update/noop; pruned lists the removed dst.
+	for _, p := range []string{create, update, noop} {
+		if rec[p] == "" {
+			t.Fatalf("missing recorded hash for %s", p)
+		}
+	}
+	if rec[create] != Hash([]byte("new")) || rec[update] != Hash([]byte("newer")) {
+		t.Fatal("recorded hashes must be of the written content")
+	}
+	if len(pruned) != 1 || pruned[0] != prune {
+		t.Fatalf("pruned = %v, want [%s]", pruned, prune)
+	}
+}
+
 func TestPlanAbsentPrunedRecordIsSkipped(t *testing.T) {
 	dir := t.TempDir()
 	gone := filepath.Join(dir, "gone.md")

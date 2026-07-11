@@ -13,6 +13,8 @@ import (
 	"encoding/hex"
 	"os"
 	"sort"
+
+	"github.com/noviopenworks/homonto/internal/fsutil"
 )
 
 // Action is what a plan entry does to its destination.
@@ -85,7 +87,7 @@ func Plan(desired map[string][]byte, recorded map[string]string) ([]Op, error) {
 		rec, owned := recorded[dst]
 		switch {
 		case curHash == want:
-			ops = append(ops, Op{Dst: dst, Action: Noop})
+			ops = append(ops, Op{Dst: dst, Action: Noop, Content: content})
 		case !owned:
 			// A real file we have no record of owning — foreign, never clobbered.
 			ops = append(ops, Op{Dst: dst, Action: Conflict, Content: content})
@@ -120,4 +122,34 @@ func Plan(desired map[string][]byte, recorded map[string]string) ([]Op, error) {
 
 	sort.Slice(ops, func(i, j int) bool { return ops[i].Dst < ops[j].Dst })
 	return ops, nil
+}
+
+// Apply executes the writable ops — Create and Update write the desired bytes
+// atomically; Prune removes the managed file. It returns the ownership hashes to
+// persist in state (dst -> content hash, for Create/Update/Noop so unchanged
+// files keep their record) and the pruned destinations. Conflict and LocalEdit
+// are the caller's responsibility (a conflict must abort the run before Apply; a
+// local edit is merged/backed-up by the caller) and are ignored here.
+func Apply(ops []Op) (recorded map[string]string, pruned []string, err error) {
+	recorded = map[string]string{}
+	for _, op := range ops {
+		switch op.Action {
+		case Create, Update:
+			if err := fsutil.WriteAtomic(op.Dst, op.Content); err != nil {
+				return nil, nil, err
+			}
+			recorded[op.Dst] = Hash(op.Content)
+		case Noop:
+			recorded[op.Dst] = Hash(op.Content)
+		case Prune:
+			if err := os.Remove(op.Dst); err != nil && !os.IsNotExist(err) {
+				return nil, nil, err
+			}
+			pruned = append(pruned, op.Dst)
+		case Conflict, LocalEdit:
+			// caller's responsibility — never auto-written or removed here
+		}
+	}
+	sort.Strings(pruned)
+	return recorded, pruned, nil
 }
