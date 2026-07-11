@@ -245,6 +245,13 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		// value, so a disabled plugin emits a managed `false` (not absence).
 		out["plugin."+pl.Source] = mustJSON(pl.IsEnabled())
 	}
+	for _, pl := range c.Plugins.Claude {
+		// pluginConfigs[<source>] carries the whole {options:…} object so write
+		// and read-back stay symmetric (see current()); no config → no key.
+		if len(pl.Config) > 0 {
+			out["pluginconfig."+pl.Source] = mustJSON(map[string]any{"options": pl.Config})
+		}
+	}
 	return out
 }
 
@@ -476,10 +483,16 @@ func (a *Adapter) current() (map[string]string, error) {
 	for k, v := range objMembers(sj, "enabledPlugins") {
 		out["plugin."+k] = v
 	}
+	for k, v := range objMembers(sj, "pluginConfigs") {
+		out["pluginconfig."+k] = v
+	}
 	var m map[string]json.RawMessage
 	_ = json.Unmarshal(sj, &m)
 	for k, raw := range m {
-		if k == "mcpServers" || k == "enabledPlugins" {
+		// pluginConfigs is surfaced above as pluginconfig.*; excluding it here
+		// (alongside the other managed top-level objects) keeps it from also
+		// leaking as a setting.* key, which would make every plan non-idempotent.
+		if k == "mcpServers" || k == "enabledPlugins" || k == "pluginConfigs" {
 			continue
 		}
 		out["setting."+k] = string(raw)
@@ -613,6 +626,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			case hasPrefix(c.Key, "setting."):
 				sj, err = jsonutil.DeleteJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")))
 				sjChanged = true
+			case hasPrefix(c.Key, "pluginconfig."):
+				sj, err = jsonutil.DeleteJSON(sj, "pluginConfigs."+jsonutil.EscapePath(trim(c.Key, "pluginconfig.")))
+				sjChanged = true
 			case hasPrefix(c.Key, "plugin."):
 				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
 				sjChanged = true
@@ -682,6 +698,9 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			mjChanged = true
 		case hasPrefix(c.Key, "setting."):
 			sj, err = jsonutil.SetJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
+			sjChanged = true
+		case hasPrefix(c.Key, "pluginconfig."):
+			sj, err = jsonutil.SetJSON(sj, "pluginConfigs."+jsonutil.EscapePath(trim(c.Key, "pluginconfig.")), val)
 			sjChanged = true
 		case hasPrefix(c.Key, "plugin."):
 			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
