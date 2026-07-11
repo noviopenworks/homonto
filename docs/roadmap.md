@@ -77,6 +77,7 @@ repository and one module.
 | `homonto agents doctor` | Implemented | Per-agent health reporting. |
 | `homonto agents update` / `--all` | Implemented | Three-way merge; conflict sidecar; bulk mode. |
 | `homonto agents prune` | Implemented | Deletion failure keeps the file + lockfile record (regression-tested). |
+| `homonto agents gc` | Implemented | Reclaims unreferenced base blobs; content-addressed, `--dry-run`. |
 | Claude + OpenCode MCP/settings projection | Implemented | Surgical managed-key updates. |
 | Reference-only secrets | Implemented | Resolved after confirm, never stored (`ADR 0002`). |
 | Atomic writes + adoption + pruning + drift | Implemented | `ADR 0003`, `ADR 0004`, `ADR 0009`, `ADR 0010`. |
@@ -136,8 +137,6 @@ direction.
 - **OpenCode comment preservation** — writes do not preserve user comments in
   OpenCode JSON; Deferred unless demand outweighs complexity.
 - **Broad config import** — `homonto import` is narrow by design.
-- **Blob garbage collection** — unreferenced `agentblob` content is not
-  reclaimed. Planned (backlog item 9).
 - **Per-agent scope semantics** — agents are not yet scoped or relocated with
   a documented model. Planned (backlog item 9).
 
@@ -320,15 +319,17 @@ gate remains open without a recorded exception.
 - **Verify:** `go test -race ./...`; `go test -fuzz` seeds pass.
 - **Exit gate:** `v0.1.0` promoted only after a clean RC cycle.
 
-### 9. Resource Coherence — *planned*
+### 9. Resource Coherence — *partial (blob GC done 2026-07-11, `3529ce7`)*
 
-- **Problem:** `[agents]` and `[subagents]` overlap without a documented
-  ownership/lifecycle model; no per-agent scope; no blob GC; conflict
-  resolution is not fully recoverable.
-- **Scope:** reconcile `[agents]`/`[subagents]` with a migration path; define
-  per-agent scope and relocation; add target compatibility metadata; add safe
-  content-addressed blob GC; make `.merged` resolution explicit and
+- **Done:** safe content-addressed blob GC — `agentblob.Reclaim` + `homonto
+  agents gc [--dry-run]` reclaims base blobs no lockfile install references.
+- **Remaining (needs an architectural decision):** reconcile `[agents]` and
+  `[subagents]` with a migration path; define per-agent scope and relocation;
+  add target compatibility metadata; make `.merged` resolution explicit and
   recoverable.
+- **Problem:** `[agents]` and `[subagents]` overlap without a documented
+  ownership/lifecycle model; no per-agent scope; conflict resolution is not
+  fully recoverable.
 - **Dependencies:** item 8 (stable surface to reconcile against).
 - **Primary files:** `internal/agentlock/`, `internal/agentblob/`,
   `internal/cli/agents.go`, `internal/config/`.
