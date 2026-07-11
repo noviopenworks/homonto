@@ -298,16 +298,24 @@ gate remains open without a recorded exception.
   home.
 - **Exit gate:** clean RC cycle with no open release-blocking defect.
 
-### 8. Public Stabilization — *planned*
+### 8. Public Stabilization — *in progress (2026-07-11, `437e822`)*
 
-- **Problem:** failure-path coverage is thin in selected filesystem and
-  drift-observation paths; no fuzz/property tests; oversized files impede
-  review.
-- **Scope:** add failure-path coverage for atomic writes, link removal, state
-  saves, `ObserveHashes`, and doctor helpers; add fuzz/property tests for
-  config parsing, JSON-path escaping, merge invariants, and state
-  serialization; split `internal/cli/agents.go` behind characterization tests.
-- **Dependencies:** item 7 (stabilize after RC, not before).
+- **Done:** fuzz/property tests added for merge invariants (`FuzzMerge`),
+  JSON-path escaping (`FuzzEscapePathRoundTrip`), state serialization
+  (`FuzzStateRoundTrip`), and config parse+validate (`FuzzLoad`) — fuzzing found
+  and fixed a real bug (`EscapePath` did not escape `:`, collapsing a
+  colon-keyed managed setting to an empty JSON key). Failure-path coverage added
+  for atomic writes (dir-create failure); link removal and `ObserveHashes`
+  already covered; `state.Save` delegates to the now-tested `WriteAtomic`.
+- **Remaining:** split the ~780-line `internal/cli/agents.go` behind
+  characterization tests (deferred to a dedicated, reviewed refactor — it is a
+  regression-prone change on a critical path); optional doctor-helper failure
+  paths.
+- **Problem (historical):** failure-path coverage was thin in selected
+  filesystem and drift-observation paths; there were no fuzz/property tests;
+  oversized files impede review.
+- **Dependencies:** item 7 (stabilize after RC) — the test/fuzz work was safe to
+  land early; the file split waits for the RC baseline.
 - **Primary files:** `internal/cli/agents*.go`, `internal/fsutil/`,
   `internal/merge/`, `internal/agentlock/`.
 - **Acceptance:** failure paths covered; fuzz seeds committed; split files
@@ -413,10 +421,11 @@ Each entry was run from the repository root on **2026-07-11** by the
 documentation-consolidation change. Re-run any of them to re-verify the
 baseline.
 
-- [x] `go test ./... -count=1` → **446 passed in 26 packages** (2026-07-11; +3 regression tests from backlog items 1 and 3).
-- [x] `go test -race ./... -count=1` → **446 passed in 26 packages**, race detector clean (2026-07-11).
+- [x] `go test ./... -count=1` → **475 passed in 26 packages** (2026-07-11; incl. fuzz-seed subtests + regression tests from backlog items 1, 3, and 8).
+- [x] `go test -race ./... -count=1` → **475 passed in 26 packages**, race detector clean (2026-07-11).
+- [x] `./scripts/gate.sh` → `ALL GATE CHECKS PASSED` (the full shared gate: fmt, tidy, vet, build, test, race, stamps, cli smoke, govulncheck, dual-binary Docker E2E) (2026-07-11).
 - [x] `go vet ./...` → clean (no issues).
 - [x] `go build ./...` → success (both `homonto` and `onto` build).
-- [x] `./scripts/docker-test.sh` → `SMOKE PASS` (homonto core smoke).
+- [x] `./scripts/docker-test.sh` → `ALL SUITES PASS` (dual-binary Docker E2E: homonto-core, homonto-expanded, homonto-agents, onto-lifecycle, release-packaging).
 - [x] `git tag --list` → empty (no release cut yet; `v0.1.0-rc.1` pending the
   release gate above).
