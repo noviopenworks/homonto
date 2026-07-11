@@ -1,6 +1,7 @@
 package opencode
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,6 +10,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/copyfile"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
@@ -203,6 +205,86 @@ func (a *Adapter) subagentLinks() map[string]string {
 		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = a.subagentSource(entry)
 	}
 	return out
+}
+
+// copySubagentDesired returns dst -> resolved content for each copy-mode subagent.
+func (a *Adapter) copySubagentDesired() (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for _, entry := range a.subagents {
+		if entry.Mode != "copy" {
+			continue
+		}
+		content, err := os.ReadFile(a.subagentSource(entry))
+		if err != nil {
+			return nil, err
+		}
+		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = content
+	}
+	return out, nil
+}
+
+// recordedCopyHashes returns dst -> recorded content hash for every subagentcopy.*
+// key in state (Desired holds the dst, Applied the content hash).
+func recordedCopyHashes(st *state.State, tool string) map[string]string {
+	out := map[string]string{}
+	for _, key := range st.Keys(tool) {
+		if !strings.HasPrefix(key, "subagentcopy.") {
+			continue
+		}
+		if e, ok := st.Get(tool, key); ok {
+			out[e.Desired] = e.Applied
+		}
+	}
+	return out
+}
+
+func copySubagentName(dst string) string {
+	return strings.TrimSuffix(filepath.Base(dst), ".md")
+}
+
+func (a *Adapter) planCopyOps(st *state.State) ([]copyfile.Op, error) {
+	desired, err := a.copySubagentDesired()
+	if err != nil {
+		return nil, err
+	}
+	return copyfile.Plan(desired, recordedCopyHashes(st, "opencode"))
+}
+
+// applyCopySubagents reconciles copy-mode subagent content files (write/update/
+// prune + state), backing up any local edit to <dst>.bak before overwrite or
+// prune (never losing a user's edit). A foreign file or symlink at a dst is a
+// conflict and aborts.
+func (a *Adapter) applyCopySubagents(st *state.State) error {
+	ops, err := a.planCopyOps(st)
+	if err != nil {
+		return err
+	}
+	for i, op := range ops {
+		switch op.Action {
+		case copyfile.Conflict:
+			return fmt.Errorf("opencode: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
+		case copyfile.LocalEdit:
+			if err := fsutil.WriteAtomic(op.Dst+".bak", op.OnDisk); err != nil {
+				return err
+			}
+			if op.Content == nil {
+				ops[i].Action = copyfile.Prune
+			} else {
+				ops[i].Action = copyfile.Update
+			}
+		}
+	}
+	rec, pruned, err := copyfile.Apply(ops)
+	if err != nil {
+		return err
+	}
+	for dst, h := range rec {
+		st.Set("opencode", "subagentcopy."+copySubagentName(dst), dst, h)
+	}
+	for _, dst := range pruned {
+		st.Delete("opencode", "subagentcopy."+copySubagentName(dst))
+	}
+	return nil
 }
 
 // localSourceName resolves a skill resource's content subdirectory: a local:
@@ -457,6 +539,27 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for _, entry := range a.subagents {
 		declared["subagent."+entry.Name] = true
 	}
+	// Copy-mode subagents are managed content files: surface create/update/prune
+	// and abort on a foreign-file conflict; Apply reconciles them in a dedicated
+	// pass. subagentcopy.* is outside managedPrefix so the generic delete loop
+	// never touches it.
+	copyOps, err := a.planCopyOps(st)
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	for _, op := range copyOps {
+		name := copySubagentName(op.Dst)
+		switch op.Action {
+		case copyfile.Conflict:
+			return adapter.ChangeSet{}, fmt.Errorf("opencode: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
+		case copyfile.Create:
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "subagentcopy." + name, New: op.Dst})
+		case copyfile.Update, copyfile.LocalEdit:
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "subagentcopy." + name, New: op.Dst})
+		case copyfile.Prune:
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "subagentcopy." + name, Old: op.Dst})
+		}
+	}
 	for _, k := range st.Keys("opencode") {
 		if declared[k] || !managedPrefix(k) {
 			continue
@@ -584,6 +687,18 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 				continue
 			}
 			out[key] = secret.Hash(dst + " -> " + target)
+		case hasPrefix(key, "subagentcopy."):
+			// A copy-mode subagent lives on disk as a real file; its Applied is the
+			// content hash and Desired holds the dst path.
+			e, ok := st.Get("opencode", key)
+			if !ok {
+				continue
+			}
+			content, err := os.ReadFile(e.Desired)
+			if err != nil {
+				continue
+			}
+			out[key] = copyfile.Hash(content)
 		case hasPrefix(key, "subagent."):
 			e, ok := st.Get("opencode", key)
 			if !ok {
@@ -622,6 +737,11 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	tuiChanged := false
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
+			continue
+		}
+		// Copy-mode subagent content files are reconciled by applyCopySubagents
+		// below, not through the generic JSON/link machinery.
+		if strings.HasPrefix(c.Key, "subagentcopy.") {
 			continue
 		}
 		if c.Action == "adopt" {
@@ -757,6 +877,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(subLinks, a.managedRoots()...); err != nil {
 		return err
 	}
+	// Fail fast on a copy-mode subagent conflict too, before any file is written.
+	copyOps, err := a.planCopyOps(st)
+	if err != nil {
+		return err
+	}
+	for _, op := range copyOps {
+		if op.Action == copyfile.Conflict {
+			return fmt.Errorf("opencode: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
+		}
+	}
 	if docChanged {
 		if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
 			return err
@@ -828,6 +958,10 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			return err
 		}
 		st.Set("opencode", "subagent."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
+	}
+	// Reconcile copy-mode subagent content files (write/update/prune + state).
+	if err := a.applyCopySubagents(st); err != nil {
+		return err
 	}
 	return nil
 }

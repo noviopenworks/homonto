@@ -319,8 +319,7 @@ func loadDoc(t *testing.T, doc string) error {
 	return err
 }
 
-// TestSubagentModeValidation: subagents accept an explicit link mode; copy is
-// reserved for the forthcoming copy-mode projection and rejected until then; an
+// TestSubagentModeValidation: subagents accept link (default) and copy; an
 // unknown mode is invalid.
 func TestSubagentModeValidation(t *testing.T) {
 	base := func(mode string) string {
@@ -330,14 +329,10 @@ func TestSubagentModeValidation(t *testing.T) {
 		}
 		return "[subagents.x]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + m + validModelsBothTools()
 	}
-	if err := loadDoc(t, base("")); err != nil {
-		t.Fatalf("default (link) mode must load: %v", err)
-	}
-	if err := loadDoc(t, base("link")); err != nil {
-		t.Fatalf("explicit link mode must load: %v", err)
-	}
-	if err := loadDoc(t, base("copy")); err == nil {
-		t.Fatal("mode=copy must be rejected until copy projection lands")
+	for _, mode := range []string{"", "link", "copy"} {
+		if err := loadDoc(t, base(mode)); err != nil {
+			t.Fatalf("mode %q must load: %v", mode, err)
+		}
 	}
 	if err := loadDoc(t, base("bogus")); err == nil {
 		t.Fatal("an unknown subagent mode must be rejected")

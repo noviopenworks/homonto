@@ -726,10 +726,8 @@ func validateSubagents(subagents map[string]Subagent) error {
 			}
 		}
 		switch s.Mode {
-		case "", "link":
-			// ok
-		case "copy":
-			return fmt.Errorf("parse config: %s mode \"copy\" is not yet supported for subagents (link only for now)", label)
+		case "", "link", "copy":
+			// ok — link projects a symlink, copy projects a managed content file
 		default:
 			return fmt.Errorf("parse config: %s mode %q is invalid; valid values are \"link\" and \"copy\"", label, s.Mode)
 		}
