@@ -39,7 +39,7 @@ design approach, plan-ready workflow configuration, verify failures, branch
 handling, and archive confirmation. Agents must not infer these choices from
 history or defaults.
 
-## Legacy Onto Artifacts
+## Change history
 
-`docs/changes/` and `docs/changes/archive/` are legacy Onto history. They are
-useful context, but new work must use `openspec/changes/`.
+Completed change history lives in `openspec/changes/archive/`. New work must use
+`openspec/changes/` (active) — start it with `/comet`.
