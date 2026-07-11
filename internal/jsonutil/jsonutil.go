@@ -12,10 +12,11 @@ import (
 )
 
 // pathSpecials are the bytes gjson/sjson treat as path syntax inside a key:
-// separators (. |), wildcards (* ?), query/modifier markers (# @), and the
+// separators (. | :), wildcards (* ?), query/modifier markers (# @), and the
 // escape character itself. Verified empirically: an unescaped dot nests
-// objects, and an unescaped @, | or # makes an sjson write vanish silently.
-const pathSpecials = `.|*?#@\`
+// objects, an unescaped @, | or # makes an sjson write vanish silently, and a
+// leading/lone colon collapses the segment to an empty key (found by fuzzing).
+const pathSpecials = `.|*?#@\:`
 
 // EscapePath escapes one config-supplied name for use as a single segment of
 // a gjson/sjson dotted path, so the segment addresses a literal key instead
