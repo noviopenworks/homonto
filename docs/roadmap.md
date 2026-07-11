@@ -425,10 +425,18 @@ to protect user work — backs up a locally-modified `copy` install to `<path>.b
 before overwriting (a genuine local edit only, not an untouched install); it is
 idempotent. Version pinning stays declarative (set `[agents.<name>].version` in
 the config; homonto never edits `homonto.toml`), so there is no separate `pin`
-command. Remaining v2 work (deferred): `builtin:`/remote sources; `migrate` and
-three-way-merge (auto-reconciling local + upstream edits, vs today's backup);
-compatibility checks per target; de-declared-target pruning; a per-agent scope;
-and the eventual `[agents]`-vs-`[subagents]` reconciliation.
+command. The three-way-merge foundation has landed (#5a): a pure, dependency-free
+line-based merge engine (`internal/merge` — auto-merges disjoint local + upstream
+edits, git-style conflict markers on overlap) and a content-addressed
+base-content blob store (`internal/agentblob`, `.homonto/agents-blobs/<sha256>`);
+`agents add`/`update` now persist each install's base content there
+(behavior-preserving) so a future merge has the common ancestor. Next (#5b) wires
+the merge into `update` (replacing today's backup-then-overwrite) with a safe
+`<path>.merged` sidecar on conflict and a `doctor` "conflicted" finding; then #5c
+`agents update --all` (a `migrate` convenience). Remaining v2 (deferred):
+`builtin:`/remote sources (#6); compatibility checks per target; de-declared-
+target pruning; a per-agent scope; blob GC; and the eventual
+`[agents]`-vs-`[subagents]` reconciliation.
 
 Scope:
 

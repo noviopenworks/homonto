@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/agentblob"
 	"github.com/noviopenworks/homonto/internal/agentlock"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/fsutil"
@@ -315,6 +316,12 @@ func agentsAddCmd() *cobra.Command {
 				cmd.Printf("%s (%s): %s %s\n", name, tool, status, dst)
 			}
 
+			// Persist the installed base content once (all targets share it) so a
+			// future three-way update can retrieve it by the recorded hash.
+			if _, err := agentblob.Put(homontoDir, content); err != nil {
+				return err
+			}
+
 			lock.Agents[name] = agentlock.Agent{
 				Source:    ag.Source,
 				Version:   ag.Version,
@@ -423,6 +430,12 @@ func agentsUpdateCmd() *cobra.Command {
 				}
 				installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
 				cmd.Printf("%s (%s): %s %s\n", name, tool, status, dst)
+			}
+
+			// Persist the installed base content once (all targets share it) so a
+			// future three-way update can retrieve it by the recorded hash.
+			if _, err := agentblob.Put(homontoDir, content); err != nil {
+				return err
 			}
 
 			lock.Agents[name] = agentlock.Agent{
