@@ -2,5 +2,7 @@
   "openspec_proposal": "openspec/changes/agents-add/proposal.md",
   "openspec_design": "openspec/changes/agents-add/design.md",
   "openspec_tasks": "openspec/changes/agents-add/tasks.md",
-  "openspec_delta_spec": "openspec/changes/agents-add/specs/agent-lifecycle/spec.md"
+  "openspec_delta_spec": "openspec/changes/agents-add/specs/agent-lifecycle/spec.md",
+  "handoff_context": "openspec/changes/agents-add/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/agents-add/.comet/handoff/design-context.md"
 }
