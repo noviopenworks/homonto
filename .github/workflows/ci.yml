@@ -56,7 +56,10 @@ jobs:
 
       - name: cli smoke
         run: |
-          printf '[skills]\nown=[]\n' > /tmp/homonto.toml
+          # Minimal current-format config (the removed [skills] own=[] list no
+          # longer parses). An MCP needs no on-disk source, so plan resolves and
+          # prints a real diff without touching the filesystem.
+          printf '[mcps.demo]\ncommand = ["true"]\n' > /tmp/homonto.toml
           /tmp/homonto --config /tmp/homonto.toml plan
 
   # End-to-end: run a real `apply` inside a throwaway container so mutating $HOME
