@@ -46,6 +46,48 @@ type NamedResource struct {
 	Resource Resource
 }
 
+// Subagent is a declarative agent projected by `apply` (distinct from the shared
+// Resource so it can carry lifecycle fields the reconciliation adds without
+// affecting skills/commands). `mode` selects link (symlink, today's behavior) or
+// copy (an editable, versioned, mergeable install — landing incrementally);
+// `version` is informational until pinning is wired.
+type Subagent struct {
+	Source  string   `toml:"source"`
+	Scope   string   `toml:"scope"`
+	Targets []string `toml:"targets"`
+	Mode    string   `toml:"mode"`
+	Version string   `toml:"version"`
+}
+
+func (s Subagent) TargetsOrAll() []string {
+	if len(s.Targets) == 0 {
+		return []string{"claude", "opencode"}
+	}
+	return s.Targets
+}
+
+// ScopeOrDefault returns the scope, defaulting to project when unset.
+func (s Subagent) ScopeOrDefault() string {
+	if s.Scope == "" {
+		return "project"
+	}
+	return s.Scope
+}
+
+// ModeOrDefault returns the projection mode, defaulting to link (symlink).
+func (s Subagent) ModeOrDefault() string {
+	if s.Mode == "" {
+		return "link"
+	}
+	return s.Mode
+}
+
+// asResource projects the subagent onto the shared Resource shape used by the
+// link-based projection pipeline (the only path implemented today).
+func (s Subagent) asResource() Resource {
+	return Resource{Source: s.Source, Scope: s.ScopeOrDefault(), Targets: s.Targets}
+}
+
 // Agent is a v2 lifecycle-managed agent (distinct from the v1 [subagents]
 // symlink Resource): it carries version + mode for update/migration later.
 type Agent struct {
@@ -132,7 +174,7 @@ type Config struct {
 	Frameworks   map[string]Resource `toml:"frameworks"`
 	Skills       map[string]Resource `toml:"skills"`
 	Commands     map[string]Resource `toml:"commands"`
-	Subagents    map[string]Resource `toml:"subagents"`
+	Subagents    map[string]Subagent `toml:"subagents"`
 	Models       ModelConfig         `toml:"models"`
 	Plugins      Plugins             `toml:"plugins"`
 	Settings     Settings            `toml:"settings"`
@@ -150,7 +192,14 @@ func (c *Config) CommandEntriesForTool(tool string) []NamedResource {
 }
 
 func (c *Config) SubagentEntriesForTool(tool string) []NamedResource {
-	return entriesForTool(c.Subagents, tool)
+	var out []NamedResource
+	for name, s := range c.Subagents {
+		if containsString(s.TargetsOrAll(), tool) {
+			out = append(out, NamedResource{Name: name, Resource: s.asResource()})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }
 
 var (
@@ -389,11 +438,16 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 
 func (c *Config) EnabledModelTools() []string {
 	seen := map[string]bool{}
-	for _, resources := range []map[string]Resource{c.Frameworks, c.Commands, c.Subagents} {
+	for _, resources := range []map[string]Resource{c.Frameworks, c.Commands} {
 		for _, r := range resources {
 			for _, target := range r.TargetsOrAll() {
 				seen[target] = true
 			}
+		}
+	}
+	for _, s := range c.Subagents {
+		for _, target := range s.TargetsOrAll() {
+			seen[target] = true
 		}
 	}
 	out := make([]string, 0, len(seen))
@@ -449,11 +503,13 @@ func Load(path string) (*Config, error) {
 		"frameworks": c.Frameworks,
 		"skills":     c.Skills,
 		"commands":   c.Commands,
-		"subagents":  c.Subagents,
 	} {
 		if err := validateResources(kind, resources); err != nil {
 			return nil, err
 		}
+	}
+	if err := validateSubagents(c.Subagents); err != nil {
+		return nil, err
 	}
 	if err := validateModels(&c); err != nil {
 		return nil, err
@@ -634,6 +690,42 @@ func validateResources(kind string, resources map[string]Resource) error {
 			if target != "claude" && target != "opencode" {
 				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
 			}
+		}
+	}
+	return nil
+}
+
+// validateSubagents checks each [subagents.<name>]: a valid name, a builtin/local
+// source, known targets, a user|project scope (already normalized to project when
+// omitted), and a mode of link. copy is reserved for the forthcoming copy-mode
+// projection and rejected until that lands, so the field is never a silent no-op.
+func validateSubagents(subagents map[string]Subagent) error {
+	for name, s := range subagents {
+		if err := validateResourceName("subagents", name); err != nil {
+			return err
+		}
+		label := "subagents." + name
+		switch s.Scope {
+		case "user", "project":
+			// ok (empty was normalized to project at load)
+		default:
+			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, s.Scope)
+		}
+		if !validSource(s.Source) {
+			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, s.Source)
+		}
+		for _, target := range s.Targets {
+			if target != "claude" && target != "opencode" {
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
+			}
+		}
+		switch s.Mode {
+		case "", "link":
+			// ok
+		case "copy":
+			return fmt.Errorf("parse config: %s mode \"copy\" is not yet supported for subagents (link only for now)", label)
+		default:
+			return fmt.Errorf("parse config: %s mode %q is invalid; valid values are \"link\" and \"copy\"", label, s.Mode)
 		}
 	}
 	return nil

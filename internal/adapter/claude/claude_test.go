@@ -35,9 +35,9 @@ func cfgWithSkills(scope string, names ...string) *config.Config {
 // resources at scope, each targeted at the adapter's tool via
 // ExpandedSubagentEntriesForTool. Mirrors cfgWithSkills.
 func cfgWithSubagents(scope string, names ...string) *config.Config {
-	c := &config.Config{Subagents: map[string]config.Resource{}}
+	c := &config.Config{Subagents: map[string]config.Subagent{}}
 	for _, name := range names {
-		c.Subagents[name] = config.Resource{Source: "local:" + name, Scope: scope}
+		c.Subagents[name] = config.Subagent{Source: "local:" + name, Scope: scope}
 	}
 	return c
 }

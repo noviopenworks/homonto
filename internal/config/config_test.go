@@ -319,6 +319,31 @@ func loadDoc(t *testing.T, doc string) error {
 	return err
 }
 
+// TestSubagentModeValidation: subagents accept an explicit link mode; copy is
+// reserved for the forthcoming copy-mode projection and rejected until then; an
+// unknown mode is invalid.
+func TestSubagentModeValidation(t *testing.T) {
+	base := func(mode string) string {
+		m := ""
+		if mode != "" {
+			m = "mode=\"" + mode + "\"\n"
+		}
+		return "[subagents.x]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + m + validModelsBothTools()
+	}
+	if err := loadDoc(t, base("")); err != nil {
+		t.Fatalf("default (link) mode must load: %v", err)
+	}
+	if err := loadDoc(t, base("link")); err != nil {
+		t.Fatalf("explicit link mode must load: %v", err)
+	}
+	if err := loadDoc(t, base("copy")); err == nil {
+		t.Fatal("mode=copy must be rejected until copy projection lands")
+	}
+	if err := loadDoc(t, base("bogus")); err == nil {
+		t.Fatal("an unknown subagent mode must be rejected")
+	}
+}
+
 // TestAgentSubagentNameCollisionRejected: the same name in both [agents] and
 // [subagents] would let two systems manage one tool file — rejected at load.
 func TestAgentSubagentNameCollisionRejected(t *testing.T) {
@@ -619,7 +644,7 @@ func TestEnabledModelTools(t *testing.T) {
 				Frameworks: map[string]Resource{
 					"a": {Source: "builtin:a", Scope: "project"},
 				},
-				Subagents: map[string]Resource{
+				Subagents: map[string]Subagent{
 					"b": {Source: "builtin:b", Scope: "project", Targets: []string{"opencode"}},
 				},
 				Skills: map[string]Resource{

@@ -210,7 +210,7 @@ func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
 
 func builtinSubagentCfg() *config.Config {
 	return &config.Config{
-		Subagents: map[string]config.Resource{
+		Subagents: map[string]config.Subagent{
 			"code-reviewer": {Source: "builtin:code-reviewer", Scope: "user", Targets: []string{"claude"}},
 		},
 	}
