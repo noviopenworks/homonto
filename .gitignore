@@ -10,3 +10,4 @@ __pycache__/
 
 # E2E matrix run logs (scratch)
 test/e2e/.out/
+/.superpowers/
