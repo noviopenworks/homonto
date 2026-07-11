@@ -38,6 +38,9 @@ var files = map[string]string{
 # [settings.claude]
 # model = "opus"
 
+# A tool gains its three model routes (architectural/coding/trivial) as soon as a
+# framework, command, or subagent targets it — declare all three for every such
+# tool. The examples above target both tools, so both are shown here.
 # [models.claude.architectural]
 # model = "opus"
 # variant = "max"
@@ -46,6 +49,15 @@ var files = map[string]string{
 # effort = "normal"
 # [models.claude.trivial]
 # model = "haiku"
+# effort = "fast"
+# [models.opencode.architectural]
+# model = "anthropic/claude-opus-4-8"
+# variant = "max"
+# [models.opencode.coding]
+# model = "anthropic/claude-sonnet-4-5"
+# effort = "normal"
+# [models.opencode.trivial]
+# model = "anthropic/claude-haiku-4-5"
 # effort = "fast"
 `,
 	".gitignore":   "/.homonto/\n.env\n",

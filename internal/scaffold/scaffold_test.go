@@ -7,15 +7,16 @@ import (
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/config"
-	toml "github.com/pelletier/go-toml/v2"
 )
 
 // The scaffolded homonto.toml ships commented examples of every resource kind.
 // A user uncomments the ones they want, so each example MUST be current, valid
 // config: a stale format (e.g. the removed list-style [plugins] or [skills]
-// own=[]) fails to parse the instant it is uncommented. Reconstruct the fully
-// uncommented config and assert it decodes into the real config struct.
-func TestScaffoldExamplesUseCurrentFormatAndParse(t *testing.T) {
+// own=[]) or an internally-inconsistent set (a tool targeted by a framework but
+// missing its model routes) fails the instant it is uncommented. Reconstruct the
+// fully uncommented config and run it through the real config.Load — the full
+// parse+validate path, not just a struct decode.
+func TestScaffoldExamplesUseCurrentFormatAndValidate(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := Init(dir); err != nil {
 		t.Fatal(err)
@@ -39,9 +40,13 @@ func TestScaffoldExamplesUseCurrentFormatAndParse(t *testing.T) {
 		b.WriteString("\n")
 	}
 
-	var cfg config.Config
-	if err := toml.Unmarshal([]byte(b.String()), &cfg); err != nil {
-		t.Fatalf("scaffolded examples do not parse when uncommented: %v\n---\n%s", err, b.String())
+	uncommented := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(uncommented, []byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(uncommented)
+	if err != nil {
+		t.Fatalf("scaffolded examples do not load (parse+validate) when uncommented: %v\n---\n%s", err, b.String())
 	}
 	// Sanity-check the reconstruction actually enabled the plugin example in the
 	// current per-plugin table form.
