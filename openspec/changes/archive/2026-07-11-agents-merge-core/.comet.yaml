@@ -11,10 +11,10 @@ isolation: branch
 verify_mode: null
 auto_transition: true
 base_ref: 686877444063eb67fce8734386fb651abf8e6e6d
-design_doc: docs/superpowers/specs/2026-07-11-agents-merge-core-design.md
-plan: docs/superpowers/plans/2026-07-11-agents-merge-core.md
+design_doc: openspec/changes/archive/2026-07-11-agents-merge-core/technical-design.md
+plan: openspec/changes/archive/2026-07-11-agents-merge-core/implementation-plan.md
 verify_result: pass
-verification_report: docs/superpowers/reports/2026-07-11-agents-merge-core-verify.md
+verification_report: openspec/changes/archive/2026-07-11-agents-merge-core/verification-report.md
 branch_status: handled
 created_at: 2026-07-11
 verified_at: 2026-07-11

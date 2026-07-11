@@ -11,10 +11,10 @@ isolation: branch
 verify_mode: full
 auto_transition: true
 base_ref: c9757d7b939466480efaaf28d1cc7d69de66084a
-design_doc: docs/superpowers/specs/2026-07-10-command-projection-design.md
-plan: docs/superpowers/plans/2026-07-10-command-projection.md
+design_doc: openspec/changes/archive/2026-07-10-command-projection/technical-design.md
+plan: openspec/changes/archive/2026-07-10-command-projection/implementation-plan.md
 verify_result: pass
-verification_report: docs/superpowers/reports/2026-07-10-command-projection-verify.md
+verification_report: openspec/changes/archive/2026-07-10-command-projection/verification-report.md
 branch_status: handled
 created_at: 2026-07-10
 verified_at: 2026-07-10

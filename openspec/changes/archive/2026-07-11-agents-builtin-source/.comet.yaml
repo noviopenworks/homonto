@@ -11,10 +11,10 @@ isolation: branch
 verify_mode: null
 auto_transition: true
 base_ref: f9818e3373259748256cfc561e6c4bdb315a4f2d
-design_doc: docs/superpowers/specs/2026-07-11-agents-builtin-source-design.md
-plan: docs/superpowers/plans/2026-07-11-agents-builtin-source.md
+design_doc: openspec/changes/archive/2026-07-11-agents-builtin-source/technical-design.md
+plan: openspec/changes/archive/2026-07-11-agents-builtin-source/implementation-plan.md
 verify_result: pass
-verification_report: docs/superpowers/reports/2026-07-11-agents-builtin-source-verify.md
+verification_report: openspec/changes/archive/2026-07-11-agents-builtin-source/verification-report.md
 branch_status: handled
 created_at: 2026-07-11
 verified_at: 2026-07-11

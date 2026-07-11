@@ -8,9 +8,9 @@ status: final
 
 
 v2 #5a — the dependency-free foundation for three-way-merge on `update` (approved
-design: docs/superpowers/specs/2026-07-11-agents-3way-merge-design.md). Two pure
-building blocks + behavior-preserving blob persistence. #5b wires merge into
-`update`.
+design: the shared umbrella design [`technical-design-umbrella.md`](technical-design-umbrella.md)).
+Two pure building blocks + behavior-preserving blob persistence. #5b wires merge
+into `update`.
 
 ## Goals / Non-Goals
 

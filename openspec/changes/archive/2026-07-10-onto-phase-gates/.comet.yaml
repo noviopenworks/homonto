@@ -11,10 +11,10 @@ isolation: branch
 verify_mode: full
 auto_transition: true
 base_ref: 36966b561ab1491b3d183f339560a7ba6139cb56
-design_doc: docs/superpowers/specs/2026-07-10-onto-phase-gates-design.md
-plan: docs/superpowers/plans/2026-07-10-onto-phase-gates.md
+design_doc: openspec/changes/archive/2026-07-10-onto-phase-gates/technical-design.md
+plan: openspec/changes/archive/2026-07-10-onto-phase-gates/implementation-plan.md
 verify_result: pass
-verification_report: docs/superpowers/reports/2026-07-10-onto-phase-gates-verify.md
+verification_report: openspec/changes/archive/2026-07-10-onto-phase-gates/verification-report.md
 branch_status: handled
 created_at: 2026-07-10
 verified_at: 2026-07-10

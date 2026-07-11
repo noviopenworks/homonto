@@ -1,5 +1,15 @@
 # v2 #5 — Agent Three-Way Merge / `migrate` — Design (for review)
 
+> **Umbrella design — superseded by the implementing archive chain.** This is the
+> shared pre-implementation design for the v2 #5 three-way-merge work. It was
+> implemented across three archived changes:
+> [`2026-07-11-agents-merge-core`](technical-design.md) (#5a, the merge/blob
+> foundation), `openspec/changes/archive/2026-07-11-agents-merge-update` (#5b,
+> wiring merge into `update`), and
+> `openspec/changes/archive/2026-07-11-agents-update-all` (`update --all`). It
+> lives here (rather than in a single change) because it spans that chain; the
+> per-change `technical-design.md` files carry the as-built decisions.
+
 Pre-implementation design (roadmap v2 Agent Lifecycle, increment #5). Presented
 for approval before any code. Covers the four forks the user flagged: base-content
 storage, merge algorithm, `migrate` vs `update` semantics, and conflict UX.
