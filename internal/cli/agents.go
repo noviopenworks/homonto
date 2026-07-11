@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/link"
+	"github.com/noviopenworks/homonto/internal/merge"
 	"github.com/noviopenworks/homonto/internal/subagentpath"
 	"github.com/spf13/cobra"
 )
@@ -98,13 +100,12 @@ func agentsDoctorCmd() *cobra.Command {
 						findings = append(findings, fmt.Sprintf("%s (%s): installed file missing: %s", name, tool, ti.Path))
 						continue
 					}
-					if inst.Mode == "copy" {
-						b, rerr := os.ReadFile(ti.Path)
-						if rerr != nil {
-							findings = append(findings, fmt.Sprintf("%s (%s): installed file unreadable: %s", name, tool, ti.Path))
-						} else if agentlock.HashContent(b) != ti.Hash {
-							findings = append(findings, fmt.Sprintf("%s (%s): modified on disk: %s", name, tool, ti.Path))
-						}
+					// In the three-way-merge model a locally-edited install
+					// (on-disk content differing from the recorded base) is a
+					// normal, mergeable state and is NOT a problem. A leftover
+					// <dst>.merged sidecar, however, marks an unresolved conflict.
+					if _, err := os.Lstat(ti.Path + ".merged"); err == nil {
+						findings = append(findings, fmt.Sprintf("%s (%s): conflicted (resolve %s.merged, then re-run `homonto agents update %s`)", name, tool, ti.Path, name))
 					}
 					// link mode: presence via Lstat is sufficient this increment.
 				}
@@ -384,6 +385,7 @@ func agentsUpdateCmd() *cobra.Command {
 			mode := ag.ModeOrDefault()
 			targets := ag.TargetsOrAll()
 			installedRec := map[string]agentlock.Install{}
+			conflicted := false
 			for _, tool := range sortedStrings(targets) {
 				dir := subagentpath.Dir(tool, "user", home, "")
 				dst := filepath.Join(dir, name+".md")
@@ -394,28 +396,78 @@ func agentsUpdateCmd() *cobra.Command {
 					cur, readErr := os.ReadFile(dst)
 					switch {
 					case readErr == nil && agentlock.HashContent(cur) == hash:
+						// On-disk already equals the source — nothing to do.
 						status = "up to date"
+						installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
 					default:
-						backedUp := false
-						// Back up any existing file we are about to overwrite UNLESS
-						// it is our own untouched install (recorded and still equal to
-						// the last install hash → nothing to preserve). This covers a
-						// genuine local edit (hadRec && on-disk != prev.Hash) AND a
-						// pre-existing foreign file at a newly-declared target
-						// (!hadRec) — never clobber a user's file without a .bak.
-						// A missing file (readErr != nil) has nothing to preserve.
-						if readErr == nil && !(hadRec && agentlock.HashContent(cur) == prev.Hash) {
-							if err := fsutil.WriteAtomic(dst+".bak", cur); err != nil {
+						// The recorded BASE is the ancestor this install was last
+						// materialized/merged against; retrieve it by prev.Hash. An
+						// unrecorded target has no ancestor to fetch.
+						var base []byte
+						var baseOK bool
+						if hadRec && prev.Hash != "" {
+							b, ok, gerr := agentblob.Get(homontoDir, prev.Hash)
+							if gerr != nil {
+								return gerr
+							}
+							base, baseOK = b, ok
+						}
+						if readErr != nil || !hadRec || !baseOK {
+							// FALLBACK — no usable ancestor (missing base blob, missing
+							// on-disk file, or a never-recorded target). Back up any
+							// existing file we would clobber UNLESS it is our own
+							// untouched install, then overwrite with the source. Never
+							// clobber a user's file without a .bak.
+							backedUp := false
+							if readErr == nil && !(hadRec && agentlock.HashContent(cur) == prev.Hash) {
+								if err := fsutil.WriteAtomic(dst+".bak", cur); err != nil {
+									return err
+								}
+								backedUp = true
+							}
+							if err := fsutil.WriteAtomic(dst, content); err != nil {
 								return err
 							}
-							backedUp = true
-						}
-						if err := fsutil.WriteAtomic(dst, content); err != nil {
-							return err
-						}
-						status = "updated"
-						if backedUp {
-							status = fmt.Sprintf("updated (backed up local changes to %s.bak)", dst)
+							status = "updated"
+							if backedUp {
+								status = fmt.Sprintf("updated (backed up local changes to %s.bak)", dst)
+							}
+							installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
+						} else {
+							// MERGE — three-way merge the local edits (cur) and the
+							// upstream (content) against their common base.
+							result, conflicts := merge.Merge(base, cur, content)
+							if conflicts == 0 {
+								if !bytes.Equal(result, cur) {
+									if agentlock.HashContent(cur) != prev.Hash {
+										if err := fsutil.WriteAtomic(dst+".bak", cur); err != nil {
+											return err
+										}
+										status = fmt.Sprintf("merged (backed up local changes to %s.bak)", dst)
+									} else {
+										status = "merged"
+									}
+									if err := fsutil.WriteAtomic(dst, result); err != nil {
+										return err
+									}
+								} else {
+									status = "up to date"
+								}
+								// Clean merge — advance the recorded base to the source.
+								installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
+							} else {
+								// Conflict — leave the live dst untouched, write the
+								// merged-with-markers result to a sidecar, keep the
+								// prior lockfile record, and fail the command.
+								if err := fsutil.WriteAtomic(dst+".merged", result); err != nil {
+									return err
+								}
+								status = fmt.Sprintf("CONFLICT (resolve %s.merged)", dst)
+								conflicted = true
+								if hadRec {
+									installedRec[tool] = prev
+								}
+							}
 						}
 					}
 				default: // link
@@ -427,8 +479,8 @@ func agentsUpdateCmd() *cobra.Command {
 						}
 						status = "updated"
 					}
+					installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
 				}
-				installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
 				cmd.Printf("%s (%s): %s %s\n", name, tool, status, dst)
 			}
 
@@ -445,7 +497,13 @@ func agentsUpdateCmd() *cobra.Command {
 				Targets:   targets,
 				Installed: installedRec,
 			}
-			return lock.Save(homontoDir)
+			if err := lock.Save(homontoDir); err != nil {
+				return err
+			}
+			if conflicted {
+				return fmt.Errorf("agents update: %q has merge conflict(s); resolve the .merged file(s) and re-run", name)
+			}
+			return nil
 		},
 	}
 }
