@@ -152,6 +152,43 @@ func TestLoadPluginEnabledSemantics(t *testing.T) {
 	}
 }
 
+// TestLoadPluginConfig: a claude plugin may carry a [plugins.claude.<name>.config]
+// table of non-sensitive options, parsed into Plugin.Config.
+func TestLoadPluginConfig(t *testing.T) {
+	doc := "[plugins.claude.hud]\nsource = \"hud@official\"\n" +
+		"[plugins.claude.hud.config]\napi_endpoint = \"https://x\"\nmax_workers = 4\n"
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	cfg := c.Plugins.Claude["hud"].Config
+	if cfg["api_endpoint"] != "https://x" {
+		t.Fatalf("plugin config api_endpoint = %#v; want \"https://x\"", cfg["api_endpoint"])
+	}
+	if got, ok := cfg["max_workers"].(int64); !ok || got != 4 {
+		t.Fatalf("plugin config max_workers = %#v; want int64(4)", cfg["max_workers"])
+	}
+}
+
+// TestLoadRejectsOpenCodePluginConfig: OpenCode has no per-plugin config on disk
+// (its plugins are a plain array), so a [plugins.opencode.<name>.config] table
+// cannot project. Load must fail naming the plugin.
+func TestLoadRejectsOpenCodePluginConfig(t *testing.T) {
+	doc := "[plugins.opencode.q]\nsource = \"q\"\n" +
+		"[plugins.opencode.q.config]\nfoo = \"bar\"\n"
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("opencode plugin config accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), strconv.Quote("q")) {
+		t.Fatalf("error does not name the plugin %q: %v", "q", err)
+	}
+}
+
 // TestLoadRejectsEmptyPluginSource: a plugin declaration whose source is empty
 // (or whitespace) cannot project anywhere, so Load must fail naming the plugin.
 func TestLoadRejectsEmptyPluginSource(t *testing.T) {
@@ -295,6 +332,7 @@ func TestLoadRejectsReservedSettingKeys(t *testing.T) {
 	for _, tc := range []struct{ label, doc, key string }{
 		{"claude enabledPlugins", "[settings.claude]\nenabledPlugins={}\n", "enabledPlugins"},
 		{"claude mcpServers", "[settings.claude]\nmcpServers={}\n", "mcpServers"},
+		{"claude pluginConfigs", "[settings.claude]\npluginConfigs={}\n", "pluginConfigs"},
 		{"opencode mcp", "[settings.opencode]\nmcp={}\n", "mcp"},
 		{"opencode plugin", "[settings.opencode]\nplugin=[]\n", "plugin"},
 	} {

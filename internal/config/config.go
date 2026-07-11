@@ -61,8 +61,9 @@ type ModelConfig struct {
 // claude the "name@marketplace" key used in enabledPlugins; for opencode the
 // npm package / local plugin path placed in the `plugin` array.
 type Plugin struct {
-	Source  string `toml:"source"`
-	Enabled *bool  `toml:"enabled"` // nil == true (default enabled)
+	Source  string         `toml:"source"`
+	Enabled *bool          `toml:"enabled"` // nil == true (default enabled)
+	Config  map[string]any `toml:"config"`  // non-sensitive per-plugin options
 }
 
 // IsEnabled reports whether the plugin is enabled (default true when omitted).
@@ -438,6 +439,11 @@ func Load(path string) (*Config, error) {
 			if strings.TrimSpace(pl.Source) == "" {
 				return nil, fmt.Errorf("parse config: %s plugin %q has an empty source", tool.name, declName)
 			}
+			// OpenCode plugins are a plain array on disk with no per-plugin
+			// config slot, so a declared config could project nowhere. Reject it.
+			if tool.name == "plugins.opencode" && len(pl.Config) > 0 {
+				return nil, fmt.Errorf("parse config: %s plugin %q declares config, but OpenCode has no per-plugin config on disk (its plugins are a plain array); remove config", tool.name, declName)
+			}
 			if prev, dup := seenSource[pl.Source]; dup {
 				return nil, fmt.Errorf("parse config: %s plugins %q and %q share source %q", tool.name, prev, declName, pl.Source)
 			}
@@ -463,6 +469,9 @@ func Load(path string) (*Config, error) {
 		}
 		if k == "mcpServers" {
 			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages MCP servers via [mcps]); declare the server under [mcps] instead", k)
+		}
+		if k == "pluginConfigs" {
+			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages pluginConfigs via [plugins.claude.<name>.config]); declare per-plugin config there instead", k)
 		}
 	}
 	for k := range c.Settings.OpenCode {
