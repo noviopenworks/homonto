@@ -205,8 +205,14 @@ func agentsListCmd() *cobra.Command {
 				if v == "" {
 					v = "unpinned"
 				}
+				// Show the EFFECTIVE mode (builtin coerces to copy), matching what
+				// add/update materialize and record — not the raw link default.
+				mode := ag.ModeOrDefault()
+				if m, err := agentMode(n, ag); err == nil {
+					mode = m
+				}
 				cmd.Printf("%s: %s  version=%s  targets=%s  mode=%s\n",
-					n, ag.Source, v, strings.Join(ag.TargetsOrAll(), ","), ag.ModeOrDefault())
+					n, ag.Source, v, strings.Join(ag.TargetsOrAll(), ","), mode)
 			}
 			return nil
 		},

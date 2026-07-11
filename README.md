@@ -115,7 +115,9 @@ it leaves your file untouched, writes the merged result with conflict markers to
 `<path>.merged`, and exits non-zero for you to resolve. `homonto agents update
 --all` runs that merge across every installed agent and summarizes the result.
 Version pinning is declarative — set `[agents.<name>].version` in the config.
-Further lifecycle (builtin/remote agent sources) is future v2 work.
+Agent sources can be `local:<name>` (from `homonto/agents/`) or `builtin:<name>`
+(resolved from the bundled catalog; copy-mode only). Remote agent sources are
+future v2 work.
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels
