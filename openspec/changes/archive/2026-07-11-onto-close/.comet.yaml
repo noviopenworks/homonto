@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-11-onto-close-verify.md
 branch_status: handled
 created_at: 2026-07-10
 verified_at: 2026-07-11
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/onto-close/.comet/handoff/design-context.json
 handoff_hash: e971111ef4837685eb55c9f8c36404431f18d7a8d793495bfc0d7cd6d1e981f9

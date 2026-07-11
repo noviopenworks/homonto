@@ -2,6 +2,7 @@
 change: onto-close
 design-doc: docs/superpowers/specs/2026-07-10-onto-close-design.md
 base-ref: a3137d2a7b2b603412c28e7beba51a3692a24c63
+archived-with: 2026-07-11-onto-close
 ---
 
 # Onto Close Implementation Plan

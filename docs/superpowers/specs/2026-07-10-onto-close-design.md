@@ -2,6 +2,8 @@
 comet_change: onto-close
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-onto-close
+status: final
 ---
 
 # Onto Close — Technical Design
