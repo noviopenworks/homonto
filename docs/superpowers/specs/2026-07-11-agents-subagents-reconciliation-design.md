@@ -110,32 +110,70 @@ merge for mutable subagents; delete the `[agents]` command group.
 v2 lifecycle (add/update/doctor/prune/gc/merge/adopt) — a large functional
 regression. Not recommended.
 
-## 5. Recommendation
+## 5. Recommendation vs decision
 
-**Adopt Option B now; keep Option A (full unification) as the north star.**
-B removes the real hazards (collision, scope gap, unrecoverable conflicts) with
-a small, safe, additive change that discards nothing and stays reversible toward
-A once the unified model is designed against a stable, released baseline. A is
-the "right" long-term shape but is a breaking rewrite that should not gate the
-first release; C throws away shipped value.
+The proposal *recommended* Option B. **The maintainer chose Option C** (collapse
+into `[subagents]` + `apply`), with **auto-supersede** migration and a **project**
+default scope. Section 8 details the Option-C plan under those choices. The
+implementation recommendation stands recorded (B was lower-risk), but C is the
+approved direction; the key trade-off C accepts is a breaking removal of the
+`homonto agents` command surface in exchange for a single declarative model.
 
-## 6. If B is approved — increment slicing
+## 6. Approved decisions (2026-07-11)
 
-1. `scope` on `config.Agent` + validation + thread through the `agents` commands
-   (default `user`, matching today). Tests: project-scope install/doctor/prune.
-2. Load-time collision guard (name-in-both + same-resolved-path) with a focused
-   rejection message. Tests: both collision kinds.
-3. `agents adopt <name>` (subagent → lifecycle) + `agents resolve <name>`
-   (accept `.merged`). Tests: adopt records the right base; resolve advances base
-   and clears the sidecar.
-4. Docs: the boundary paragraph in the agents guide + `agent-lifecycle` /
-   `subagent-projection` spec notes; roadmap item 9 → done.
+- **Direction: C** — one declarative `[subagents]` + `apply` model; the imperative
+  `[agents]` group is removed and its value (versioning, three-way merge of local
+  edits, base blobs) is folded into `apply`.
+- **Migration: auto-supersede** — an existing `[agents.<name>]` is read as an
+  equivalent `[subagents.<name>]` (copy-mode) without any user action; no
+  `homonto agents adopt` command.
+- **Default scope: project** — a subagent with an omitted `scope` installs into
+  the project (`<repo>/.claude`, `.opencode`), not `user`.
 
-## 7. Open questions for you
+## 7. Key trade-off C accepts
 
-- **Direction:** B (bounded, recommended) or A (full unification now)?
-- **Promotion:** explicit `agents adopt` (B as written), or should declaring the
-  same name in `[agents]` auto-supersede a `[subagents]` entry?
-- **Default agent scope:** keep `user` (today's behavior) as the default when
-  `scope` is omitted, or default to `project` for parity with how skills are
-  commonly declared in this repo?
+C **removes the shipped `homonto agents` command surface** (`list`/`add`/`update
+[--all]`/`doctor`/`prune`/`gc`) and the `[agents]` config table — an
+outward-facing, breaking change. The *capabilities* are preserved inside `apply`
+(copy-mode subagents get versioning + three-way merge + base blobs + conflict
+sidecars); only the imperative UX and the second declaration table go away. This
+is a deliberate re-architecture and must land as a sequence of reviewed comet
+changes, not a single edit.
+
+## 8. Option-C implementation plan (incremental, apply-preserving)
+
+Each step is independently shippable and green; the `[agents]` surface is removed
+only in the last step, after `[subagents]` reaches full parity.
+
+1. **Subagent model gains `mode` + `version`.** Add `Mode` (`copy`|`link`, default
+   `link` = today's symlink) and `Version` to the subagent `Resource`, validated.
+   Purely additive; symlink projection unchanged. Default subagent `scope` becomes
+   `project`.
+2. **Copy-mode subagent projection in `apply`.** A `mode=copy` subagent is
+   materialized as a real file (not a symlink); `apply` records its base hash in
+   `state.json` and stores the base content in the existing `agentblob` store.
+   Idempotent; a copy-mode subagent with no local edits re-applies to a no-op.
+3. **Three-way merge at apply for copy-mode subagents.** When the on-disk copy was
+   locally edited (differs from the recorded base) and the source changed, `apply`
+   runs `merge.Merge(base, local, source)`: 0 conflicts → write merged, advance the
+   base, back up the prior local; conflict → write `<dst>.merged`, leave the live
+   file, and report the resource as conflicted in the plan/status (never a silent
+   overwrite). Reuses `internal/merge` + `internal/agentblob` verbatim.
+4. **`status`/`doctor` surface copy-subagent state.** A `<dst>.merged` sidecar is
+   a reported conflict; blob GC (already shipped as `agents gc`) is re-homed as an
+   `apply`-time or `homonto gc` reclaim over `state.json`-referenced base hashes.
+5. **Auto-supersede `[agents]` → `[subagents]`.** At load, translate every
+   `[agents.<name>]` into an equivalent copy-mode `[subagents.<name>]` (carrying
+   `version`/`targets`/`scope`), with a one-release deprecation warning. A name in
+   both tables resolves to the subagent (the agent table is legacy).
+6. **Remove the `[agents]` surface.** Delete the `homonto agents` command group
+   (`internal/cli/agents*.go`), the `config.Agent` table, and `internal/agentlock`
+   (its role is now `state.json`); keep `internal/agentblob` + `internal/merge`.
+   Update specs: fold `agent-lifecycle` into `subagent-projection`; roadmap item 9
+   → done.
+
+**Risk to manage:** step 3 adds non-deterministic-looking behavior (merge output
+depends on on-disk local edits) to the previously pure `plan`. Mitigation: `plan`
+reports a copy-subagent as `~ merge` / `! conflict` without performing the merge;
+only `apply` writes. Characterization tests from the `[agents]` suite port over to
+lock the merge behavior in its new home.
