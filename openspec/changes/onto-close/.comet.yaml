@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 29a4117a47e07bc8944a9e65a13429c9dd0962a0
 design_doc: docs/superpowers/specs/2026-07-10-onto-close-design.md
 plan: docs/superpowers/plans/2026-07-10-onto-close.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-11-onto-close-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-10
-verified_at: null
+verified_at: 2026-07-11
 archived: false
 direct_override: null
 handoff_context: openspec/changes/onto-close/.comet/handoff/design-context.json
