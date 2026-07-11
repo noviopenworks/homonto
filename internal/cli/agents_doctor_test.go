@@ -111,9 +111,10 @@ func TestAgentsDoctorSourceDrift(t *testing.T) {
 	}
 }
 
-// TestAgentsDoctorModifiedOnDisk: a copy-mode install whose on-disk file was
-// edited is reported as modified on disk and exits non-zero.
-func TestAgentsDoctorModifiedOnDisk(t *testing.T) {
+// TestAgentsDoctorLocalEditIsHealthy: in the three-way-merge model a copy-mode
+// install whose on-disk file was locally edited (but whose source is unchanged)
+// is a normal, mergeable state — doctor does NOT flag it and exits 0.
+func TestAgentsDoctorLocalEditIsHealthy(t *testing.T) {
 	home := t.TempDir()
 	cfg, _ := addWorkspace(t, copyAgentTOML, map[string]string{"rev": "# rev\n"})
 
@@ -127,11 +128,39 @@ func TestAgentsDoctorModifiedOnDisk(t *testing.T) {
 	}
 
 	out, err := runCmd(t, home, "", "agents", "doctor", "--config", cfg)
-	if err == nil {
-		t.Fatalf("modified-on-disk must fail, got:\n%s", out)
+	if err != nil {
+		t.Fatalf("a local edit must be healthy in the merge model, got err %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "modified on disk") {
-		t.Fatalf("must report modified on disk, got:\n%s", out)
+	if strings.Contains(out, "modified") {
+		t.Fatalf("doctor must NOT report a local edit as modified, got:\n%s", out)
+	}
+	if out != "healthy\n" {
+		t.Fatalf("doctor must print exactly \"healthy\", got:\n%q", out)
+	}
+}
+
+// TestAgentsDoctorReportsPendingConflict: a <dst>.merged sidecar left by a
+// conflicted `agents update` is reported as a pending conflict and exits non-zero.
+func TestAgentsDoctorReportsPendingConflict(t *testing.T) {
+	home := t.TempDir()
+	cfg, _ := addWorkspace(t, copyAgentTOML, map[string]string{"rev": "# rev\n"})
+
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+
+	dst := filepath.Join(subagentpath.Dir("claude", "user", home, ""), "rev.md")
+	sidecar := "<<<<<<< local\n# mine\n=======\n# theirs\n>>>>>>> source\n"
+	if err := os.WriteFile(dst+".merged", []byte(sidecar), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "doctor", "--config", cfg)
+	if err == nil {
+		t.Fatalf("a pending conflict must fail, got:\n%s", out)
+	}
+	if !strings.Contains(out, "conflicted") || !strings.Contains(out, dst+".merged") {
+		t.Fatalf("must report the target as conflicted pointing at %s.merged, got:\n%s", dst, out)
 	}
 }
 

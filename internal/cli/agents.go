@@ -100,13 +100,12 @@ func agentsDoctorCmd() *cobra.Command {
 						findings = append(findings, fmt.Sprintf("%s (%s): installed file missing: %s", name, tool, ti.Path))
 						continue
 					}
-					if inst.Mode == "copy" {
-						b, rerr := os.ReadFile(ti.Path)
-						if rerr != nil {
-							findings = append(findings, fmt.Sprintf("%s (%s): installed file unreadable: %s", name, tool, ti.Path))
-						} else if agentlock.HashContent(b) != ti.Hash {
-							findings = append(findings, fmt.Sprintf("%s (%s): modified on disk: %s", name, tool, ti.Path))
-						}
+					// In the three-way-merge model a locally-edited install
+					// (on-disk content differing from the recorded base) is a
+					// normal, mergeable state and is NOT a problem. A leftover
+					// <dst>.merged sidecar, however, marks an unresolved conflict.
+					if _, err := os.Lstat(ti.Path + ".merged"); err == nil {
+						findings = append(findings, fmt.Sprintf("%s (%s): conflicted (resolve %s.merged, then re-run `homonto agents update %s`)", name, tool, ti.Path, name))
 					}
 					// link mode: presence via Lstat is sufficient this increment.
 				}
