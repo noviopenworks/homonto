@@ -1,547 +1,292 @@
-# homonto — Post-v1 Roadmap
-
-**Date:** 2026-07-10
-**Status:** Product roadmap. Release-readiness tasks live in
-[`road-to-release.md`](road-to-release.md).
-
-## Summary
-
-`homonto` v1 remains focused on the safe core: one declarative
-`homonto.toml`, a plan/confirm/apply pipeline, reference-only secrets,
-surgical writes, and Claude Code/OpenCode adapters. The core is implemented and
-testable (168 tests across 16 packages locally on 2026-07-09). The explicit
-per-resource config model — `[frameworks.X]`, `[skills.X]`, `[commands.X]`,
-`[subagents.X]`, `[models.<tool>.<level>]` with required `source` + `scope` and
-local provider content under `homonto/` — has landed. The first public release
-gate has been **reopened** for a dual-binary `homonto` + `onto` product; see
-[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md),
-which supersedes the prior "release-ready pending the maintainer's tag" verdict.
-What remains beyond that is either consciously accepted as a documented
-limitation or belongs to the post-v1 roadmap below.
-
-Post-v1 expands Homonto from a config projector into a manager for the AI
-coding-tool ecosystem around those configs: framework/catalog projection,
-workflow operation through `onto`, richer plugin configuration, Claude/OpenCode
-TUI-related settings, and full lifecycle management for agents.
-
-## Immediate Next Work
-
-One item stands between the current `main` and the reopened dual-binary
-release gate, scoped in
-[`docs/superpowers/specs/2026-07-09-dual-binary-release-design.md`](superpowers/specs/2026-07-09-dual-binary-release-design.md);
-it is not optional for `v0.1.0-rc.1`. Its foundation has landed on the
-`onto-binary-foundation` change (not yet merged to `main`); the rest is
-still open, as detailed below.
-
-1. **`onto` binary (release-blocking) — foundation, `onto init`, and change
-   skeleton creation landed, work remains.** The binary foundation has
-   landed: a second `package main` at `cmd/onto` builds an `onto` binary
-   alongside `homonto`; `internal/ontostate` models `onto-state.yaml` (parse,
-   validate, derive phase; phase set `open|design|build|verify|close`); and
-   `onto status` is the read-only, config-independent command — it globs
-   `docs/changes/*/onto-state.yaml` and prints each active change's derived
-   phase, never reading `homonto.toml` and never writing a file. `onto init`
-   has also landed: it idempotently scaffolds the `docs/{changes,specs,adr,
-   guides}` layout, gated behind the Homonto framework install — it writes
-   nothing and directs the user to initialize/apply Homonto first if
-   `[frameworks.onto]` is not installed, and never overwrites user files on
-   repeat runs. Change skeleton creation has also landed (#3a): `onto
-   new <change>` creates a gated, no-clobber change skeleton
-   (`onto-state.yaml`, `proposal.md`, `tasks.md`) under
-   `docs/changes/<change>/`, refusing to run without the Homonto framework
-   installed and refusing to overwrite an existing change directory; the
-   `internal/ontostate` model gained a writer plus phase-aware skeleton
-   validation, and `onto status` now reports each change's skeleton validity
-   alongside its derived phase. Gated phase transitions have also landed
-   (#3b): `onto advance <change>` moves a change through the fixed phase
-   order `open → design → build → verify → close` only when the *current*
-   phase's required deliverables are complete (and, to leave `build`, all
-   tasks in `tasks.md` are checked); a normal advance on a dirty worktree
-   prints a warning and proceeds, while the release-critical `verify →
-   close` transition is blocked outright on a dirty or indeterminate
-   worktree, with no phase write on any refusal. Archive and close rules
-   have also landed (#3c): `onto close <change>` archives a close-phase
-   change by moving `docs/changes/<name>/` → `docs/changes/archive/<YYYY-MM-DD>-<name>/`
-   and setting `archived: true`, gated on every dependency being resolved
-   (an `internal/ontostate.DepsResolved` helper treats a dep as resolved
-   only once an archived `docs/changes/archive/*-<dep>` directory exists)
-   and on a clean worktree, refusing (no move, no state write) on a
-   non-close phase, an unresolved dep, a dirty worktree, or a pre-existing
-   archive target. This completes the onto workflow engine — the `onto`
-   binary can now create (`onto new`), advance (`onto advance`), and close
-   (`onto close`) a change, enforcing the full phase-transition, archive,
-   and dependency invariants. Workflow/project health checks have also
-   landed (#4): `onto doctor` is a read-only, config-independent, ungated
-   diagnostic that reports an onto workspace's health — docs layout
-   (`docs/{changes,specs,adr,guides}`), `onto-state.yaml` validity,
-   phase-derivation-matches-artifacts, dependency and archived-flag
-   consistency, and archive-layout validity — printing each problem as a
-   finding and exiting non-zero when any exist (so CI and smoke tests can
-   gate on it), or `healthy` and exit 0 otherwise. It writes nothing and
-   imports none of homonto's projection pipeline, as the peer to `homonto
-   doctor`'s installation/projection health. The `onto` binary now exposes
-   advance / close / doctor / init / new / status / version. Dual-binary
-   release packaging has also landed (#5): the release pipeline now ships
-   **both** binaries. A shared, locally-runnable `scripts/build-release.sh`
-   cross-compiles `homonto` and `onto` for all six OS/arch targets as
-   separate per-binary archives (12 in total), each version-stamped via its
-   own package (`internal/cli`, `internal/ontocli`), under one shared
-   `SHA256SUMS`; `release.yml` calls the script, and `ci.yml` gained an
-   `onto` version-stamp smoke. **This completes the onto binary work (#1–#5)
-   and the last release-gate packaging task.** What remains before the
-   `v0.1.0-rc.1` tag is the maintainer's action to cut it (plus any
-   remaining release-gate coverage the maintainer wants — e.g. the Docker
-   smoke tests enumerated in the dual-binary design's release gate).
-
-Skills, command, and subagent projection have all landed on `main` (see v1.1
-below), and the dual-binary `homonto` + `onto` product — foundation,
-framework install, workflow engine (create/advance/close), doctor, and
-release packaging — is complete on `main`. The maintainer-owned
-`v0.1.0-rc.1` tag is the remaining gate.
-
-## Roadmap Strategy
-
-Use a layered roadmap instead of expanding v1. The current v1 implementation
-plan writes into real user tool configuration, so the first milestone must prove
-safety, idempotency, drift detection, and surgical merge behavior before adding
-broader product surface area.
-
-Phases:
-
-1. **v1 Core** — existing implementation plan, with safety/idempotency fixes.
-2. **v1.1 Onto Framework And Catalog Projection** — curated bundled frameworks
-   and loose skills, commands, and subagents projected into supported tools.
-3. **v1.2 Plugin Configuration** — plugin install/enable declarations plus
-   plugin-specific configuration.
-4. **v1.3 Tool TUI Configuration** — Claude/OpenCode TUI-related plugins,
-   themes, display settings, and keybindings where supported.
-5. **v2 Agent Lifecycle** — sources, versions, compatibility, updates,
-   migrations, and conflict handling for agents.
-
-## v1 Core
-
-The current v1 implementation remains the foundation:
-
-- `homonto.toml` is the source of truth.
-- `homonto plan` shows safe diffs without resolving secret values.
-- `homonto apply` confirms, resolves secrets, writes atomically, and updates
-  local state last.
-- `homonto init`, `import`, `status`, and `doctor` provide adoption and health
-  workflows.
-- Claude Code and OpenCode adapters project MCPs, owned content, plugins, and
-  settings into each tool.
-
-Implemented and verified since the original v1 review:
-
-- Claude MCPs project with the real schema (`command` string plus `args`).
-- Import preserves Claude `command` plus `args`.
-- Plans redact missing-state or unknown-provenance old values.
-- State stores unresolved desired values plus non-secret applied hashes.
-- State-recorded pruning exists for MCPs, settings, plugins, and skills.
-- JSON path segments are escaped for dotted and special keys.
-- Skill path traversal is rejected.
-- Atomic writes preserve existing modes and create new files as `0600`.
-- State is persisted after each successful adapter.
-- Plan output is deterministic, and non-object JSON roots are rejected.
-- **State adoption:** declared values already matching disk are adopted into
-  state via a silent `adopt` action, so pruning and drift see pre-existing
-  matching resources without rewriting user files.
-- **True drift in `status`:** `status` compares each adapter's on-disk hashes
-  (`ObserveHashes`) against the recorded last-applied hash, separate from
-  pending desired-vs-disk config changes; a pure `homonto.toml` edit is no longer
-  reported as drift.
-- **Input validation:** `config.Load` rejects unknown MCP targets, empty MCP
-  commands, reserved settings keys, and index-like/empty managed names.
-- **Skills-only apply is link-only:** tool JSON files are written only when a
-  managed key in them changes, so OpenCode JSONC comments survive link-only
-  applies.
-- **Doctor parity:** `doctor` checks both the Claude and OpenCode skill symlinks
-  for every owned skill.
-- **CI expanded:** gofmt, `go mod tidy -diff`, vet, build, test, race, stamped
-  version smoke, temp-HOME CLI smoke, Docker apply smoke, and `govulncheck` all
-  run in CI; the current tagged `release` workflow ships cross-platform
-  `homonto` binaries, and dual-binary packaging remains release-gate work.
-
-Known v1 product limitations, in recommended order:
-
-Operational release blockers and hardening tasks are tracked in
-[`road-to-release.md`](road-to-release.md). Do not treat this roadmap as the
-release checklist.
-
-1. **Import scope/redaction:** `import` is intentionally narrow (Claude global
-   MCP servers only; env-value redaction only; command/args preserved verbatim).
-   Either expand it into a fuller migration tool or keep it explicitly scoped;
-   the narrow behavior is already documented in `cli-commands.md`.
-2. **OpenCode JSONC comments:** any apply that touches `opencode.jsonc` rewrites
-   it as normalized JSON and removes all comments. This is an accepted,
-   documented limitation; comment preservation is an open question, not a bug.
-
-Future agents should start with `/comet` (which reads `openspec/changes/` and
-`.comet.yaml`) before starting v1 work.
-
-## v1.1 Onto Framework And Catalog Projection
-
-Homonto ships a curated bundled catalog of official frameworks and loose
-resources. Frameworks are atomic bundles; loose resources can be local or
-builtin. Catalog projection is explicit install behavior, not hidden runtime
-magic.
-
-Scope:
-
-- Bundled frameworks packaged with Homonto releases: `onto`, `comet`,
-  `superpowers`, and `openspec` first.
-- Dependency expansion for `[frameworks.X]`, including `comet` depending on
-  `superpowers` and `openspec`.
-- Projection for skills, commands, and subagents into Claude Code and OpenCode
-  using real tool layouts and compatibility metadata.
-- Grouped `homonto plan` output for frameworks, dependencies, models,
-  tool-specific projection, local/project files, conflicts, and warnings.
-- `onto` binary operations backed by installed/shared framework metadata.
-
-Non-goals:
-
-- No remote registry in v1.1.
-- No automatic updates of bundled resources after install.
-- No per-resource override of framework internals.
-- No implicit framework installation during `homonto init`; enabled frameworks
-  remain declared in `homonto.toml` and applied through the normal plan/apply
-  pipeline.
-
-Example:
-
-```toml
-[frameworks.onto]
-source = "builtin:onto"
-scope = "project"
-
-[commands.review]
-source = "builtin:review"
-scope = "user"
-targets = ["opencode"]
-```
-
-Bundled catalog entries carry origin/version metadata for auditability. Local
-adaptations live under `homonto/` and are declared with `source = "local:<name>"`.
-
-**Status (2026-07-10, merged to `main`):** The catalog foundation for
-**skills** is implemented and merged (originally
-`feature/20260710/catalog-foundation-skills`). This covers the bundled
-`go:embed` catalog (`onto`, `comet`, `superpowers`, `openspec` frameworks),
-`[frameworks.X]` dependency expansion, version-gated materialization to
-`.homonto/catalog/skills/`, and builtin SKILL projection into Claude Code and
-OpenCode. Command and subagent projection (`[commands.X]`, `[subagents.X]`)
-were future work as of this status; both have since landed (see the status
-notes below).
-
-Verification evidence:
-- Full Go test suite: 195 tests passing across 18 packages (`go test ./...
-  -count=1`), `go vet ./...` clean, `go build ./...` clean.
-- Dogfood run: switching `homonto.toml` to `[frameworks.comet]` (which
-  transitively pulls in `superpowers` and `openspec`) and running `homonto
-  apply` materializes and links all 31 skills; a second `homonto status`
-  reports `No drift.`; `homonto doctor` reports all 31 skills × 2 tools
-  (Claude Code, OpenCode) = 62 "linked" OK lines.
-
-**Status (2026-07-10, merged to `main` and archived):** Command projection
-machinery has since landed on top of the skills foundation above (originally
-`feature/20260710/command-projection`, now merged and its Comet change
-archived).
-`[commands.X]` (builtin or local, `source` resolving to `.homonto/catalog/
-commands/<name>.md` or `homonto/commands/<name>.md` respectively) and
-framework-declared `[commands]` tables (inherited scope/targets, transitive
-through framework dependencies, deduplicated, explicit-entry collisions
-rejected) both single-file-materialize to `.homonto/catalog/commands/` under
-the same version gate as skills, then project into Claude Code
-(`.claude/commands/<name>.md`) and OpenCode (`.opencode/command/<name>.md` or
-the user-scope equivalents), with `homonto doctor` verifying both tools'
-links. Real bundled command content is still deferred: exactly one
-placeholder `example-command` exists (`catalog/commands/example-command.md`),
-declared standalone in `homonto.toml` as `[commands.example-command] source =
-"builtin:example-command"` for dogfood, matching the "Placeholder fixture
-command" design constraint; the `onto` framework's catalog also lists it in
-its `[commands]` table, exercised by framework-expansion unit tests.
-
-Verification evidence:
-- Full Go test suite: 215 tests passing across 19 packages (`go test ./...
-  -count=1`), `go vet ./...` clean, `go build ./...` clean.
-- Dogfood run: with `[commands.example-command]` declared, `homonto apply`
-  materializes and links it into both tools; a follow-up `homonto status`
-  reports `No drift.`, and `homonto doctor` reports `ok: command
-  "example-command" linked (claude)` and `ok: command "example-command"
-  linked (opencode)`.
-
-**Status (2026-07-10, merged to `main`):** Subagent projection machinery has
-since landed on top of the skills/commands foundation above (originally
-`feature/20260710/subagent-projection`). `[subagents.X]` (builtin or local,
-`source` resolving to `.homonto/catalog/subagents/<name>.md` or
-`homonto/subagents/<name>.md` respectively) and framework-declared
-`[subagents]` tables (inherited scope/targets, transitive through framework
-dependencies, deduplicated, explicit-entry collisions rejected) both
-single-file-materialize verbatim (no model injection) to
-`.homonto/catalog/subagents/` under the same version gate as skills and
-commands, then link into Claude Code (`.claude/agents/<name>.md`) and
-OpenCode (`.opencode/agent/<name>.md`, or the user-scope equivalents), with
-`homonto doctor` verifying both tools' links. Unlike the command projection
-placeholder, subagent projection ships with real bundled content: three
-subagents — `code-reviewer`, `codebase-explorer`, and comet's
-`comet-navigator` — are declared in the catalog and dogfooded through
-`homonto.toml`.
-
-Verification evidence:
-- Full Go test suite: 239 tests passing across 20 packages (`go test ./...
-  -count=1`), `go test -race ./...` clean, `go vet ./...` clean, `go build
-  ./...` clean, `gofmt -l .` clean.
-- Dogfood run: with `[subagents.code-reviewer]` and
-  `[subagents.codebase-explorer]` declared directly in `homonto.toml` and
-  `comet-navigator` pulled in transitively via `[frameworks.comet]`, `homonto
-  apply` materializes and links all three into both tools; a follow-up
-  `homonto status` reports `No drift.`, and `homonto doctor` reports `ok:
-  subagent "<name>" linked (claude)` and `ok: subagent "<name>" linked
-  (opencode)` for all three.
-
-## v1.2 Plugin Configuration
-
-Plugin support expands from simple references to declarations with configuration.
-Claude and OpenCode keep separate plugin schemas because their plugin systems do
-not map one-to-one.
-
-**Status (2026-07-11, first increment merged to `main`):** The plugin
-*declaration model* has landed. `homonto.toml` now declares plugins as
-`[plugins.<tool>.<name>]` tables with a required `source` and an optional
-`enabled` flag (default true), replacing the prior bare-name lists (a breaking,
-pre-release schema change). Both adapters project enable **and** disable — Claude
-writes `enabledPlugins[<source>] = true|false` (disable is now expressible, not
-just absence) and OpenCode adds/removes the `source` in its `plugin` array,
-surgically and idempotently; a duplicate `source` across two declarations is
-rejected at load to keep plans deterministic. **Per-plugin config projection has
-also landed (v1.2 #2):** a Claude plugin's optional `config` table projects to
-`pluginConfigs.<source>.options` in `settings.json` (a new managed namespace,
-surgical/idempotent/pruned/adoptable); an OpenCode plugin declaring `config` is
-rejected at load, since OpenCode has no per-plugin config location on disk (no
-silently-dropped config). **Claude marketplace registration has also landed
-(v1.2 #3):** a `[marketplaces.claude.<name>]` declaration (source type
-`github`/`url`/`git-subdir`/`directory` + its locator + optional `auto_update`)
-projects to `extraKnownMarketplaces.<name>` in `settings.json` (a new managed
-namespace, surgical/idempotent/pruned/adoptable). **This completes v1.2 Plugin
-Configuration** — declare, enable/disable, per-plugin config, and marketplace
-registration are all in. The next roadmap phase is v1.3 Tool TUI Configuration.
-
-Scope:
-
-- Declare plugins per target tool.
-- Enable or disable plugins where the tool supports it.
-- Configure plugin-specific settings.
-- Show plugin config changes in `plan`.
-- Apply plugin config surgically without overwriting unrelated tool settings.
-
-Example:
-
-```toml
-[plugins.claude.claude-hud]
-source = "claude-hud@official"
-enabled = true
-config = { compact = true, status_line = "tokens" }
-
-[plugins.opencode.opencode-quota]
-source = "@slkiser/opencode-quota"
-enabled = true
-config = { show_remaining = true }
-```
-
-Non-goals:
-
-- No full marketplace, search, ratings, or community discovery in v1.2.
-- No cross-tool abstraction that hides real Claude/OpenCode plugin differences.
-
-## v1.3 Tool TUI Configuration
-
-Homonto manages Claude/OpenCode TUI-related configuration. This phase does not
-add an interactive Homonto TUI.
-
-**Status (2026-07-11, first increment merged to `main`):** The OpenCode
-`tui.json` target has landed. Research established that Claude's TUI settings
-(`theme`, `statusLine`, `tui`, `editorMode`, …) are all top-level `settings.json`
-keys **already covered** by the existing `[settings.claude]` projection — so
-Claude needs no new code. OpenCode's TUI settings live in a **separate file**
-`~/.config/opencode/tui.json`; homonto now projects a top-level `[tui.opencode]`
-table there as a **second managed config file** in the OpenCode adapter
-(surgical/idempotent/pruned/adoptable, with a `tui.<key>` state namespace),
-independent of `opencode.jsonc` (a TUI-only change never rewrites it). This
-establishes the "two managed files per adapter" pattern. Remaining v1.3 work:
-richer keybind/layout handling and theme-file management if wanted, and
-fixtures per target config shape.
-
-Scope:
-
-- Themes and display preferences.
-- Status line or model-display settings where supported.
-- TUI-oriented plugins and their config.
-- Keybindings or layout settings when represented in target tool config.
-- Fixture-based tests for each supported target config shape.
-
-Example:
-
-```toml
-[settings.claude.tui]
-theme = "dark"
-status_line = true
-
-[settings.opencode.tui]
-theme = "gruvbox"
-sidebar = "auto"
-```
-
-TUI plugin configuration should live under the plugin config model when the
-behavior belongs to a plugin. Tool-native UI settings should live under
-`settings.<tool>.tui`.
-
-## v2 Agent Lifecycle
-
-Agents become first-class managed resources. v1 can link owned agent files, but
-v2 manages source, version, compatibility, updates, and migration.
-
-**Status (2026-07-11, foundation increment merged to `main`):** The
-`[agents.<name>]` declaration model has landed — `source` (`builtin:`/`local:`,
-remote deferred), optional `version` (unpinned when empty), `targets`, and `mode`
-(`copy`/`link`, default `link`), validated at load — along with a read-only
-`homonto agents list` that prints declared agents (sorted) with their source,
-version, targets, and mode. The first lifecycle **mutation** has also landed:
-`homonto agents add <name>` installs a `local:` agent into its target tools'
-agent directories (per its `copy`/`link` mode), conflict-safe (refuses to
-clobber an unmanaged file, all-or-nothing per agent) and idempotent (an unchanged
-target is a no-op), recording each install (source, version, mode, targets, and
-per-target path + content hash) in a new `.homonto/agents-lock.json` lockfile —
-the installed-state ground truth the rest of v2 builds on. A read-only health
-check has also landed: `homonto agents doctor` compares declared agents (config)
-against installed (`agents-lock.json`) and disk, reporting each drift — declared-
-but-not-installed, orphaned (de-declared), source-changed (a `local:` provider
-file whose hash no longer matches the install), target-not-installed / no-longer-
-targeted, missing-on-disk, and `copy`-mode modified-on-disk — printing `healthy`
-and exit 0 when clean, or the findings and a non-zero exit otherwise (the peer of
-`homonto doctor`/`onto doctor`). The fix action for that drift has also landed:
-`homonto agents update <name>` re-materializes an installed `local:` agent from
-its current source (per its `copy`/`link` mode), refreshing the lockfile, and —
-to protect user work — backs up a locally-modified `copy` install to `<path>.bak`
-before overwriting (a genuine local edit only, not an untouched install); it is
-idempotent. Version pinning stays declarative (set `[agents.<name>].version` in
-the config; homonto never edits `homonto.toml`), so there is no separate `pin`
-command. The three-way-merge foundation has landed (#5a): a pure, dependency-free
-line-based merge engine (`internal/merge` — auto-merges disjoint local + upstream
-edits, git-style conflict markers on overlap) and a content-addressed
-base-content blob store (`internal/agentblob`, `.homonto/agents-blobs/<sha256>`);
-`agents add`/`update` now persist each install's base content there
-(behavior-preserving) so a future merge has the common ancestor. The merge is now
-wired into `update` (#5b): `agents update` **three-way-merges** local edits with
-the upstream source (disjoint edits auto-merge and advance the recorded base to
-the new source); on an overlapping conflict it leaves the live file untouched,
-writes the merged-with-markers result to `<path>.merged`, makes no lockfile
-change, and exits non-zero. `agents doctor` was reframed for this model — a
-locally-edited install is a normal, mergeable state (no longer a problem finding),
-and a pending `<path>.merged` conflict is reported. Bulk reconcile also landed
-(#5c): `agents update --all` runs the three-way merge across every installed
-agent, skips agents no longer declared, isolates per-agent errors, prints a
-summary, and exits non-zero if any agent conflicted or errored — the roadmap's
-`migrate` convenience (a thin wrapper over the per-agent merge). This completes
-the local-agent lifecycle (add / list / doctor / update / update --all with
-three-way merge). Builtin agent sources have also landed (#6a): `agents
-add`/`update`/`doctor` resolve `builtin:<name>` from the embedded catalog (a
-`catalog.SubagentContent` reader + a shared `resolveAgentSource`), so bundled
-agents are declarable and lifecycle-managed — install, drift, and three-way merge
-(including auto-merging a user's edits with a catalog upgrade) all work for
-`builtin:` exactly as for `local:`; builtin agents are copy-only (link needs a
-local path, and an unspecified mode defaults to copy for them). Cleanup has also
-landed: `homonto agents prune` removes homonto-managed installs for orphaned
-agents (recorded but no longer declared) and de-declared targets, backing up any
-locally-modified file to `<path>.bak` and clearing a leftover `.merged` sidecar
-first, and offering a `--dry-run` preview — completing the lifecycle loop
-(add → doctor detects → prune cleans up). Remaining v2 (deferred): **remote**
-agent sources (an explicit first-release non-goal); compatibility checks per
-target; a per-agent scope; blob GC; `--markers` in-file conflict mode; and the
-eventual `[agents]`-vs-`[subagents]` reconciliation.
-
-Scope:
-
-- Local authored agents under `homonto/agents/`.
-- Built-in agent resources from the curated catalog.
-- Remote/community agent sources after local and built-in flows are stable.
-- Version pinning and lockfile/state tracking.
-- Compatibility checks per target tool.
-- `homonto agents list`, `add`, `update`, `pin`, `doctor`, and `migrate`.
-- Local-edit conflict detection before updates or migrations.
-- Backup or three-way-merge behavior for lifecycle-managed agent files.
-
-Example:
-
-```toml
-[agents.review]
-source = "builtin:review-agent"
-version = "1.2.0"
-targets = ["claude", "opencode"]
-mode = "copy"
-```
-
-Design principle: lifecycle-managed agents need stronger ownership metadata than
-simple symlinked content. Homonto must be able to distinguish user-authored
-agents, bundled catalog resources, and remotely sourced agents before it offers
-updates or migrations.
-
-## Data Model Principles
-
-- Preserve the simple v1 syntax for common cases.
-- Add richer table syntax only when configuration or lifecycle metadata is
-  needed.
-- Keep target-specific plugin schemas separate.
-- Store catalog origin for auditability, but treat local provider content as
-  user-owned.
-- Treat full agent lifecycle as v2, not as an implicit extension of v1 symlinks.
-- Resolve paths relative to the selected config file, not the shell working
-  directory, so `--config` works consistently.
-
-## Safety Rules
-
-Every phase must preserve the v1 safety rules:
-
-- `plan` never prints resolved secrets.
-- `apply` resolves secrets only after confirmation.
-- All secret resolution needed for a write succeeds before any file is changed.
-- Writes are atomic.
-- Managed keys are surgical.
-- Unmanaged keys survive.
-- Existing user-owned content is never overwritten without explicit force or
-  backup behavior.
-- OpenCode JSONC comments are removed whenever homonto rewrites
-  `opencode.jsonc`; this is explicitly documented until comment preservation is
-  implemented.
-- Adapter behavior must be idempotent: a second plan after apply is no-op unless
-  user-visible state changed.
-
-## Testing Strategy
-
-- **v1 Core:** parser, resolver, state, adapters, secret safety, idempotency,
-  status/drift, import, validation, pruning, and end-to-end apply tests. CI
-  should run `go test`, `go test -race`, `go vet`, `go build`, `gofmt`,
-  `go mod tidy -diff`, stamped-version smoke, and temp-HOME CLI smoke tests.
-- **v1.1 Onto Framework And Catalog Projection:** catalog parsing, dependency
-  expansion, framework install/projection, command/subagent projection, model
-  routing, conflict safety, and target compatibility tests.
-- **v1.2 Plugin Configuration:** plugin config projection tests per tool,
-  plugin setting diff tests, and unmanaged-key preservation tests.
-- **v1.3 Tool TUI Configuration:** fixture tests for Claude/OpenCode TUI-related
-  settings and TUI plugin config.
-- **v2 Agent Lifecycle:** source resolution, lock/state behavior, version
-  pinning, compatibility matrix, update/migration flows, and local-edit conflict
-  tests.
-
-## Open Questions
-
-- Which bundled frameworks and loose resources should ship after the first set
-  (`onto`, `comet`, `superpowers`, `openspec`).
-- Whether remote framework, resource, and agent sources should share one registry
-  model.
-- Whether v2 agent lifecycle should use a lockfile separate from `.homonto/state.json`.
-- Whether OpenCode JSONC comments should be preserved at all, or whether
-  whole-file comment removal remains an accepted limitation.
-- Whether import should become a full migration tool or stay a narrow Claude MCP
-  bootstrap command.
-- Whether status should retain a separate "pending config change" view after true
-  disk-vs-state drift is implemented.
+# Homonto Product and Engineering Roadmap
+
+**Updated:** 2026-07-11
+**Horizon:** First public release plus 12 months
+**Audience:** Maintainers and implementation agents
+**Strategy:** Release integrity first, then stabilization, model coherence,
+remote trust, and ecosystem expansion.
+
+## Purpose
+
+This document is the forward-looking source of truth for product direction.
+It records what is already implemented, what must happen next, and the gates
+that prevent later work from starting too early.
+
+Historical implementation narratives belong in archived OpenSpec changes and
+release notes. Operational tag instructions remain in
+[`release-checklist.md`](release-checklist.md). The executable plan for the
+immediate roadmap increment is
+[`2026-07-11-agentic-workflows-roadmap.md`](superpowers/plans/2026-07-11-agentic-workflows-roadmap.md).
+
+## Product Baseline
+
+Homonto currently ships two buildable Go binaries.
+
+### `homonto`
+
+Implemented commands:
+
+- `init`, `import`, `plan`, `apply`, `status`, `doctor`, and `version`.
+- `agents list`, `agents add`, `agents doctor`, `agents update`,
+  `agents update --all`, and `agents prune`.
+
+Implemented projection and lifecycle capabilities:
+
+- Claude Code and OpenCode MCP and settings projection.
+- Reference-only secrets resolved after confirmation and before writes.
+- Atomic writes, surgical managed-key updates, adoption, pruning, drift
+  detection, and deterministic plans.
+- Local and builtin skills, commands, and subagents at user or project scope.
+- Embedded framework catalog, dependency expansion, and versioned
+  materialization.
+- Claude and OpenCode plugin declarations; Claude plugin configuration and
+  marketplace registration.
+- OpenCode `tui.json` projection.
+- Local and builtin lifecycle-managed agents with copy/link installation,
+  lockfile state, content-addressed base blobs, three-way updates, conflict
+  sidecars, backups, bulk update, health reporting, and pruning.
+
+### `onto`
+
+Implemented commands:
+
+- `init`, `new`, `status`, `advance`, `close`, `doctor`, and `version`.
+
+Implemented workflow capabilities:
+
+- Framework-gated workspace initialization and change creation.
+- Derived phases and phase-aware skeleton validation.
+- Gated phase transitions, including checked-task requirements.
+- Dirty-worktree protection for release-critical transitions.
+- Dependency-aware close and date-prefixed archive behavior.
+- Read-only workflow/project health diagnostics.
+
+### Build and Test Baseline
+
+- Both binaries are cross-compiled for Linux, macOS, and Windows on amd64 and
+  arm64, with one checksum manifest.
+- The Go suite currently contains 443 passing tests across 26 packages.
+- `go test -race ./...`, `go vet ./...`, `go build ./...`, `gofmt -l .`, and
+  `go mod tidy -diff` are clean as of this update.
+- Statement coverage is approximately 85%, with lower coverage in selected
+  filesystem failure and drift-observation paths.
+- The current Docker smoke passes, but builds and exercises only `homonto` and
+  primarily covers the original core projection workflow.
+
+## Roadmap Rules
+
+Every milestone must preserve these invariants:
+
+- Never lose or silently overwrite user-owned content.
+- Never forget ownership while a managed file remains on disk.
+- Never expose resolved secrets in plans, state, logs, or test output.
+- Every mutation must be idempotent or explicitly report why it cannot be.
+- Living specifications and user documentation must describe current source,
+  not an earlier implementation increment.
+- A feature is not release-ready until it has binary-level evidence, not only
+  unit tests.
+- Remote input is untrusted and cannot reuse local-source assumptions without
+  an explicit threat model.
+- Large roadmap milestones receive a focused design and implementation plan
+  before code execution begins.
+
+## Now: Release Integrity
+
+**Target:** Weeks 0-4
+**Outcome:** A trustworthy `v0.1.0-rc.1` candidate backed by dual-binary
+evidence.
+
+### 1. Agent Lifecycle Ownership Safety
+
+- Preserve lockfile records for de-declared targets until `agents prune`
+  successfully removes their files.
+- Treat install-file deletion failures as prune failures and retain ownership
+  records for retry.
+- Keep `.merged` cleanup errors visible without losing the primary install
+  record.
+- Correct stale agent command/help text and doctor remediation guidance.
+
+Exit gate:
+
+- Target removal followed by update cannot create an untracked install.
+- Failed deletion cannot produce a false "removed" report or drop ownership.
+- Focused regression tests cover both invariants.
+
+### 2. Documentation and Specification Truth Reset
+
+- Align README, road-to-release, release notes, and living OpenSpec
+  specifications with the implemented command surface.
+- Replace placeholder specification purposes and remove obsolete claims that
+  builtin catalog projection or Onto lifecycle commands are missing.
+- Keep completed change history out of this roadmap.
+- Add a lightweight release-doc consistency checklist.
+
+Exit gate:
+
+- A maintainer can derive the same capability inventory from source, README,
+  roadmap, release gate, and living specs.
+- Current test counts and release status are stated in one place or generated.
+
+### 3. Dual-Binary Docker End-to-End Coverage
+
+Retain the existing Homonto core smoke and add independently diagnosable suites:
+
+| Suite | Required evidence |
+|---|---|
+| `homonto-core` | Init, plan/apply, idempotency, status/doctor, secrets, scope relocation, and conflict safety |
+| `homonto-expanded` | Builtin framework materialization; skill, command, and subagent links; plugins; marketplace; OpenCode TUI |
+| `homonto-agents` | Local and builtin add, doctor, update, clean merge, conflict sidecar, dry-run prune, and prune |
+| `onto-lifecycle` | Framework gate, init, new, phase advances, failure gates, doctor, dependency handling, close, and archive |
+| `release-packaging` | Both stamped binaries, all expected archives, checksums, extraction, and disposable-home smoke |
+
+Exit gate:
+
+- The Docker image builds both binaries.
+- Each suite runs the compiled binaries against disposable state.
+- Assertions inspect files, lock/state records, exit codes, and archive layout;
+  stdout matching is reserved for output contracts.
+
+### 4. Release Gate Unification
+
+- Provide one repository command used by local rehearsal and CI.
+- Make publication depend on formatting, module tidiness, vet, build, unit tests,
+  race tests, Docker E2E, vulnerability scanning, and packaging smoke.
+- Prevent the release workflow from publishing while an independent CI job is
+  still failing or pending.
+
+Exit gate:
+
+- A tag cannot publish artifacts unless the complete documented gate passes.
+- The release checklist invokes the same commands as automation.
+
+## Next: Public Stabilization
+
+**Target:** Months 1-3
+**Outcome:** Promote from release candidate after real installation and upgrade
+cycles.
+
+Priorities:
+
+- Run at least one clean dogfood cycle using downloaded release artifacts.
+- Triage RC feedback before accepting major new capability work.
+- Add failure-path coverage for atomic writes, link removal, state saves,
+  `ObserveHashes`, and doctor helpers.
+- Add fuzz/property tests for config parsing, JSON-path escaping, merge
+  invariants, and state serialization.
+- Split `internal/cli/agents.go` by command responsibility without changing its
+  public behavior.
+- Introduce shared projection helpers only when characterization tests prove
+  parity and the next resource type needs them.
+- Decide whether narrow import and OpenCode comment loss remain explicit product
+  limitations or receive dedicated future changes.
+
+Exit gate:
+
+- `v0.1.0` is promoted only after a clean RC install, apply, upgrade, Onto
+  lifecycle, agent lifecycle, and rollback cycle.
+- No release-blocking defect remains open without an explicit waiver.
+
+## Then: Resource Model Coherence
+
+**Target:** Months 3-6
+**Outcome:** Remove conceptual overlap before adding remote sources.
+
+Priorities:
+
+- Reconcile `[agents]` and `[subagents]` into a documented ownership and
+  lifecycle model with an explicit migration path.
+- Define per-agent scope semantics and relocation rules.
+- Add target compatibility metadata and pre-install validation.
+- Add safe content-addressed blob garbage collection.
+- Improve conflict resolution so resolving `.merged` state is explicit and
+  recoverable.
+- Expand native TUI/keybinding/theme support only for verified tool schemas and
+  demonstrated user demand.
+
+Exit gate:
+
+- Every managed resource has one clear declaration model, owner, scope,
+  compatibility contract, and removal path.
+- Existing configurations have a tested migration or remain supported through a
+  documented compatibility period.
+
+## Later: Remote Trust Boundary
+
+**Target:** Months 6-9
+**Outcome:** Reproducible remote resources without weakening local safety.
+
+Priorities:
+
+- Design one remote-source model for frameworks, skills, commands, subagents,
+  and agents where their trust requirements genuinely align.
+- Require immutable versions or content hashes in lockfiles.
+- Define provenance, cache, offline, rollback, revocation, and update behavior.
+- Threat-model redirects, traversal, symlinks, oversized content, malicious
+  archives, compromised registries, and dependency substitution.
+- Add stronger static and security analysis before accepting untrusted input.
+- Keep automatic remote updates out of the first remote increment.
+
+Exit gate:
+
+- A remote install is pinned, auditable, reproducible, cacheable, and removable.
+- Compromised or malformed content fails before mutating tool configuration.
+
+## Horizon: Ecosystem Expansion
+
+**Target:** Months 9-12
+**Outcome:** Make extension safer than copying an existing adapter.
+
+Priorities:
+
+- Publish an adapter contract and real-config compatibility fixture format.
+- Pilot one additional tool adapter before opening broad adapter contributions.
+- Establish bundled catalog governance, versioning, deprecation, and provenance
+  policies.
+- Expand import only for stable, fixture-backed target schemas.
+- Publish contributor guides for adapters, framework bundles, and catalog
+  resources.
+
+Exit gate:
+
+- A third adapter can be implemented without duplicating the entire
+  Claude/OpenCode control flow.
+- Catalog additions have automated compatibility and provenance checks.
+
+## Explicit Deferrals
+
+These items do not block the first stable release:
+
+- Interactive Homonto TUI.
+- Ratings, search, or a community marketplace.
+- Multiple new adapters in parallel.
+- Unpinned remote sources or automatic remote updates.
+- Per-resource framework-internal overrides.
+- Broad adapter rewrites without characterization tests.
+- Comment-preserving OpenCode writes unless demand outweighs complexity.
+
+## Agent Execution Protocol
+
+Implementation agents must work milestone by milestone:
+
+1. Read this roadmap, the relevant living specs, ADRs, and the milestone's
+   focused implementation plan.
+2. Confirm dependencies and acceptance gates before editing.
+3. Use TDD for behavior changes and preserve the failing-test evidence.
+4. Keep one task independently reviewable and verifiable.
+5. Run the narrow test first, then the complete milestone gate.
+6. Update living specs and user documentation in the same change as behavior.
+7. Record verification commands and unresolved gaps before handoff.
+8. Do not begin a later milestone while an earlier exit gate is unmet unless a
+   maintainer records an explicit exception.
+
+## Roadmap Health Metrics
+
+Review these monthly and at every release:
+
+- Release gate duration and failure causes.
+- Docker E2E suite duration and flake rate by suite.
+- Number of source/documentation contradictions.
+- Open lifecycle ownership or data-loss defects.
+- Coverage of filesystem failure paths and drift observation.
+- Time from catalog/tool schema change to fixture update.
+- Number of roadmap items without an owner, dependency, or exit gate.

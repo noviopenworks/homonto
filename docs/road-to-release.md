@@ -6,8 +6,8 @@ gate for tagging and announcing a usable release.
 
 ## Release Verdict
 
-Current state: **release gate reopened for the dual-binary homonto + onto
-release.**
+Current state: **implementation complete for the planned dual-binary surface;
+release-integrity evidence and the maintainer-owned tag remain.**
 
 The earlier "release-ready pending the maintainer's tag" verdict is **superseded**
 by the dual-binary product direction in
@@ -19,36 +19,22 @@ behind the explicit per-resource config model (`[frameworks.X]`, `[skills.X]`,
 `[commands.X]`, `[subagents.X]`, `[models.<tool>.<level>]` with required
 `source` + `scope`, local provider content under `homonto/`).
 
-The config-resource-model code work has landed: 168/168 tests green and
-`go run . status` → `No drift` against the new model. The remaining gate is
-delivering the `onto` binary, the dual-binary release packaging, and the new
-coverage in the design doc's "Testing And Release Gate" section, followed by the
-maintainer-owned `v0.1.0-rc.1` tag and smoke. The Iteration 0–4 history below
-records the work that closed the original beta gate; it is retained as history,
-not as the current release verdict.
+The planned code surface has landed: both binaries build, the current Go suite
+contains 443 passing tests across 26 packages, and dual-binary packaging exists.
+The remaining gate is evidence: fix lifecycle ownership defects, align living
+documentation and specs, expand Docker E2E to the implemented Homonto surfaces
+and the complete Onto lifecycle, verify release archives, run a clean rehearsal,
+and then perform the maintainer-owned `v0.1.0-rc.1` tag and smoke. The Iteration
+0–4 history below records the work that closed the original beta gate; it is
+retained as history, not as the current release verdict.
 
-**Onto binary foundation and `onto init` landed (2026-07-10,
-`onto-binary-foundation` and `onto-init` changes, not yet merged to `main`):**
-a second `package main` at `cmd/onto` now builds an `onto` binary alongside
-`homonto`; `internal/ontostate` models `onto-state.yaml` (parse, validate,
-derive phase; phase set `open|design|build|verify|close`); `onto status` is a
-read-only, config-independent command that globs
-`docs/changes/*/onto-state.yaml` and prints each active change's derived
-phase, without reading `homonto.toml` or writing any file; and `onto init`
-idempotently scaffolds the `docs/{changes,specs,adr,guides}` layout, gated
-behind the Homonto framework install (it writes nothing if
-`[frameworks.onto]` is not installed, and never overwrites user files on
-repeat runs). Change skeleton creation (`onto new`, #3a) and gated phase
-transitions (`onto advance`, #3b) have since landed: `onto advance <change>`
-moves a change through `open → design → build → verify → close` only when
-the current phase's required deliverables (and, to leave `build`, all
-checked tasks) are complete, warning on a dirty worktree for a normal
-advance and blocking outright on the release-critical `verify → close`
-transition. Dependency resolution and archive/close rules (#3c), `onto
-doctor` (#4), and dual-binary release packaging (cross-compiling and
-publishing both binaries under one `SHA256SUMS`, #5) are not implemented
-yet, so the dual-binary release gate above is **not** met by this work
-alone.
+**Current Onto status:** `onto init`, `new`, `status`, `advance`, `close`, and
+`doctor` are implemented on `main`, including dependency-aware archive/close
+rules and dirty-worktree protection. Dual-binary cross-platform packaging and
+checksums are also implemented. The current Docker image still builds only
+`homonto`, so the release gate is not met until compiled-binary E2E covers the
+Onto lifecycle and the expanded Homonto surface described in
+[`roadmap.md`](roadmap.md).
 
 ## Iteration 0 - Safety Blockers
 
@@ -232,7 +218,7 @@ post-resource-model checks ran on 2026-07-09:
 - `go mod tidy -diff` clean.
 - `go vet ./...` clean.
 - `go build ./...` passed.
-- `go test ./... -count=1` passed: 168 tests in 16 packages.
+- `go test ./... -count=1` passed: 443 tests in 26 packages on 2026-07-11.
 - `go test -race ./...` passed in the 2026-07-08 rehearsal; rerun before tagging.
 - `./scripts/docker-test.sh` passed.
 - `go run . status` reports `No drift` (repo dogfooded at project scope).
