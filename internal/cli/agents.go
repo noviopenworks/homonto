@@ -28,6 +28,116 @@ func agentsCmd() *cobra.Command {
 	cmd.AddCommand(agentsAddCmd())
 	cmd.AddCommand(agentsUpdateCmd())
 	cmd.AddCommand(agentsDoctorCmd())
+	cmd.AddCommand(agentsPruneCmd())
+	return cmd
+}
+
+// agentsPruneCmd builds "agents prune": it removes homonto-managed agent installs
+// that are no longer declared — an orphan agent (recorded but undeclared) and a
+// de-declared target (a recorded target the agent no longer targets) — and drops
+// their lockfile records. It touches only recorded install paths, backs a
+// locally-edited file up to <path>.bak before removing it, and cleans up a
+// leftover <path>.merged sidecar. --dry-run lists what would be pruned and
+// changes nothing.
+func agentsPruneCmd() *cobra.Command {
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "prune",
+		Short: "Remove orphaned/de-declared agent installs",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfgPath, _ := cmd.Flags().GetString("config")
+			cfgDir := filepath.Dir(cfgPath)
+			homontoDir := filepath.Join(cfgDir, ".homonto")
+
+			c, err := config.Load(cfgPath)
+			if err != nil {
+				return err
+			}
+			lock, err := agentlock.Load(homontoDir)
+			if err != nil {
+				return err
+			}
+
+			var actions []string
+			changed := false
+
+			// pruneFile removes one recorded install, backing up a local edit
+			// first and cleaning up its .merged sidecar. It only ever touches the
+			// recorded ti.Path; an already-gone file is a silent no-op.
+			pruneFile := func(ti agentlock.Install) {
+				if _, err := os.Lstat(ti.Path); err != nil {
+					return // already gone
+				}
+				if dryRun {
+					actions = append(actions, fmt.Sprintf("would remove %s", ti.Path))
+					return
+				}
+				// Back up a local edit (on-disk content differs from recorded base).
+				if b, rerr := os.ReadFile(ti.Path); rerr == nil && agentlock.HashContent(b) != ti.Hash {
+					if err := fsutil.WriteAtomic(ti.Path+".bak", b); err == nil {
+						actions = append(actions, fmt.Sprintf("backed up %s to %s.bak", ti.Path, ti.Path))
+					}
+				}
+				os.Remove(ti.Path)
+				os.Remove(ti.Path + ".merged")
+				actions = append(actions, fmt.Sprintf("removed %s", ti.Path))
+			}
+
+			for _, name := range sortedKeysAgents(lock.Agents) {
+				ag, declared := c.Agents[name]
+				inst := lock.Agents[name]
+				if !declared {
+					// Orphan: prune every recorded target.
+					for _, tool := range sortedKeys(inst.Installed) {
+						pruneFile(inst.Installed[tool])
+					}
+					actions = append(actions, fmt.Sprintf("pruned orphan agent %q", name))
+					if !dryRun {
+						delete(lock.Agents, name)
+						changed = true
+					}
+					continue
+				}
+				// De-declared targets: recorded target not in ag.TargetsOrAll().
+				declaredSet := map[string]bool{}
+				for _, tool := range ag.TargetsOrAll() {
+					declaredSet[tool] = true
+				}
+				for _, tool := range sortedKeys(inst.Installed) {
+					if declaredSet[tool] {
+						continue
+					}
+					pruneFile(inst.Installed[tool])
+					actions = append(actions, fmt.Sprintf("pruned de-declared target %s of %q", tool, name))
+					if !dryRun {
+						delete(inst.Installed, tool)
+						lock.Agents[name] = inst
+						changed = true
+					}
+				}
+			}
+
+			if len(actions) == 0 {
+				cmd.Println("nothing to prune")
+				return nil
+			}
+			for _, a := range actions {
+				cmd.Println(a)
+			}
+			if dryRun {
+				cmd.Println("(dry run — nothing changed)")
+				return nil
+			}
+			if changed {
+				if err := lock.Save(homontoDir); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "list what would be pruned without changing anything")
 	return cmd
 }
 
