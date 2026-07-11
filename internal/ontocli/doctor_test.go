@@ -162,8 +162,8 @@ func TestDoctorCommand_ActiveMarkedArchived(t *testing.T) {
 	if err == nil {
 		t.Fatalf("execute() = nil, want error; out=%q", out)
 	}
-	if !strings.Contains(out, "archived") {
-		t.Errorf("out = %q, want it to contain %q", out, "archived")
+	if want := "eps: active change marked archived"; !strings.Contains(out, want) {
+		t.Errorf("out = %q, want it to contain %q", out, want)
 	}
 }
 
@@ -176,6 +176,9 @@ func TestDoctorCommand_ArchiveEntryNotArchived(t *testing.T) {
 	out, err := execDoctor(t, tmp)
 	if err == nil {
 		t.Fatalf("execute() = nil, want error; out=%q", out)
+	}
+	if want := "not marked archived"; !strings.Contains(out, want) {
+		t.Errorf("out = %q, want it to contain %q (naming archive entry zeta)", out, want)
 	}
 	if !strings.Contains(out, "zeta") {
 		t.Errorf("out = %q, want it to name the archive entry %q", out, "zeta")
