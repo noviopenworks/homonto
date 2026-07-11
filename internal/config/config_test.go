@@ -319,6 +319,28 @@ func loadDoc(t *testing.T, doc string) error {
 	return err
 }
 
+// TestAgentSubagentNameCollisionRejected: the same name in both [agents] and
+// [subagents] would let two systems manage one tool file — rejected at load.
+func TestAgentSubagentNameCollisionRejected(t *testing.T) {
+	both := "[agents.dup]\nsource=\"local:dup\"\n" +
+		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"user\"\n" +
+		validModelsBothTools()
+	err := loadDoc(t, both)
+	if err == nil {
+		t.Fatal("a name declared in both [agents] and [subagents] must be rejected")
+	}
+	if !strings.Contains(err.Error(), "both") {
+		t.Fatalf("collision error should name the conflict, got: %v", err)
+	}
+	// Distinct names are fine.
+	ok := "[agents.a]\nsource=\"local:a\"\n" +
+		"[subagents.b]\nsource=\"builtin:architect\"\nscope=\"user\"\n" +
+		validModelsBothTools()
+	if err := loadDoc(t, ok); err != nil {
+		t.Fatalf("distinct agent/subagent names must load: %v", err)
+	}
+}
+
 // TestSubagentScopeDefaultsToProject: an omitted [subagents.<name>] scope is no
 // longer an error — it defaults to project (Option C step 1). An explicit scope
 // is still honored, and skills/commands still require scope.

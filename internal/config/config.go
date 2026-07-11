@@ -461,6 +461,17 @@ func Load(path string) (*Config, error) {
 	if err := validateAgents(c.Agents); err != nil {
 		return nil, err
 	}
+	// A name may be managed by only one agent model. The imperative [agents.<x>]
+	// and the declarative [subagents.<x>] both project into the same tool agent
+	// directory, so declaring one name in both would let the two systems fight
+	// over the same file. Reject it at load, naming the collision. (Reconciliation
+	// design problem #1; the guard is retired when [agents] is removed in the
+	// Option-C endgame.)
+	for name := range c.Agents {
+		if _, dup := c.Subagents[name]; dup {
+			return nil, fmt.Errorf("parse config: %q is declared as both [agents.%s] and [subagents.%s]; a name may be managed by only one of the two agent models", name, name, name)
+		}
+	}
 	// Every other name becomes a key written into a tool's JSON file. sjson
 	// treats index-like segments ("0", "-1") as array positions, silently
 	// turning the containing object into a JSON ARRAY; empty names address
