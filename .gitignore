@@ -7,3 +7,6 @@ __pycache__/
 # Project-scoped dogfood skill links (machine-specific absolute symlinks).
 /.claude/
 /.opencode/
+
+# E2E matrix run logs (scratch)
+test/e2e/.out/
