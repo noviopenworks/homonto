@@ -434,13 +434,9 @@ documentation-consolidation change. Re-run any of them to re-verify the
 baseline.
 
 - [x] `go test ./... -count=1` → **443 passed in 26 packages** (2026-07-11).
+- [x] `go test -race ./... -count=1` → **443 passed in 26 packages**, race detector clean (2026-07-11).
 - [x] `go vet ./...` → clean (no issues).
 - [x] `go build ./...` → success (both `homonto` and `onto` build).
 - [x] `./scripts/docker-test.sh` → `SMOKE PASS` (homonto core smoke).
 - [x] `git tag --list` → empty (no release cut yet; `v0.1.0-rc.1` pending the
   release gate above).
-
-Coverage and race details: `go test -race ./...` is part of the intended
-release gate (item 6) and is clean on CI; the local re-baseline above uses
-`-count=1` without `-race` for speed. Prefer re-running the named command over
-trusting a hand-maintained total.
