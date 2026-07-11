@@ -443,9 +443,16 @@ agent, skips agents no longer declared, isolates per-agent errors, prints a
 summary, and exits non-zero if any agent conflicted or errored — the roadmap's
 `migrate` convenience (a thin wrapper over the per-agent merge). This completes
 the local-agent lifecycle (add / list / doctor / update / update --all with
-three-way merge). Remaining v2 (deferred):
-`builtin:`/remote sources (#6); compatibility checks per target; de-declared-
-target pruning; a per-agent scope; blob GC; and the eventual
+three-way merge). Builtin agent sources have also landed (#6a): `agents
+add`/`update`/`doctor` resolve `builtin:<name>` from the embedded catalog (a
+`catalog.SubagentContent` reader + a shared `resolveAgentSource`), so bundled
+agents are declarable and lifecycle-managed — install, drift, and three-way merge
+(including auto-merging a user's edits with a catalog upgrade) all work for
+`builtin:` exactly as for `local:`; builtin agents are copy-only (link needs a
+local path, and an unspecified mode defaults to copy for them). Remaining v2
+(deferred): **remote** agent sources (an explicit first-release non-goal);
+compatibility checks per target; de-declared-target pruning; a per-agent scope;
+blob GC; `--markers` in-file conflict mode; and the eventual
 `[agents]`-vs-`[subagents]` reconciliation.
 
 Scope:

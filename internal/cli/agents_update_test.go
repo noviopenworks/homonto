@@ -356,16 +356,17 @@ func TestAgentsUpdateNotInstalled(t *testing.T) {
 	}
 }
 
-// TestAgentsUpdateBuiltinNotSupported: a builtin: source is refused.
-func TestAgentsUpdateBuiltinNotSupported(t *testing.T) {
+// TestAgentsUpdateBuiltinLinkIsError: builtin + link is rejected on update too
+// (builtin has no local path to symlink).
+func TestAgentsUpdateBuiltinLinkIsError(t *testing.T) {
 	home := t.TempDir()
-	cfg, _ := addWorkspace(t, "[agents.b]\nsource=\"builtin:b\"\n", nil)
-	out, err := runCmd(t, home, "", "agents", "update", "b", "--config", cfg)
+	cfg, _ := addWorkspace(t, "[agents.cr]\nsource=\"builtin:code-reviewer\"\nmode=\"link\"\ntargets=[\"claude\"]\n", nil)
+	out, err := runCmd(t, home, "", "agents", "update", "cr", "--config", cfg)
 	if err == nil {
-		t.Fatalf("builtin source must be refused, got:\n%s", out)
+		t.Fatalf("builtin + link update must be refused, got:\n%s", out)
 	}
-	if !strings.Contains(err.Error(), "local:") {
-		t.Fatalf("error must explain only local: sources are supported, got: %v", err)
+	if !strings.Contains(err.Error(), "link") || !strings.Contains(err.Error(), "builtin") {
+		t.Fatalf("error must explain builtin cannot use link mode, got: %v", err)
 	}
 }
 

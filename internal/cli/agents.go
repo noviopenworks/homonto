@@ -10,6 +10,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/agentblob"
 	"github.com/noviopenworks/homonto/internal/agentlock"
+	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/link"
@@ -71,20 +72,18 @@ func agentsDoctorCmd() *cobra.Command {
 					continue
 				}
 
-				// source drift (local: only)
-				if strings.HasPrefix(ag.Source, "local:") {
-					srcPath := filepath.Join(cfgDir, "homonto", "agents", strings.TrimPrefix(ag.Source, "local:")+".md")
-					b, rerr := os.ReadFile(srcPath)
-					switch {
-					case rerr != nil:
-						findings = append(findings, fmt.Sprintf("%s: source file %s missing or unreadable", name, srcPath))
-					case len(inst.Installed) > 0:
-						// Every target records the same content hash at install, so
-						// compare against the first recorded target's hash (sorted for
-						// determinism).
-						if agentlock.HashContent(b) != firstRecordedHash(inst.Installed) {
-							findings = append(findings, fmt.Sprintf("%s: source changed since install (re-run `homonto agents add %s`)", name, name))
-						}
+				// source drift: resolve the declared source (local: or builtin:)
+				// and compare against the recorded install base hash.
+				srcContent, rerr := resolveAgentSource(ag, cfgDir)
+				switch {
+				case rerr != nil:
+					findings = append(findings, fmt.Sprintf("%s: source unresolved: %v", name, rerr))
+				case len(inst.Installed) > 0:
+					// Every target records the same content hash at install, so
+					// compare against the first recorded target's hash (sorted for
+					// determinism).
+					if agentlock.HashContent(srcContent) != firstRecordedHash(inst.Installed) {
+						findings = append(findings, fmt.Sprintf("%s: source changed since install (re-run `homonto agents add %s`)", name, name))
 					}
 				}
 
@@ -206,8 +205,14 @@ func agentsListCmd() *cobra.Command {
 				if v == "" {
 					v = "unpinned"
 				}
+				// Show the EFFECTIVE mode (builtin coerces to copy), matching what
+				// add/update materialize and record — not the raw link default.
+				mode := ag.ModeOrDefault()
+				if m, err := agentMode(n, ag); err == nil {
+					mode = m
+				}
 				cmd.Printf("%s: %s  version=%s  targets=%s  mode=%s\n",
-					n, ag.Source, v, strings.Join(ag.TargetsOrAll(), ","), ag.ModeOrDefault())
+					n, ag.Source, v, strings.Join(ag.TargetsOrAll(), ","), mode)
 			}
 			return nil
 		},
@@ -237,15 +242,17 @@ func agentsAddCmd() *cobra.Command {
 			if !ok {
 				return fmt.Errorf("agents add: agent %q is not declared", name)
 			}
-			if !strings.HasPrefix(ag.Source, "local:") {
-				return fmt.Errorf("agents add: only local: sources are supported yet (got %q)", ag.Source)
-			}
-			srcName := strings.TrimPrefix(ag.Source, "local:")
-			srcPath := filepath.Join(cfgDir, "homonto", "agents", srcName+".md")
-			content, err := os.ReadFile(srcPath)
+			mode, err := agentMode(name, ag)
 			if err != nil {
-				return fmt.Errorf("agents add: source file %s: %w", srcPath, err)
+				return fmt.Errorf("agents add: %w", err)
 			}
+			content, err := resolveAgentSource(ag, cfgDir)
+			if err != nil {
+				return fmt.Errorf("agents add: %w", err)
+			}
+			// srcPath is the local source path used by link mode; link only runs
+			// for local: sources (builtin: + link is rejected above).
+			srcPath := filepath.Join(cfgDir, "homonto", "agents", strings.TrimPrefix(ag.Source, "local:")+".md")
 			hash := agentlock.HashContent(content)
 
 			lock, err := agentlock.Load(homontoDir)
@@ -253,7 +260,6 @@ func agentsAddCmd() *cobra.Command {
 				return err
 			}
 			home, _ := os.UserHomeDir()
-			mode := ag.ModeOrDefault()
 			targets := ag.TargetsOrAll()
 			prevInstalled := lock.Agents[name].Installed
 
@@ -431,8 +437,9 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 	if !ok {
 		return false, fmt.Errorf("agents update: agent %q is not declared", name)
 	}
-	if !strings.HasPrefix(ag.Source, "local:") {
-		return false, fmt.Errorf("agents update: only local: sources are supported yet (got %q)", ag.Source)
+	mode, err := agentMode(name, ag)
+	if err != nil {
+		return false, fmt.Errorf("agents update: %w", err)
 	}
 
 	inst, installed := lock.Agents[name]
@@ -440,15 +447,14 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 		return false, fmt.Errorf("agents update: agent %q is not installed (run `homonto agents add %s`)", name, name)
 	}
 
-	srcName := strings.TrimPrefix(ag.Source, "local:")
-	srcPath := filepath.Join(cfgDir, "homonto", "agents", srcName+".md")
-	content, err := os.ReadFile(srcPath)
+	content, err := resolveAgentSource(ag, cfgDir)
 	if err != nil {
-		return false, fmt.Errorf("agents update: source file %s: %w", srcPath, err)
+		return false, fmt.Errorf("agents update: %w", err)
 	}
+	// srcPath is the local source path used by link mode; link only runs for
+	// local: sources (builtin: is copy-only).
+	srcPath := filepath.Join(cfgDir, "homonto", "agents", strings.TrimPrefix(ag.Source, "local:")+".md")
 	hash := agentlock.HashContent(content)
-
-	mode := ag.ModeOrDefault()
 	targets := ag.TargetsOrAll()
 	installedRec := map[string]agentlock.Install{}
 	for _, tool := range sortedStrings(targets) {
@@ -563,6 +569,53 @@ func runAgentUpdate(cmd *cobra.Command, name string, c *config.Config, lock *age
 		Installed: installedRec,
 	}
 	return conflicted, nil
+}
+
+// resolveAgentSource resolves a declared agent's source to its content:
+// local:<x> reads homonto/agents/<x>.md under the config dir; builtin:<x> reads
+// the embedded catalog's curated agent content by name (unknown name is an
+// error); any other scheme is not yet supported (remote deferred).
+// agentMode returns the effective materialize mode for an agent. A builtin:
+// source has no stable on-disk path to symlink, so it is copy-only: an explicit
+// mode=link on a builtin agent is an error, and an unspecified mode defaults to
+// copy (rather than the general link default). local: agents keep the normal
+// mode default.
+func agentMode(name string, ag config.Agent) (string, error) {
+	if strings.HasPrefix(ag.Source, "builtin:") {
+		if ag.Mode == "link" {
+			return "", fmt.Errorf("%q uses builtin: with link mode, but builtin sources have no local path to link; use mode=copy", name)
+		}
+		return "copy", nil
+	}
+	return ag.ModeOrDefault(), nil
+}
+
+func resolveAgentSource(ag config.Agent, cfgDir string) ([]byte, error) {
+	switch {
+	case strings.HasPrefix(ag.Source, "local:"):
+		p := filepath.Join(cfgDir, "homonto", "agents", strings.TrimPrefix(ag.Source, "local:")+".md")
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("source file %s: %w", p, err)
+		}
+		return b, nil
+	case strings.HasPrefix(ag.Source, "builtin:"):
+		name := strings.TrimPrefix(ag.Source, "builtin:")
+		cat, err := catalog.New()
+		if err != nil {
+			return nil, err
+		}
+		b, ok, err := cat.SubagentContent(name)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unknown builtin agent %q", name)
+		}
+		return b, nil
+	default:
+		return nil, fmt.Errorf("unsupported agent source %q (remote sources are not yet supported)", ag.Source)
+	}
 }
 
 // isSymlinkTo reports whether dst is a symlink whose target is exactly src.
