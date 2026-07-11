@@ -2,6 +2,8 @@
 comet_change: plugin-config-projection
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-plugin-config-projection
+status: final
 ---
 
 # Plugin Config Projection — Technical Design

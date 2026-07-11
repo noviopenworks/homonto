@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/plugin-config-projection/tasks.md",
   "openspec_delta_spec": "openspec/changes/plugin-config-projection/specs/config-model/spec.md",
   "handoff_context": "openspec/changes/plugin-config-projection/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/plugin-config-projection/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/plugin-config-projection/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-11-plugin-config-projection"
 }

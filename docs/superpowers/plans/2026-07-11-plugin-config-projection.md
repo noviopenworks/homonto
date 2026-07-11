@@ -2,6 +2,7 @@
 change: plugin-config-projection
 design-doc: docs/superpowers/specs/2026-07-11-plugin-config-projection-design.md
 base-ref: 1656a0e3338f9016fa4a914f32aeb14c5809e483
+archived-with: 2026-07-11-plugin-config-projection
 ---
 
 # Plan: plugin config projection (v1.2 #2)
