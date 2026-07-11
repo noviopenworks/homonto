@@ -41,7 +41,7 @@ func recordedDst(desired string) (string, bool) {
 // managedPrefix reports whether a state key is in a namespace this adapter
 // manages — only those are eligible for pruning.
 func managedPrefix(k string) bool {
-	for _, p := range []string{"mcp.", "setting.", "plugin.", "skill.", "command.", "subagent."} {
+	for _, p := range []string{"mcp.", "setting.", "tui.", "plugin.", "skill.", "command.", "subagent."} {
 		if strings.HasPrefix(k, p) {
 			return true
 		}
