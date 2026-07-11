@@ -1,0 +1,15 @@
+{
+  "change": "claude-marketplace-registration",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "483eed54e91c6032df1bf86243fdfd574a1cc8e7299edf5984f265e52d5a00ea",
+  "files": [
+    { "path": "openspec/changes/claude-marketplace-registration/proposal.md", "sha256": "19974ff1a54194f1f708124a973b86bcfbb07905ca1a960f1afdd5cdddbd581a" },
+    { "path": "openspec/changes/claude-marketplace-registration/design.md", "sha256": "4d1f2e0c4441e415bc81eafc2a0e9b04d529ffffe80290554ea140807109e4c6" },
+    { "path": "openspec/changes/claude-marketplace-registration/tasks.md", "sha256": "9dbdc7da2a2c3b3ba8727b085dff3f3a2286ee7a21112942398d9210039b5b1d" },
+    { "path": "openspec/changes/claude-marketplace-registration/specs/config-model/spec.md", "sha256": "8daa1c67c0ab8a1af9a24b491937f0e4abcd19c142cf806db8f5c0d45f4b4fc8" },
+    { "path": "openspec/changes/claude-marketplace-registration/specs/tool-adapters/spec.md", "sha256": "e78c75933640e345f74bfa2d390f6ef2c838669349f776e9b73a7934b9805330" }
+  ]
+}
