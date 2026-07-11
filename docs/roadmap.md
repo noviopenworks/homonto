@@ -318,9 +318,13 @@ also landed (v1.2 #2):** a Claude plugin's optional `config` table projects to
 `pluginConfigs.<source>.options` in `settings.json` (a new managed namespace,
 surgical/idempotent/pruned/adoptable); an OpenCode plugin declaring `config` is
 rejected at load, since OpenCode has no per-plugin config location on disk (no
-silently-dropped config). Remaining v1.2 increment: Claude marketplace
-registration (`extraKnownMarketplaces`), which needs a marketplace-declaration
-model.
+silently-dropped config). **Claude marketplace registration has also landed
+(v1.2 #3):** a `[marketplaces.claude.<name>]` declaration (source type
+`github`/`url`/`git-subdir`/`directory` + its locator + optional `auto_update`)
+projects to `extraKnownMarketplaces.<name>` in `settings.json` (a new managed
+namespace, surgical/idempotent/pruned/adoptable). **This completes v1.2 Plugin
+Configuration** — declare, enable/disable, per-plugin config, and marketplace
+registration are all in. The next roadmap phase is v1.3 Tool TUI Configuration.
 
 Scope:
 

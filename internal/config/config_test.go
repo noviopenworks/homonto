@@ -923,3 +923,78 @@ targets = ["opencode"]
 		t.Fatalf("error %v does not mention missing opencode model routes", err)
 	}
 }
+
+// TestLoadMarketplace: a [marketplaces.claude.<name>] github declaration parses
+// into Marketplaces.Claude with source, repo, and optional auto_update.
+func TestLoadMarketplace(t *testing.T) {
+	doc := "[marketplaces.claude.official]\nsource = \"github\"\nrepo = \"anthropics/claude-plugins\"\nauto_update = true\n"
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	mk := c.Marketplaces.Claude["official"]
+	if mk.Source != "github" {
+		t.Fatalf("marketplace source = %q; want github", mk.Source)
+	}
+	if mk.Repo != "anthropics/claude-plugins" {
+		t.Fatalf("marketplace repo = %q; want anthropics/claude-plugins", mk.Repo)
+	}
+	if mk.AutoUpdate == nil || *mk.AutoUpdate != true {
+		t.Fatalf("marketplace auto_update = %#v; want *true", mk.AutoUpdate)
+	}
+}
+
+// TestLoadRejectsUnknownMarketplaceSource: a marketplace whose source is not one
+// of the four known kinds cannot project. Load must fail naming the marketplace
+// and the bad source.
+func TestLoadRejectsUnknownMarketplaceSource(t *testing.T) {
+	doc := "[marketplaces.claude.weird]\nsource = \"svn\"\nrepo = \"x/y\"\n"
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("unknown marketplace source accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), strconv.Quote("weird")) {
+		t.Fatalf("error does not name the marketplace %q: %v", "weird", err)
+	}
+	if !strings.Contains(err.Error(), strconv.Quote("svn")) {
+		t.Fatalf("error does not name the source %q: %v", "svn", err)
+	}
+}
+
+// TestLoadRejectsMarketplaceMissingLocator: each source kind requires its
+// locator field(s); a github marketplace without repo, or a git-subdir without
+// url/path, must be a load error naming the marketplace.
+func TestLoadRejectsMarketplaceMissingLocator(t *testing.T) {
+	for _, tc := range []struct{ label, doc, name string }{
+		{"github no repo", "[marketplaces.claude.official]\nsource = \"github\"\n", "official"},
+		{"git-subdir no url", "[marketplaces.claude.sub]\nsource = \"git-subdir\"\npath = \"p\"\n", "sub"},
+		{"git-subdir no path", "[marketplaces.claude.sub]\nsource = \"git-subdir\"\nurl = \"https://x\"\n", "sub"},
+		{"url no url", "[marketplaces.claude.u]\nsource = \"url\"\n", "u"},
+		{"directory no path", "[marketplaces.claude.d]\nsource = \"directory\"\n", "d"},
+	} {
+		err := loadDoc(t, tc.doc)
+		if err == nil {
+			t.Fatalf("%s: missing locator accepted; want load error", tc.label)
+		}
+		if !strings.Contains(err.Error(), strconv.Quote(tc.name)) {
+			t.Fatalf("%s: error does not name the marketplace %q: %v", tc.label, tc.name, err)
+		}
+	}
+}
+
+// TestLoadRejectsReservedMarketplaceSetting: settings.claude.extraKnownMarketplaces
+// collides with homonto's own marketplace projection into settings.json, so it
+// must be a load error like the other reserved settings keys.
+func TestLoadRejectsReservedMarketplaceSetting(t *testing.T) {
+	err := loadDoc(t, "[settings.claude]\nextraKnownMarketplaces={}\n")
+	if err == nil {
+		t.Fatal("reserved key extraKnownMarketplaces accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), strconv.Quote("extraKnownMarketplaces")) {
+		t.Fatalf("error does not name the key: %v", err)
+	}
+}
