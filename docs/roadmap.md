@@ -437,8 +437,13 @@ the new source); on an overlapping conflict it leaves the live file untouched,
 writes the merged-with-markers result to `<path>.merged`, makes no lockfile
 change, and exits non-zero. `agents doctor` was reframed for this model — a
 locally-edited install is a normal, mergeable state (no longer a problem finding),
-and a pending `<path>.merged` conflict is reported. Next: #5c `agents update
---all` (a `migrate` convenience). Remaining v2 (deferred):
+and a pending `<path>.merged` conflict is reported. Bulk reconcile also landed
+(#5c): `agents update --all` runs the three-way merge across every installed
+agent, skips agents no longer declared, isolates per-agent errors, prints a
+summary, and exits non-zero if any agent conflicted or errored — the roadmap's
+`migrate` convenience (a thin wrapper over the per-agent merge). This completes
+the local-agent lifecycle (add / list / doctor / update / update --all with
+three-way merge). Remaining v2 (deferred):
 `builtin:`/remote sources (#6); compatibility checks per target; de-declared-
 target pruning; a per-agent scope; blob GC; and the eventual
 `[agents]`-vs-`[subagents]` reconciliation.

@@ -112,9 +112,10 @@ any finding), and reconcile an installed agent with its current source with
 `homonto agents update <name>`, which **three-way-merges** your local edits with
 the upstream source change: disjoint edits auto-merge; on an overlapping conflict
 it leaves your file untouched, writes the merged result with conflict markers to
-`<path>.merged`, and exits non-zero for you to resolve. Version pinning is
-declarative — set `[agents.<name>].version` in the config. Further lifecycle
-(`agents update --all`, builtin/remote sources) is future v2 work.
+`<path>.merged`, and exits non-zero for you to resolve. `homonto agents update
+--all` runs that merge across every installed agent and summarizes the result.
+Version pinning is declarative — set `[agents.<name>].version` in the config.
+Further lifecycle (builtin/remote agent sources) is future v2 work.
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels
