@@ -70,11 +70,19 @@ still open, as detailed below.
    archive target. This completes the onto workflow engine — the `onto`
    binary can now create (`onto new`), advance (`onto advance`), and close
    (`onto close`) a change, enforcing the full phase-transition, archive,
-   and dependency invariants. What remains: (#4) `onto doctor` must check
-   workflow health as a peer to `homonto doctor`'s installation/projection
-   health; (#5) release packaging must still cross-compile and publish
-   **both** binaries with a shared `SHA256SUMS` — packaging work has not
-   started.
+   and dependency invariants. Workflow/project health checks have also
+   landed (#4): `onto doctor` is a read-only, config-independent, ungated
+   diagnostic that reports an onto workspace's health — docs layout
+   (`docs/{changes,specs,adr,guides}`), `onto-state.yaml` validity,
+   phase-derivation-matches-artifacts, dependency and archived-flag
+   consistency, and archive-layout validity — printing each problem as a
+   finding and exiting non-zero when any exist (so CI and smoke tests can
+   gate on it), or `healthy` and exit 0 otherwise. It writes nothing and
+   imports none of homonto's projection pipeline, as the peer to `homonto
+   doctor`'s installation/projection health. The `onto` binary now exposes
+   advance / close / doctor / init / new / status / version. What remains:
+   (#5) release packaging must still cross-compile and publish **both**
+   binaries with a shared `SHA256SUMS` — packaging work has not started.
 
 Skills, command, and subagent projection have all landed on `main` (see v1.1
 below); the `onto` binary plus dual-binary packaging are what remain before
