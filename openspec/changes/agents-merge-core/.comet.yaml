@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: subagent-driven-development
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 686877444063eb67fce8734386fb651abf8e6e6d
 design_doc: docs/superpowers/specs/2026-07-11-agents-merge-core-design.md
 plan: docs/superpowers/plans/2026-07-11-agents-merge-core.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-11-agents-merge-core-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-11
-verified_at: null
+verified_at: 2026-07-11
 archived: false
 direct_override: null
 handoff_context: openspec/changes/agents-merge-core/.comet/handoff/design-context.json
