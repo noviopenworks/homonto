@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 3726060ed2e853d24c977582900bc6fb6baa79d8
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-11-opencode-tui-config-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -20,8 +20,8 @@ created_at: 2026-07-11
 verified_at: null
 archived: false
 direct_override: null
-handoff_context: null
-handoff_hash: null
+handoff_context: openspec/changes/opencode-tui-config/.comet/handoff/design-context.json
+handoff_hash: aa99c2d20f5f1b1e9e838c82bec6ae72e418d654115b3ee3e17a11ebbebd11c9
 classic_profile: full
 classic_migration: 1
 run_id: f09798d4-4ad1-4f85-9cdc-dd0b180e1c23
