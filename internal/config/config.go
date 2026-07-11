@@ -494,11 +494,34 @@ func Load(path string) (*Config, error) {
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	// Option C: the imperative [agents.<name>] model is superseded by the
+	// declarative [subagents.<name>] one. Fold every declared agent into an
+	// equivalent copy-mode subagent (a declared [agents.X] wins over an explicit
+	// [subagents.X] of the same name) and drop the agents table, so [agents.X]
+	// still parses but is now projected by `apply` like any other subagent. See
+	// docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md.
+	if len(c.Agents) > 0 {
+		if c.Subagents == nil {
+			c.Subagents = map[string]Subagent{}
+		}
+		for name, ag := range c.Agents {
+			mode := ag.Mode
+			if mode == "" && strings.HasPrefix(ag.Source, "builtin:") {
+				mode = "copy" // builtin agents had no linkable path — copy-only
+			}
+			c.Subagents[name] = Subagent{
+				Source:  ag.Source,
+				Scope:   "user", // agents installed at user scope
+				Mode:    mode,
+				Version: ag.Version,
+				Targets: ag.Targets,
+			}
+		}
+		c.Agents = nil
+	}
 	// Subagents default to project scope when omitted (skills and commands still
 	// require an explicit scope). Normalize before validation so downstream
-	// projection sees a concrete scope. This is the first, additive step of the
-	// [agents]/[subagents] reconciliation (Option C) — see
-	// docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md.
+	// projection sees a concrete scope.
 	for name, r := range c.Subagents {
 		if r.Scope == "" {
 			r.Scope = "project"
@@ -519,20 +542,6 @@ func Load(path string) (*Config, error) {
 	}
 	if err := validateModels(&c); err != nil {
 		return nil, err
-	}
-	if err := validateAgents(c.Agents); err != nil {
-		return nil, err
-	}
-	// A name may be managed by only one agent model. The imperative [agents.<x>]
-	// and the declarative [subagents.<x>] both project into the same tool agent
-	// directory, so declaring one name in both would let the two systems fight
-	// over the same file. Reject it at load, naming the collision. (Reconciliation
-	// design problem #1; the guard is retired when [agents] is removed in the
-	// Option-C endgame.)
-	for name := range c.Agents {
-		if _, dup := c.Subagents[name]; dup {
-			return nil, fmt.Errorf("parse config: %q is declared as both [agents.%s] and [subagents.%s]; a name may be managed by only one of the two agent models", name, name, name)
-		}
 	}
 	// Every other name becomes a key written into a tool's JSON file. sjson
 	// treats index-like segments ("0", "-1") as array positions, silently
@@ -720,6 +729,13 @@ func validateSubagents(subagents map[string]Subagent) error {
 		if !validSource(s.Source) {
 			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, s.Source)
 		}
+		// A local: source is resolved to a file by name; reject a path-traversal
+		// name so it cannot read/link outside the provider root.
+		if src, ok := strings.CutPrefix(s.Source, "local:"); ok {
+			if src == "" || src == "." || src == ".." || strings.ContainsAny(src, `/\`) || src != filepath.Base(src) {
+				return fmt.Errorf("parse config: %s local source %q must be a plain name (no path components)", label, s.Source)
+			}
+		}
 		for _, target := range s.Targets {
 			if target != "claude" && target != "opencode" {
 				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
@@ -730,44 +746,6 @@ func validateSubagents(subagents map[string]Subagent) error {
 			// ok — link projects a symlink, copy projects a managed content file
 		default:
 			return fmt.Errorf("parse config: %s mode %q is invalid; valid values are \"link\" and \"copy\"", label, s.Mode)
-		}
-	}
-	return nil
-}
-
-// validateAgents checks name, source, mode, and targets for every declared
-// [agents.<name>] lifecycle agent.
-func validateAgents(agents map[string]Agent) error {
-	for name, ag := range agents {
-		// Use the stricter resource-name guard (rejects "/", "\", ".", "..")
-		// like [subagents]: lifecycle-managed agents are projected to files named
-		// by the agent name in later v2 increments, so a path-traversal name must
-		// be rejected at declaration, not once projection lands.
-		if err := validateResourceName("agents", name); err != nil {
-			return err
-		}
-		label := "agents." + name
-		if !validSource(ag.Source) {
-			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, ag.Source)
-		}
-		// A local: source name is resolved to homonto/agents/<name>.md and
-		// materialized/symlinked on `agents add`, so a traversal name
-		// ("local:../../secret") would read/link a file outside the provider
-		// root. Require a plain name, rejected at declaration.
-		if s, ok := strings.CutPrefix(ag.Source, "local:"); ok {
-			if s == "" || s == "." || s == ".." || strings.ContainsAny(s, `/\`) || s != filepath.Base(s) {
-				return fmt.Errorf("parse config: %s local source %q must be a plain name (no path components)", label, ag.Source)
-			}
-		}
-		switch ag.Mode {
-		case "", "copy", "link":
-		default:
-			return fmt.Errorf("parse config: %s mode %q is invalid; valid values are \"copy\" and \"link\"", label, ag.Mode)
-		}
-		for _, target := range ag.Targets {
-			if target != "claude" && target != "opencode" {
-				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
-			}
 		}
 	}
 	return nil

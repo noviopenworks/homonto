@@ -1,10 +1,10 @@
 #!/bin/sh
-# Runs all five dual-binary Docker E2E suites against disposable state, printing
+# Runs all dual-binary Docker E2E suites against disposable state, printing
 # per-suite output and a final PASS/FAIL summary. Exits non-zero if any suite
 # fails. Invoked as the image ENTRYPOINT by scripts/docker-test.sh (and CI).
 set -u
 DIR="$(cd "$(dirname "$0")" && pwd)"
-SUITES="homonto-core homonto-expanded homonto-agents onto-lifecycle release-packaging"
+SUITES="homonto-core homonto-expanded onto-lifecycle release-packaging"
 
 summary=""
 fails=0

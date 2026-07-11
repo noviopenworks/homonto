@@ -339,25 +339,45 @@ func TestSubagentModeValidation(t *testing.T) {
 	}
 }
 
-// TestAgentSubagentNameCollisionRejected: the same name in both [agents] and
-// [subagents] would let two systems manage one tool file — rejected at load.
-func TestAgentSubagentNameCollisionRejected(t *testing.T) {
-	both := "[agents.dup]\nsource=\"local:dup\"\n" +
-		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"user\"\n" +
-		validModelsBothTools()
-	err := loadDoc(t, both)
-	if err == nil {
-		t.Fatal("a name declared in both [agents] and [subagents] must be rejected")
+// TestAgentSupersededIntoSubagent: an [agents.<name>] is folded into an
+// equivalent copy-mode [subagents.<name>] at load (Option C), the agents table is
+// cleared, and a declared agent supersedes an explicit same-name subagent.
+func TestAgentSupersededIntoSubagent(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) *Config {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		c, err := Load(p)
+		if err != nil {
+			t.Fatalf("load: %v\n%s", err, doc)
+		}
+		return c
 	}
-	if !strings.Contains(err.Error(), "both") {
-		t.Fatalf("collision error should name the conflict, got: %v", err)
+
+	// A builtin agent supersedes to a COPY-mode subagent (builtin was copy-only).
+	c := load("[agents.rev]\nsource=\"builtin:code-reviewer\"\ntargets=[\"claude\"]\n" +
+		"[models.claude.architectural]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.coding]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.trivial]\nmodel=\"o\"\nvariant=\"m\"\n")
+	if len(c.Agents) != 0 {
+		t.Fatal("the [agents] table must be cleared after supersede")
 	}
-	// Distinct names are fine.
-	ok := "[agents.a]\nsource=\"local:a\"\n" +
-		"[subagents.b]\nsource=\"builtin:architect\"\nscope=\"user\"\n" +
-		validModelsBothTools()
-	if err := loadDoc(t, ok); err != nil {
-		t.Fatalf("distinct agent/subagent names must load: %v", err)
+	sa, ok := c.Subagents["rev"]
+	if !ok {
+		t.Fatal("agent rev was not superseded into a subagent")
+	}
+	if sa.Mode != "copy" {
+		t.Fatalf("a builtin agent must supersede to copy mode, got %q", sa.Mode)
+	}
+	if sa.Scope != "user" {
+		t.Fatalf("a superseded agent must keep user scope, got %q", sa.Scope)
+	}
+
+	// A declared [agents.X] wins over an explicit [subagents.X] of the same name.
+	c2 := load("[agents.dup]\nsource=\"local:dup\"\nmode=\"copy\"\ntargets=[\"claude\"]\n" +
+		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claude\"]\n" +
+		"[models.claude.architectural]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.coding]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.trivial]\nmodel=\"o\"\nvariant=\"m\"\n")
+	if got := c2.Subagents["dup"].Source; got != "local:dup" {
+		t.Fatalf("the agent declaration must win the name; subagent source = %q", got)
 	}
 }
 
@@ -1117,47 +1137,6 @@ func TestLoadRejectsReservedMarketplaceSetting(t *testing.T) {
 
 // TestAgentsParseFullDeclaration: a fully specified [agents.<name>] parses into
 // c.Agents with source/version/targets/mode preserved verbatim.
-func TestAgentsParseFullDeclaration(t *testing.T) {
-	c := loadTOML(t, `
-[agents.review]
-source = "builtin:review-agent"
-version = "1.2.0"
-targets = ["claude", "opencode"]
-mode = "copy"
-`)
-	ag, ok := c.Agents["review"]
-	if !ok {
-		t.Fatalf("agent %q not parsed; got %v", "review", c.Agents)
-	}
-	if ag.Source != "builtin:review-agent" {
-		t.Fatalf("source = %q; want builtin:review-agent", ag.Source)
-	}
-	if ag.Version != "1.2.0" {
-		t.Fatalf("version = %q; want 1.2.0", ag.Version)
-	}
-	if got := ag.TargetsOrAll(); len(got) != 2 || got[0] != "claude" || got[1] != "opencode" {
-		t.Fatalf("targets = %v; want [claude opencode]", got)
-	}
-	if ag.ModeOrDefault() != "copy" {
-		t.Fatalf("mode = %q; want copy", ag.ModeOrDefault())
-	}
-}
-
-// TestAgentDefaults: an agent with only a source is unpinned, targets both
-// tools, and defaults to link mode.
-func TestAgentDefaults(t *testing.T) {
-	c := loadTOML(t, "[agents.solo]\nsource = \"local:x\"\n")
-	ag := c.Agents["solo"]
-	if ag.Version != "" {
-		t.Fatalf("version = %q; want empty (unpinned)", ag.Version)
-	}
-	if got := ag.TargetsOrAll(); len(got) != 2 || got[0] != "claude" || got[1] != "opencode" {
-		t.Fatalf("default targets = %v; want [claude opencode]", got)
-	}
-	if ag.ModeOrDefault() != "link" {
-		t.Fatalf("default mode = %q; want link", ag.ModeOrDefault())
-	}
-}
 
 // TestAgentsRejectInvalidSource: a non builtin:/local: source is rejected,
 // naming the agent.
