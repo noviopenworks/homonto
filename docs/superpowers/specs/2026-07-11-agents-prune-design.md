@@ -2,6 +2,8 @@
 comet_change: agents-prune
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-agents-prune
+status: final
 ---
 
 

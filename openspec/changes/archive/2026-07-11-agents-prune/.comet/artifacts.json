@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/agents-prune/tasks.md",
   "openspec_delta_spec": "openspec/changes/agents-prune/specs/agent-lifecycle/spec.md",
   "handoff_context": "openspec/changes/agents-prune/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/agents-prune/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/agents-prune/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-11-agents-prune"
 }

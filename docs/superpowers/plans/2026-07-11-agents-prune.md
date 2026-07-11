@@ -2,6 +2,7 @@
 change: agents-prune
 design-doc: docs/superpowers/specs/2026-07-11-agents-prune-design.md
 base-ref: 7b678aaf31e4ad78b8af63998fe1e7b12b91fddf
+archived-with: 2026-07-11-agents-prune
 ---
 
 # Plan: agents prune (v2 polish)
