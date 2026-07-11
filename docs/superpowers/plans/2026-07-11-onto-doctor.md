@@ -2,6 +2,7 @@
 change: onto-doctor
 design-doc: docs/superpowers/specs/2026-07-11-onto-doctor-design.md
 base-ref: 57140e3991dd9a790c24ca3d038979bfe86b4d95
+archived-with: 2026-07-11-onto-doctor
 ---
 
 # Plan: onto doctor (#4)

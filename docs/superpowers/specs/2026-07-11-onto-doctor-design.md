@@ -2,6 +2,8 @@
 comet_change: onto-doctor
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-onto-doctor
+status: final
 ---
 
 # onto doctor — Technical Design
