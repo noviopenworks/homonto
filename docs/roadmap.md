@@ -59,12 +59,22 @@ still open, as detailed below.
    tasks in `tasks.md` are checked); a normal advance on a dirty worktree
    prints a warning and proceeds, while the release-critical `verify →
    close` transition is blocked outright on a dirty or indeterminate
-   worktree, with no phase write on any refusal. What remains: (#3c)
-   dependency resolution and archive/close rules must hold; (#4) `onto
-   doctor` must check workflow health as a peer to `homonto doctor`'s
-   installation/projection health; (#5) release packaging must still
-   cross-compile and publish **both** binaries with a shared `SHA256SUMS` —
-   packaging work has not started.
+   worktree, with no phase write on any refusal. Archive and close rules
+   have also landed (#3c): `onto close <change>` archives a close-phase
+   change by moving `docs/changes/<name>/` → `docs/changes/archive/<YYYY-MM-DD>-<name>/`
+   and setting `archived: true`, gated on every dependency being resolved
+   (an `internal/ontostate.DepsResolved` helper treats a dep as resolved
+   only once an archived `docs/changes/archive/*-<dep>` directory exists)
+   and on a clean worktree, refusing (no move, no state write) on a
+   non-close phase, an unresolved dep, a dirty worktree, or a pre-existing
+   archive target. This completes the onto workflow engine — the `onto`
+   binary can now create (`onto new`), advance (`onto advance`), and close
+   (`onto close`) a change, enforcing the full phase-transition, archive,
+   and dependency invariants. What remains: (#4) `onto doctor` must check
+   workflow health as a peer to `homonto doctor`'s installation/projection
+   health; (#5) release packaging must still cross-compile and publish
+   **both** binaries with a shared `SHA256SUMS` — packaging work has not
+   started.
 
 Skills, command, and subagent projection have all landed on `main` (see v1.1
 below); the `onto` binary plus dual-binary packaging are what remain before

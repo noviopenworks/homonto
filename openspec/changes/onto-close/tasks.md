@@ -13,6 +13,6 @@
 
 ## 3. Regression and docs
 
-- [ ] 3.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; E2E in a temp git workspace: `onto new demo`, add design.md/plan.md, set tasks.md checked, verification.md, advance through open→design→build→verify→close committing between, then `onto close demo` → change moved under docs/changes/archive/.
-- [ ] 3.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3c (`onto close` archive + dependency resolution) landed — the onto workflow engine (create→advance→close) is complete; remaining onto = `onto doctor` (#4) and dual-binary release packaging (#5). No over-claim.
-- [ ] 3.3 Commit all changes.
+- [x] 3.1 Full regression: `go build ./...` (both binaries), `go test ./... -count=1`, `go test -race ./...`, `go vet ./...`, `gofmt -l .` (empty), `go mod tidy` clean; E2E in a temp git workspace: `onto new demo`, add design.md/plan.md, set tasks.md checked, verification.md, advance through open→design→build→verify→close committing between, then `onto close demo` → change moved under docs/changes/archive/.
+- [x] 3.2 Update `docs/roadmap.md` "Immediate Next Work": onto #3c (`onto close` archive + dependency resolution) landed — the onto workflow engine (create→advance→close) is complete; remaining onto = `onto doctor` (#4) and dual-binary release packaging (#5). No over-claim.
+- [x] 3.3 Commit all changes.
