@@ -7,6 +7,13 @@ per-release changelog is generated automatically below it.
 
 ---
 
+## What's in this release
+
+This release ships **two binaries** — `homonto` (config projector) and `onto`
+(spec-driven workflow operator) — for every supported OS/arch as separate
+archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
+`onto` framework first (`[frameworks.onto]` + `homonto apply`).
+
 ## Known limitations
 
 homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
