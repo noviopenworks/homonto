@@ -11,6 +11,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/copyfile"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/link"
@@ -207,6 +208,90 @@ func (a *Adapter) subagentLinks() map[string]string {
 		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = a.subagentSource(entry)
 	}
 	return out
+}
+
+// copySubagentDesired returns dst -> resolved content for each copy-mode
+// subagent (a real managed file rather than a symlink).
+func (a *Adapter) copySubagentDesired() (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for _, entry := range a.subagents {
+		if entry.Mode != "copy" {
+			continue
+		}
+		content, err := os.ReadFile(a.subagentSource(entry))
+		if err != nil {
+			return nil, err
+		}
+		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = content
+	}
+	return out, nil
+}
+
+// recordedCopyHashes returns dst -> recorded content hash for every
+// subagentcopy.* key in state (Desired holds the dst, Applied the content hash).
+func recordedCopyHashes(st *state.State, tool string) map[string]string {
+	out := map[string]string{}
+	for _, key := range st.Keys(tool) {
+		if !strings.HasPrefix(key, "subagentcopy.") {
+			continue
+		}
+		if e, ok := st.Get(tool, key); ok {
+			out[e.Desired] = e.Applied
+		}
+	}
+	return out
+}
+
+// copySubagentName recovers the subagent name from a managed copy-file dst.
+func copySubagentName(dst string) string {
+	return strings.TrimSuffix(filepath.Base(dst), ".md")
+}
+
+// planCopyOps computes the reconciler ops for copy-mode subagents against state.
+func (a *Adapter) planCopyOps(st *state.State) ([]copyfile.Op, error) {
+	desired, err := a.copySubagentDesired()
+	if err != nil {
+		return nil, err
+	}
+	return copyfile.Plan(desired, recordedCopyHashes(st, "claude"))
+}
+
+// applyCopySubagents reconciles copy-mode subagent content files: it writes
+// created/updated files, prunes de-declared ones, and backs up any local edit to
+// <dst>.bak before overwriting or pruning (never losing a user's edit) — the
+// pre-merge behavior; three-way merge replaces the backup+overwrite later. A
+// destination occupied by a foreign file or a symlink is a conflict and aborts.
+func (a *Adapter) applyCopySubagents(st *state.State) error {
+	ops, err := a.planCopyOps(st)
+	if err != nil {
+		return err
+	}
+	for i, op := range ops {
+		switch op.Action {
+		case copyfile.Conflict:
+			return fmt.Errorf("claude: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
+		case copyfile.LocalEdit:
+			if err := fsutil.WriteAtomic(op.Dst+".bak", op.OnDisk); err != nil {
+				return err
+			}
+			if op.Content == nil {
+				ops[i].Action = copyfile.Prune // de-declared + edited: backed up, now remove
+			} else {
+				ops[i].Action = copyfile.Update // declared + edited: backed up, now overwrite
+			}
+		}
+	}
+	rec, pruned, err := copyfile.Apply(ops)
+	if err != nil {
+		return err
+	}
+	for dst, h := range rec {
+		st.Set("claude", "subagentcopy."+copySubagentName(dst), dst, h)
+	}
+	for _, dst := range pruned {
+		st.Delete("claude", "subagentcopy."+copySubagentName(dst))
+	}
+	return nil
 }
 
 // localSourceName resolves a skill resource's content subdirectory: a local:
@@ -486,6 +571,28 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for _, entry := range a.subagents {
 		declared["subagent."+entry.Name] = true
 	}
+	// Copy-mode subagents are managed content files (not symlinks): surface their
+	// create/update/prune in the plan and abort on a foreign-file conflict. Apply
+	// reconciles them in a dedicated pass (a.applyCopySubagents); subagentcopy.* is
+	// deliberately outside managedPrefix so the generic delete loop never touches
+	// it.
+	copyOps, err := a.planCopyOps(st)
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	for _, op := range copyOps {
+		name := copySubagentName(op.Dst)
+		switch op.Action {
+		case copyfile.Conflict:
+			return adapter.ChangeSet{}, fmt.Errorf("claude: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
+		case copyfile.Create:
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "subagentcopy." + name, New: op.Dst})
+		case copyfile.Update, copyfile.LocalEdit:
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "subagentcopy." + name, New: op.Dst})
+		case copyfile.Prune:
+			cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "subagentcopy." + name, Old: op.Dst})
+		}
+	}
 	for _, k := range st.Keys("claude") {
 		if declared[k] || !managedPrefix(k) {
 			continue
@@ -602,6 +709,20 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 			out[key] = secret.Hash(dst + " -> " + target)
 			continue
 		}
+		if hasPrefix(key, "subagentcopy.") {
+			// A copy-mode subagent lives on disk as a real file; its Applied is the
+			// content hash and Desired holds the dst path.
+			e, ok := st.Get("claude", key)
+			if !ok {
+				continue
+			}
+			content, err := os.ReadFile(e.Desired)
+			if err != nil {
+				continue // missing → omit (engine infers missing)
+			}
+			out[key] = copyfile.Hash(content)
+			continue
+		}
 		// mcp.*, setting.*, plugin.* all live in current() as JSON values.
 		if v, ok := cur[key]; ok {
 			out[key] = secret.Hash(jsonutil.Canonical(v))
@@ -626,6 +747,11 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	mjChanged, sjChanged := false, false
 	for _, c := range cs.Changes {
 		if c.Action == "noop" {
+			continue
+		}
+		// Copy-mode subagent content files are reconciled by applyCopySubagents
+		// below, not through the generic JSON/link machinery.
+		if hasPrefix(c.Key, "subagentcopy.") {
 			continue
 		}
 		if c.Action == "adopt" {
@@ -770,6 +896,16 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	if _, err := link.Plan(subLinks, a.managedRoots()...); err != nil {
 		return err
 	}
+	// Fail fast on a copy-mode subagent conflict too, before any file is written.
+	copyOps, err := a.planCopyOps(st)
+	if err != nil {
+		return err
+	}
+	for _, op := range copyOps {
+		if op.Action == copyfile.Conflict {
+			return fmt.Errorf("claude: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
+		}
+	}
 	if mjChanged {
 		if err := fsutil.WriteAtomic(a.claudeJSON(), mj); err != nil {
 			return err
@@ -841,6 +977,11 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			return err
 		}
 		st.Set("claude", "subagent."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
+	}
+	// Reconcile copy-mode subagent content files (write/update/prune + state),
+	// backing up any local edit. Conflicts were already rejected above.
+	if err := a.applyCopySubagents(st); err != nil {
+		return err
 	}
 	return nil
 }
