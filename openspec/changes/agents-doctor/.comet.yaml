@@ -14,7 +14,7 @@ base_ref: 598cb862ca620b1a3cd362bf6fa3f5eb3e55f046
 design_doc: docs/superpowers/specs/2026-07-11-agents-doctor-design.md
 plan: docs/superpowers/plans/2026-07-11-agents-doctor.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-11-agents-doctor-verify.md
 branch_status: pending
 created_at: 2026-07-11
 verified_at: null
