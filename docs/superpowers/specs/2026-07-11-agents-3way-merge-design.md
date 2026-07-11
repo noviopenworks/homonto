@@ -113,11 +113,14 @@ Each slice is one verified comet cycle (open→design→build→verify→archive
 Remote sources (#6), builtin-source hashing, `[agents]`-vs-`[subagents]`
 reconciliation, blob GC, per-agent scope, semantic/AST merge (line-based only).
 
-## Open questions for the reviewer
+## Resolved decisions (approved 2026-07-11)
 
-1. **Fork 4**: sidecar `.merged` (safe, recommended) vs git-style in-file markers
-   (familiar) — or in-file markers behind a `--markers` flag?
-2. **`migrate`**: implement as `update --all` convenience (#5c), or drop it and
-   rely on per-agent `update`?
-3. **Merge granularity**: line-based diff3 (recommended) is sufficient for
-   markdown agents — confirm we don't need word/char-level.
+1. **Fork 4 conflict UX**: **safe `.merged` sidecar** — the live `<dst>` is left
+   untouched; the merged-with-markers result goes to `<dst>.merged`; `update`
+   exits non-zero and `doctor` reports "conflicted". (git-style in-file markers
+   may be added later behind a `--markers` flag — not in #5.)
+2. **`migrate`**: implement **`agents update --all`** (slice #5c) that merges every
+   installed agent and summarizes clean-vs-conflicted; `migrate` is a thin alias/
+   wrapper over it.
+3. **Merge granularity**: **line-based diff3** — sufficient for markdown agents; no
+   word/char-level.
