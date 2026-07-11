@@ -298,24 +298,21 @@ gate remains open without a recorded exception.
   home.
 - **Exit gate:** clean RC cycle with no open release-blocking defect.
 
-### 8. Public Stabilization — *in progress (2026-07-11, `437e822`)*
+### 8. Public Stabilization — *done (2026-07-11, `437e822`, `97457fe`)*
 
-- **Done:** fuzz/property tests added for merge invariants (`FuzzMerge`),
+- **Outcome:** fuzz/property tests added for merge invariants (`FuzzMerge`),
   JSON-path escaping (`FuzzEscapePathRoundTrip`), state serialization
   (`FuzzStateRoundTrip`), and config parse+validate (`FuzzLoad`) — fuzzing found
   and fixed a real bug (`EscapePath` did not escape `:`, collapsing a
   colon-keyed managed setting to an empty JSON key). Failure-path coverage added
-  for atomic writes (dir-create failure); link removal and `ObserveHashes`
-  already covered; `state.Save` delegates to the now-tested `WriteAtomic`.
-- **Remaining:** split the ~780-line `internal/cli/agents.go` behind
-  characterization tests (deferred to a dedicated, reviewed refactor — it is a
-  regression-prone change on a critical path); optional doctor-helper failure
-  paths.
-- **Problem (historical):** failure-path coverage was thin in selected
-  filesystem and drift-observation paths; there were no fuzz/property tests;
-  oversized files impede review.
-- **Dependencies:** item 7 (stabilize after RC) — the test/fuzz work was safe to
-  land early; the file split waits for the RC baseline.
+  for atomic writes (dir-create failure); link removal and `ObserveHashes` were
+  already covered; `state.Save` delegates to the now-tested `WriteAtomic`. The
+  781-line `internal/cli/agents.go` was split behind its existing
+  characterization tests into six review-sized, same-package files
+  (`agents.go` + `agents_{list,add,update,doctor,prune}.go`), behavior preserved
+  (full agents suite green under `-race`).
+- **Verify:** `go test -race ./internal/cli/`; each fuzz target clean under
+  `-fuzztime`.
 - **Primary files:** `internal/cli/agents*.go`, `internal/fsutil/`,
   `internal/merge/`, `internal/agentlock/`.
 - **Acceptance:** failure paths covered; fuzz seeds committed; split files
