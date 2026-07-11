@@ -14,7 +14,7 @@ base_ref: f9818e3373259748256cfc561e6c4bdb315a4f2d
 design_doc: docs/superpowers/specs/2026-07-11-agents-builtin-source-design.md
 plan: docs/superpowers/plans/2026-07-11-agents-builtin-source.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-11-agents-builtin-source-verify.md
 branch_status: pending
 created_at: 2026-07-11
 verified_at: null
