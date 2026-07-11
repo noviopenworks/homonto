@@ -2,6 +2,7 @@
 change: agents-update
 design-doc: docs/superpowers/specs/2026-07-11-agents-update-design.md
 base-ref: fa11571692a6a772278e0274ff77d752d809ad03
+archived-with: 2026-07-11-agents-update
 ---
 
 # Plan: agents update (v2 #4)
