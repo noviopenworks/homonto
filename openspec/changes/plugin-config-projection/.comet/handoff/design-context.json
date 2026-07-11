@@ -1,0 +1,15 @@
+{
+  "change": "plugin-config-projection",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "dd31d7d30f628831809ec46d1e3858c31a0e6f9e9b59775a0bcf54e4272f28a6",
+  "files": [
+    { "path": "openspec/changes/plugin-config-projection/proposal.md", "sha256": "68764a42c892e9ab0bab7828c34d0d63029b20c4cba7b9fbd710e3d2bc1e3c6c" },
+    { "path": "openspec/changes/plugin-config-projection/design.md", "sha256": "e209de62272b02a53b12c5f9f2d3cb96c249ac388b010a52fbaa1d8fb833abef" },
+    { "path": "openspec/changes/plugin-config-projection/tasks.md", "sha256": "65688e3481531ef1eaa8832cecd5cfd356cbf4bf8ab872cbe31eadd23e6349f4" },
+    { "path": "openspec/changes/plugin-config-projection/specs/config-model/spec.md", "sha256": "8d816dc7cdf29bbcae96632bde2bcbd1a247c8ab1b13654f43493ced8259ae68" },
+    { "path": "openspec/changes/plugin-config-projection/specs/tool-adapters/spec.md", "sha256": "bdb21483ac5787deaaa508e8e4defe0199da9f2c44d1d213ac0c96184875f4ea" }
+  ]
+}

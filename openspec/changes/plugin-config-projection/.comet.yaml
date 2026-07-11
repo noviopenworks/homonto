@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: f9cec20702168a9f6ab2fe9e7bbcd23fde990113
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-11-plugin-config-projection-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -20,8 +20,8 @@ created_at: 2026-07-11
 verified_at: null
 archived: false
 direct_override: null
-handoff_context: null
-handoff_hash: null
+handoff_context: openspec/changes/plugin-config-projection/.comet/handoff/design-context.json
+handoff_hash: dd31d7d30f628831809ec46d1e3858c31a0e6f9e9b59775a0bcf54e4272f28a6
 classic_profile: full
 classic_migration: 1
 run_id: d9c7a0b2-903d-42f9-bd14-76d4814135d8
