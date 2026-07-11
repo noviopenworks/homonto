@@ -1,7 +1,14 @@
 # framework-expansion Specification
 
 ## Purpose
-TBD - created by archiving change catalog-foundation-skills. Update Purpose after archive.
+Defines the catalog framework metadata format (`framework.toml` with name,
+version, dependencies, and resource tables for skills, commands, and subagents)
+and the rules by which declaring `[frameworks.<name>] source = "builtin:<name>"`
+expands into effective builtin skill/command/subagent resources that inherit the
+framework declaration's `scope` and `targets`, transitively across dependency
+frameworks and deduplicated by name, with atomic enablement, name-collision
+rejection, dependency-cycle detection, and the first-release set of bundled
+frameworks.
 ## Requirements
 ### Requirement: Framework metadata format
 

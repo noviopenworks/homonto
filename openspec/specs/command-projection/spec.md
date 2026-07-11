@@ -1,7 +1,12 @@
 # command-projection Specification
 
 ## Purpose
-TBD - created by archiving change command-projection. Update Purpose after archive.
+Defines how owned commands (single-file Markdown command definitions) are
+resolved by source scheme, materialized from the embedded catalog, and linked
+into each tool's command directory at the location selected by the resource's
+`scope` — including framework command expansion, conflict-safe pruning of
+de-declared commands, and `doctor` verification of the materialized target and
+tool-side symlink for both Claude Code and OpenCode.
 ## Requirements
 ### Requirement: Builtin and local command source resolution
 

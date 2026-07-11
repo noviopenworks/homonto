@@ -1,7 +1,14 @@
 # agent-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change agents-foundation. Update Purpose after archive.
+Defines the lifecycle-managed agent model that is distinct from the v1
+projection-based subagent symlinks: declaring `[agents.<name>]` resources in
+`homonto.toml`, the imperative `homonto agents` command group
+(`list`/`add`/`update [--all]`/`doctor`/`prune`), conflict-safe installation of
+`local:` and `builtin:` agent content into each tool's agent directory, the
+per-agent content-addressed base-blob store that anchors three-way merging of a
+user's local edits with a source/catalog upgrade, the pure line-based merge
+engine, and the lockfile-driven prune of stale managed installs.
 ## Requirements
 ### Requirement: homonto agents list reports declared agents
 

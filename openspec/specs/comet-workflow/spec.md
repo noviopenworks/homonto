@@ -3,8 +3,8 @@
 ## Purpose
 
 Defines Homonto's current development workflow: Comet coordinates OpenSpec WHAT
-artifacts with Superpowers HOW artifacts, state, verification, and archive.
-
+artifacts with Superpowers HOW artifacts, state, verification, and archive, with
+OpenSpec main specs as the single canonical capability-spec tree.
 ## Requirements
 
 ### Requirement: Comet is the development entry point
@@ -22,10 +22,13 @@ Onto workspaces for Homonto development.
 
 ### Requirement: OpenSpec is canonical for WHAT
 
-New requirement changes SHALL be represented as OpenSpec changes under
-`openspec/changes/<name>/`, with main specs under `openspec/specs/` after archive.
-Existing `docs/specs/*.md` remain readable transition documents until a separate
-conversion change migrates them.
+OpenSpec main specs under `openspec/specs/` SHALL be the single canonical
+capability-specification tree for Homonto: they are the source of truth for every
+installed capability's requirements and scenarios. New requirement changes SHALL
+be represented as OpenSpec changes under `openspec/changes/<name>/`, and on
+archive their delta specs SHALL merge into `openspec/specs/`. There is no
+`docs/specs/` capability-spec tree and none SHALL be reintroduced; `docs/changes/`
+is legacy Onto history only (see the Onto-artifacts requirement).
 
 #### Scenario: New capability
 
@@ -33,6 +36,13 @@ conversion change migrates them.
 - **WHEN** Comet opens the change
 - **THEN** proposal/design/tasks and any delta specs are created under
   `openspec/changes/<name>/`
+
+#### Scenario: Archived change merges into canonical specs
+
+- **GIVEN** a Comet change whose delta specs have been verified
+- **WHEN** the change archives
+- **THEN** its delta specs merge into `openspec/specs/` and no `docs/specs/`
+  artifact is created or updated
 
 ### Requirement: Superpowers remains canonical for HOW
 

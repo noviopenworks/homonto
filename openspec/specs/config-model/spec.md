@@ -335,6 +335,13 @@ from the v1 `[subagents.<name>]` symlink model. Each agent table SHALL carry:
   both;
 - `mode` (optional): `copy` or `link`; empty defaults to `link`.
 
+A `local:` agent follows the general default (empty `mode` → `link`). A
+`builtin:` agent is an exception: a builtin source has no stable on-disk path to
+symlink, so a builtin agent with omitted `mode` SHALL default to `copy`, and a
+builtin agent with an explicit `mode = "link"` SHALL be rejected at load naming
+the agent (the effective-mode resolution in `internal/cli/agents.go:710-717`
+enforces this). `version` and `targets` defaults are unaffected.
+
 The agent name SHALL be validated as a config key. An invalid source scheme, an
 unknown target, or an invalid `mode` SHALL be rejected at load naming the agent.
 

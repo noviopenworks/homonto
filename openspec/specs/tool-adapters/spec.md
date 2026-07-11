@@ -28,11 +28,11 @@ The Claude adapter SHALL project MCP servers into `~/.claude.json`
 the user's home, independent of skill scope. It SHALL link each owned skill as a symlink
 under a skills directory selected by that skill resource's `scope`: `~/.claude/skills/`
 for `user` scope and `<project>/.claude/skills/` for `project` scope, where `<project>` is
-the directory of `homonto.toml`. Current adapters link skill content from the
-local provider root: `source = "local:<name>"` resolves to
-`homonto/skills/<name>`. Builtin catalog lookup is not implemented in the current
-adapter layer and MUST NOT be documented as installed behavior until the
-framework/catalog projection work lands.
+the directory of `homonto.toml`. Adapters resolve owned-skill content by source
+scheme: `source = "local:<name>"` links from `homonto/skills/<name>`, and
+`source = "builtin:<name>"` links from the versioned materialized catalog at
+`.homonto/catalog/skills/<name>/` (materialized from the embedded catalog on
+apply, version-gated on the catalog version recorded in state).
 
 #### Scenario: MCP and setting projected surgically
 - **WHEN** apply runs with an MCP targeting claude and a claude setting

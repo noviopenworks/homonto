@@ -1,7 +1,14 @@
 # builtin-catalog Specification
 
 ## Purpose
-TBD - created by archiving change catalog-foundation-skills. Update Purpose after archive.
+Defines the versioned, Go-embedded builtin catalog: loading framework metadata
+from the embedded filesystem at startup, and version-aware materialization of
+builtin skill content from the embedded catalog to `.homonto/catalog/skills/`
+before symlinks are created — re-materializing only when the embedded catalog
+version differs from the version recorded in state (or the target directory is
+missing), and recording the catalog version in state only after a successful
+materialization so an interrupted or partial extraction is never mistaken for an
+up-to-date cache.
 ## Requirements
 ### Requirement: Catalog loading from embedded filesystem
 

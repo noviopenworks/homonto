@@ -1,7 +1,17 @@
 # onto-binary Specification
 
 ## Purpose
-TBD - created by archiving change onto-binary-foundation. Update Purpose after archive.
+Defines the standalone `onto` binary (built from `cmd/onto/`, independent of the
+`homonto` binary) and its workflow commands: `version`, `status` (read-only and
+config-independent), `init` (scaffold the `docs/{changes,specs,adr,guides}/`
+layout behind a Homonto-managed framework-install gate), `new` (create a change
+skeleton), `advance` (phase transitions with per-phase artifact and
+tasks-complete gating plus dirty-worktree handling), `close` (archive a completed
+change with dependency and worktree gates), and `doctor` (read-only workspace
+health) — plus the `onto-state.yaml` change-state model, its parser/writer, the
+per-phase required-artifacts and skeleton validation, dependency resolution, and
+the cross-platform release packaging that ships both binaries for all six
+GOOS/GOARCH targets.
 ## Requirements
 ### Requirement: Onto binary builds independently of homonto
 

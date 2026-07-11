@@ -1,7 +1,12 @@
 # subagent-projection Specification
 
 ## Purpose
-TBD - created by archiving change subagent-projection. Update Purpose after archive.
+Defines how owned subagents (single-file agent definitions) are resolved by
+source scheme, materialized byte-for-byte from the embedded catalog, and linked
+into each tool's agent directory at the location selected by the resource's
+`scope` — including framework subagent expansion, conflict-safe pruning,
+adoption of pre-existing matching links, and `doctor` verification of the
+materialized target and tool-side symlink for both Claude Code and OpenCode.
 ## Requirements
 ### Requirement: Builtin and local subagent source resolution
 

@@ -2,20 +2,32 @@
 
 ## Purpose
 Defines the user-facing command surface and each command's safety behavior,
-including initialization, import, plan/apply/status, health checks, and version
-reporting.
+including initialization, import, plan/apply/status, health checks, the
+lifecycle-managed agent command group, and version reporting.
 ## Requirements
 
 ### Requirement: Command surface
 
-`homonto` SHALL expose `version`, `init`, `import`, `plan`, `apply`, `status`, and
-`doctor`, with a persistent `--config` flag (default `homonto.toml`). Config
-changes happen by editing `homonto.toml`; there SHALL be no imperative
-`add`/`remove` mutators in v1.
+`homonto` SHALL expose the top-level commands `version`, `init`, `import`,
+`plan`, `apply`, `status`, and `doctor`, with a persistent `--config` flag
+(default `homonto.toml`), plus an `agents` command group whose subcommands manage
+lifecycle-managed `[agents.<name>]` resources: `agents list`, `agents add`,
+`agents update [--all]`, `agents doctor`, and `agents prune`. MCP servers,
+settings, plugins, marketplaces, TUI settings, skills, commands, subagents, and
+frameworks continue to be reconciled declaratively through the `plan`/`apply`
+model by editing `homonto.toml`; the `agents` group is the imperative lifecycle
+surface (install / re-materialize / verify / prune) for `[agents.<name>]`
+resources specifically, because their copy-and-merge lifecycle is not captured by
+the projection plan.
 
 #### Scenario: Version prints the build version
 - **WHEN** the user runs `homonto version`
 - **THEN** it prints `homonto <version>`
+
+#### Scenario: Agent subcommands are present
+- **WHEN** the user runs `homonto agents --help`
+- **THEN** it lists the `list`, `add`, `update`, `doctor`, and `prune`
+  subcommands
 
 ### Requirement: init scaffolds without overwriting
 
@@ -79,15 +91,30 @@ unless `--force` is given.
 ### Requirement: doctor health checks
 
 `homonto doctor` SHALL check that `pass` is on `PATH`, that each target tool's
-config location is present, and that each local-source owned skill exists under
-`homonto/skills/<local-name>`. Builtin catalog lookup for skills is not
-implemented in the current command and MUST NOT be claimed as installed behavior.
-For every owned skill it SHALL verify BOTH tool symlinks at the location selected
-by that skill resource's `scope` — for `user` scope `~/.claude/skills/<name>` and
-`~/.config/opencode/skills/<name>`, and for `project` scope
-`<project>/.claude/skills/<name>` and
-`<project>/.opencode/skills/<name>` — reporting the link state per tool. All
-findings are reported as `ok`/`warn` lines.
+config location is present, and that each local-source owned resource — skill,
+command, and subagent — exists under its `homonto/` provider root
+(`homonto/skills/<name>`, `homonto/commands/<name>.md`,
+`homonto/subagents/<name>.md`). For every owned skill, command, and subagent it
+SHALL verify BOTH tool links at the location selected by that resource's `scope`,
+for Claude Code and OpenCode alike:
+
+- skills: `~/.claude/skills/<name>` and `~/.config/opencode/skills/<name>`
+  (`user`), or `<project>/.claude/skills/<name>` and
+  `<project>/.opencode/skills/<name>` (`project`);
+- commands: `~/.claude/commands/<name>.md` and
+  `~/.config/opencode/command/<name>.md` (`user`), or the `<project>/.claude/…`
+  and `<project>/.opencode/…` equivalents (`project`);
+- subagents: `~/.claude/agents/<name>.md` and
+  `~/.config/opencode/agent/<name>.md` (`user`), or the `<project>/.claude/…`
+  and `<project>/.opencode/…` equivalents (`project`).
+
+Builtin resources (`source = "builtin:<name>"`) resolve from the versioned
+materialized catalog at `.homonto/catalog/skills/<name>/`,
+`.homonto/catalog/commands/<name>.md`, and
+`.homonto/catalog/subagents/<name>.md`; `doctor` SHALL flag a builtin resource
+whose materialized target is missing or whose recorded catalog version differs
+from the embedded catalog version. All findings are reported as `ok`/`warn`
+lines.
 
 #### Scenario: Missing owned skill is flagged
 - **WHEN** a declared local-source skill resource has no directory under
@@ -108,6 +135,20 @@ findings are reported as `ok`/`warn` lines.
 - **THEN** it reports the skill links `ok` by checking `<project>/.claude/skills/<name>` and
   `<project>/.opencode/skills/<name>`, not the home locations
 
+#### Scenario: Command and subagent links are verified for both tools
+- **GIVEN** a config declaring an owned command and an owned subagent, each
+  applied for both Claude Code and OpenCode
+- **WHEN** `doctor` runs
+- **THEN** it reports the command and subagent links `ok` for both tools, and
+  flags any missing or incorrect link for either tool with a `warn` line
+
+#### Scenario: Builtin resource materialization is verified
+- **GIVEN** a builtin skill, command, or subagent whose materialized target under
+  `.homonto/catalog/` is missing
+- **WHEN** `doctor` runs
+- **THEN** it reports a warning naming the resource and its missing materialized
+  target
+
 ### Requirement: Version reporting
 
 `homonto --version` SHALL print the build version from a package-level
@@ -115,13 +156,11 @@ findings are reported as `ok`/`warn` lines.
 `-ldflags "-X …"`, with a recognizable dev default otherwise.
 
 #### Scenario: Stamped version printed
-
 - **GIVEN** a binary built with `-ldflags "-X <module>/internal/cli.Version=1.2.3"`
 - **WHEN** the user runs `homonto --version`
 - **THEN** the output contains `1.2.3`
 
 #### Scenario: Dev build identifies itself
-
 - **GIVEN** a binary built without ldflags stamping
 - **WHEN** the user runs `homonto --version`
 - **THEN** the output contains the dev default version
