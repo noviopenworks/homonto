@@ -103,6 +103,51 @@ func TestAgentsUpdateBacksUpLocalEdit(t *testing.T) {
 	}
 }
 
+// TestAgentsUpdateNewTargetBacksUpForeignFile: when a target is newly added to
+// the config after install, update must NOT silently clobber a pre-existing
+// foreign file at that target — it backs it up first.
+func TestAgentsUpdateNewTargetBacksUpForeignFile(t *testing.T) {
+	home := t.TempDir()
+	claudeOnly := "[agents.rev]\nsource = \"local:rev\"\nmode = \"copy\"\ntargets = [\"claude\"]\n"
+	cfg, cfgDir := addWorkspace(t, claudeOnly, map[string]string{"rev": "# rev v1\n"})
+
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+
+	// A hand-written foreign file already sits at the opencode target path.
+	foreign := "# hand-written, do not lose\n"
+	ocDst := filepath.Join(subagentpath.Dir("opencode", "user", home, ""), "rev.md")
+	if err := os.MkdirAll(filepath.Dir(ocDst), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ocDst, []byte(foreign), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Now the config adds opencode as a target.
+	both := "[agents.rev]\nsource = \"local:rev\"\nmode = \"copy\"\ntargets = [\"claude\", \"opencode\"]\n"
+	if err := os.WriteFile(cfg, []byte(both), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := runCmd(t, home, "", "agents", "update", "rev", "--config", cfg); err != nil {
+		t.Fatalf("update: %v\n%s", err, out)
+	}
+	// The foreign file must have been backed up, not silently destroyed.
+	bak, berr := os.ReadFile(ocDst + ".bak")
+	if berr != nil {
+		t.Fatalf("foreign file at a new target must be backed up to %s.bak: %v", ocDst, berr)
+	}
+	if string(bak) != foreign {
+		t.Fatalf("%s.bak must preserve the foreign content, got:\n%s", ocDst, bak)
+	}
+	if got, _ := os.ReadFile(ocDst); string(got) != "# rev v1\n" {
+		t.Fatalf("opencode dst should hold the source content, got:\n%s", got)
+	}
+	_ = cfgDir
+}
+
 // TestAgentsUpdateIsIdempotent: updating immediately after add reports every
 // target "up to date", writes no .bak, and leaves dst bytes unchanged.
 func TestAgentsUpdateIsIdempotent(t *testing.T) {

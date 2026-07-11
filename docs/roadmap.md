@@ -418,10 +418,17 @@ but-not-installed, orphaned (de-declared), source-changed (a `local:` provider
 file whose hash no longer matches the install), target-not-installed / no-longer-
 targeted, missing-on-disk, and `copy`-mode modified-on-disk — printing `healthy`
 and exit 0 when clean, or the findings and a non-zero exit otherwise (the peer of
-`homonto doctor`/`onto doctor`). Remaining v2 work (deferred): `builtin:`/remote
-sources; `update`/`pin`/`migrate` (which act on the drift `doctor` reports);
-compatibility checks per target; three-way-merge/backup on update; a per-agent
-scope; and the eventual `[agents]`-vs-`[subagents]` reconciliation.
+`homonto doctor`/`onto doctor`). The fix action for that drift has also landed:
+`homonto agents update <name>` re-materializes an installed `local:` agent from
+its current source (per its `copy`/`link` mode), refreshing the lockfile, and —
+to protect user work — backs up a locally-modified `copy` install to `<path>.bak`
+before overwriting (a genuine local edit only, not an untouched install); it is
+idempotent. Version pinning stays declarative (set `[agents.<name>].version` in
+the config; homonto never edits `homonto.toml`), so there is no separate `pin`
+command. Remaining v2 work (deferred): `builtin:`/remote sources; `migrate` and
+three-way-merge (auto-reconciling local + upstream edits, vs today's backup);
+compatibility checks per target; de-declared-target pruning; a per-agent scope;
+and the eventual `[agents]`-vs-`[subagents]` reconciliation.
 
 Scope:
 

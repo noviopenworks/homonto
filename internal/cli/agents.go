@@ -390,11 +390,14 @@ func agentsUpdateCmd() *cobra.Command {
 						status = "up to date"
 					default:
 						backedUp := false
-						// Back up ONLY a genuine local edit: the file exists, was
-						// recorded at install, and its on-disk content differs from
-						// the LAST install hash (== an untouched stale copy → no
-						// backup; missing → nothing to preserve).
-						if readErr == nil && hadRec && agentlock.HashContent(cur) != prev.Hash {
+						// Back up any existing file we are about to overwrite UNLESS
+						// it is our own untouched install (recorded and still equal to
+						// the last install hash → nothing to preserve). This covers a
+						// genuine local edit (hadRec && on-disk != prev.Hash) AND a
+						// pre-existing foreign file at a newly-declared target
+						// (!hadRec) — never clobber a user's file without a .bak.
+						// A missing file (readErr != nil) has nothing to preserve.
+						if readErr == nil && !(hadRec && agentlock.HashContent(cur) == prev.Hash) {
 							if err := fsutil.WriteAtomic(dst+".bak", cur); err != nil {
 								return err
 							}
