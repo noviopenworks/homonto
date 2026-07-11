@@ -32,43 +32,13 @@ jobs:
           go vet ./...
           go test ./...
 
+      # Build, package, and checksum BOTH binaries (homonto + onto) for every
+      # target. The packaging logic lives in scripts/build-release.sh so it is
+      # testable off CI and shared by the local and release code paths.
       - name: build release artifacts
         env:
           VERSION: ${{ github.ref_name }}
-        run: |
-          set -eu
-          mkdir -p dist
-          ldflags="-s -w -X github.com/noviopenworks/homonto/internal/cli.Version=${VERSION}"
-          # macOS ships only amd64+arm64; Windows and Linux cover both too.
-          for target in \
-            linux/amd64 linux/arm64 \
-            darwin/amd64 darwin/arm64 \
-            windows/amd64 windows/arm64; do
-            goos="${target%/*}"
-            goarch="${target#*/}"
-            out="homonto_${VERSION}_${goos}_${goarch}"
-            bin="homonto"
-            if [ "$goos" = "windows" ]; then bin="homonto.exe"; fi
-            echo "building $out"
-            mkdir -p "dist/$out"
-            cp LICENSE README.md "dist/$out/"
-            CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" \
-              go build -trimpath -ldflags "$ldflags" -o "dist/$out/$bin" .
-            if [ "$goos" = "windows" ]; then
-              (cd dist && zip -qr "$out.zip" "$out")
-            else
-              tar -C dist -czf "dist/$out.tar.gz" "$out"
-            fi
-            rm -rf "dist/$out"
-          done
-
-      - name: checksums
-        run: |
-          set -eu
-          cd dist
-          # One SHA256SUMS file over every archive, so downloaders can verify.
-          sha256sum ./*.tar.gz ./*.zip > SHA256SUMS
-          cat SHA256SUMS
+        run: scripts/build-release.sh "${VERSION}"
 
       - name: publish release
         env:

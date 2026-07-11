@@ -1,5 +1,7 @@
 /.homonto/
 .env
+# Release build output from scripts/build-release.sh.
+/dist/
 graphify-out/
 __pycache__/
 # Project-scoped dogfood skill links (machine-specific absolute symlinks).

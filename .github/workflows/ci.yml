@@ -48,6 +48,12 @@ jobs:
           # homonto prints via cobra's Print* (stderr), so capture both streams.
           /tmp/homonto version 2>&1 | tee /dev/stderr | grep -q "ci-smoke" || { echo "version not stamped"; exit 1; }
 
+      - name: onto version stamp smoke
+        run: |
+          go build -ldflags "-X github.com/noviopenworks/homonto/internal/ontocli.Version=ci-smoke" -o /tmp/onto ./cmd/onto
+          # onto prints via cobra's Print* too; capture both streams defensively.
+          /tmp/onto version 2>&1 | tee /dev/stderr | grep -q "ci-smoke" || { echo "onto version not stamped"; exit 1; }
+
       - name: cli smoke
         run: |
           printf '[skills]\nown=[]\n' > /tmp/homonto.toml
