@@ -327,17 +327,18 @@ gate remains open without a recorded exception.
   (Option C: collapse into declarative `[subagents]`+`apply`, auto-supersede
   migration, project default scope) with a 6-step apply-preserving plan —
   `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md`.
-- **Implementation started:** step 1a landed (`7fba2dc`) — an omitted
-  `[subagents.<name>]` scope now defaults to `project`; and a load-time guard
-  (`4f28565`) rejects a name declared in both `[agents]` and `[subagents]`
-  (closes the collision bug for the transition).
-- **Remaining (implementation, sequenced):** (1b) dedicated `Subagent` struct
-  carrying `mode`+`version` (the shared `Resource` type can't); (2–3) **copy-mode
-  subagent projection + apply-time three-way merge** (the core: re-plumbs the
-  deterministic apply path with base blobs + `.merged` sidecars — the highest-risk
-  increment, do via comet with per-step TDD); (4) status/doctor + GC re-home;
-  (5) auto-supersede `[agents]`→`[subagents]` at load; (6) remove the
-  `homonto agents` command surface + `config.Agent` + `internal/agentlock`. Plan:
+- **Config-layer foundation landed:** step 1a (omitted subagent scope →
+  `project`, `7fba2dc`); collision guard (name in both `[agents]`/`[subagents]`
+  rejected, `4f28565`); step 1b (dedicated `config.Subagent` type with
+  `mode`+`version`, behavior-preserving, `mode=copy` gated until step 2,
+  `67c07c7`). All green under `-race`.
+- **Remaining (adapter-layer core):** (2–3) copy-mode subagent projection as a
+  *managed content-file* mechanism (real files + hash state + apply-time
+  three-way merge with base blobs + `.merged` sidecars) — a new projection path
+  alongside the link path, i.e. the `[agents]` lifecycle rebuilt declaratively;
+  (4) status/doctor + GC re-home; (5) auto-supersede `[agents]`→`[subagents]`;
+  (6) remove the `homonto agents` surface + `config.Agent` + `internal/agentlock`.
+  A major re-plumb — build via comet with per-step TDD. Plan:
   `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md` §8.
 - **Problem:** `[agents]` and `[subagents]` overlap without a documented
   ownership/lifecycle model; no per-agent scope; conflict resolution is not

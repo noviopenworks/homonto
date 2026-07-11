@@ -145,14 +145,18 @@ changes, not a single edit.
 Each step is independently shippable and green; the `[agents]` surface is removed
 only in the last step, after `[subagents]` reaches full parity.
 
-> **Landed so far (2026-07-11):** step 1a — omitted `[subagents]` scope defaults
-> to `project` (`7fba2dc`); and a safety guard rejecting a name declared in both
-> `[agents]` and `[subagents]` (`4f28565`, closes design problem #1 for the
-> transition). Blob GC (`3529ce7`) is also done. **The coupled core below —
-> dedicated `Subagent` type + copy-mode projection + apply-time three-way merge —
-> is the remaining work; it delivers value only when steps 1b–3 land together and
-> re-plumbs the deterministic `apply` path, so it should be built as a focused
-> comet change with per-step TDD, not piecemeal.**
+> **Landed so far (2026-07-11):** the whole **config-layer foundation** —
+> step 1a (omitted `[subagents]` scope → `project`, `7fba2dc`); the collision
+> guard (a name in both `[agents]`/`[subagents]` rejected, `4f28565`, closes
+> problem #1 for the transition); and step 1b (dedicated `config.Subagent` type
+> carrying `mode`+`version`, behavior-preserving via an `asResource()` conversion
+> so adapters still symlink; `mode=copy` is validated-but-gated until step 2,
+> `67c07c7`). Blob GC (`3529ce7`) is also done. **The remaining core is
+> adapter-layer:** steps 2–3 add a *managed content-file* projection (copy-mode
+> subagents materialized as real files with hash-based state + apply-time
+> three-way merge) — a new projection mechanism alongside the link path, i.e. the
+> `[agents]` lifecycle rebuilt declaratively. That is a major adapter re-plumb and
+> should be built as a focused comet change with per-step TDD.
 
 1. **Subagent model gains `mode` + `version`.** Add `Mode` (`copy`|`link`, default
    `link` = today's symlink) and `Version` to the subagent model, validated.
