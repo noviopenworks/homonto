@@ -632,6 +632,15 @@ func validateAgents(agents map[string]Agent) error {
 		if !validSource(ag.Source) {
 			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, ag.Source)
 		}
+		// A local: source name is resolved to homonto/agents/<name>.md and
+		// materialized/symlinked on `agents add`, so a traversal name
+		// ("local:../../secret") would read/link a file outside the provider
+		// root. Require a plain name, rejected at declaration.
+		if s, ok := strings.CutPrefix(ag.Source, "local:"); ok {
+			if s == "" || s == "." || s == ".." || strings.ContainsAny(s, `/\`) || s != filepath.Base(s) {
+				return fmt.Errorf("parse config: %s local source %q must be a plain name (no path components)", label, ag.Source)
+			}
+		}
 		switch ag.Mode {
 		case "", "copy", "link":
 		default:

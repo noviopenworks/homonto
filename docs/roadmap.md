@@ -405,12 +405,17 @@ v2 manages source, version, compatibility, updates, and migration.
 remote deferred), optional `version` (unpinned when empty), `targets`, and `mode`
 (`copy`/`link`, default `link`), validated at load — along with a read-only
 `homonto agents list` that prints declared agents (sorted) with their source,
-version, targets, and mode. This is declaration + inspection only; no projection
-or mutation yet, and it is independent of the v1 `[subagents.<name>]` symlink
-model. Remaining v2 work (deferred to later increments): `add`/`update`/`pin`/
-`doctor`/`migrate`, the version lockfile + installed-state tracking, compatibility
-checks per target, local-edit conflict detection, three-way-merge/backup, remote
-sources, and the eventual `[agents]`-vs-`[subagents]` reconciliation.
+version, targets, and mode. The first lifecycle **mutation** has also landed:
+`homonto agents add <name>` installs a `local:` agent into its target tools'
+agent directories (per its `copy`/`link` mode), conflict-safe (refuses to
+clobber an unmanaged file, all-or-nothing per agent) and idempotent (an unchanged
+target is a no-op), recording each install (source, version, mode, targets, and
+per-target path + content hash) in a new `.homonto/agents-lock.json` lockfile —
+the installed-state ground truth the rest of v2 builds on. Remaining v2 work
+(deferred): `builtin:`/remote sources; `update`/`pin`/`doctor`/`migrate`;
+compatibility checks per target; local-edit conflict detection and
+three-way-merge/backup on update; a per-agent scope; and the eventual
+`[agents]`-vs-`[subagents]` reconciliation.
 
 Scope:
 

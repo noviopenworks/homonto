@@ -1108,6 +1108,19 @@ func TestAgentsRejectTraversalName(t *testing.T) {
 	}
 }
 
+// TestAgentsRejectTraversalLocalSource: a local: source with path components is
+// rejected — it would resolve/materialize a file outside homonto/agents/ on
+// `agents add` (a config-driven path-traversal / file-exfiltration vector).
+func TestAgentsRejectTraversalLocalSource(t *testing.T) {
+	err := loadDoc(t, "[agents.rev]\nsource = \"local:../../secret\"\n")
+	if err == nil {
+		t.Fatalf("traversal local source accepted; want load error")
+	}
+	if !strings.Contains(err.Error(), "plain name") {
+		t.Fatalf("error does not flag the bad source: %v", err)
+	}
+}
+
 // TestAgentsRejectInvalidMode: a mode outside copy/link is rejected, naming the
 // agent and the offending mode.
 func TestAgentsRejectInvalidMode(t *testing.T) {
