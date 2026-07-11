@@ -22,6 +22,7 @@ func agentsCmd() *cobra.Command {
 	}
 	cmd.AddCommand(agentsListCmd())
 	cmd.AddCommand(agentsAddCmd())
+	cmd.AddCommand(agentsUpdateCmd())
 	cmd.AddCommand(agentsDoctorCmd())
 	return cmd
 }
@@ -320,6 +321,113 @@ func agentsAddCmd() *cobra.Command {
 				Mode:      mode,
 				Targets:   targets,
 				Installed: installed,
+			}
+			return lock.Save(homontoDir)
+		},
+	}
+}
+
+// agentsUpdateCmd re-materializes an already-installed declared local: agent
+// from its current source. A copy-mode target that was locally edited since the
+// last install is backed up to <dst>.bak before being overwritten (backup, not
+// merge); an untouched-but-stale copy is overwritten silently, and an up-to-date
+// target is left alone. The lockfile hash is refreshed to the new source.
+func agentsUpdateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "update <name>",
+		Short: "Re-materialize an installed local agent from source (backup-safe)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			cfgPath, _ := cmd.Flags().GetString("config")
+			cfgDir := filepath.Dir(cfgPath)
+			homontoDir := filepath.Join(cfgDir, ".homonto")
+
+			c, err := config.Load(cfgPath)
+			if err != nil {
+				return err
+			}
+			home, _ := os.UserHomeDir()
+
+			ag, ok := c.Agents[name]
+			if !ok {
+				return fmt.Errorf("agents update: agent %q is not declared", name)
+			}
+			if !strings.HasPrefix(ag.Source, "local:") {
+				return fmt.Errorf("agents update: only local: sources are supported yet (got %q)", ag.Source)
+			}
+
+			lock, err := agentlock.Load(homontoDir)
+			if err != nil {
+				return err
+			}
+			inst, installed := lock.Agents[name]
+			if !installed {
+				return fmt.Errorf("agents update: agent %q is not installed (run `homonto agents add %s`)", name, name)
+			}
+
+			srcName := strings.TrimPrefix(ag.Source, "local:")
+			srcPath := filepath.Join(cfgDir, "homonto", "agents", srcName+".md")
+			content, err := os.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("agents update: source file %s: %w", srcPath, err)
+			}
+			hash := agentlock.HashContent(content)
+
+			mode := ag.ModeOrDefault()
+			targets := ag.TargetsOrAll()
+			installedRec := map[string]agentlock.Install{}
+			for _, tool := range sortedStrings(targets) {
+				dir := subagentpath.Dir(tool, "user", home, "")
+				dst := filepath.Join(dir, name+".md")
+				prev, hadRec := inst.Installed[tool]
+				var status string
+				switch mode {
+				case "copy":
+					cur, readErr := os.ReadFile(dst)
+					switch {
+					case readErr == nil && agentlock.HashContent(cur) == hash:
+						status = "up to date"
+					default:
+						backedUp := false
+						// Back up ONLY a genuine local edit: the file exists, was
+						// recorded at install, and its on-disk content differs from
+						// the LAST install hash (== an untouched stale copy → no
+						// backup; missing → nothing to preserve).
+						if readErr == nil && hadRec && agentlock.HashContent(cur) != prev.Hash {
+							if err := fsutil.WriteAtomic(dst+".bak", cur); err != nil {
+								return err
+							}
+							backedUp = true
+						}
+						if err := fsutil.WriteAtomic(dst, content); err != nil {
+							return err
+						}
+						status = "updated"
+						if backedUp {
+							status = fmt.Sprintf("updated (backed up local changes to %s.bak)", dst)
+						}
+					}
+				default: // link
+					if isSymlinkTo(dst, srcPath) {
+						status = "up to date"
+					} else {
+						if _, err := link.Link(srcPath, dst, homontoDir); err != nil {
+							return err
+						}
+						status = "updated"
+					}
+				}
+				installedRec[tool] = agentlock.Install{Path: dst, Hash: hash}
+				cmd.Printf("%s (%s): %s %s\n", name, tool, status, dst)
+			}
+
+			lock.Agents[name] = agentlock.Agent{
+				Source:    ag.Source,
+				Version:   ag.Version,
+				Mode:      mode,
+				Targets:   targets,
+				Installed: installedRec,
 			}
 			return lock.Save(homontoDir)
 		},
