@@ -449,11 +449,15 @@ add`/`update`/`doctor` resolve `builtin:<name>` from the embedded catalog (a
 agents are declarable and lifecycle-managed — install, drift, and three-way merge
 (including auto-merging a user's edits with a catalog upgrade) all work for
 `builtin:` exactly as for `local:`; builtin agents are copy-only (link needs a
-local path, and an unspecified mode defaults to copy for them). Remaining v2
-(deferred): **remote** agent sources (an explicit first-release non-goal);
-compatibility checks per target; de-declared-target pruning; a per-agent scope;
-blob GC; `--markers` in-file conflict mode; and the eventual
-`[agents]`-vs-`[subagents]` reconciliation.
+local path, and an unspecified mode defaults to copy for them). Cleanup has also
+landed: `homonto agents prune` removes homonto-managed installs for orphaned
+agents (recorded but no longer declared) and de-declared targets, backing up any
+locally-modified file to `<path>.bak` and clearing a leftover `.merged` sidecar
+first, and offering a `--dry-run` preview — completing the lifecycle loop
+(add → doctor detects → prune cleans up). Remaining v2 (deferred): **remote**
+agent sources (an explicit first-release non-goal); compatibility checks per
+target; a per-agent scope; blob GC; `--markers` in-file conflict mode; and the
+eventual `[agents]`-vs-`[subagents]` reconciliation.
 
 Scope:
 

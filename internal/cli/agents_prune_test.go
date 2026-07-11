@@ -150,6 +150,51 @@ func TestAgentsPruneBacksUpLocalEdit(t *testing.T) {
 	}
 }
 
+// TestAgentsPruneBackupFailureKeepsFile: if the .bak backup of a locally-edited
+// install cannot be written, the install file must NOT be removed (no data
+// loss) and its lockfile record must be kept.
+func TestAgentsPruneBackupFailureKeepsFile(t *testing.T) {
+	home := t.TempDir()
+	cfg, cfgDir := addWorkspace(t, copyAgentTOML, map[string]string{"rev": "# rev\n"})
+	if out, err := runCmd(t, home, "", "agents", "add", "rev", "--config", cfg); err != nil {
+		t.Fatalf("agents add: %v\n%s", err, out)
+	}
+	dst := claudeDst(home, "rev")
+	edited := "# rev LOCALLY EDITED\n"
+	if err := os.WriteFile(dst, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Force the backup write to fail: make <dst>.bak a non-empty directory so the
+	// atomic rename onto it cannot succeed.
+	if err := os.Mkdir(dst+".bak", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dst+".bak", "x"), []byte("y"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Make rev an orphan.
+	if err := os.WriteFile(cfg, []byte("\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runCmd(t, home, "", "agents", "prune", "--config", cfg)
+	if err != nil {
+		t.Fatalf("prune should not hard-error on a backup failure: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "SKIPPED") {
+		t.Fatalf("prune must report the skipped file, got:\n%s", out)
+	}
+	// The edited install must still exist (not removed without a backup).
+	if got, rerr := os.ReadFile(dst); rerr != nil || string(got) != edited {
+		t.Fatalf("locally-edited install must be KEPT when backup fails: err=%v content=%q", rerr, got)
+	}
+	// The lockfile record must be kept (so a retry can prune it).
+	lock, _ := agentlock.Load(filepath.Join(cfgDir, ".homonto"))
+	if _, ok := lock.Agents["rev"]; !ok {
+		t.Fatalf("record must be kept when the file could not be safely pruned")
+	}
+}
+
 // TestAgentsPruneRemovesMergedSidecar: a leftover <dst>.merged next to a pruned
 // orphan target is removed too.
 func TestAgentsPruneRemovesMergedSidecar(t *testing.T) {

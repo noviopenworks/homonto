@@ -65,37 +65,52 @@ func agentsPruneCmd() *cobra.Command {
 			// pruneFile removes one recorded install, backing up a local edit
 			// first and cleaning up its .merged sidecar. It only ever touches the
 			// recorded ti.Path; an already-gone file is a silent no-op.
-			pruneFile := func(ti agentlock.Install) {
+			// pruneFile removes a recorded install (backing up a local edit first,
+			// clearing a .merged sidecar). It returns whether the install may be
+			// dropped from the lockfile: true when removed, already gone, or a
+			// dry-run preview; FALSE only when a required backup write failed — in
+			// which case the file is KEPT (never removed without its .bak) so no
+			// user edit is lost, and the record is kept too so a retry can prune it.
+			pruneFile := func(ti agentlock.Install) bool {
 				if _, err := os.Lstat(ti.Path); err != nil {
-					return // already gone
+					return true // already gone
 				}
 				if dryRun {
 					actions = append(actions, fmt.Sprintf("would remove %s", ti.Path))
-					return
+					return true
 				}
 				// Back up a local edit (on-disk content differs from recorded base).
 				if b, rerr := os.ReadFile(ti.Path); rerr == nil && agentlock.HashContent(b) != ti.Hash {
-					if err := fsutil.WriteAtomic(ti.Path+".bak", b); err == nil {
-						actions = append(actions, fmt.Sprintf("backed up %s to %s.bak", ti.Path, ti.Path))
+					if err := fsutil.WriteAtomic(ti.Path+".bak", b); err != nil {
+						actions = append(actions, fmt.Sprintf("SKIPPED %s: backup to .bak failed (%v); file kept", ti.Path, err))
+						return false // keep the file AND its lockfile record
 					}
+					actions = append(actions, fmt.Sprintf("backed up %s to %s.bak", ti.Path, ti.Path))
 				}
 				os.Remove(ti.Path)
 				os.Remove(ti.Path + ".merged")
 				actions = append(actions, fmt.Sprintf("removed %s", ti.Path))
+				return true
 			}
 
 			for _, name := range sortedKeysAgents(lock.Agents) {
 				ag, declared := c.Agents[name]
 				inst := lock.Agents[name]
 				if !declared {
-					// Orphan: prune every recorded target.
+					// Orphan: prune every recorded target. Drop the agent record
+					// only if all its targets were safely pruned.
+					allPruned := true
 					for _, tool := range sortedKeys(inst.Installed) {
-						pruneFile(inst.Installed[tool])
+						if !pruneFile(inst.Installed[tool]) {
+							allPruned = false
+						}
 					}
-					actions = append(actions, fmt.Sprintf("pruned orphan agent %q", name))
-					if !dryRun {
-						delete(lock.Agents, name)
-						changed = true
+					if allPruned {
+						actions = append(actions, fmt.Sprintf("pruned orphan agent %q", name))
+						if !dryRun {
+							delete(lock.Agents, name)
+							changed = true
+						}
 					}
 					continue
 				}
@@ -108,7 +123,9 @@ func agentsPruneCmd() *cobra.Command {
 					if declaredSet[tool] {
 						continue
 					}
-					pruneFile(inst.Installed[tool])
+					if !pruneFile(inst.Installed[tool]) {
+						continue // backup failed → keep the target record
+					}
 					actions = append(actions, fmt.Sprintf("pruned de-declared target %s of %q", tool, name))
 					if !dryRun {
 						delete(inst.Installed, tool)

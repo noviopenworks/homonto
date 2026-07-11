@@ -114,7 +114,10 @@ the upstream source change: disjoint edits auto-merge; on an overlapping conflic
 it leaves your file untouched, writes the merged result with conflict markers to
 `<path>.merged`, and exits non-zero for you to resolve. `homonto agents update
 --all` runs that merge across every installed agent and summarizes the result.
-Version pinning is declarative — set `[agents.<name>].version` in the config.
+When you remove an agent (or a target) from the config, `homonto agents prune`
+removes its now-orphaned installs (backing up any locally-modified file first;
+`--dry-run` previews). Version pinning is declarative — set
+`[agents.<name>].version` in the config.
 Agent sources can be `local:<name>` (from `homonto/agents/`) or `builtin:<name>`
 (resolved from the bundled catalog; copy-mode only). Remote agent sources are
 future v2 work.
