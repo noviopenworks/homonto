@@ -430,10 +430,15 @@ line-based merge engine (`internal/merge` — auto-merges disjoint local + upstr
 edits, git-style conflict markers on overlap) and a content-addressed
 base-content blob store (`internal/agentblob`, `.homonto/agents-blobs/<sha256>`);
 `agents add`/`update` now persist each install's base content there
-(behavior-preserving) so a future merge has the common ancestor. Next (#5b) wires
-the merge into `update` (replacing today's backup-then-overwrite) with a safe
-`<path>.merged` sidecar on conflict and a `doctor` "conflicted" finding; then #5c
-`agents update --all` (a `migrate` convenience). Remaining v2 (deferred):
+(behavior-preserving) so a future merge has the common ancestor. The merge is now
+wired into `update` (#5b): `agents update` **three-way-merges** local edits with
+the upstream source (disjoint edits auto-merge and advance the recorded base to
+the new source); on an overlapping conflict it leaves the live file untouched,
+writes the merged-with-markers result to `<path>.merged`, makes no lockfile
+change, and exits non-zero. `agents doctor` was reframed for this model — a
+locally-edited install is a normal, mergeable state (no longer a problem finding),
+and a pending `<path>.merged` conflict is reported. Next: #5c `agents update
+--all` (a `migrate` convenience). Remaining v2 (deferred):
 `builtin:`/remote sources (#6); compatibility checks per target; de-declared-
 target pruning; a per-agent scope; blob GC; and the eventual
 `[agents]`-vs-`[subagents]` reconciliation.

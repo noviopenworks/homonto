@@ -107,12 +107,14 @@ Inspect declared agents with `homonto agents list` (read-only), install a
 `local:` agent into its target tools with `homonto agents add <name>`
 (conflict-safe and idempotent; records `.homonto/agents-lock.json`), and check
 health with `homonto agents doctor` (read-only; reports declared-vs-installed
-drift — missing, orphaned, source-changed, or modified-on-disk — and exits
-non-zero on any finding), and re-materialize an installed agent from its current
-source with `homonto agents update <name>` (backs up any locally-modified copy to
-`<path>.bak` before overwriting). Version pinning is declarative — set
-`[agents.<name>].version` in the config. Further lifecycle (`migrate`/three-way-
-merge, builtin/remote sources) is future v2 work.
+drift — missing, orphaned, source-changed, or conflicted — and exits non-zero on
+any finding), and reconcile an installed agent with its current source with
+`homonto agents update <name>`, which **three-way-merges** your local edits with
+the upstream source change: disjoint edits auto-merge; on an overlapping conflict
+it leaves your file untouched, writes the merged result with conflict markers to
+`<path>.merged`, and exits non-zero for you to resolve. Version pinning is
+declarative — set `[agents.<name>].version` in the config. Further lifecycle
+(`agents update --all`, builtin/remote sources) is future v2 work.
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels
