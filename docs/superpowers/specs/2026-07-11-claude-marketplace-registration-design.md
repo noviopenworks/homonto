@@ -2,6 +2,8 @@
 comet_change: claude-marketplace-registration
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-claude-marketplace-registration
+status: final
 ---
 
 # Claude Marketplace Registration — Technical Design

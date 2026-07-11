@@ -2,6 +2,7 @@
 change: claude-marketplace-registration
 design-doc: docs/superpowers/specs/2026-07-11-claude-marketplace-registration-design.md
 base-ref: f8d47f9b411f375530b55256e551a6690669cd58
+archived-with: 2026-07-11-claude-marketplace-registration
 ---
 
 # Plan: claude marketplace registration (v1.2 #3, final)
