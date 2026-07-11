@@ -2,6 +2,8 @@
 comet_change: agents-add
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-agents-add
+status: final
 ---
 
 

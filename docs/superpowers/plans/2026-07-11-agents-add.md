@@ -2,6 +2,7 @@
 change: agents-add
 design-doc: docs/superpowers/specs/2026-07-11-agents-add-design.md
 base-ref: dd80dcf6c2ae820d246459601ae0f78bc75a5d23
+archived-with: 2026-07-11-agents-add
 ---
 
 # Plan: agents add + lockfile (v2 #2)
