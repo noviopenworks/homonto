@@ -50,9 +50,15 @@ func fetchHTTPS(ctx context.Context, url string, lim Limits, client *http.Client
 	}
 	c := *base // shallow copy so we can set redirect/timeout without mutating the caller's client
 	c.Timeout = httpTimeout
-	c.CheckRedirect = func(_ *http.Request, via []*http.Request) error {
+	c.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) >= maxRedirects {
 			return fmt.Errorf("remote: stopped after %d redirects", maxRedirects)
+		}
+		// Never follow a redirect that downgrades away from https: an https source
+		// must not be silently fetched over plaintext or a non-https scheme (SSRF /
+		// downgrade defense).
+		if req.URL.Scheme != "https" {
+			return fmt.Errorf("remote: refusing redirect to non-https scheme %q", req.URL.Scheme)
 		}
 		return nil
 	}
@@ -96,7 +102,7 @@ func fetchFile(_ context.Context, url string, lim Limits) (Tree, int64, error) {
 		return Tree{}, 0, fmt.Errorf("remote: file source: %w", err)
 	}
 	if info.IsDir() {
-		tree, size, err := treeFromDir(p, lim, nil)
+		tree, size, err := treeFromDir(p, lim)
 		if err != nil {
 			return Tree{}, 0, err
 		}
@@ -136,24 +142,42 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 	}
 	defer os.RemoveAll(tmp)
 
-	clone := exec.CommandContext(ctx, "git", "-c", "protocol.file.allow=always", "clone", "--quiet", "--no-checkout", cloneURL, tmp)
-	if out, err := clone.CombinedOutput(); err != nil {
-		return Tree{}, 0, fmt.Errorf("remote: git clone failed: %v: %s", err, out)
+	// Shallow-fetch only the pinned ref so the download is bounded to a single
+	// commit's objects, not the repository's whole history (bomb/DoS defense).
+	// git init + fetch --depth 1 <ref> works for a commit sha or a tag.
+	gitc := func(args ...string) error {
+		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", tmp, "-c", "protocol.file.allow=always", "-c", "advice.detachedHead=false"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("remote: git %v failed: %v: %s", args, err, out)
+		}
+		return nil
 	}
-	checkout := exec.CommandContext(ctx, "git", "-C", tmp, "-c", "advice.detachedHead=false", "checkout", "--quiet", ref)
-	if out, err := checkout.CombinedOutput(); err != nil {
-		return Tree{}, 0, fmt.Errorf("remote: git checkout %q failed: %v: %s", ref, err, out)
+	if err := gitc("init", "--quiet"); err != nil {
+		return Tree{}, 0, err
+	}
+	if err := gitc("remote", "add", "origin", cloneURL); err != nil {
+		return Tree{}, 0, err
+	}
+	// Pass the ref after "--" is not applicable to fetch; validate it does not
+	// start with a dash so it is never parsed as an option.
+	if strings.HasPrefix(ref, "-") {
+		return Tree{}, 0, fmt.Errorf("remote: git ref %q must not start with '-'", ref)
+	}
+	if err := gitc("fetch", "--quiet", "--depth", "1", "origin", ref); err != nil {
+		return Tree{}, 0, err
+	}
+	if err := gitc("checkout", "--quiet", "--detach", "FETCH_HEAD"); err != nil {
+		return Tree{}, 0, err
 	}
 	if err := os.RemoveAll(filepath.Join(tmp, ".git")); err != nil {
 		return Tree{}, 0, fmt.Errorf("remote: %w", err)
 	}
-	return treeFromDir(tmp, lim, nil)
+	return treeFromDir(tmp, lim)
 }
 
 // treeFromDir walks a directory into a validated Tree, rejecting symlinks and
-// enforcing the same caps as archive extraction. skip, if non-nil, drops a
-// relative path from the tree.
-func treeFromDir(root string, lim Limits, skip func(rel string) bool) (Tree, int64, error) {
+// enforcing the same caps as archive extraction.
+func treeFromDir(root string, lim Limits) (Tree, int64, error) {
 	var (
 		files []FileEntry
 		total int64
@@ -171,12 +195,6 @@ func treeFromDir(root string, lim Limits, skip func(rel string) bool) (Tree, int
 			return rerr
 		}
 		rel = filepath.ToSlash(rel)
-		if skip != nil && skip(rel) {
-			if d.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
 		// WalkDir uses Lstat, so a symlink shows its own type here.
 		if d.Type()&fs.ModeSymlink != 0 {
 			return fmt.Errorf("remote: source directory contains a symlink %q", rel)

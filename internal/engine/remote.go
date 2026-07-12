@@ -12,6 +12,20 @@ import (
 	"github.com/noviopenworks/homonto/internal/remote"
 )
 
+// HasRemoteResources reports whether any declared subagent uses a remote:
+// source. The apply CLI uses this to force a remote re-resolution even when the
+// symlink projection is unchanged (a digest-only repin does not alter the
+// name-based symlink plan but must still re-fetch, verify, and re-materialize).
+func (e *Engine) HasRemoteResources() bool {
+	declared, err := e.declaredRemoteSubagents()
+	return err == nil && len(declared) > 0
+}
+
+// remoteSubagentDir is the single source of truth for where verified remote
+// subagent content is materialized. materializeRemotes writes it, the adapters
+// link from it, and doctor reads it — they must stay in lockstep.
+func (e *Engine) remoteSubagentDir() string { return filepath.Join(e.RemoteRoot, "subagents") }
+
 // remotePaths returns the lockfile and revocation-list paths under the state dir.
 func (e *Engine) remoteLockPath() string { return filepath.Join(e.StateDir, "remote.lock.json") }
 func (e *Engine) remoteRevokedPath() string {
@@ -43,7 +57,7 @@ func (e *Engine) materializeRemotes() error {
 		return err
 	}
 
-	subagentRoot := filepath.Join(e.RemoteRoot, "subagents")
+	subagentRoot := e.remoteSubagentDir()
 
 	// Prune remote-content files and lock entries for subagents no longer declared.
 	if err := e.pruneRemoteSubagents(&lock, declared, subagentRoot); err != nil {

@@ -704,7 +704,7 @@ func validateResources(kind string, resources map[string]Resource) error {
 		default:
 			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, r.Scope)
 		}
-		if err := validateSource(label, r.Source, r.Digest); err != nil {
+		if err := validateSource(label, r.Source, r.Digest, false); err != nil {
 			return err
 		}
 		for _, target := range r.Targets {
@@ -732,7 +732,7 @@ func validateSubagents(subagents map[string]Subagent) error {
 		default:
 			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, s.Scope)
 		}
-		if err := validateSource(label, s.Source, s.Digest); err != nil {
+		if err := validateSource(label, s.Source, s.Digest, true); err != nil {
 			return err
 		}
 		// A local: source is resolved to a file by name; reject a path-traversal
@@ -774,11 +774,14 @@ func validSource(source string) bool {
 }
 
 // validateSource accepts builtin:/local: sources unchanged, and a remote:
-// source only when it parses and carries a well-formed sha256 digest pin. A
-// non-remote source carrying a digest is rejected as unexpected so the field is
-// never a silent no-op.
-func validateSource(label, source, digest string) error {
+// source only when allowRemote is set (subagents only today), it parses, and it
+// carries a well-formed sha256 digest pin. A non-remote source carrying a digest
+// is rejected as unexpected so the field is never a silent no-op.
+func validateSource(label, source, digest string, allowRemote bool) error {
 	if remote.IsRemoteSource(source) {
+		if !allowRemote {
+			return fmt.Errorf("parse config: %s remote sources are only supported for subagents", label)
+		}
 		if _, err := remote.ParseRemoteSource(source); err != nil {
 			return fmt.Errorf("parse config: %s %v", label, err)
 		}

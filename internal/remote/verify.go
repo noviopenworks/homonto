@@ -46,8 +46,9 @@ func (r *Resolver) Resolve(ctx context.Context, src RemoteSource, pin Digest) (s
 }
 
 // ResolveCached returns the cached directory for a pin without any network
-// access. It still enforces revocation, so a warm cache cannot bypass a
-// revoked digest. It errors if the pin is not cached.
+// access. It re-hashes the cached content against the pin (so a locally
+// tampered or corrupted cache entry fails closed) and enforces revocation. It
+// errors if the pin is not cached.
 func (r *Resolver) ResolveCached(_ RemoteSource, pin Digest) (string, error) {
 	if !r.Cache.Has(pin) {
 		return "", fmt.Errorf("remote: %s is not cached", pin)
@@ -55,7 +56,15 @@ func (r *Resolver) ResolveCached(_ RemoteSource, pin Digest) (string, error) {
 	if r.Revocations.Contains(pin) {
 		return "", fmt.Errorf("remote: content %s is revoked", pin)
 	}
-	return r.Cache.Dir(pin), nil
+	dir := r.Cache.Dir(pin)
+	tree, _, err := treeFromDir(dir, r.limits())
+	if err != nil {
+		return "", fmt.Errorf("remote: reading cached %s: %w", pin, err)
+	}
+	if got := CanonicalDigest(tree); !got.Equal(pin) {
+		return "", fmt.Errorf("remote: cached content for %s is corrupt or tampered (recomputed %s)", pin, got)
+	}
+	return dir, nil
 }
 
 func (r *Resolver) limits() Limits {

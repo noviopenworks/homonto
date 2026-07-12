@@ -46,6 +46,18 @@ func applyCmd() *cobra.Command {
 			// (any adoptions ride along inside the same Apply).
 			if !plan.HasChanges(sets) {
 				if !plan.HasAdoptions(sets) {
+					// A remote resource's symlink target is name-based, so a
+					// digest-only repin leaves the projection plan empty. Still run
+					// apply so remotes are re-fetched, pin-verified, and
+					// re-materialized (fail-closed) rather than silently serving stale
+					// pinned content.
+					if e.HasRemoteResources() {
+						if err := e.Apply(sets); err != nil {
+							return err
+						}
+						cmd.Println("No projection changes; remote sources verified.")
+						return skipped()
+					}
 					cmd.Println("No changes. Everything up to date.")
 					return skipped()
 				}

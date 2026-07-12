@@ -60,3 +60,24 @@ func TestRemoteSourceRequiresDigest(t *testing.T) {
 		}
 	})
 }
+
+// Remote sources are only supported for subagents today; declaring one for a
+// skill/command/framework must be rejected at load, not silently accepted into
+// a dangling local path.
+func TestRemoteRejectedForNonSubagentKinds(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	const hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	load := func(doc string) error {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(p)
+		return err
+	}
+	if err := load("[skills.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + hex + "\"\nscope=\"project\"\n"); err == nil {
+		t.Fatal("a remote skill must be rejected (remote is subagent-only today)")
+	}
+	if err := load("[commands.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + hex + "\"\nscope=\"project\"\n" + validModelsBothTools()); err == nil {
+		t.Fatal("a remote command must be rejected (remote is subagent-only today)")
+	}
+}

@@ -116,3 +116,19 @@ func mustRevoke(t *testing.T, d Digest) Revocations {
 	}
 	return rev
 }
+
+func TestResolveCachedRejectsTamperedCache(t *testing.T) {
+	src, pin := resolveFixture(t)
+	r := newResolver(t)
+	dir, err := r.Resolve(context.Background(), src, pin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Tamper with a cached file: the pin no longer describes the content.
+	if err := os.WriteFile(filepath.Join(dir, "agent.md"), []byte("TAMPERED"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.ResolveCached(src, pin); err == nil {
+		t.Fatal("a tampered cache entry must fail closed (re-verified against the pin)")
+	}
+}

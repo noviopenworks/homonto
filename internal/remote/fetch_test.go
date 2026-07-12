@@ -130,3 +130,24 @@ func TestFetchUnknownSchemeErrors(t *testing.T) {
 		t.Fatal("unknown transport must error")
 	}
 }
+
+func TestFetchHTTPSRejectsHTTPRedirect(t *testing.T) {
+	// A server that redirects https → http must be rejected (no downgrade/SSRF),
+	// honoring the https-only guarantee even across redirects.
+	// Serve VALID content over plaintext, so the only thing that can reject the
+	// fetch is the scheme-downgrade check (not a later gzip/validation error).
+	valid := gz(t, buildTar(t, []tarEntry{{name: "a.md", data: "x"}}))
+	httpSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(valid)
+	}))
+	defer httpSrv.Close()
+	tlsSrv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, httpSrv.URL+"/x.tar.gz", http.StatusFound)
+	}))
+	defer tlsSrv.Close()
+	// Use the TLS client but it will follow to the plain-http server; our
+	// CheckRedirect must refuse the scheme downgrade.
+	if _, _, err := fetchHTTPS(context.Background(), tlsSrv.URL+"/x.tar.gz", DefaultLimits, tlsSrv.Client()); err == nil {
+		t.Fatal("an https→http redirect must be rejected")
+	}
+}
