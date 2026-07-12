@@ -1,11 +1,8 @@
 # Establish a pinned, fail-closed remote-source trust boundary
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-12
 - **Change:** remote-source-trust
-
-<!-- Staged per docs/adr/README.md: Proposed and unnumbered until the change is
-archived, when it becomes docs/adr/0013-remote-source-trust-boundary.md. -->
 
 ## Context
 

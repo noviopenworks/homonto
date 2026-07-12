@@ -375,7 +375,7 @@ gate remains open without a recorded exception.
   malicious-fixture suite (`TestValidateTarFailsClosed`,
   `TestResolvePinMismatchFailsClosed`, `TestRemoteSubagentPinMismatchAbortsApply`,
   `TestRemoteSubagentRollbackAndRevocation`) fails closed. Threat model:
-  `docs/guides/remote-source-trust.md`; ADR staged in the change.
+  `docs/guides/remote-source-trust.md`; `docs/adr/0013-remote-source-trust-boundary.md`.
 - **Exit gate:** met — a remote install is pinned, auditable, reproducible,
   cacheable, revocable, and removable; malformed/tampered/revoked content fails
   before any mutation, enforced by tests.

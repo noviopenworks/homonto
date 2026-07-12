@@ -2,6 +2,8 @@
 comet_change: remote-source-trust
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-12-remote-source-trust
+status: final
 ---
 
 # Remote Source Trust — Technical Design
