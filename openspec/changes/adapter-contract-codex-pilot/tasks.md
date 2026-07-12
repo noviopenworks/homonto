@@ -32,17 +32,18 @@
 
 ## 5. Compatibility fixture suite
 
-- [ ] 5.1 `testdata/` real `config.toml` with unmanaged keys + a user's own
+- [x] 5.1 `testdata/` real `config.toml` with unmanaged keys + a user's own
   `[mcp_servers.other]`.
-- [ ] 5.2 Suite: apply projects the declared server; unmanaged key + user server
+- [x] 5.2 Suite: apply projects the declared server; unmanaged key + user server
   preserved; second plan byte-identical (idempotent); de-declared server pruned
   while unmanaged survives; non-managed value never clobbered (conflict-safe).
 
 ## 6. Optional same-behavior migration (guarded)
 
-- [ ] 6.1 If it keeps every existing Claude/OpenCode test green, route their MCP
-  structured-file projection through structproj to remove the duplication in
-  place; otherwise leave them and record the migration as a follow-up.
+- [x] 6.1 DEFERRED to follow-up: the exit gate (a third adapter without
+  duplicated control flow) is met by Codex-on-contract. Migrating the
+  heavily-tested Claude/OpenCode MCP slice onto structproj is a same-behavior
+  refactor left as a tracked follow-up to avoid regression risk in this change.
 
 ## 7. Docs, ADR, gate
 
