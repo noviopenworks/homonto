@@ -14,18 +14,18 @@ exceeds the work.
 
 ## Per-task dispatch
 
-For each unchecked task, **strictly in plan order, one at a time** —
-every task writes the shared bookkeeping files (tasks.md, plan.md), so
-naive parallel dispatch races the same branch. Parallel dispatch is
-allowed ONLY with one worktree per implementer AND these prompt
-variations: parallel implementers do **NOT** touch tasks.md/plan.md
-(drop item 7) and commit only their task's own files in their worktree;
-on join the coordinator merges the worktree branches into the change
-branch **in plan order**, performs every bookkeeping checkoff/commit
-itself serially, and runs reviewer dispatches (including the mandatory
-final-task review) only after the last join. One commit per task is
-preserved either way. Dispatch ONE fresh-context implementer agent whose
-prompt contains:
+**Default and only safe path: serial. One task at a time, strictly in
+plan order.** Every task writes the shared bookkeeping files (tasks.md,
+plan.md), so two implementers on one branch race and corrupt them. Do not
+fan out. If you are unsure, you are serial.
+
+Parallel dispatch is a narrow exception with its own protocol below — it
+is not "run the tasks at once," and skipping any of its conditions
+reintroduces the race it exists to avoid. Ignore it unless you have
+deliberately chosen it and can meet every condition.
+
+Dispatch ONE fresh-context implementer agent per task, whose prompt
+contains:
 
 1. The task text verbatim (files, do, verify) from `plan.md`
 2. The relevant `design.md` section(s) — pasted, not summarized
@@ -41,6 +41,27 @@ prompt contains:
    commit — files, not chat
 8. Return contract: commit sha + diff summary + literal verification
    output
+
+## Parallel dispatch (exception — meet every condition or stay serial)
+
+Only for tasks touching **disjoint files**. All of the following hold, or
+you do not parallelize:
+
+- [ ] One **git worktree per implementer** — never two implementers on one
+      working tree or branch.
+- [ ] Implementers **do not touch `tasks.md`/`plan.md`** (drop item 7 from
+      their prompt) and commit only their own task's files, in their
+      worktree.
+- [ ] On join, the coordinator merges the worktree branches into the change
+      branch **in plan order**.
+- [ ] The coordinator performs **every** bookkeeping checkoff and commit
+      itself, serially, after the merges.
+- [ ] Reviewer dispatches (including the mandatory final-task review) run
+      **only after the last join**.
+
+One commit per task is preserved either way. If you cannot check every box,
+run serial — the shared-file race corrupts `tasks.md`/`plan.md` silently
+and is not worth the speed.
 
 ## Coordinator duties after each return
 

@@ -85,6 +85,9 @@ summary — no invented scope.
       `tasks.md`, all template-conformant and consistent with the
       confirmed summary
 - [ ] `notes.md` Confirmed section reflects every answered gate
+- [ ] `proposal.md` `## Grounding` is filled — the queries run, or the
+      recorded fallback if graphify was unavailable/declined; never left
+      blank (the close lint blocks a blank Grounding at archive)
 - [ ] Every gate that fired answered by the user (clarification, split
       when one was proposed, artifact review)
 - [ ] `state.yaml` phase advanced: `open → design` — written **only after**

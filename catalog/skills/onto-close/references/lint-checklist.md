@@ -49,6 +49,12 @@ obligation: fix them or stop.
       plan, verification — checked against their references (deviation
       anywhere is a finding; presets legitimately lack design/plan and
       possibly notes)
+- [ ] **Grounding is recorded, not blank**: the proposal's `## Grounding`
+      section names the graphify/codegraph queries run or the recorded
+      fallback (e.g. "index declined — direct file reading"); a full
+      change's `design.md` `## Grounding` likewise. An empty heading is a
+      finding — a silently ungrounded change is what this catches (the
+      design rested on real reads or it did not, and the record says which)
 
 ## 3. Post-merge (run AFTER the spec merge, before archive)
 

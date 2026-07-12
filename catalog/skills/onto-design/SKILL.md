@@ -101,6 +101,9 @@ revealed different task boundaries.
       diff against declared deltas, so a skipped delta surfaces there as a
       blocking finding
 - [ ] No implementation code was written
+- [ ] `design.md` `## Grounding` is filled — the graphify/codegraph
+      queries and file reads the design rests on, or the recorded fallback;
+      never blank
 - [ ] `notes.md` records the confirmed approach and every decision made
 - [ ] onto-no-slop pass run over `design.md`, every ADR draft, and
       `notes.md`, scores recorded in `notes.md` (`no-slop: <artifact>

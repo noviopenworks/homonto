@@ -101,7 +101,14 @@ one interruption-prone step (mv + archived flag) is a single commit.
    next free number = highest `NNNN` in `docs/adr/` + 1; `git mv` to
    `docs/adr/NNNN-<slug>.md`; set `Status: Accepted` (and any superseded
    ADR → `Superseded by NNNN`). Assign numbers to all drafts in one pass
-   before moving any, so two drafts never collide on the same number.
+   before moving any, so two drafts in this change never collide.
+   **Guard against a concurrent close** (the framework runs one worktree
+   per active change, so two may close near the same time): re-scan
+   `docs/adr/` for the highest number **immediately before each `git mv`**,
+   not once up front — if a number you planned now exists on disk, another
+   change took it; recompute from the current highest and continue. Never
+   overwrite an existing `docs/adr/NNNN-*.md`. If a move still collides,
+   stop and resolve by hand — a clobbered ADR is unrecoverable.
    Then rewrite the workspace's `design.md` and `notes.md` references from
    `adr/<slug>.md` to the final `docs/adr/NNNN-<slug>.md` path — otherwise
    the archive ships dangling ADR references.

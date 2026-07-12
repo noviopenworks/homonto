@@ -83,7 +83,10 @@ including a self-dep or an A⇄B cycle** (unsatisfiable by construction;
 ask the user to break the cycle). For multiple simultaneously active
 changes, recommend one git worktree per change — coupled work that can't
 be separated should have been one change (the split-preflight rule
-already says so).
+already says so). **Close them one at a time**, though: two closes running
+at once both merge into shared `docs/specs/*` and both draw ADR numbers
+from the same `docs/adr/` (onto-close re-scans before each move to avoid a
+clobber, but serial closes remove the race outright).
 
 If the repo has no `docs/changes/` tree at all, offer to bootstrap the
 layout: create `docs/{adr,specs,changes/archive,guides}/`, writing
