@@ -26,9 +26,9 @@
 
 ## 4. Config + engine wiring
 
-- [ ] 4.1 Add `codex` to the known tool set (target validation); keep default
+- [x] 4.1 Add `codex` to the known tool set (target validation); keep default
   targets claude+opencode so existing configs are unaffected (codex is opt-in).
-- [ ] 4.2 Engine constructs the Codex adapter; plan/status/doctor include it.
+- [x] 4.2 Engine constructs the Codex adapter; plan/status/doctor include it.
 
 ## 5. Compatibility fixture suite
 

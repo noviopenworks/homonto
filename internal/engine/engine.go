@@ -9,6 +9,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/adapter/claude"
+	"github.com/noviopenworks/homonto/internal/adapter/codex"
 	"github.com/noviopenworks/homonto/internal/adapter/opencode"
 	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/config"
@@ -74,6 +75,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		Adapters: []adapter.Adapter{
 			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir).WithRemoteSubagentRoot(remoteSubagentDir),
 			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir).WithRemoteSubagentRoot(remoteSubagentDir),
+			codex.New(home),
 		},
 		State:               st,
 		StateDir:            stateDir,

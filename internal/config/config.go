@@ -565,8 +565,8 @@ func Load(path string) (*Config, error) {
 		// A target that names no known tool matches no adapter, so the MCP is
 		// projected nowhere — a silent typo. Only claude and opencode exist.
 		for _, target := range m.Targets {
-			if target != "claude" && target != "opencode" {
-				return nil, fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", name, target)
+			if !isKnownTool(target) {
+				return nil, fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", name, target)
 			}
 		}
 	}
@@ -708,8 +708,8 @@ func validateResources(kind string, resources map[string]Resource) error {
 			return err
 		}
 		for _, target := range r.Targets {
-			if target != "claude" && target != "opencode" {
-				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
+			if !isKnownTool(target) {
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
 			}
 		}
 	}
@@ -743,8 +743,8 @@ func validateSubagents(subagents map[string]Subagent) error {
 			}
 		}
 		for _, target := range s.Targets {
-			if target != "claude" && target != "opencode" {
-				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
+			if !isKnownTool(target) {
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
 			}
 		}
 		switch s.Mode {
@@ -756,6 +756,13 @@ func validateSubagents(subagents map[string]Subagent) error {
 	}
 	return nil
 }
+
+// knownTools are the adapter target names. codex is a pilot adapter that
+// projects MCP servers only (opt-in per resource); claude and opencode are the
+// full adapters.
+var knownTools = []string{"claude", "opencode", "codex"}
+
+func isKnownTool(t string) bool { return slices.Contains(knownTools, t) }
 
 func validateResourceName(kind, name string) error {
 	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) || name != filepath.Base(name) {

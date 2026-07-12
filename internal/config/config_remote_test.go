@@ -81,3 +81,21 @@ func TestRemoteRejectedForNonSubagentKinds(t *testing.T) {
 		t.Fatal("a remote command must be rejected (remote is subagent-only today)")
 	}
 }
+
+// Codex is a known MCP target (opt-in); unknown tools are still rejected.
+func TestCodexTargetAccepted(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) error {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(p)
+		return err
+	}
+	if err := load("[mcps.demo]\ncommand=[\"srv\"]\ntargets=[\"codex\"]\n"); err != nil {
+		t.Fatalf("codex MCP target must be accepted: %v", err)
+	}
+	if err := load("[mcps.demo]\ncommand=[\"srv\"]\ntargets=[\"nope\"]\n"); err == nil {
+		t.Fatal("an unknown MCP target must still be rejected")
+	}
+}
