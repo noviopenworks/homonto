@@ -59,10 +59,10 @@
 
 ## 8. Rollback, revocation, removal, GC
 
-- [ ] 8.1 Rollback test: change the pin then revert → prior content resolves
+- [x] 8.1 Rollback test: change the pin then revert → prior content resolves
   from cache, no network.
-- [ ] 8.2 Revocation surface (`.homonto/revoked.json`) honored across resolve.
-- [ ] 8.3 Cache GC reclaims only unreferenced digests (`--dry-run` preview);
+- [x] 8.2 Revocation surface (`.homonto/revoked.json`) honored across resolve.
+- [x] 8.3 Cache GC reclaims only unreferenced digests (`--dry-run` preview);
   removal path prunes install + drops lock entry.
 
 ## 9. Threat model, ADR, docs, gate

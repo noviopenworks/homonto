@@ -83,14 +83,23 @@ func (e *Engine) materializeRemotes() error {
 		})
 	}
 
-	if err := lock.Save(e.remoteLockPath()); err != nil {
-		return err
+	// Note: the cache is deliberately NOT garbage-collected here. Keeping a
+	// de-declared pin's content lets a config revert roll back from cache with no
+	// network. Reclamation is an explicit, separate operation (GCRemoteCache).
+	return lock.Save(e.remoteLockPath())
+}
+
+// GCRemoteCache reclaims content-addressed cache entries that no remote lock
+// entry references. With dryRun it reports what would be removed without
+// deleting. This is an explicit maintenance operation, kept out of apply so a
+// config revert can still roll back from a warm cache.
+func (e *Engine) GCRemoteCache(dryRun bool) ([]remote.Digest, error) {
+	lock, err := remote.LoadLock(e.remoteLockPath())
+	if err != nil {
+		return nil, err
 	}
-	// Reclaim cache entries no lock entry references.
-	if _, err := resolver.Cache.GC(lock.Digests(), false); err != nil {
-		return err
-	}
-	return nil
+	cache := &remote.Cache{Root: e.RemoteCacheRoot}
+	return cache.GC(lock.Digests(), dryRun)
 }
 
 // declaredRemoteSubagents collects the remote subagents declared for either
