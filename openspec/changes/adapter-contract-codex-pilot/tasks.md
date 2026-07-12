@@ -8,12 +8,12 @@
 
 ## 2. Projection core / adapter contract (internal/adapter/structproj)
 
-- [ ] 2.1 `Codec` interface + `Project(desired, disk, st, ns, codec)` producing
+- [x] 2.1 `Codec` interface + `Project(desired, disk, st, ns, codec)` producing
   create/update/delete/noop/adopt changes (mirrors the Claude/OpenCode diff loop).
-- [ ] 2.2 `Apply(changes, disk, codec, res, st, ns)` writes only managed keys,
+- [x] 2.2 `Apply(changes, disk, codec, res, st, ns)` writes only managed keys,
   records state, preserves unmanaged keys; `Observe(st, disk, ns, codec)`
   re-hashes recorded keys.
-- [ ] 2.3 Tests against a JSON codec (adapting jsonutil) proving the core
+- [x] 2.3 Tests against a JSON codec (adapting jsonutil) proving the core
   reproduces create/update/noop/adopt/delete + secret redaction semantics.
 
 ## 3. Codex pilot adapter (internal/adapter/codex)
