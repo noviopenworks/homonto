@@ -143,6 +143,42 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			Subagents:    ft.Subagents,
 		}
 	}
+
+	// Loose (framework-agnostic) skills and commands: a skills/<dir> holding a
+	// SKILL.md, or a commands/<n>.md file, not already claimed by a framework is
+	// indexed by name so it installs as builtin:<name> with no framework home
+	// (mirrors loose subagents). Framework declarations take precedence.
+	if entries, err := fs.ReadDir(fsys, "skills"); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if _, ok := c.skills[name]; ok {
+				continue // a framework already declares this skill
+			}
+			sp := path.Join("skills", name)
+			if _, err := fs.Stat(fsys, path.Join(sp, "SKILL.md")); err != nil {
+				continue // a skill directory must hold a SKILL.md
+			}
+			c.skills[name] = sp
+		}
+	}
+	if entries, err := fs.ReadDir(fsys, "commands"); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := strings.TrimSuffix(e.Name(), ".md")
+			if name == e.Name() {
+				continue // not a ".md" file
+			}
+			if _, ok := c.commands[name]; ok {
+				continue // a framework already declares this command
+			}
+			c.commands[name] = path.Join("commands", e.Name())
+		}
+	}
 	return c, nil
 }
 

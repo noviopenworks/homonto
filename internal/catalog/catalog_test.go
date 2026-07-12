@@ -167,3 +167,31 @@ comet = "skills/comet"
 		t.Fatalf("expected name/dir mismatch error, got %v", err)
 	}
 }
+
+// A skills/<dir>/SKILL.md not claimed by any framework is indexed as a loose
+// builtin (installable as builtin:<dir>); likewise a commands/<n>.md file. This
+// mirrors the loose-subagent behavior.
+func TestLooseSkillsAndCommandsIndexed(t *testing.T) {
+	m := fixtureFS()
+	m["skills/handoff/SKILL.md"] = &fstest.MapFile{Data: []byte("h")}
+	m["commands/grill.md"] = &fstest.MapFile{Data: []byte("g")}
+	// a skills dir without SKILL.md must NOT be indexed
+	m["skills/notaskill/README.md"] = &fstest.MapFile{Data: []byte("x")}
+	c, err := Load(m)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if p, ok := c.SkillPath("handoff"); !ok || p != "skills/handoff" {
+		t.Fatalf("loose skill handoff not indexed: %q ok=%v", p, ok)
+	}
+	if p, ok := c.CommandPath("grill"); !ok || p != "commands/grill.md" {
+		t.Fatalf("loose command grill not indexed: %q ok=%v", p, ok)
+	}
+	if _, ok := c.SkillPath("notaskill"); ok {
+		t.Fatal("a skills dir without SKILL.md must not be indexed")
+	}
+	// framework-claimed skills still resolve to their declared path
+	if p, ok := c.SkillPath("brainstorming"); !ok || p != "skills/brainstorming" {
+		t.Fatalf("framework skill regressed: %q ok=%v", p, ok)
+	}
+}
