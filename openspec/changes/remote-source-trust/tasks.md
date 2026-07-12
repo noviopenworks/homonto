@@ -19,11 +19,11 @@
 
 ## 3. Transports
 
-- [ ] 3.1 `Transport` interface + selection by URL scheme.
-- [ ] 3.2 `https` tarball transport: redirect cap, timeout, `LimitReader` size
+- [x] 3.1 `Transport` interface + selection by URL scheme.
+- [x] 3.2 `https` tarball transport: redirect cap, timeout, `LimitReader` size
   ceiling; writes only to an isolated temp dir.
-- [ ] 3.3 `file://` transport (offline/testing) through the same validation.
-- [ ] 3.4 `git` pinned-ref transport (shallow, temp worktree) validated by the
+- [x] 3.3 `file://` transport (offline/testing) through the same validation.
+- [x] 3.4 `git` pinned-ref transport (shallow, temp worktree) validated by the
   same archive/canonical pipeline.
 
 ## 4. Verify pipeline + pin match + revocation

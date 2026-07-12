@@ -50,7 +50,7 @@ func ParseRemoteSource(source string) (RemoteSource, error) {
 
 func transportForURL(url string) (TransportKind, error) {
 	switch {
-	case strings.HasPrefix(url, "git+https://") || strings.HasPrefix(url, "git://"):
+	case strings.HasPrefix(url, "git+https://") || strings.HasPrefix(url, "git+file://") || strings.HasPrefix(url, "git://"):
 		return TransportGit, nil
 	case strings.HasPrefix(url, "https://"):
 		return TransportHTTPS, nil
