@@ -8,12 +8,12 @@
 
 ## 2. Safe extraction + archive validation (fail-closed core)
 
-- [ ] 2.1 `internal/remote/extract.go`: streaming tar(.gz) validator/extractor
+- [x] 2.1 `internal/remote/extract.go`: streaming tar(.gz) validator/extractor
   rejecting absolute paths, `..` traversal, symlinks/hardlinks/devices; caps on
   per-entry size, total uncompressed size, and entry count.
-- [ ] 2.2 Canonical-tree serialization + sha256 digest (sorted paths, normalized
+- [x] 2.2 Canonical-tree serialization + sha256 digest (sorted paths, normalized
   modes, no timestamps) — transport-independent, reproducible.
-- [ ] 2.3 Malicious-fixture tests: traversal, escaping symlink, size bomb, entry
+- [x] 2.3 Malicious-fixture tests: traversal, escaping symlink, size bomb, entry
   bomb, non-regular entries — each fails closed with no files written outside
   the temp dir.
 
