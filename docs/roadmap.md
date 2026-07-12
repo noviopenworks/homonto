@@ -401,7 +401,7 @@ gate remains open without a recorded exception.
 - **Primary files:** `internal/adapter/structproj/`, `internal/tomlutil/`,
   `internal/adapter/codex/`, `internal/config` (codex target), `internal/engine`.
 - **Verify:** `go test -race ./internal/adapter/... ./internal/tomlutil/`;
-  compatibility fixture green. ADR staged in the change (adapter contract).
+  compatibility fixture green. `docs/adr/0014-adapter-contract.md`.
 - **Exit gate:** met — adapter contract published; the Codex pilot adapter is
   green (plan/apply/status/doctor + surgical merge + idempotency), with a
   compatibility fixture suite.

@@ -2,6 +2,8 @@
 comet_change: adapter-contract-codex-pilot
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-12-adapter-contract-codex-pilot
+status: final
 ---
 
 # Adapter Contract + Codex Pilot — Technical Design

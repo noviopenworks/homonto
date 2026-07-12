@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,12 +13,12 @@ auto_transition: true
 base_ref: 1f811b00c16a1601c4e4350c682bbfa67807fbd8
 design_doc: docs/superpowers/specs/2026-07-12-adapter-contract-codex-pilot-design.md
 plan: docs/superpowers/plans/2026-07-12-adapter-contract-codex-pilot.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-12-adapter-contract-codex-pilot-verify.md
 branch_status: handled
 created_at: 2026-07-12
-verified_at: null
-archived: false
+verified_at: 2026-07-12
+archived: true
 direct_override: null
 handoff_context: openspec/changes/adapter-contract-codex-pilot/.comet/handoff/design-context.json
 handoff_hash: 0ff43049b54b80813ef5cd39ec1ba792afdda52dbd6ed1b06b1e75e7374689b7

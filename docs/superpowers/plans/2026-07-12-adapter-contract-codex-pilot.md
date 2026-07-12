@@ -2,6 +2,7 @@
 change: adapter-contract-codex-pilot
 design-doc: docs/superpowers/specs/2026-07-12-adapter-contract-codex-pilot-design.md
 base-ref: 9971404
+archived-with: 2026-07-12-adapter-contract-codex-pilot
 ---
 
 # Implementation Plan — Adapter Contract + Codex Pilot

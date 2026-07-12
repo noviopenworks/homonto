@@ -3,5 +3,6 @@
   "openspec_design": "openspec/changes/adapter-contract-codex-pilot/design.md",
   "openspec_tasks": "openspec/changes/adapter-contract-codex-pilot/tasks.md",
   "handoff_context": "openspec/changes/adapter-contract-codex-pilot/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/adapter-contract-codex-pilot/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/adapter-contract-codex-pilot/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-12-adapter-contract-codex-pilot"
 }

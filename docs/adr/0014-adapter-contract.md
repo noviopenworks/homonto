@@ -1,11 +1,8 @@
 # Adopt a format-agnostic adapter contract for tool projection
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-12
 - **Change:** adapter-contract-codex-pilot
-
-<!-- Staged per docs/adr/README.md: Proposed and unnumbered until the change is
-archived, when it becomes docs/adr/00NN-adapter-contract.md. -->
 
 ## Context
 
