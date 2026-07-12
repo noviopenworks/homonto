@@ -20,22 +20,37 @@ the full plan — bounded by strict upgrade rules.
   Structural work or anything introducing a new capability → full workflow
   via `onto-open`.
 - Read `notes.md` at entry when present (recommended for any tweak that
-  spans sittings). If any skill's `references/` directory is missing,
-  degrade per the dispatcher rule: reconstruct from the `docs/` contract
-  pointers, note the gap, continue.
+  spans sittings). If any skill's `references/` directory is missing, note
+  the gap and fall back to the SKILL.md tables, continue.
+- **Resume map** (the dispatcher routes every phase of a tweak change here):
+
+  | Derived phase | Enter at |
+  |---|---|
+  | build (workspace exists) | step 2, first unchecked task — `git status` first, never redo a committed task |
+  | verify | step 3 |
+  | close | step 4 |
+
+  Only a brand-new request with no workspace starts at step 1.
 
 ## Steps
 
 ### 1. Open-lite
 
-One-paragraph `proposal.md` — first line `Preset: tweak` (the dispatcher's
-state rebuild keys on this marker), then what + why — plus short
+One-paragraph `proposal.md` — a `Preset: tweak` line at column 0 under the
+title (the state rebuild greps `^Preset:`), then what + why — plus short
 `tasks.md`, and `state.yaml` with `workflow: tweak`, `phase: build`,
 `created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
 open-lite (`isolation: branch`, `execution: direct`, `tdd: direct`)
 (canonical schema: `onto/references/state-yaml.md`; artifact templates:
-`onto-open/references/`). Branch: `tweak/YYYYMMDD/<name>`. Stamp
-`metrics.phases.<phase>` at each phase exit.
+`onto-open/references/`). Branch: `tweak/YYYYMMDD/<name>`. **Commit the
+workspace** before the first task. Stamp `metrics.phases.<phase>` at the
+exit of each phase the change occupies (`build`, `verify`, `close`) — a
+preset never occupies `open`.
+
+> **GATE (open-lite scope):** confirm this fits a tweak (small, local, no
+> new capability, no existing-spec requirement change) before building —
+> the one decision that skips design. May be pre-authorized by a directive
+> that named the preset.
 
 ### 2. Lightweight build
 
@@ -82,9 +97,14 @@ archive, ship handoff offered.
 
 ## Exit checklist (per phase, lite)
 
-- [ ] Open-lite: workspace exists, scope confirmed by the user
-- [ ] Build: tasks checked + committed one by one, tree clean
-- [ ] Verify: `verification.md` with fresh evidence + regression results
-- [ ] Close: guides obligation resolved, confirmed, archived
-- [ ] onto-no-slop pass run over every prose artifact (proposal, verification,
-      guides, commit messages)
+- [ ] Open-lite: workspace exists, scope gate acknowledged, workspace
+      committed
+- [ ] Build: tasks checked + committed one by one, tree clean (workspace
+      docs committed)
+- [ ] Verify: `verification.md` with fresh evidence + regression results;
+      workspace committed at exit
+- [ ] Close: delta coverage checked (lint §0), guides resolved, final gate
+      **before** any spec/ADR mutation, archived in one commit
+- [ ] onto-no-slop pass run over each prose artifact (proposal,
+      verification, new guide prose), score noted in `notes.md`; never a
+      machine-read marker or a requirement's normative wording

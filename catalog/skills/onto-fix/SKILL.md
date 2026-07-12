@@ -17,8 +17,19 @@ non-negotiable.
 - Not for new capabilities, refactors, or behavior *changes* — those are
   full-workflow work via `onto-open`.
 - Read `notes.md` at entry when present. If any skill's `references/`
-  directory is missing, degrade per the dispatcher rule: reconstruct from
-  the `docs/` contract pointers, note the gap, continue.
+  directory is missing, degrade per the dispatcher rule: note the gap and
+  fall back to the SKILL.md tables, continue.
+- **Resume map** (the dispatcher routes every phase of a fix change here;
+  a fresh session must not re-run earlier steps). Derive the phase, then
+  enter at the matching step — never above it:
+
+  | Derived phase | Enter at |
+  |---|---|
+  | build (workspace exists) | step 2, first unchecked task — `git status` first (reconcile any partial work), never redo a committed task |
+  | verify | step 3 |
+  | close | step 4 |
+
+  Only a brand-new request with no workspace starts at step 1.
 
 ## Steps
 
@@ -30,18 +41,30 @@ suspected blast radius. Create `docs/changes/<name>/` with:
 - `state.yaml` — `workflow: fix`, `phase: build` (no design phase),
   `created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
   open-lite since presets enter build directly: `isolation: branch`,
-  `execution: direct`, `tdd: direct` (the failing-test-first rule below is
-  independent of the `tdd` field); rest per `docs/changes/README.md`
-- `proposal.md` — first line `Preset: fix` (the dispatcher's state rebuild
-  keys on this marker), then the bug (link the issue if there is one),
+  `execution: direct`, **`tdd: tdd`** — a fix's whole method is a failing
+  test that reproduces the bug first, so its build runs the TDD branch;
+  never default a fix to `tdd: direct`; rest per
+  `onto/references/state-yaml.md`
+- `proposal.md` — a `Preset: fix` line at column 0 under the title (the
+  state rebuild greps `^Preset:`), then the bug (link the issue if any),
   reproduction, expected behavior, fix scope
 - `tasks.md` — short checklist (reproduce → fix → regression)
 
 No full design and no plan.md required. Branch: `fix/YYYYMMDD/<name>`.
 Templates: reuse the full-workflow references (`onto/references/state-yaml.md`,
 `onto-open/references/{proposal,tasks,notes}.md`) — a `notes.md` checkpoint
-is recommended for any fix that takes more than one sitting. Stamp
-`metrics.phases.<phase>` at each phase exit like the full workflow.
+is recommended for any fix that takes more than one sitting. **Commit the
+workspace** before the first task (so `base_ref` and recovery hold). Stamp
+`metrics.phases.<phase>` at the exit of each phase the change actually
+occupies — `build`, `verify`, `close`; a preset never occupies `open`, so
+there is no `phases.open` key to stamp.
+
+> **GATE (open-lite scope):** presets skip design, so the fix-vs-full
+> choice is the one decision that removes a phase. Confirm it: state the
+> reproduction and that this is a bug fix needing no new design, and get
+> the user's acknowledgement before building. A behavior *change* dressed
+> as a fix belongs in the full workflow — this gate is where that gets
+> caught. May be pre-authorized by a directive that named the preset.
 
 ### 2. Build — failing test first, always
 
@@ -90,11 +113,14 @@ handoff offered.
 
 ## Exit checklist (per phase, lite)
 
-- [ ] Open-lite: workspace + reproduction confirmed by the user
+- [ ] Open-lite: workspace + reproduction confirmed by the user, scope
+      gate acknowledged (bug fix, no new design), workspace committed
 - [ ] Build: failing test seen failing, root cause stated, fix committed,
-      test seen passing, tree clean
+      test seen passing, tree clean (workspace docs committed)
 - [ ] Verify: `verification.md` with reproduction evidence + regression
-      results; `verify.result` set
-- [ ] Close: guides obligation resolved, confirmed, archived
-- [ ] onto-no-slop pass run over every prose artifact (proposal, verification,
-      guides, commit messages)
+      results; `verify.result` set; workspace committed at exit
+- [ ] Close: delta coverage checked (lint §0), guides resolved, final gate
+      **before** any spec/ADR mutation, archived in one commit
+- [ ] onto-no-slop pass run over each prose artifact (proposal,
+      verification, new guide prose), score noted in `notes.md`; never a
+      machine-read marker or a requirement's normative wording

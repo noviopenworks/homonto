@@ -48,8 +48,15 @@ the user what they are missing and how to fix it.
 ## 2. Active-change discovery
 
 Scan `docs/changes/*/` excluding `archive/`. A change is active iff its
-directory sits directly under `docs/changes/` and its `state.yaml` has
-`archived: false` (or state.yaml is absent — it will be rebuilt, see below).
+directory sits directly under `docs/changes/` **and holds a `proposal.md`
+or a `state.yaml`**, with `state.yaml` (when present) reading
+`archived: false`. A directory with neither artifact is not a change —
+skip it (a `templates/`, a scratch dir, an editor folder is not a phantom
+active change; never rebuild a state.yaml into it). Also sweep
+`docs/changes/archive/*/state.yaml` for `archived: false`: that is a
+close interrupted between the `git mv` and the flag — surface it and
+finish the archive (set `archived: true`). If a `state.yaml` carries an
+`abandoned:` reason it is retired — never list it as active.
 
 | Active changes | User input | Behavior |
 |---|---|---|
@@ -79,23 +86,28 @@ be separated should have been one change (the split-preflight rule
 already says so).
 
 If the repo has no `docs/changes/` tree at all, offer to bootstrap the
-layout: create `docs/{adr,specs,changes/archive,guides}/` with their README
-contracts (see the layout section of `docs/guides/onto-workflow.md` in a
-repo that has them, or recreate from this skill set's contracts), then
+layout: create `docs/{adr,specs,changes/archive,guides}/`, writing
+`docs/changes/README.md` from `references/changes-readme.md` and
+`docs/specs/README.md` from `onto-close/references/specs-readme.md` (the
+`docs/adr/` numbering contract and `docs/guides/` are conventional). Then
 proceed to `onto-open`.
 
 ## 3. Phase derivation and cross-check
 
 `state.yaml` is a **cache of truth, not truth**. On every dispatch:
 
-1. Read `state.yaml` (canonical schema, template, and per-field rebuild
-   rules: `references/state-yaml.md` in this skill's directory; summary in
-   `docs/changes/README.md`). If a skill's `references/` directory is ever
-   missing, reconstruct from the `docs/` contract pointers, note the gap,
-   and continue — degrade, never halt.
+1. Read `state.yaml`. Its canonical schema, template, and per-field rebuild
+   rules live in `references/state-yaml.md` in this skill's directory —
+   **the single source**. `docs/changes/README.md`, when the repo has one,
+   points here rather than copying, so the two never drift. If a skill's
+   `references/` directory is genuinely missing, say so, fall back to
+   reading this SKILL.md's own tables, and continue — degrade, never halt;
+   but note that a reconstructed lint or grammar is weaker than the real
+   one, so flag any close run made without them.
 2. Independently derive the phase from artifacts with this table
-   (**first match from the top wins — strongest evidence first**; it must
-   stay identical to the copy in `docs/changes/README.md`):
+   (**first match from the top wins — strongest evidence first**; this
+   table is authoritative — any repo README points here, never re-states
+   it):
 
 | Evidence | Real phase |
 |---|---|
@@ -114,19 +126,29 @@ proceed to `onto-open`.
    silently promote — the phase field advances only when a phase's exit
    gate is answered, so a lagging claim means an unanswered gate: resume at
    the claimed phase's gate (artifacts already prepared) and let it advance
-   normally.
-4. **Cross-check `workflow` too, not just phase**: the file sources are
-   the proposal's `Preset:` marker (including an upgrade annotation like
-   `Preset: fix (upgraded to full YYYY-MM-DD)`, which means full), else
-   the branch prefix (`fix/`, `tweak/`), else full — a detached HEAD or
-   non-prefixed branch is no signal and means full. On mismatch, the file
-   sources win — correct, announce, reroute — with one hard asymmetry:
-   **corrections may upgrade (preset→full) but never silently downgrade**.
-   The branch prefix alone may select a preset only when no
-   `Status: Confirmed` design.md exists (the branch belongs to the
-   checkout, not the change — a leftover `fix/` branch must not strip a
-   designed change of its lifecycle); any would-be downgrade requires
-   fresh user confirmation, honoring "never talk a change down".
+   normally. **One exception: the verify→close boundary has no gate** (the
+   failure gate fires only on a fail). So a `phase: verify` claim beside a
+   `verification.md` reading `Result: pass` is not an unanswered gate — it
+   is a lagging write. Advance `phase` to `close` and route to `onto-close`
+   without re-verifying; the pass already stands in the file. Re-running
+   verify here would only discard fresh evidence the report already holds.
+4. **Cross-check `workflow` too, not just phase.** Resolve it in this
+   priority order and stop at the first that applies:
+   1. The proposal's `Preset:` marker. An upgrade annotation
+      (`Preset: fix (upgraded to full YYYY-MM-DD)`) means **full**.
+   2. A `Status: Confirmed` (or `Under revision`) `design.md` means
+      **full** — a designed change has a lifecycle no branch name can
+      strip, so the branch prefix is ignored here.
+   3. The branch prefix (`fix/`, `tweak/`) — only when neither 1 nor 2
+      applies (the branch belongs to the checkout, not the change; a
+      leftover `fix/` branch must not demote a real change).
+   4. Otherwise **full** (a detached HEAD or non-prefixed branch is no
+      signal).
+
+   On mismatch the file sources win — correct, announce, reroute — with
+   one hard asymmetry: **a correction may upgrade (preset→full) silently,
+   but a downgrade (full→preset) never happens without fresh user
+   confirmation.** Never talk a change down.
 5. A missing or malformed `state.yaml` is never an error: rebuild it per
    the per-field table in `references/state-yaml.md` (`workflow` from the
    proposal's `Preset:` marker incl. upgrade annotation, else the branch
@@ -164,6 +186,21 @@ change) → `onto-tweak`; anything needing design → `onto-open` (full).
 Preset skills contain upgrade rules that force the full path when scope
 grows — never talk a change *down* from full to a preset.
 
+**Reopen and abandon** (both need explicit user intent):
+
+- **Reopen** — a defect found after verify passed but *before* archive:
+  route to build. Reset `phase: build`, add tasks for the fix, and flip
+  `verification.md`'s `Result:` line to `Result: superseded (reopened
+  <date>)` with `state.yaml verify.result: pending` (same invalidation the
+  mid-build revision uses) so the stale pass can't re-route to close. A
+  defect in an *archived* change is new work — open a fresh `fix` change
+  whose proposal references the archived one; archives are never edited.
+- **Abandon** — the user drops a change: write `abandoned: "<reason>"`
+  (the user's words) and `archived: true` in `state.yaml`, `git mv` the
+  workspace to `docs/changes/archive/YYYY-MM-DD-<name>/` in one commit, and
+  stop. It leaves the active list and never routes anywhere again. No
+  spec merge, no ADR numbering — an abandoned change lands nothing.
+
 ## 5. GitHub entry points (contract)
 
 - **Issue intake** (e.g. a resolve-issue skill): the issue text seeds
@@ -196,10 +233,13 @@ onto writes prose a human reads later: `proposal.md`, `design.md`, `notes.md`,
 ADR drafts, `verification.md`, guide updates, and commit messages. Run the
 **onto-no-slop** skill (bundled with this framework) over each prose artifact
 before its phase gate — cut filler and adverbs, use active voice, name the
-actor, be specific, vary the rhythm, no em dashes. The record should read like a
-person wrote it, not a model.
+actor, be specific, vary the rhythm, no em dashes. Record the score in
+`notes.md` (`no-slop: <artifact> <total>/50`; below 35 means revise before the
+gate) — the checkbox is worth nothing without the number behind it.
 
-Keep technical precision above style: a load-bearing term stays (a spec says a
-value MUST be rejected; a write is atomic), and a real distinction the reader
-needs stays. Drop the empty adverb and the manufactured "not X, it's Y"
-reversal, not the fact. Each phase's exit checklist re-states this as a check.
+It edits prose, never contract. Machine-read markers (`Status:`, `Result:`,
+`Preset:`, checkbox syntax, `SHALL`/`MUST` lines, GIVEN/WHEN/THEN), a
+requirement's normative wording, and mandated template structure are off-limits
+— rewording one breaks derivation or the lint. Keep load-bearing terms and
+genuine distinctions; drop the empty adverb and the manufactured reversal. Each
+phase's exit checklist re-states this.

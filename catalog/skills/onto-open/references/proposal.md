@@ -9,7 +9,10 @@ summary.
 ```markdown
 # Proposal: <change-name>
 
-<!-- presets only, first line: `Preset: fix` or `Preset: tweak` -->
+<!-- presets only: a `Preset: fix` / `Preset: tweak` line here, on its own
+     line under the title — the rebuild greps `^Preset:`, so column-0
+     position is what matters, not being byte one of the file. An upgrade
+     rewrites it to `Preset: fix (upgraded to full YYYY-MM-DD)`. -->
 <!-- optional: `Depends-on: <change-name>[, <change-name>]` — feeds state.yaml deps -->
 
 ## Why

@@ -1,9 +1,23 @@
 # Close-phase lint checklist
 
 Agent-run checks (grep/read — no scripts), staged: sections run at the
-points onto-close names (§1–2 before the merge, §3 after it, §4 before
+points onto-close names (§0–2 before the merge, §3 after it, §4 before
 archiving). Findings block the archive step exactly like the guides
 obligation: fix them or stop.
+
+## 0. Delta coverage (behavior changes have specs — the central check)
+
+- [ ] Every capability the proposal's Capability Impact marks **New** or
+      **Modified** has a matching workspace `specs/<capability>.md` delta.
+      A capability declared changed with no delta is a blocking finding —
+      not a checkbox to wave through.
+- [ ] Diff the change against its `base_ref` (`git diff --stat
+      <base_ref>..HEAD`). If it touched product source but the workspace
+      has **zero** `specs/*.md` deltas, that is a finding: either the
+      change has no spec-level behavior (state that explicitly, in the
+      close summary, as a deliberate no-spec change) or a delta is missing.
+      Silence here is how behavior ships with no spec and no scenario —
+      the failure the whole workflow exists to prevent.
 
 ## 1. Delta spec format (each workspace `specs/<capability>.md`)
 
@@ -43,6 +57,10 @@ obligation: fix them or stop.
       → no matches outside `docs/specs/README.md` (the README legitimately
       documents the section names; prose mentions anywhere are fine — the
       check is heading-anchored)
+- [ ] **No duplicated requirements**: in every touched living spec each
+      `### Requirement: <name>` heading appears once — a MODIFIED that
+      appended instead of replacing, or a document-order merge, leaves the
+      old block beside the new one and shows up here as a repeat
 - [ ] Merged requirements read as current truth — no change-log language
 - [ ] Scenario structure intact in every touched living spec
 

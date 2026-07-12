@@ -60,10 +60,10 @@ Create `docs/changes/<name>/` (name confirmed by the user, kebab-case),
 each artifact from its canonical template:
 
 - `state.yaml` — template: `onto/references/state-yaml.md` (`phase: open`,
-  `base_ref: <current git sha at open — the parent of the change's first
-  commit>`, `deps` from the proposal's `Depends-on:` line, decisions
-  null, metrics initialized per the template: `phases: {}`, counters 0,
-  `upgraded: false`).
+  `base_ref: <git rev-parse HEAD, captured now, before anything is
+  committed — written once, never recomputed>`, `deps` from the
+  proposal's `Depends-on:` line, decisions null, metrics initialized per
+  the template: `phases: {}`, counters 0, `upgraded: false`).
 - `notes.md` — template: `references/notes.md`. Created NOW, seeded with
   the confirmed clarification summary. From this point, update it before
   ending **any** turn that produced new decisions — this is the
@@ -85,11 +85,17 @@ summary — no invented scope.
       `tasks.md`, all template-conformant and consistent with the
       confirmed summary
 - [ ] `notes.md` Confirmed section reflects every answered gate
-- [ ] Both gates answered by the user
+- [ ] Every gate that fired answered by the user (clarification, split
+      when one was proposed, artifact review)
 - [ ] `state.yaml` phase advanced: `open → design` — written **only after**
       the artifact-review gate is answered, never before (the dispatcher
       treats a lagging phase as an unanswered gate and will re-present it)
 - [ ] `metrics.phases.open: <today>` stamped
-- [ ] onto-no-slop pass run over `proposal.md`, `notes.md`, and any commit
-      message written this phase
+- [ ] onto-no-slop pass run over `proposal.md` and `notes.md`, its score
+      recorded in `notes.md` (`no-slop: <artifact> <total>/50`; below 35
+      means revise before this gate)
+- [ ] **Commit the workspace**: `git add docs/changes/<name> && git commit`
+      — every phase exits with its workspace committed; state recovery,
+      `base_ref` rebuild, and the close-phase `git mv` all depend on the
+      workspace being tracked
 - [ ] Announce the transition and load `onto-design`

@@ -92,10 +92,21 @@ revealed different task boundaries.
 - [ ] `design.md` exists, marked `Status: Confirmed` with date, and matches
       the user-confirmed approach
 - [ ] An ADR draft exists for every significant decision named in design.md
-- [ ] A delta spec scenario exists for every behavior change
+      — **enumerate them**: list each Key decision from design.md next to
+      its `adr/<slug>.md` file; a decision with no draft is a gap to fix
+      now, not a checkbox to tick
+- [ ] A delta spec scenario exists for every behavior change — **enumerate
+      them**: list each behavior change design.md names next to its
+      `specs/<capability>.md` scenario; the close-phase lint re-checks the
+      diff against declared deltas, so a skipped delta surfaces there as a
+      blocking finding
 - [ ] No implementation code was written
 - [ ] `notes.md` records the confirmed approach and every decision made
-- [ ] onto-no-slop pass run over `design.md`, every ADR draft, and `notes.md`
+- [ ] onto-no-slop pass run over `design.md`, every ADR draft, and
+      `notes.md`, scores recorded in `notes.md` (`no-slop: <artifact>
+      <total>/50`; below 35 means revise before this gate)
 - [ ] `state.yaml` phase advanced: `design → build`;
       `metrics.phases.design: <today>` stamped
+- [ ] **Commit the workspace**: `git add docs/changes/<name> && git commit`
+      — every phase exits with its workspace committed
 - [ ] Announce the transition and load `onto-build`

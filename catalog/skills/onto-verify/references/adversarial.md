@@ -40,5 +40,6 @@ approving skeptic has failed its job; "I could not refute X because
 | New defect, non-critical | Fix now or record as accepted deviation (user's call at the gate) |
 | Unverifiable speculation | Note and dismiss with the reason |
 
-Increment `metrics.verify_rounds` once per verify round (self + skeptics =
-one round). Findings that force a fix start a new round.
+One verify round = self-evidence + skeptics together. The verify skill's
+exit checklist owns the single `metrics.verify_rounds` increment — do not
+increment it here as well. Findings that force a fix start a new round.

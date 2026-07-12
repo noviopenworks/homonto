@@ -73,17 +73,30 @@ onto phases write prose the reader keeps: `proposal.md`, `design.md`,
 Run these rules over every such artifact before its phase gate, so the record a
 human reads later sounds like a human wrote it.
 
-Two adjustments for technical artifacts, where precision outranks style:
+This pass edits the **prose you wrote** — the paragraphs a human reads. It
+never edits structure another skill or a machine depends on. Off-limits,
+always:
 
-- **Keep the term that is exact.** A spec that says a value MUST be rejected
-  needs "MUST," not a softer synonym. Cut empty adverbs ("really," "simply"),
-  not load-bearing ones ("atomically," "idempotently").
-- **Keep a real contrast when it carries the meaning.** "Files win downward;
-  gates win upward" states two facts. Drop the *manufactured* reversal ("not X,
-  it's Y"), not a genuine distinction the reader needs.
+- **Machine-read markers.** `Status: Confirmed`, `Result: pass`,
+  `Preset: fix`, `Depends-on:`, checkbox syntax `- [ ]`/`- [x]`, the
+  `SHALL`/`MUST` first line of a requirement, and a scenario's
+  `GIVEN`/`WHEN`/`THEN` bullets. Phase derivation and the close lint grep
+  these verbatim — reword one and you break the workflow.
+- **A requirement's normative wording.** Never soften, re-voice, or
+  "de-slop" the text of a spec requirement or an accepted ADR decision.
+  Keep exact terms: a value that MUST be rejected needs "MUST"; keep
+  "atomically," "idempotently," "never persists" where they carry meaning.
+  Cut the empty adverb ("really," "simply"), not the load-bearing one.
+- **Mandated structure.** Template section headings, required list items
+  (the open-lite five-part summary, GIVEN/WHEN/THEN), and a template's own
+  punctuation are format, not prose. Don't drop a required item to "make
+  two beat three," and don't strip a template's structural em dash.
 
-Everything else applies as written: active voice, name the actor, be specific,
-cut the throat-clearing, vary the rhythm, no em dashes.
+Within those bounds everything applies: active voice, name the actor, be
+specific, cut the throat-clearing, vary the rhythm, drop the *manufactured*
+"not X, it's Y" reversal (keep a genuine distinction like "files win
+downward; gates win upward"), no em dashes in your own sentences. When in
+doubt whether a line is prose or contract, leave it.
 
 ## License
 

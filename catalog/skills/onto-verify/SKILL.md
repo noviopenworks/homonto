@@ -24,9 +24,12 @@ what the design and specs say. **Evidence before assertions, always.**
 Set `verify.mode` in `state.yaml`:
 
 - **full** — `workflow: full`, any upgraded preset, a diff touching more
-  than 5 files in `base_ref..HEAD`, or a new capability. Checks every
-  delta-spec scenario, the full design, and the regression suite.
-- **light** — a preset within its limits. Checks the changed behavior's
+  than **5 non-test files** in `base_ref..HEAD` (the same count and
+  test-file exclusion as the preset upgrade triggers — one rule, three
+  citations), or a new capability. Checks every delta-spec scenario, the
+  full design, and the regression suite.
+- **light** — a preset within its limits (≤5 non-test files, by
+  construction under the upgrade gates). Checks the changed behavior's
   scenarios plus the regression suite; the report may be brief but never
   absent.
 
@@ -69,17 +72,24 @@ check.
 Write `docs/changes/<name>/verification.md` from the canonical template
 `references/verification.md` (header with machine-read `Result:` line,
 scenario-evidence table, design conformance, adversarial pass, regression,
-deviations). Mirror the result into `state.yaml` `verify.result`.
+deviations). When deviations were accepted, the Result line carries their
+count — `Result: pass (2 accepted deviations)` — so a pass with caveats is
+visibly different from a clean one everywhere the line is read. Mirror the
+result into `state.yaml` `verify.result`.
 
 ### 5. Failure gate
 
 > **GATE (on any fail):** list the failing items and ask the user:
 > **fix** (→ back to build: reset `phase: build`, add tasks for the fixes)
 > or **accept deviation** (record each accepted deviation + its rationale
-> in `verification.md`; the `Result:` line and `verify.result` stay `pass`
-> — deviations live in the report, not in the enum). Always fresh input —
-> never auto-accept a failure. After three consecutive failed verify
-> rounds, stop and make the user choose the path forward.
+> in `verification.md`; the `Result:` line and `verify.result` stay `pass`,
+> with the deviation count on the Result line). Always fresh input —
+> never auto-accept a failure, and never *propose* acceptance as the easy
+> path — the user raises it or it stays a failure. Record each failed
+> round in `notes.md` (date + failing items) — notes, not `metrics`, is
+> the durable counter, and `metrics` never gates anything. After three
+> consecutive failed rounds recorded there, stop and make the user choose
+> the path forward.
 
 ## Exit checklist
 
@@ -88,8 +98,15 @@ deviations). Mirror the result into `state.yaml` `verify.result`.
 - [ ] `verify.result: pass` in both the report and `state.yaml` (accepted
       deviations, if any, each recorded with rationale in the report)
 - [ ] Adversarial pass run (or its skip recorded in the report's
-      Adversarial section); `metrics.verify_rounds` incremented
-- [ ] onto-no-slop pass run over `verification.md`
+      Adversarial section); `metrics.verify_rounds` incremented **once**
+      for the whole round (this checklist owns the increment — the
+      adversarial protocol does not increment again)
+- [ ] onto-no-slop pass run over `verification.md`, score recorded in
+      `notes.md` (`no-slop: verification <total>/50`; below 35 means
+      revise before this gate) — never touch the machine-read `Result:`
+      line or the evidence table structure
 - [ ] `state.yaml` phase advanced: `verify → close`;
       `metrics.phases.verify: <today>` stamped
+- [ ] **Commit the workspace**: `git add docs/changes/<name> && git commit`
+      — every phase exits with its workspace committed
 - [ ] Announce the transition and load `onto-close`

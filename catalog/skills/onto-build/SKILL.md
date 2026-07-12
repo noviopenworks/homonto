@@ -16,8 +16,13 @@ one small, verified task at a time.
 - Presets (`fix`/`tweak`) enter build directly after open-lite.
 - Read `notes.md` at entry when present — recorded decisions and
   directives govern how tasks execute.
-- On resume (fresh session, context loss): find the first unchecked task in
-  `tasks.md`/`plan.md` and continue from there; never redo committed tasks.
+- On resume (fresh session, context loss): run `git status` FIRST. A dirty
+  tree is an interrupted task's partial work — reconcile it before
+  continuing: reset it, or fold it into the unchecked task explicitly
+  (state which in the task's commit). Never build on top of partial edits
+  unknowingly — the same rule the subagent protocol enforces for fresh
+  agents. Then find the first unchecked task in `tasks.md`/`plan.md` and
+  continue from there; never redo committed tasks.
 
 ## Steps
 
@@ -48,14 +53,29 @@ bigger. Read `notes.md` first if present.
 > `decisions.directive` and proceed with the recorded config — but still
 > surface the plan summary so the user sees what will happen.
 >
+> **What qualifies as a directive**: an explicit, unprompted instruction
+> covering future gates. Acquiescence is not one — "go ahead", "sounds
+> good", "yes" answer only the question just asked. When in doubt it is
+> not a directive; ask. A directive authorizes only what it names: "run
+> to completion" covers this gate and later gates that say MAY be
+> pre-authorized, **except** the close phase's archive gate, which needs
+> the directive to cover closing/archiving explicitly (see onto-close).
+>
 > Record the gate's answer (chosen config, or the pre-authorizing
 > directive) in `notes.md` Confirmed as well — the state-rebuild gate cap
 > for the build→verify boundary consults notes.md, not the losable
 > state file.
 
-Create the isolation before the first task: `git checkout -b
-<type>/YYYYMMDD/<change-name>` (or the worktree equivalent). Type prefix:
-`feature` for full, `fix`/`tweak` for presets.
+Create the isolation before the first task — but check the tree first:
+run `git status`. The workspace docs should already be committed (each
+phase commits at exit); if they aren't, commit them now. Unrelated
+uncommitted changes either get stashed (say so) or force
+`isolation: worktree` — never carry a stranger's dirty state onto the
+change branch silently. Then `git checkout -b <type>/YYYYMMDD/<change-name>`
+(or the worktree equivalent). Type prefix: `feature` for full,
+`fix`/`tweak` for presets; an upgraded preset keeps its original branch
+(the proposal's upgrade annotation records the lifecycle, not the branch
+name).
 
 ### 3. Execute task by task
 
@@ -91,12 +111,16 @@ prohibited.
 - Small (missing edge case, scenario): edit the delta spec + design.md
   inline, append a task, note it in the commit message.
 - Medium (interface/component/data-flow changes): pause, get user
-  confirmation, then set `phase: design`, flip `design.md`'s status line
-  to `Status: Under revision`, **and — if a `verification.md` exists —
-  flip its `Result:` line to `Result: superseded (revision <date>)`** so
-  a stale pass can never teleport the revised change past build/verify.
-  The derivation then routes to design until the approach gate re-confirms
-  (new `Status: Confirmed` + date), after which build resumes.
+  confirmation, then — **in this order, so the derivation table's
+  `Under revision` row wins at every intermediate state** — (1) flip
+  `design.md`'s status line to `Status: Under revision`, (2) if a
+  `verification.md` exists, flip its `Result:` line to
+  `Result: superseded (revision <date>)` and set `state.yaml`
+  `verify.result: pending` (the cache must not keep claiming a pass the
+  file has withdrawn), (3) set `phase: design`. A stale pass can then
+  never teleport the revised change past build/verify. The derivation
+  routes to design until the approach gate re-confirms (new
+  `Status: Confirmed` + date), after which build resumes.
 - Large (new capability, or new tasks exceed half the original task count):
   pause; the user chooses between splitting into a new change or expanding
   this one. Always fresh input.
@@ -104,8 +128,11 @@ prohibited.
 ## Exit checklist
 
 - [ ] Every `tasks.md` item checked (or explicitly marked deferred-to-close
-      with the reason) and every `plan.md` step done
-- [ ] One commit per task; working tree clean
+      with the reason **and** a one-line statement of why it is non-runtime
+      work — the close lint blocks runtime-behavior deferrals)
+- [ ] One commit per task; working tree clean — including the workspace
+      docs (tasks/plan/notes updates ride their task commits; anything
+      still uncommitted in `docs/changes/<name>/` commits now)
 - [ ] Project build + test suite run fresh and pass (state the commands and
       results — do not rely on memory)
 - [ ] `decisions:` in `state.yaml` filled (isolation, execution, tdd)
