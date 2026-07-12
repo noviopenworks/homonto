@@ -28,17 +28,17 @@
 
 ## 4. Verify pipeline + pin match + revocation
 
-- [ ] 4.1 `internal/remote/verify.go`: run size → validate → canonicalize →
+- [x] 4.1 `internal/remote/verify.go`: run size → validate → canonicalize →
   digest → pin-match → revocation, aborting on first failure before any cache
   or target write.
-- [ ] 4.2 Pin-mismatch (tamper/substitution) and revoked-digest fixtures fail
+- [x] 4.2 Pin-mismatch (tamper/substitution) and revoked-digest fixtures fail
   closed; redirect-swap fixture (final content differs from pin) fails closed.
 
 ## 5. Content-addressed cache + offline
 
-- [ ] 5.1 `internal/remote/cache.go`: atomic store at
+- [x] 5.1 `internal/remote/cache.go`: atomic store at
   `.homonto/cache/remote/sha256/<digest>/`; resolve checks cache first.
-- [ ] 5.2 Offline test: a cached pin resolves with the network transport
+- [x] 5.2 Offline test: a cached pin resolves with the network transport
   disabled; reproducibility test: same content → same cache path.
 
 ## 6. Remote lockfile + provenance
