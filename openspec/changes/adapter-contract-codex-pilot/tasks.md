@@ -1,9 +1,9 @@
 ## 1. TOML codec (internal/tomlutil)
 
-- [ ] 1.1 `Get(doc, dottedPath) (canonicalJSON, present)`, `Set(doc, path,
+- [x] 1.1 `Get(doc, dottedPath) (canonicalJSON, present)`, `Set(doc, path,
   jsonValue)`, `Delete(doc, path)`, `Canonical(jsonValue)`, `EnsureRoot(doc)`
   over TOML via go-toml/v2, preserving unmanaged tables/keys.
-- [ ] 1.2 Tests: set/get/delete round-trip; unmanaged keys preserved; canonical
+- [x] 1.2 Tests: set/get/delete round-trip; unmanaged keys preserved; canonical
   value form stable; empty/whitespace doc handled; nested `mcp_servers.<n>.env`.
 
 ## 2. Projection core / adapter contract (internal/adapter/structproj)
