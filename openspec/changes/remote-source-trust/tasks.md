@@ -43,9 +43,9 @@
 
 ## 6. Remote lockfile + provenance
 
-- [ ] 6.1 `internal/remote/lock.go`: read/write `.homonto/remote.lock.json`
+- [x] 6.1 `internal/remote/lock.go`: read/write `.homonto/remote.lock.json`
   (locator, transport, digest, size, provenance); no wall-clock (diff-stable).
-- [ ] 6.2 Lock is written after verify+cache and read on apply to confirm the
+- [x] 6.2 Lock is written after verify+cache and read on apply to confirm the
   pin is unchanged; tampered-lock/pin-drift tests.
 
 ## 7. Resolver integration into apply/materialize
