@@ -11,10 +11,10 @@ isolation: branch
 verify_mode: full
 auto_transition: true
 base_ref: bb1e63109b968f4cc817f4b7128ae066580991f8
-design_doc: docs/superpowers/specs/2026-07-12-remote-source-trust-design.md
-plan: docs/superpowers/plans/2026-07-12-remote-source-trust.md
+design_doc: technical-design.md
+plan: implementation-plan.md
 verify_result: pass
-verification_report: docs/superpowers/reports/2026-07-12-remote-source-trust-verify.md
+verification_report: verification-report.md
 branch_status: handled
 created_at: 2026-07-12
 verified_at: 2026-07-12

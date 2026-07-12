@@ -1,6 +1,6 @@
 # Homonto Product and Engineering Roadmap
 
-**Last verified:** 2026-07-11
+**Last verified:** 2026-07-12
 **Horizon:** First public release plus twelve months
 **Audience:** Maintainers and implementation agents
 
@@ -36,7 +36,7 @@ command that produced them.
 ## Product Purpose
 
 Homonto is a **declarative configuration projector** for AI coding tools
-(Claude Code and OpenCode today): a single TOML config is planned, confirmed,
+(Claude Code and OpenCode, plus a Codex MCP pilot): a single TOML config is planned, confirmed,
 and atomically projected into each tool's native files, with state tracking
 ownership and drift. `onto` is its sibling **spec-driven workflow operator** —
 a phase-machine CLI that gates an OpenSpec-style change lifecycle
@@ -45,7 +45,7 @@ repository and one module.
 
 ## Architecture Summary
 
-- **homonto engine** — `config.Load` → per-tool adapters (Claude, OpenCode) →
+- **homonto engine** — `config.Load` → per-tool adapters (Claude, OpenCode, Codex pilot) →
   `fsutil.WriteAtomic` writes → `homonto/state.json` ownership records.
   Reference-only secrets resolve after confirmation and before any write;
   managed keys update surgically; plans are deterministic.
@@ -80,6 +80,8 @@ repository and one module.
 | Embedded catalog + versioned materialization | Implemented | Compiled-in framework bundles. |
 | Plugin declaration + config + marketplace | Implemented | Claude plugin config and marketplace registration. |
 | OpenCode `tui.json` projection | Implemented | |
+| Remote sources (pinned, fail-closed) | Implemented | `remote:<url>` + required sha256 pin; verify-before-mutate, content-addressed cache/offline, lockfile, revocation, rollback, GC (`ADR 0013`). Subagents; MCP/skills/commands are a follow-up. |
+| Adapter contract + Codex pilot | Implemented | Format-agnostic managed-key projection core (`internal/adapter/structproj` + `tomlutil`); Codex projects MCP into `~/.codex/config.toml`, opt-in, built on the contract (`ADR 0014`). |
 
 ### onto
 
@@ -134,9 +136,11 @@ direction.
 ## Current Release Gate
 
 `v0.1.0` is **not yet cut** (`git tag --list` is empty). Four release-integrity
-items must close before `v0.1.0-rc.1`. **All four are closed** — the remaining
-step is cutting and dogfood-verifying `v0.1.0-rc.1` itself (backlog item 7),
-which is a maintainer-owned tag push.
+items must close before `v0.1.0-rc.1`. **All four are closed** — and every other
+backlog item (8 Public Stabilization, 9 Resource Coherence, 10 Remote Trust, 11
+Ecosystem Expansion) is **done** as well. The only remaining backlog item is
+cutting and dogfood-verifying `v0.1.0-rc.1` itself (item 7), a maintainer-owned
+push of `main` + tag.
 
 - [x] **1. Agent ownership safety.** De-declared target records survive `agents
   update`; deletion failure is treated as prune failure and retains ownership;
@@ -411,19 +415,18 @@ gate remains open without a recorded exception.
 These horizons are directional, not calendar-locked. Each has the same
 dependency ordering as the backlog.
 
-- **Months 1–3 — Public stabilization.** Promote from RC after real install
-  and upgrade cycles; add failure-path and fuzz coverage; split oversized
-  files. *Exit gate:* `v0.1.0` promoted with no open release-blocking defect.
-- **Months 3–6 — Resource coherence.** Reconcile agents/subagents; add scope,
-  compatibility, conflict recovery, and blob GC. *Exit gate:* every managed
-  resource has one owner, scope, and removal path.
-- **Months 6–9 — Remote trust boundary.** Pinned provenance, cache, rollback,
-  revocation, and a full threat model before accepting remote resources.
-  *Exit gate:* remote installs are pinned, auditable, reproducible, and
-  removable.
-- **Months 9–12 — Ecosystem expansion.** Adapter contract and one third-adapter
-  pilot; catalog governance. *Exit gate:* a third adapter ships without
-  duplicating existing control flow.
+- **Months 1–3 — Public stabilization.** Failure-path + fuzz coverage and file
+  splits **delivered** (item 8); RC promotion (item 7) is the remaining
+  maintainer step. *Exit gate:* `v0.1.0` promoted with no open release-blocking
+  defect.
+- **Months 3–6 — Resource coherence. Delivered** (item 9). Agents reconciled
+  into declarative `[subagents]`; scope, mode, and removal path unified.
+- **Months 6–9 — Remote trust boundary. Delivered** (item 10, `ADR 0013`).
+  Pinned provenance, content-addressed cache/offline, rollback, revocation, and
+  a threat model; malformed/tampered/revoked content fails closed.
+- **Months 9–12 — Ecosystem expansion. Delivered** (item 11, `ADR 0014`).
+  Adapter contract + a Codex third-adapter pilot on it. *Follow-ups:* catalog
+  governance and migrating Claude/OpenCode onto the contract.
 
 ## Documentation And Archive Map
 
@@ -438,7 +441,7 @@ for status and priority.
 | `docs/adr/*.md` | Accepted decisions and supersession history | Current workflow instructions |
 | `docs/guides/*.md` | Task-oriented user/contributor usage | Whether a feature is implemented |
 | `docs/release-checklist.md` | Mechanical tag/smoke/rollback procedure | Current gate completion (lives here) |
-| `docs/superpowers/` | Designs/plans for **active** work only | Completed-change history |
+| `docs/superpowers/` | Designs/plans for **active** work, plus a few retained cross-cutting historical designs | Per-change completed history (consolidated into the archived change as `technical-design.md` / `implementation-plan.md` / `verification-report.md`) |
 | `openspec/changes/archive/*` | Completed change history + imported evidence | Current status |
 
 When source and roadmap disagree, the roadmap is corrected against source —
@@ -446,13 +449,13 @@ not the other way around.
 
 ## Verified Evidence Ledger
 
-Each entry was run from the repository root on **2026-07-11** by the
-documentation-consolidation change. Re-run any of them to re-verify the
-baseline.
+Each entry was run from the repository root on **2026-07-12** (after items 10 and
+11 landed). Re-run any of them to re-verify the baseline.
 
-- [x] `go test ./... -count=1` → **475 passed in 26 packages** (2026-07-11; incl. fuzz-seed subtests + regression tests from backlog items 1, 3, and 8).
-- [x] `go test -race ./... -count=1` → **475 passed in 26 packages**, race detector clean (2026-07-11).
-- [x] `./scripts/gate.sh` → `ALL GATE CHECKS PASSED` (the full shared gate: fmt, tidy, vet, build, test, race, stamps, cli smoke, govulncheck, dual-binary Docker E2E) (2026-07-11).
+- [x] `go test ./... -count=1` → **430 passed in 29 packages** (2026-07-12; incl. fuzz-seed subtests and the remote-trust + adapter-contract/Codex suites).
+- [x] `go test -race ./... -count=1` → **race detector clean, 25 test packages green** (2026-07-12).
+- [x] `./scripts/gate.sh` → `ALL GATE CHECKS PASSED` (the full shared gate: fmt, tidy, vet, build, test, race, stamps, cli smoke, govulncheck, dual-binary Docker E2E) (2026-07-12).
+- [x] `go run …/govulncheck ./...` → **No vulnerabilities found** under the pinned `go1.26.5` toolchain (remote fetch introduced reachable stdlib TLS paths; `go.mod` pins the patched toolchain).
 - [x] `go vet ./...` → clean (no issues).
 - [x] `go build ./...` → success (both `homonto` and `onto` build).
 - [x] `./scripts/docker-test.sh` → `ALL SUITES PASS` (dual-binary Docker E2E: homonto-core, homonto-expanded, homonto-agents, onto-lifecycle, release-packaging).

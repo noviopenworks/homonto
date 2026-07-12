@@ -11,10 +11,10 @@ isolation: branch
 verify_mode: full
 auto_transition: true
 base_ref: 1f811b00c16a1601c4e4350c682bbfa67807fbd8
-design_doc: docs/superpowers/specs/2026-07-12-adapter-contract-codex-pilot-design.md
-plan: docs/superpowers/plans/2026-07-12-adapter-contract-codex-pilot.md
+design_doc: technical-design.md
+plan: implementation-plan.md
 verify_result: pass
-verification_report: docs/superpowers/reports/2026-07-12-adapter-contract-codex-pilot-verify.md
+verification_report: verification-report.md
 branch_status: handled
 created_at: 2026-07-12
 verified_at: 2026-07-12

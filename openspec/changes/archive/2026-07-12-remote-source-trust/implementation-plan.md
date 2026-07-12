@@ -1,6 +1,6 @@
 ---
 change: remote-source-trust
-design-doc: docs/superpowers/specs/2026-07-12-remote-source-trust-design.md
+design-doc: technical-design.md
 base-ref: 6c52e7b8fcbae849a4745108122c2f19ab4d0432
 archived-with: 2026-07-12-remote-source-trust
 ---

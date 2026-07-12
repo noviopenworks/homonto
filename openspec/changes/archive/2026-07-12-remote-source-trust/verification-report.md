@@ -15,7 +15,7 @@ tasks are all checked. `grep -c '- \[ \]' tasks.md` → 0.
 ### 2. Implementation matches design
 
 Implementation follows `openspec/changes/remote-source-trust/design.md` and the
-Design Doc `docs/superpowers/specs/2026-07-12-remote-source-trust-design.md`:
+Design Doc `technical-design.md`:
 package layout (`internal/remote/{digest,locator,extract,canonical,fetch,cache,
 revoke,verify,lock}.go`), the verify-before-mutate ordering, canonical digest,
 content-addressed cache, and the resolver seam are all as designed. One design
