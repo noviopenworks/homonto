@@ -14,6 +14,7 @@ onto-fix = "skills/onto-fix"
 onto-open = "skills/onto-open"
 onto-tweak = "skills/onto-tweak"
 onto-verify = "skills/onto-verify"
+onto-no-slop = "skills/onto-no-slop"
 
 [commands]
 example-command = "commands/example-command.md"

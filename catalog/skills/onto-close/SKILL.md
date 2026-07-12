@@ -110,6 +110,8 @@ pushes or opens PRs.
       current truth
 - [ ] Every ADR draft numbered, accepted, moved to `docs/adr/`
 - [ ] `guides: updated` or `guides: "waived: <reason>"` — never pending
+- [ ] onto-no-slop pass run over the merged specs' prose, accepted ADRs, and
+      every guide written or updated this phase
 - [ ] Metrics finalized (phase dates, tasks_total, verify_rounds, upgraded)
 - [ ] Final confirmation given (or pre-authorized verbatim directive)
 - [ ] Workspace under `docs/changes/archive/YYYY-MM-DD-<name>/` with

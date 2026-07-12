@@ -86,3 +86,5 @@ archive, ship handoff offered.
 - [ ] Build: tasks checked + committed one by one, tree clean
 - [ ] Verify: `verification.md` with fresh evidence + regression results
 - [ ] Close: guides obligation resolved, confirmed, archived
+- [ ] onto-no-slop pass run over every prose artifact (proposal, verification,
+      guides, commit messages)

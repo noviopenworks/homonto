@@ -95,6 +95,7 @@ revealed different task boundaries.
 - [ ] A delta spec scenario exists for every behavior change
 - [ ] No implementation code was written
 - [ ] `notes.md` records the confirmed approach and every decision made
+- [ ] onto-no-slop pass run over `design.md`, every ADR draft, and `notes.md`
 - [ ] `state.yaml` phase advanced: `design → build`;
       `metrics.phases.design: <today>` stamped
 - [ ] Announce the transition and load `onto-build`

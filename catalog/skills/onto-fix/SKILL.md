@@ -96,3 +96,5 @@ handoff offered.
 - [ ] Verify: `verification.md` with reproduction evidence + regression
       results; `verify.result` set
 - [ ] Close: guides obligation resolved, confirmed, archived
+- [ ] onto-no-slop pass run over every prose artifact (proposal, verification,
+      guides, commit messages)

@@ -90,4 +90,6 @@ summary — no invented scope.
       the artifact-review gate is answered, never before (the dispatcher
       treats a lagging phase as an unanswered gate and will re-present it)
 - [ ] `metrics.phases.open: <today>` stamped
+- [ ] onto-no-slop pass run over `proposal.md`, `notes.md`, and any commit
+      message written this phase
 - [ ] Announce the transition and load `onto-design`

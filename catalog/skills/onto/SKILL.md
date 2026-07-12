@@ -189,3 +189,17 @@ A gate may only be skipped when the user explicitly pre-answered *that same
 question*; a blanket directive (e.g. "run to completion") pre-answers only
 the gates that say so, and must be recorded verbatim in
 `decisions.directive` in `state.yaml`. When in doubt, stop and ask.
+
+## Prose discipline (every artifact)
+
+onto writes prose a human reads later: `proposal.md`, `design.md`, `notes.md`,
+ADR drafts, `verification.md`, guide updates, and commit messages. Run the
+**onto-no-slop** skill (bundled with this framework) over each prose artifact
+before its phase gate — cut filler and adverbs, use active voice, name the
+actor, be specific, vary the rhythm, no em dashes. The record should read like a
+person wrote it, not a model.
+
+Keep technical precision above style: a load-bearing term stays (a spec says a
+value MUST be rejected; a write is atomic), and a real distinction the reader
+needs stays. Drop the empty adverb and the manufactured "not X, it's Y"
+reversal, not the fact. Each phase's exit checklist re-states this as a check.

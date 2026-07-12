@@ -89,6 +89,7 @@ deviations). Mirror the result into `state.yaml` `verify.result`.
       deviations, if any, each recorded with rationale in the report)
 - [ ] Adversarial pass run (or its skip recorded in the report's
       Adversarial section); `metrics.verify_rounds` incremented
+- [ ] onto-no-slop pass run over `verification.md`
 - [ ] `state.yaml` phase advanced: `verify → close`;
       `metrics.phases.verify: <today>` stamped
 - [ ] Announce the transition and load `onto-close`
