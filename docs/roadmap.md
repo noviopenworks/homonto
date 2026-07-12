@@ -72,16 +72,11 @@ repository and one module.
 | `homonto status` | Implemented | Drift detection vs. on-disk reality (`ADR 0010`). |
 | `homonto doctor` | Implemented | Read-only health diagnostics. |
 | `homonto version` | Implemented | Release-stamped version string. |
-| `homonto agents list` | Implemented | Lists recorded installs from lockfile. |
-| `homonto agents add` | Implemented | Copy/link install; lockfile + base blob recorded. |
-| `homonto agents doctor` | Implemented | Per-agent health reporting. |
-| `homonto agents update` / `--all` | Implemented | Three-way merge; conflict sidecar; bulk mode. |
-| `homonto agents prune` | Implemented | Deletion failure keeps the file + lockfile record (regression-tested). |
-| `homonto agents gc` | Implemented | Reclaims unreferenced base blobs; content-addressed, `--dry-run`. |
 | Claude + OpenCode MCP/settings projection | Implemented | Surgical managed-key updates. |
 | Reference-only secrets | Implemented | Resolved after confirm, never stored (`ADR 0002`). |
 | Atomic writes + adoption + pruning + drift | Implemented | `ADR 0003`, `ADR 0004`, `ADR 0009`, `ADR 0010`. |
-| Local + builtin skills/commands/subagents | Implemented | User or project scope (`ADR 0011`). |
+| Local + builtin skills/commands/subagents | Implemented | User or project scope (`ADR 0011`). Subagents support `mode` = link (symlink) or copy (managed content file, drift-detected, backup-safe). |
+| `[agents]` → `[subagents]` (superseded) | Implemented | The imperative `homonto agents` group is removed; `[agents.<name>]` folds into a copy-mode `[subagents.<name>]` at load and projects via `apply`. |
 | Embedded catalog + versioned materialization | Implemented | Compiled-in framework bundles. |
 | Plugin declaration + config + marketplace | Implemented | Claude plugin config and marketplace registration. |
 | OpenCode `tui.json` projection | Implemented | |
@@ -319,37 +314,30 @@ gate remains open without a recorded exception.
 - **Verify:** `go test -race ./...`; `go test -fuzz` seeds pass.
 - **Exit gate:** `v0.1.0` promoted only after a clean RC cycle.
 
-### 9. Resource Coherence — *partial (blob GC done 2026-07-11, `3529ce7`)*
+### 9. Resource Coherence — *done (2026-07-11/12; reconciliation `38b32ec`)*
 
-- **Done:** safe content-addressed blob GC — `agentblob.Reclaim` + `homonto
-  agents gc [--dry-run]` reclaims base blobs no lockfile install references. The
-  `[agents]`/`[subagents]` reconciliation is **designed and direction-approved**
-  (Option C: collapse into declarative `[subagents]`+`apply`, auto-supersede
-  migration, project default scope) with a 6-step apply-preserving plan —
+- **Outcome — one agent model.** The `[agents]`/`[subagents]` overlap is
+  resolved via the approved Option C: `[agents]` is collapsed into the
+  declarative `[subagents]`+`apply` model. Delivered end to end and green under
+  `-race`:
+  - **copy-mode subagent projection** (`b2b7641`) — `[subagents.<name>]
+    mode="copy"` projects a real managed content file (not a symlink) via the
+    new `internal/copyfile` reconciler + `subagentcopy.*` state, idempotent,
+    drift-detected (`ObserveHashes`), conflict-safe, and backup-safe on a local
+    edit. This rebuilds the `[agents]` copy+state lifecycle inside `apply`.
+  - **collapse** (`38b32ec`) — `[agents.<name>]` folds into a copy-mode
+    `[subagents.<name>]` at load (builtin→copy, user scope, agent wins on name
+    collision); the imperative `homonto agents` command group,
+    `internal/agentlock`, and `internal/agentblob` are removed.
+  - config foundation: subagent `mode`/`version`/`scope` (`7fba2dc`,`67c07c7`),
+    local-source traversal guard moved into `validateSubagents`.
+- **Deferred (non-blocking enhancement):** copy-mode's local-edit is
+  backup+overwrite (safe + idempotent); apply-time **three-way merge** (base
+  blobs + `.merged` sidecars) is a follow-up — it introduces a plan-idempotency
+  subtlety (a merged file always reads as locally edited) best handled on its
+  own. Per-agent compatibility metadata also remains a nice-to-have.
+- Plan/design:
   `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md`.
-- **Config-layer foundation landed:** step 1a (omitted subagent scope →
-  `project`, `7fba2dc`); collision guard (name in both `[agents]`/`[subagents]`
-  rejected, `4f28565`); step 1b (dedicated `config.Subagent` type with
-  `mode`+`version`, behavior-preserving, `mode=copy` gated until step 2,
-  `67c07c7`). All green under `-race`.
-- **Adapter-layer core — step 2 DONE (`b2b7641`):** copy-mode subagent
-  projection works end to end in both adapters. `internal/copyfile` (the
-  content-file reconciler) + `subagentcopy.*` state + `ObserveHashes` drift +
-  conflict-safe prune are wired into Plan/Apply; the `mode=copy` load gate is
-  removed. `[subagents.<name>] mode="copy"` now projects a real managed file
-  (not a symlink), idempotent, drift-detected, pruned on de-declare, with a local
-  edit backed up to `.bak` before overwrite/prune. End-to-end test covers the
-  full lifecycle; full suite green under `-race`. This is the `[agents]`
-  copy+state lifecycle rebuilt inside the declarative apply pipeline.
-- **Remaining (adapter-layer core):** (3) replace copy-mode's local-edit
-  backup+overwrite with apply-time **three-way merge** (base blobs via
-  `internal/agentblob` + `internal/merge` + `.merged` sidecars); (4) status/doctor
-  + GC re-home; (5) auto-supersede `[agents]`→`[subagents]` at load; (6) remove
-  the `homonto agents` surface + `config.Agent` + `internal/agentlock`. Plan:
-  `docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md` §8.
-- **Problem:** `[agents]` and `[subagents]` overlap without a documented
-  ownership/lifecycle model; no per-agent scope; conflict resolution is not
-  fully recoverable.
 - **Dependencies:** item 8 (stable surface to reconcile against).
 - **Primary files:** `internal/agentlock/`, `internal/agentblob/`,
   `internal/cli/agents.go`, `internal/config/`.

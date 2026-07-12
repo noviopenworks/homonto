@@ -9,9 +9,10 @@ installer/projector) and `onto`, the spec-driven workflow operator — both from
 source (see [the onto workflow guide](onto-workflow.md)).
 
 It is Terraform-shaped: **edit config → `plan` → `apply`** — `homonto.toml` is
-the source of truth. The one imperative surface is the lifecycle-managed agent
-group (`homonto agents add`/`update`/`prune`), which reconciles declared
-`[agents.<name>]` tables against installed files.
+the source of truth. Every resource, agents included, is declarative: agents are
+`[subagents.<name>]` tables reconciled by `plan`/`apply`/`status`/`doctor`, with
+no separate imperative command group. The legacy `[agents.<name>]` table still
+parses but folds into a copy-mode `[subagents.<name>]` at load.
 
 ## Install
 

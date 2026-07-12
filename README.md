@@ -96,31 +96,23 @@ scroll_speed = 3
 model = "opus"
 variant = "max"
 
-[agents.review]                           # v2 lifecycle-managed agent (declare-only for now)
+[subagents.review]                        # an agent definition, projected by apply
 source = "builtin:review-agent"           # builtin:<name> | local:<name>
-version = "1.2.0"                         # optional; omit → unpinned
+scope = "project"                         # user | project (default project)
+mode = "copy"                             # link (symlink, default) | copy (managed file)
 targets = ["claude", "opencode"]          # optional; default both
-mode = "copy"                             # optional; copy | link (default link)
 ```
 
-Inspect declared agents with `homonto agents list` (read-only), install a
-`local:` agent into its target tools with `homonto agents add <name>`
-(conflict-safe and idempotent; records `.homonto/agents-lock.json`), and check
-health with `homonto agents doctor` (read-only; reports declared-vs-installed
-drift — missing, orphaned, source-changed, or conflicted — and exits non-zero on
-any finding), and reconcile an installed agent with its current source with
-`homonto agents update <name>`, which **three-way-merges** your local edits with
-the upstream source change: disjoint edits auto-merge; on an overlapping conflict
-it leaves your file untouched, writes the merged result with conflict markers to
-`<path>.merged`, and exits non-zero for you to resolve. `homonto agents update
---all` runs that merge across every installed agent and summarizes the result.
-When you remove an agent (or a target) from the config, `homonto agents prune`
-removes its now-orphaned installs (backing up any locally-modified file first;
-`--dry-run` previews). Version pinning is declarative — set
-`[agents.<name>].version` in the config.
-Agent sources can be `local:<name>` (from `homonto/agents/`) or `builtin:<name>`
-(resolved from the bundled catalog; copy-mode only). Remote agent sources are
-future v2 work.
+Agents are just `[subagents.<name>]` resources — declarative, managed by
+`plan`/`apply`/`status`/`doctor` like skills and commands (there is no separate
+imperative `agents` command group). `mode = "link"` (the default) symlinks the
+agent into each tool's agent directory; `mode = "copy"` projects it as a **real
+managed file** you can edit locally — `apply` keeps it in sync, detects drift,
+prunes it when de-declared, and backs up a local edit to `<path>.bak` before
+overwriting. Sources are `local:<name>` (from `homonto/subagents/`) or
+`builtin:<name>` (from the bundled catalog). The legacy `[agents.<name>]` table
+still parses but is folded into a copy-mode `[subagents.<name>]` at load. Remote
+sources are future work.
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels
