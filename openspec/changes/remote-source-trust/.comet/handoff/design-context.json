@@ -1,0 +1,16 @@
+{
+  "change": "remote-source-trust",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "30fb2d7dffe8714def303ae7979f6e6e26dc2f3e6ab3caf909fb03e67e8f1b81",
+  "files": [
+    { "path": "openspec/changes/remote-source-trust/proposal.md", "sha256": "2e7aeed35afdcc398969623c03dfb05eb305740b4756b47a503371303c940a1e" },
+    { "path": "openspec/changes/remote-source-trust/design.md", "sha256": "a58c3363c959753fb8894382e52e3c78069c49d3256a7deb6e112446d7ad04f0" },
+    { "path": "openspec/changes/remote-source-trust/tasks.md", "sha256": "db87915e879a7f0378f12d2b74e3c2b286d658a14f3331777196643202c94710" },
+    { "path": "openspec/changes/remote-source-trust/specs/apply-pipeline/spec.md", "sha256": "90cb890426d63222a27db5595e38f7b43cae0f0f8f078c82d213a5c7545568c1" },
+    { "path": "openspec/changes/remote-source-trust/specs/config-model/spec.md", "sha256": "9a5b3778bcfcda6fda8c46632ba2e7959f415f65a1e0d62b527d91d0db8435c1" },
+    { "path": "openspec/changes/remote-source-trust/specs/remote-source-trust/spec.md", "sha256": "a1f1b9e7369a8e903b83b96e7e43711afb2c91b655167c3afae963968c1652af" }
+  ]
+}
