@@ -18,10 +18,10 @@
 
 ## 3. Codex pilot adapter (internal/adapter/codex)
 
-- [ ] 3.1 Adapter: `Name()=="codex"`, `~/.codex/config.toml` path, `desired()`
+- [x] 3.1 Adapter: `Name()=="codex"`, `~/.codex/config.toml` path, `desired()`
   mapping declared MCPs → `mcp_servers.<name>` {command,args,env} (secret tokens
   preserved), Plan/Apply/ObserveHashes delegating to the core + TOML codec.
-- [ ] 3.2 Secret safety: plan redacts secret-bearing values; apply resolves only
+- [x] 3.2 Secret safety: plan redacts secret-bearing values; apply resolves only
   after confirm (reuse secret.Resolver). Test plan never prints a secret.
 
 ## 4. Config + engine wiring
