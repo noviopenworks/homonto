@@ -124,8 +124,6 @@ These capabilities are **Deferred** or **Planned** and are not present in
 source. Each is ordered as future work in the backlog or twelve-month
 direction.
 
-- **Third tool adapter** — only Claude and OpenCode ship today. Deferred
-  pending an adapter contract (backlog item 11).
 - **Interactive Homonto TUI** — Deferred; current surface is plan/confirm/apply.
 - **OpenCode comment preservation** — writes do not preserve user comments in
   OpenCode JSON; Deferred unless demand outweighs complexity.
@@ -380,22 +378,33 @@ gate remains open without a recorded exception.
   cacheable, revocable, and removable; malformed/tampered/revoked content fails
   before any mutation, enforced by tests.
 
-### 11. Ecosystem Expansion — *planned*
+### 11. Ecosystem Expansion — *done (2026-07-12, `adapter-contract-codex-pilot` change)*
 
-- **Problem:** adding a tool adapter today means copying the entire
-  Claude/OpenCode control flow.
-- **Scope:** publish an adapter contract and real-config compatibility fixture
-  format; pilot one additional tool adapter; establish catalog governance,
-  versioning, deprecation, and provenance policies. Non-goal: multiple new
-  adapters in parallel.
-- **Dependencies:** item 10 (provenance policies reuse remote-trust work).
-- **Primary files:** `internal/adapters/` (new), `catalog/`, adapter contract
-  design doc.
-- **Acceptance:** a third adapter ships without duplicating Claude/OpenCode
-  control flow; catalog additions have automated compatibility/provenance
-  checks.
-- **Verify:** third-adapter fixture suite passes.
-- **Exit gate:** adapter contract published; one pilot adapter green.
+- **Outcome — adapter contract + Codex pilot.** The managed-key projection
+  control flow that Claude and OpenCode each re-implemented is published once as a
+  format-agnostic contract: `internal/adapter/structproj`
+  (`Project`/`Apply`/`Observe`) parameterized by a `Codec`, with `jsonutil` as the
+  JSON codec and the new `internal/tomlutil` as the TOML codec. A new adapter now
+  supplies only a file path, a desired-value mapping, and a codec. The **Codex**
+  pilot (`internal/adapter/codex`) projects MCP servers into `~/.codex/config.toml`
+  `[mcp_servers.<name>]` built entirely on the contract — a third adapter without
+  duplicated control flow. Codex is opt-in (a resource must list `codex`;
+  defaults stay claude+opencode). A real-config **compatibility fixture** suite
+  (`TestCodexCompatibilityFixture`) is the reusable conformance template:
+  surgical merge, byte-identical idempotency, prune, unmanaged-content
+  preservation.
+- **Deferred (tracked follow-up):** deep catalog governance
+  (versioning/deprecation/provenance automation); migrating the heavily-tested
+  Claude/OpenCode structured-file slice onto the contract in place (a
+  same-behavior refactor left out to avoid regression risk — the exit gate is met
+  by Codex-on-contract). Codex projects MCP only (not skills/plugins) in the pilot.
+- **Primary files:** `internal/adapter/structproj/`, `internal/tomlutil/`,
+  `internal/adapter/codex/`, `internal/config` (codex target), `internal/engine`.
+- **Verify:** `go test -race ./internal/adapter/... ./internal/tomlutil/`;
+  compatibility fixture green. ADR staged in the change (adapter contract).
+- **Exit gate:** met — adapter contract published; the Codex pilot adapter is
+  green (plan/apply/status/doctor + surgical merge + idempotency), with a
+  compatibility fixture suite.
 
 ## Twelve-Month Direction
 

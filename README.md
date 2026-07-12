@@ -219,7 +219,14 @@ homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
   references (best-effort, not exhaustive), and preserves `command`/`args`
   verbatim. It does not import skills, plugins, settings, or OpenCode config.
   Treat its output as a starting point to review, not a complete migration.
-- **Two tools only.** Claude Code and OpenCode are the only adapters today.
+- **Two full adapters + a Codex pilot.** Claude Code and OpenCode are the full
+  adapters. **Codex** (OpenAI Codex CLI) is a pilot third adapter built on the
+  shared *adapter contract* (`internal/adapter/structproj` + the `tomlutil` TOML
+  codec): it projects **MCP servers only**, into `~/.codex/config.toml`
+  `[mcp_servers.<name>]` tables, and is **opt-in** — a resource must list `codex`
+  in its `targets` (the default target set stays Claude + OpenCode). The contract
+  lets a new adapter supply just a file path, key mapping, and format codec
+  instead of re-implementing the projection control flow.
 - **Secrets need `pass` or an env var.** `${pass:...}` references require
   [`pass`](https://www.passwordstore.org/) on `PATH`; `${ENV_VAR}` references
   require the variable to be set at apply time. `homonto doctor` flags a missing

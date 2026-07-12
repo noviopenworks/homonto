@@ -47,7 +47,7 @@
 
 ## 7. Docs, ADR, gate
 
-- [ ] 7.1 ADR: adapter contract (format-agnostic projection core + Codec).
-- [ ] 7.2 Guide/README: Codex as a supported target; the adapter-contract shape.
-- [ ] 7.3 Roadmap item 11 → done (or partial with follow-up) with evidence.
+- [x] 7.1 ADR: adapter contract (format-agnostic projection core + Codec).
+- [x] 7.2 Guide/README: Codex as a supported target; the adapter-contract shape.
+- [x] 7.3 Roadmap item 11 → done (or partial with follow-up) with evidence.
 - [ ] 7.4 Full gate green: `go test -race ./...`, `./scripts/gate.sh`.
