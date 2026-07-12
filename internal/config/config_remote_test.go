@@ -99,3 +99,22 @@ func TestCodexTargetAccepted(t *testing.T) {
 		t.Fatal("an unknown MCP target must still be rejected")
 	}
 }
+
+// Codex projects MCP servers only; targeting it from a subagent/skill/command
+// must be rejected (else validateModels demands an unsatisfiable models.codex.*).
+func TestCodexRejectedForNonMCPKinds(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) error {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(p)
+		return err
+	}
+	if err := load("[subagents.foo]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"codex\"]\n" + validModelsBothTools()); err == nil {
+		t.Fatal("a subagent targeting codex must be rejected (codex is MCP-only)")
+	}
+	if err := load("[skills.foo]\nsource=\"local:foo\"\nscope=\"project\"\ntargets=[\"codex\"]\n"); err == nil {
+		t.Fatal("a skill targeting codex must be rejected (codex is MCP-only)")
+	}
+}

@@ -134,3 +134,64 @@ func containsToken(s string) bool {
 	}
 	return false
 }
+
+// An MCP name containing a dot must project as a single mcp_servers table key,
+// not nested tables.
+func TestCodexDottedMCPName(t *testing.T) {
+	home := t.TempDir()
+	a := New(home)
+	st := emptyState(t)
+	res := secret.NewResolver()
+	c := &config.Config{MCPs: map[string]config.MCP{
+		"github.copilot": {Command: []string{"srv"}, Targets: []string{"codex"}},
+	}}
+	cs, err := a.Plan(c, st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Apply(cs, res, st); err != nil {
+		t.Fatal(err)
+	}
+	doc := configTOML(t, home)
+	// The server must be reachable as a single dotted key, and there must be no
+	// nested "github" server table.
+	if v, ok := tomlutil.Get(doc, `mcp_servers."github.copilot".command`); !ok || v != `"srv"` {
+		t.Fatalf("dotted-name server not projected as one table: %q ok=%v\n%s", v, ok, doc)
+	}
+	if _, ok := tomlutil.Get(doc, "mcp_servers.github.copilot"); ok {
+		t.Fatalf("dotted name misprojected into nested tables:\n%s", doc)
+	}
+	// idempotent
+	cs2, _ := a.Plan(c, st)
+	if len(cs2.Changes) != 1 || cs2.Changes[0].Action != "noop" {
+		t.Fatalf("want noop, got %+v", cs2.Changes)
+	}
+}
+
+// If the user deletes config.toml, a de-declare (delete) must NOT recreate it as
+// an empty file.
+func TestCodexDeleteDoesNotRecreateAbsentFile(t *testing.T) {
+	home := t.TempDir()
+	a := New(home)
+	st := emptyState(t)
+	res := secret.NewResolver()
+	cfg := &config.Config{MCPs: map[string]config.MCP{
+		"demo": {Command: []string{"srv"}, Targets: []string{"codex"}},
+	}}
+	cs, _ := a.Plan(cfg, st)
+	if err := a.Apply(cs, res, st); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(home, ".codex", "config.toml")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	// de-declare → delete change; apply must not recreate the file
+	cs2, _ := a.Plan(&config.Config{}, st)
+	if err := a.Apply(cs2, res, st); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("delete against an absent config must not recreate the file")
+	}
+}

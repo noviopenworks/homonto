@@ -8,6 +8,7 @@
 package structproj
 
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 	"strings"
@@ -88,8 +89,21 @@ func Project(tool, prefix string, desired map[string]string, disk []byte, st *st
 // and reports whether the document changed. noop/adopt are state-only and leave
 // the document byte-for-byte untouched. Secrets are resolved via res.
 func Apply(tool, prefix string, changes []adapter.Change, disk []byte, codec Codec, res *secret.Resolver, st *state.State, pathFor PathFor) ([]byte, bool, error) {
+	// EnsureRoot once (not per change) only if there is document-mutating work.
 	doc := disk
-	changed := false
+	rooted := false
+	ensure := func() error {
+		if rooted {
+			return nil
+		}
+		d, err := codec.EnsureRoot(doc)
+		if err != nil {
+			return err
+		}
+		doc = d
+		rooted = true
+		return nil
+	}
 	for _, c := range changes {
 		switch c.Action {
 		case "noop":
@@ -99,32 +113,33 @@ func Apply(tool, prefix string, changes []adapter.Change, disk []byte, codec Cod
 			if err != nil {
 				return nil, false, err
 			}
-			st.Set(tool, c.Key, c.New, secret.Hash(codec.Canonical(mustJSON(val))))
+			st.Set(tool, c.Key, c.New, secret.Hash(codec.Canonical(MustJSON(val))))
 		case "delete":
-			var err error
-			if doc, err = codec.EnsureRoot(doc); err != nil {
+			if err := ensure(); err != nil {
 				return nil, false, err
 			}
+			var err error
 			if doc, err = codec.Delete(doc, pathFor(c.Key)); err != nil {
 				return nil, false, err
 			}
-			changed = true
 			st.Delete(tool, c.Key)
 		default: // create | update
 			val, err := res.ResolveJSON(c.New)
 			if err != nil {
 				return nil, false, err
 			}
-			if doc, err = codec.EnsureRoot(doc); err != nil {
+			if err := ensure(); err != nil {
 				return nil, false, err
 			}
-			if doc, err = codec.Set(doc, pathFor(c.Key), mustJSON(val)); err != nil {
+			if doc, err = codec.Set(doc, pathFor(c.Key), MustJSON(val)); err != nil {
 				return nil, false, err
 			}
-			changed = true
-			st.Set(tool, c.Key, c.New, secret.Hash(codec.Canonical(mustJSON(val))))
+			st.Set(tool, c.Key, c.New, secret.Hash(codec.Canonical(MustJSON(val))))
 		}
 	}
+	// Only report a change (and thus a write) when the document actually differs
+	// from disk — so a delete against an absent/empty file never recreates it.
+	changed := !bytes.Equal(doc, disk)
 	return doc, changed, nil
 }
 
@@ -144,7 +159,9 @@ func Observe(tool, prefix string, disk []byte, st *state.State, codec Codec, pat
 	return out
 }
 
-func mustJSON(v any) string {
+// MustJSON marshals a value to a JSON string ("null" on error). Exported so
+// adapters build desired values without re-implementing it.
+func MustJSON(v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return "null"

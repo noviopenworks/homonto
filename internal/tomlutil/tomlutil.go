@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/jsonutil"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -76,18 +77,9 @@ func Delete(doc []byte, path string) ([]byte, error) {
 }
 
 // Canonical renders a JSON-encoded value in a stable, key-sorted form so equal
-// values hash identically regardless of key order or spacing.
-func Canonical(jsonValue string) string {
-	var v any
-	if err := json.Unmarshal([]byte(jsonValue), &v); err != nil {
-		return jsonValue
-	}
-	out, err := json.Marshal(v) // Go sorts map keys on marshal
-	if err != nil {
-		return jsonValue
-	}
-	return string(out)
-}
+// values hash identically regardless of key order or spacing. It reuses the JSON
+// codec's canonicalization so TOML and JSON adapters compare/hash identically.
+func Canonical(jsonValue string) string { return jsonutil.Canonical(jsonValue) }
 
 func load(doc []byte) (map[string]any, error) {
 	m := map[string]any{}
@@ -110,12 +102,35 @@ func marshal(m map[string]any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// splitPath splits a dotted TOML key path, honoring double-quoted segments so a
+// key containing a literal dot (e.g. mcp_servers."github.copilot".command) is
+// one segment. Quote a segment with QuoteSegment when building a path.
 func splitPath(path string) []string {
 	if path == "" {
 		return nil
 	}
-	return strings.Split(path, ".")
+	var segs []string
+	var cur strings.Builder
+	inQuote := false
+	for i := 0; i < len(path); i++ {
+		c := path[i]
+		switch {
+		case c == '"':
+			inQuote = !inQuote
+		case c == '.' && !inQuote:
+			segs = append(segs, cur.String())
+			cur.Reset()
+		default:
+			cur.WriteByte(c)
+		}
+	}
+	segs = append(segs, cur.String())
+	return segs
 }
+
+// QuoteSegment wraps a path segment in double quotes so a name containing dots
+// (or other special characters) is treated as a single key.
+func QuoteSegment(name string) string { return `"` + name + `"` }
 
 func getPath(m map[string]any, segs []string) (any, bool) {
 	cur := any(m)

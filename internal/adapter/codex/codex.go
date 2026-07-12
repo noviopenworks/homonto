@@ -7,7 +7,6 @@
 package codex
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -40,7 +39,12 @@ func (a *Adapter) Name() string { return Tool }
 
 func (a *Adapter) configTOML() string { return filepath.Join(a.home, ".codex", "config.toml") }
 
-func docPath(stateKey string) string { return "mcp_servers." + stateKey[len(keyPrefix):] }
+// docPath maps a state key (mcp.<name>) to the config.toml table path,
+// quoting the server name so a name containing dots is one table key, not nested
+// tables (mirrors the built-in adapters' EscapePath behavior).
+func docPath(stateKey string) string {
+	return "mcp_servers." + tomlutil.QuoteSegment(stateKey[len(keyPrefix):])
+}
 
 // codec adapts the tomlutil package functions to structproj.Codec.
 type codec struct{}
@@ -67,7 +71,7 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		if len(m.Env) > 0 {
 			obj["env"] = m.Env
 		}
-		out[keyPrefix+name] = mustJSON(obj)
+		out[keyPrefix+name] = structproj.MustJSON(obj)
 	}
 	return out
 }
@@ -122,12 +126,4 @@ func (a *Adapter) read() ([]byte, error) {
 		return []byte{}, nil
 	}
 	return b, err
-}
-
-func mustJSON(v any) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "null"
-	}
-	return string(b)
 }

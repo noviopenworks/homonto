@@ -565,7 +565,7 @@ func Load(path string) (*Config, error) {
 		// A target that names no known tool matches no adapter, so the MCP is
 		// projected nowhere — a silent typo. Only claude and opencode exist.
 		for _, target := range m.Targets {
-			if !isKnownTool(target) {
+			if !isMCPTarget(target) {
 				return nil, fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", name, target)
 			}
 		}
@@ -708,7 +708,7 @@ func validateResources(kind string, resources map[string]Resource) error {
 			return err
 		}
 		for _, target := range r.Targets {
-			if !isKnownTool(target) {
+			if !isResourceTarget(target) {
 				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
 			}
 		}
@@ -743,7 +743,7 @@ func validateSubagents(subagents map[string]Subagent) error {
 			}
 		}
 		for _, target := range s.Targets {
-			if !isKnownTool(target) {
+			if !isResourceTarget(target) {
 				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
 			}
 		}
@@ -757,12 +757,15 @@ func validateSubagents(subagents map[string]Subagent) error {
 	return nil
 }
 
-// knownTools are the adapter target names. codex is a pilot adapter that
-// projects MCP servers only (opt-in per resource); claude and opencode are the
-// full adapters.
-var knownTools = []string{"claude", "opencode", "codex"}
+// mcpTargetTools are valid MCP targets. codex is a pilot adapter that projects
+// MCP servers only, so it is a valid MCP target but NOT a valid target for
+// skills/commands/subagents/frameworks (which it cannot project, and which would
+// otherwise demand an unsatisfiable models.codex.* route via validateModels).
+var mcpTargetTools = []string{"claude", "opencode", "codex"}
+var resourceTargetTools = []string{"claude", "opencode"}
 
-func isKnownTool(t string) bool { return slices.Contains(knownTools, t) }
+func isMCPTarget(t string) bool      { return slices.Contains(mcpTargetTools, t) }
+func isResourceTarget(t string) bool { return slices.Contains(resourceTargetTools, t) }
 
 func validateResourceName(kind, name string) error {
 	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\`) || name != filepath.Base(name) {
