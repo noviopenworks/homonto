@@ -72,3 +72,15 @@
 - [x] 9.3 Update README + guide + `docs/roadmap.md` (item 10 status with
   evidence); delta specs for `config-model` and `apply-pipeline`.
 - [x] 9.4 Full gate green: `go test -race ./...`, fuzz seeds, `./scripts/gate.sh`.
+
+## Code review (review_mode: standard)
+
+High-effort workflow review (base `6c52e7b`) surfaced 11 verified findings.
+Fixed in `b044bc1`: 5 correctness/security (https→http redirect downgrade,
+non-shallow git clone, digest-only repin not re-fetched, remote accepted for
+non-subagent kinds, warm-cache not re-verified) + 3 cleanups (dead treeFromDir
+param, git ref dash guard, remote-subagent-dir DRY helper).
+Accepted (non-CRITICAL, negligible): `CanonicalDigest` keeps a defensive
+copy+sort over the already-sorted Tree invariant (correctness over micro-perf);
+`Fetch`'s size return is unused on the lock path (size is recomputed from the
+materialized file). No CRITICAL findings carried into verify.
