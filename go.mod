@@ -2,6 +2,11 @@ module github.com/noviopenworks/homonto
 
 go 1.23
 
+// Pin a patched toolchain: remote-source fetch introduces reachable call paths
+// into crypto/tls, crypto/x509, and net/textproto, whose go1.26.3 advisories
+// (GO-2026-5856/5037/5039) are fixed in go1.26.5. govulncheck is clean under it.
+toolchain go1.26.5
+
 require (
 	github.com/pelletier/go-toml/v2 v2.4.2
 	github.com/spf13/cobra v1.10.2

@@ -71,4 +71,4 @@
 - [x] 9.2 Threat-model note mapping each attack class → enforced control → test.
 - [x] 9.3 Update README + guide + `docs/roadmap.md` (item 10 status with
   evidence); delta specs for `config-model` and `apply-pipeline`.
-- [ ] 9.4 Full gate green: `go test -race ./...`, fuzz seeds, `./scripts/gate.sh`.
+- [x] 9.4 Full gate green: `go test -race ./...`, fuzz seeds, `./scripts/gate.sh`.
