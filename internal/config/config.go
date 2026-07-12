@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	cat "github.com/noviopenworks/homonto/internal/catalog"
+	"github.com/noviopenworks/homonto/internal/remote"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -32,6 +33,8 @@ type Resource struct {
 	Source  string   `toml:"source"`
 	Scope   string   `toml:"scope"`
 	Targets []string `toml:"targets"`
+	// Digest is the sha256 content pin required when Source is a remote: source.
+	Digest string `toml:"digest"`
 }
 
 func (r Resource) TargetsOrAll() []string {
@@ -61,6 +64,9 @@ type Subagent struct {
 	Targets []string `toml:"targets"`
 	Mode    string   `toml:"mode"`
 	Version string   `toml:"version"`
+	// Digest is the sha256 content pin ("sha256:<hex>") required when Source is a
+	// remote: source and unused otherwise.
+	Digest string `toml:"digest"`
 }
 
 func (s Subagent) TargetsOrAll() []string {
@@ -698,8 +704,8 @@ func validateResources(kind string, resources map[string]Resource) error {
 		default:
 			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, r.Scope)
 		}
-		if !validSource(r.Source) {
-			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, r.Source)
+		if err := validateSource(label, r.Source, r.Digest); err != nil {
+			return err
 		}
 		for _, target := range r.Targets {
 			if target != "claude" && target != "opencode" {
@@ -726,8 +732,8 @@ func validateSubagents(subagents map[string]Subagent) error {
 		default:
 			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, s.Scope)
 		}
-		if !validSource(s.Source) {
-			return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name> or local:<name>", label, s.Source)
+		if err := validateSource(label, s.Source, s.Digest); err != nil {
+			return err
 		}
 		// A local: source is resolved to a file by name; reject a path-traversal
 		// name so it cannot read/link outside the provider root.
@@ -765,6 +771,32 @@ func validSource(source string) bool {
 		}
 	}
 	return false
+}
+
+// validateSource accepts builtin:/local: sources unchanged, and a remote:
+// source only when it parses and carries a well-formed sha256 digest pin. A
+// non-remote source carrying a digest is rejected as unexpected so the field is
+// never a silent no-op.
+func validateSource(label, source, digest string) error {
+	if remote.IsRemoteSource(source) {
+		if _, err := remote.ParseRemoteSource(source); err != nil {
+			return fmt.Errorf("parse config: %s %v", label, err)
+		}
+		if digest == "" {
+			return fmt.Errorf("parse config: %s remote source %q requires a digest = \"sha256:<hex>\" pin", label, source)
+		}
+		if _, err := remote.ParseDigest(digest); err != nil {
+			return fmt.Errorf("parse config: %s %v", label, err)
+		}
+		return nil
+	}
+	if digest != "" {
+		return fmt.Errorf("parse config: %s digest is only valid on a remote: source", label)
+	}
+	if !validSource(source) {
+		return fmt.Errorf("parse config: %s source %q is invalid; use builtin:<name>, local:<name>, or remote:<url>", label, source)
+	}
+	return nil
 }
 
 // validateModels ensures every tool enabled by a non-skill resource has all

@@ -1,0 +1,62 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// A remote: subagent source requires a valid sha256 digest pin; the loader must
+// fail closed when it is missing or malformed, and accept a well-formed pin.
+func TestRemoteSourceRequiresDigest(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) (*Config, error) {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return Load(p)
+	}
+	const validHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+	t.Run("valid pin loads", func(t *testing.T) {
+		c, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + validHex + "\"\nscope=\"project\"\n" + validModelsBothTools())
+		if err != nil {
+			t.Fatalf("valid pinned remote source should load: %v", err)
+		}
+		if got := c.Subagents["x"].Digest; got != "sha256:"+validHex {
+			t.Fatalf("digest not preserved: %q", got)
+		}
+	})
+
+	t.Run("missing digest rejected", func(t *testing.T) {
+		_, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\nscope=\"project\"\n" + validModelsBothTools())
+		if err == nil {
+			t.Fatal("remote source without digest must be rejected")
+		}
+		if !strings.Contains(err.Error(), "digest") {
+			t.Fatalf("error should mention digest, got: %v", err)
+		}
+	})
+
+	t.Run("malformed digest rejected", func(t *testing.T) {
+		_, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:nothex\"\nscope=\"project\"\n" + validModelsBothTools())
+		if err == nil {
+			t.Fatal("remote source with malformed digest must be rejected")
+		}
+	})
+
+	t.Run("plain http rejected", func(t *testing.T) {
+		_, err := load("[subagents.x]\nsource=\"remote:http://h.test/x.tar.gz\"\ndigest=\"sha256:" + validHex + "\"\nscope=\"project\"\n" + validModelsBothTools())
+		if err == nil {
+			t.Fatal("plain http remote source must be rejected")
+		}
+	})
+
+	t.Run("builtin source unaffected by absent digest", func(t *testing.T) {
+		_, err := load("[subagents.x]\nsource=\"builtin:architect\"\nscope=\"project\"\n" + validModelsBothTools())
+		if err != nil {
+			t.Fatalf("builtin source without digest must still load: %v", err)
+		}
+	})
+}

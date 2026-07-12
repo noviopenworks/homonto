@@ -1,8 +1,8 @@
 ## 1. Config: remote source syntax + pinning
 
-- [ ] 1.1 Add `Digest` field to the resource/subagent config types; parse
+- [x] 1.1 Add `Digest` field to the resource/subagent config types; parse
   `source = "remote:<url>"` and `digest = "sha256:<hex>"`.
-- [ ] 1.2 Validate at load: a `remote:` source requires a well-formed
+- [x] 1.2 Validate at load: a `remote:` source requires a well-formed
   `sha256:<64-hex>` digest; missing/malformed/other-algorithm → load error.
   Add table-driven tests + a fuzz seed for the digest parser.
 
