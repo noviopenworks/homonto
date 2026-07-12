@@ -97,10 +97,14 @@ model = "opus"
 variant = "max"
 
 [subagents.review]                        # an agent definition, projected by apply
-source = "builtin:review-agent"           # builtin:<name> | local:<name>
+source = "builtin:review-agent"           # builtin:<name> | local:<name> | remote:<url>
 scope = "project"                         # user | project (default project)
 mode = "copy"                             # link (symlink, default) | copy (managed file)
 targets = ["claude", "opencode"]          # optional; default both
+
+[subagents.reviewer]                      # a remote, pinned agent
+source = "remote:https://example.com/reviewer.tar.gz"
+digest = "sha256:<64 hex>"                # REQUIRED content pin; verified before any write
 ```
 
 Agents are just `[subagents.<name>]` resources — declarative, managed by
@@ -109,10 +113,18 @@ imperative `agents` command group). `mode = "link"` (the default) symlinks the
 agent into each tool's agent directory; `mode = "copy"` projects it as a **real
 managed file** you can edit locally — `apply` keeps it in sync, detects drift,
 prunes it when de-declared, and backs up a local edit to `<path>.bak` before
-overwriting. Sources are `local:<name>` (from `homonto/subagents/`) or
-`builtin:<name>` (from the bundled catalog). The legacy `[agents.<name>]` table
-still parses but is folded into a copy-mode `[subagents.<name>]` at load. Remote
-sources are future work.
+overwriting. Sources are `local:<name>` (from `homonto/subagents/`),
+`builtin:<name>` (from the bundled catalog), or `remote:<url>` (fetched, pinned,
+and verified). The legacy `[agents.<name>]` table still parses but is folded
+into a copy-mode `[subagents.<name>]` at load.
+
+A **`remote:` source is pinned and fail-closed**: it requires a
+`digest = "sha256:…"`, and `apply` fetches → validates the archive (rejecting
+traversal, symlinks, and bombs) → matches the pin → checks revocation → caches,
+never writing a tool file until every check passes. Pins are recorded in
+`.homonto/remote.lock.json`; content is cached under `.homonto/cache/remote/`
+(offline + reproducible). See
+[docs/guides/remote-source-trust.md](docs/guides/remote-source-trust.md).
 
 The example is abbreviated — a complete config must also define
 `models.claude.coding` and `models.claude.trivial`, and the same three levels

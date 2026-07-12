@@ -124,8 +124,6 @@ These capabilities are **Deferred** or **Planned** and are not present in
 source. Each is ordered as future work in the backlog or twelve-month
 direction.
 
-- **Remote sources** — remote frameworks, skills, commands, subagents, and
-  agents. Deferred pending a threat model (backlog item 10).
 - **Third tool adapter** — only Claude and OpenCode ship today. Deferred
   pending an adapter contract (backlog item 11).
 - **Interactive Homonto TUI** — Deferred; current surface is plan/confirm/apply.
@@ -347,24 +345,40 @@ gate remains open without a recorded exception.
 - **Verify:** migration tests; GC reclaims only unreferenced blobs.
 - **Exit gate:** ownership/scope model documented and tested.
 
-### 10. Remote Trust — *planned*
+### 10. Remote Trust — *done (2026-07-12, `remote-source-trust` change)*
 
-- **Problem:** accepting remote resources (frameworks, skills, agents) without
-  a threat model would reuse local-source assumptions against untrusted input.
-- **Scope:** design one remote-source model; require immutable versions or
-  content hashes in lockfiles; define provenance, cache, offline, rollback,
-  revocation, and update behavior; threat-model redirects, traversal,
-  symlinks, oversized content, malicious archives, compromised registries,
-  and dependency substitution. Non-goal: automatic remote updates in the first
-  increment.
-- **Dependencies:** item 9 (coherent resource model first).
-- **Primary files:** new remote-source package, `internal/agentlock/`,
-  threat-model design doc.
-- **Acceptance:** a remote install is pinned, auditable, reproducible,
-  cacheable, and removable; malformed/compromised content fails before any
-  mutation.
-- **Verify:** malicious-fixture suite fails closed.
-- **Exit gate:** remote trust model approved and enforced by tests.
+- **Outcome — pinned, fail-closed remote sources.** A `remote:<url>` source type
+  with a **required** `digest = "sha256:…"` pin projects like any managed
+  resource through a verify-before-mutate pipeline: cache lookup → bounded fetch
+  (https/git/file, redirect+size caps) → archive validation (reject traversal,
+  symlinks, hardlinks, devices; per-entry/total/entry-count caps; gzip bomb
+  bounded while streaming) → transport-independent canonical sha256 → pin match →
+  revocation. No cache or target file is written until every check passes.
+  Content is stored content-addressed under `.homonto/cache/remote/` (offline +
+  reproducible); provenance is recorded in a diff-stable
+  `.homonto/remote.lock.json`. Rollback re-resolves a prior pin from cache;
+  `.homonto/revoked.json` fails a revoked digest closed even from a warm cache;
+  de-declare prunes the install and drops the lock entry; an explicit
+  `GCRemoteCache` reclaims only unreferenced content. Non-goal (honored): no
+  automatic remote updates — advancing a pin is a manual config edit.
+- **Scope note:** the trust engine (`internal/remote/`) is complete and generic;
+  apply-time wiring landed for the **subagent** resource kind (the item-9 agent
+  focus) across both adapters, engine, and doctor. Skills/commands reuse the same
+  resolver seam — a mechanical follow-up, not new trust design.
+- **Deferred (documented boundary):** the first pin is trust-on-first-use; a
+  signing/attestation provenance layer is item 11 work. The content digest is
+  the trust root today.
+- **Primary files:** `internal/remote/` (digest, locator, extract, canonical,
+  fetch, cache, revoke, verify, lock), `internal/engine/remote.go`, adapter
+  `remoteSubagentRoot` wiring, `internal/config` remote source + digest.
+- **Verify:** `go test -race ./internal/remote/ ./internal/engine/` green;
+  malicious-fixture suite (`TestValidateTarFailsClosed`,
+  `TestResolvePinMismatchFailsClosed`, `TestRemoteSubagentPinMismatchAbortsApply`,
+  `TestRemoteSubagentRollbackAndRevocation`) fails closed. Threat model:
+  `docs/guides/remote-source-trust.md`; ADR staged in the change.
+- **Exit gate:** met — a remote install is pinned, auditable, reproducible,
+  cacheable, revocable, and removable; malformed/tampered/revoked content fails
+  before any mutation, enforced by tests.
 
 ### 11. Ecosystem Expansion — *planned*
 
