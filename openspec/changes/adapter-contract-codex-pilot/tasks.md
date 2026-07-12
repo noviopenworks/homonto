@@ -51,3 +51,13 @@
 - [x] 7.2 Guide/README: Codex as a supported target; the adapter-contract shape.
 - [x] 7.3 Roadmap item 11 → done (or partial with follow-up) with evidence.
 - [x] 7.4 Full gate green: `go test -race ./...`, `./scripts/gate.sh`.
+
+## Code review (review_mode: standard)
+
+High-effort workflow review (base `9971404`) surfaced 7 findings. Fixed in
+`1404ecd`: 3 correctness (codex accepted as target for kinds it can't project →
+unloadable config; unescaped dotted MCP name → nested tables; delete recreates an
+absent file) + 3 cleanups (Canonical dedup, EnsureRoot hoist, MustJSON export).
+Accepted (deferred, not a defect): structproj being a "third copy" of the
+plan/apply/observe semantics is the intended contract — migrating Claude/OpenCode
+onto it is the tracked task-6 follow-up. No CRITICAL findings carried into verify.
