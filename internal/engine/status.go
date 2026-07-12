@@ -208,9 +208,12 @@ func (e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []
 	for _, entry := range entries {
 		name := entry.Name
 		var p string
-		if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+		switch {
+		case strings.HasPrefix(entry.Resource.Source, "builtin:"):
 			p = filepath.Join(e.SubagentDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:")+".md")
-		} else {
+		case strings.HasPrefix(entry.Resource.Source, "remote:"):
+			p = filepath.Join(e.RemoteRoot, "subagents", name+".md")
+		default:
 			sourceName := name
 			if strings.HasPrefix(entry.Resource.Source, "local:") {
 				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")

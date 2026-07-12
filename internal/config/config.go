@@ -95,7 +95,7 @@ func (s Subagent) ModeOrDefault() string {
 // asResource projects the subagent onto the shared Resource shape used by the
 // link-based projection pipeline (the only path implemented today).
 func (s Subagent) asResource() Resource {
-	return Resource{Source: s.Source, Scope: s.ScopeOrDefault(), Targets: s.Targets}
+	return Resource{Source: s.Source, Scope: s.ScopeOrDefault(), Targets: s.Targets, Digest: s.Digest}
 }
 
 // Agent is a v2 lifecycle-managed agent (distinct from the v1 [subagents]

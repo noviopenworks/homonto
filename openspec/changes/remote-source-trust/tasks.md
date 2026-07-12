@@ -50,11 +50,11 @@
 
 ## 7. Resolver integration into apply/materialize
 
-- [ ] 7.1 `remote.Resolver` seam: `remote:` resolves through the pipeline to a
+- [x] 7.1 `remote.Resolver` seam: `remote:` resolves through the pipeline to a
   cache path; `builtin:`/`local:` unchanged.
-- [ ] 7.2 Wire into catalog/materialize + engine so a `remote:` skill/command/
+- [x] 7.2 Wire into catalog/materialize + engine so a `remote:` skill/command/
   subagent projects like any managed resource; plan/apply/status/doctor honor it.
-- [ ] 7.3 End-to-end test: declare a `remote:` (file:// fixture) resource →
+- [x] 7.3 End-to-end test: declare a `remote:` (file:// fixture) resource →
   plan → apply → status idempotent → de-declare → prune.
 
 ## 8. Rollback, revocation, removal, GC

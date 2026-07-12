@@ -28,6 +28,7 @@ type Adapter struct {
 	catalogRoot         string // materialized builtin catalog root (.homonto/catalog/skills)
 	commandCatalogRoot  string // materialized builtin command root (.homonto/catalog/commands)
 	subagentCatalogRoot string // materialized builtin subagent root (.homonto/catalog/subagents)
+	remoteSubagentRoot  string // materialized remote subagent root (.homonto/remote/subagents)
 	projectRoot         string // directory of homonto.toml; used for project-scope resources
 	skills              []config.NamedResource
 	commands            []config.NamedResource
@@ -67,6 +68,14 @@ func (a *Adapter) WithSubagentCatalogRoot(subagentCatalogRoot string) *Adapter {
 	return a
 }
 
+// WithRemoteSubagentRoot sets the materialized remote-subagent root that
+// remote:<url> subagents link from (populated by the engine's verify pipeline
+// before apply). Mirrors WithSubagentCatalogRoot.
+func (a *Adapter) WithRemoteSubagentRoot(remoteSubagentRoot string) *Adapter {
+	a.remoteSubagentRoot = remoteSubagentRoot
+	return a
+}
+
 // managedRoots returns every content root homonto owns links into. catalogRoot,
 // commandCatalogRoot, and subagentCatalogRoot are included only when set:
 // link.managed() treats an empty-string root as a prefix match for every
@@ -82,6 +91,9 @@ func (a *Adapter) managedRoots() []string {
 	}
 	if a.subagentCatalogRoot != "" {
 		roots = append(roots, a.subagentCatalogRoot)
+	}
+	if a.remoteSubagentRoot != "" {
+		roots = append(roots, a.remoteSubagentRoot)
 	}
 	return roots
 }
@@ -189,11 +201,15 @@ func (a *Adapter) inactiveSubagentsDir(scope string) string {
 }
 
 // subagentSource resolves a subagent entry's on-disk file by source scheme:
-// builtin:<n> from the materialized subagent root (<n>.md), otherwise the local
-// content dir (homonto/subagents/<n>.md).
+// builtin:<n> from the materialized subagent root (<n>.md), remote:<url> from the
+// materialized remote root (<name>.md), otherwise the local content dir
+// (homonto/subagents/<n>.md).
 func (a *Adapter) subagentSource(entry config.NamedResource) string {
 	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
 		return filepath.Join(a.subagentCatalogRoot, strings.TrimPrefix(s, "builtin:")+".md")
+	}
+	if strings.HasPrefix(entry.Resource.Source, "remote:") {
+		return filepath.Join(a.remoteSubagentRoot, entry.Name+".md")
 	}
 	return filepath.Join(a.content, "subagents", localSourceName(entry.Resource.Source, entry.Name)+".md")
 }

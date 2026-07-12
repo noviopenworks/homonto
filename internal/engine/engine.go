@@ -26,6 +26,8 @@ type Engine struct {
 	CatalogRoot         string // materialized builtin catalog root (<stateDir>/catalog/skills)
 	CommandCatalogRoot  string // materialized builtin command root (<stateDir>/catalog/commands)
 	SubagentCatalogRoot string // materialized builtin subagent root (<stateDir>/catalog/subagents)
+	RemoteRoot          string // materialized remote content root (<stateDir>/remote)
+	RemoteCacheRoot     string // content-addressed remote cache (<stateDir>/cache/remote)
 	Home                string
 	ProjectRoot         string // directory of homonto.toml; skill-scope project root
 	Resolver            *secret.Resolver
@@ -60,6 +62,9 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	catalogDir := filepath.Join(stateDir, "catalog", "skills")
 	commandCatalogDir := filepath.Join(stateDir, "catalog", "commands")
 	subagentCatalogDir := filepath.Join(stateDir, "catalog", "subagents")
+	remoteRoot := filepath.Join(stateDir, "remote")
+	remoteSubagentDir := filepath.Join(remoteRoot, "subagents")
+	remoteCacheRoot := filepath.Join(stateDir, "cache", "remote")
 	st, err := state.Load(stateDir)
 	if err != nil {
 		return nil, err
@@ -67,8 +72,8 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	return &Engine{
 		Cfg: cfg,
 		Adapters: []adapter.Adapter{
-			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir),
-			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir),
+			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir).WithRemoteSubagentRoot(remoteSubagentDir),
+			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir).WithRemoteSubagentRoot(remoteSubagentDir),
 		},
 		State:               st,
 		StateDir:            stateDir,
@@ -76,6 +81,8 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		CatalogRoot:         catalogDir,
 		CommandCatalogRoot:  commandCatalogDir,
 		SubagentCatalogRoot: subagentCatalogDir,
+		RemoteRoot:          remoteRoot,
+		RemoteCacheRoot:     remoteCacheRoot,
 		Home:                home,
 		ProjectRoot:         projectRoot,
 		Resolver:            secret.NewResolver(),
@@ -125,6 +132,12 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 				return err
 			}
 		}
+	}
+	// Resolve, verify, and materialize remote sources before any adapter links
+	// them. This fetches → validates → pin-matches → caches, aborting the whole
+	// apply before any adapter write if any remote resource fails closed.
+	if err := e.materializeRemotes(); err != nil {
+		return err
 	}
 	// Materialize builtin skills before any adapter links them, so no symlink is
 	// created ahead of its target.
