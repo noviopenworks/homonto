@@ -543,6 +543,13 @@ func Load(path string) (*Config, error) {
 			return nil, err
 		}
 	}
+	// Only builtin frameworks are expanded; a non-builtin framework source would
+	// install nothing, so reject it at load rather than silently no-op (F35).
+	for name, fw := range c.Frameworks {
+		if !strings.HasPrefix(fw.Source, "builtin:") {
+			return nil, fmt.Errorf("parse config: framework %q source %q must be a builtin: source (only builtin frameworks are supported; a local:/remote: framework would expand nothing)", name, fw.Source)
+		}
+	}
 	if err := validateSubagents(c.Subagents); err != nil {
 		return nil, err
 	}
