@@ -16,7 +16,7 @@ parses but folds into a copy-mode `[subagents.<name>]` at load.
 
 ## Install
 
-Build from source (Go 1.23+):
+Build from source (Go 1.23+ language; the repo pins the `go1.26.5` toolchain in go.mod for govulncheck — `go build` will fetch it automatically):
 
 ```
 go install .
