@@ -406,6 +406,17 @@ What turns an opinionated internal toolkit into something others build on.
   `catalog.Load` via a minimal hand-rolled comparator (`internal/catalog/
   version.go`, no new module dep); the expansion graph still keys on the name.
   Real consumer: `comet` declares `superpowers@>=0.1.0` + `openspec@>=0.1.0`.
+- **Local-framework foundation DONE (2026-07-13, `catalog-local-overlays`
+  archived):** `catalog.LoadOverlays(base, overlays...)` merges validated local
+  framework sources over the embedded base (`Load` delegates to it, base
+  behavior identical) — per-source validation via each source's FS, strict
+  conflict via the shared-index guard (D3), cross-source dependency-range check,
+  and each framework carries its `srcFS` for content resolution. This is the
+  mechanism local frameworks build on (D1 = structural validation, no digest —
+  the user controls their own filesystem). **Next: the consumers** — config
+  `local:<path>` framework acceptance (lift F35 for `local:`; build the catalog
+  with per-config overlays, de-globalizing `loadedCatalog`) and engine
+  materialization of overlay content from each framework's `srcFS`.
 - **Remaining E1 (prerequisite/decision-gated):** `[compat].homonto` range —
   reuses the comparator BUT has real prerequisites that make it premature now:
   the catalog can't import `internal/cli.Version` (layering — it must be
