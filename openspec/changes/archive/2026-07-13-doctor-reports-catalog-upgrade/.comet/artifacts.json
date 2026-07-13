@@ -1,0 +1,6 @@
+{
+  "openspec_proposal": "openspec/changes/doctor-reports-catalog-upgrade/proposal.md",
+  "openspec_tasks": "openspec/changes/doctor-reports-catalog-upgrade/tasks.md",
+  "openspec_delta_spec": "openspec/changes/doctor-reports-catalog-upgrade/specs/cli-commands/spec.md",
+  "archive_directory": "openspec/changes/archive/2026-07-13-doctor-reports-catalog-upgrade"
+}
