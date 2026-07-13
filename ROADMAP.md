@@ -406,6 +406,18 @@ What turns an opinionated internal toolkit into something others build on.
   `catalog.Load` via a minimal hand-rolled comparator (`internal/catalog/
   version.go`, no new module dep); the expansion graph still keys on the name.
   Real consumer: `comet` declares `superpowers@>=0.1.0` + `openspec@>=0.1.0`.
+- **LOCAL FRAMEWORKS DONE end-to-end (2026-07-13, `local-frameworks` archived):**
+  a `[frameworks.X] source="local:<path>"` now installs through the same validated
+  path as a builtin (D1 = structural validation, no digest — the user owns their
+  filesystem). Config accepts `local:<path>` (F35 preserved for every other
+  source; canonical spec MODIFIED); the catalog resolves each resource from its
+  source FS (FS-aware index) and merges a local framework root
+  (`mergeFrameworkRoot`/`NewWithLocal`); the engine materializes local resources
+  into the catalog root like builtins. Builtin-only configs are byte-identical
+  (679 tests -race green); an E2E acceptance test drives the real path (a local
+  framework skill materialized by apply). Scoped limitation: a local framework
+  doesn't by itself force `[models]` routes (skills-only gate) — follow-up if
+  locals ship model-routed commands. **This is the E1 exit-gate feature.**
 - **Local-framework foundation DONE (2026-07-13, `catalog-local-overlays`
   archived):** `catalog.LoadOverlays(base, overlays...)` merges validated local
   framework sources over the embedded base (`Load` delegates to it, base
