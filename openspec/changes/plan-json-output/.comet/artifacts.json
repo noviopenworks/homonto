@@ -1,0 +1,5 @@
+{
+  "openspec_proposal": "openspec/changes/plan-json-output/proposal.md",
+  "openspec_tasks": "openspec/changes/plan-json-output/tasks.md",
+  "openspec_delta_spec": "openspec/changes/plan-json-output/specs/cli-commands/spec.md"
+}
