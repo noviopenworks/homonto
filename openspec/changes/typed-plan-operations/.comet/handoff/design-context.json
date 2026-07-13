@@ -1,0 +1,14 @@
+{
+  "change": "typed-plan-operations",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "a0b26a83aacf16b884322b4ea353b3bc5572030e937ca4f34597e172c72f4773",
+  "files": [
+    { "path": "openspec/changes/typed-plan-operations/proposal.md", "sha256": "a48fd8aa585a8f2b0bdd03465193fde9f6cf02ef767d3297712ca8754ddec983" },
+    { "path": "openspec/changes/typed-plan-operations/design.md", "sha256": "2743c00d4d360c73905600efd86f1d7c741742a3b0915aeeebc8c61547c36d42" },
+    { "path": "openspec/changes/typed-plan-operations/tasks.md", "sha256": "2eaa28e47afc0b79855ee817aeda004f437e4b358810bb09338f6c1479fbace3" },
+    { "path": "openspec/changes/typed-plan-operations/specs/apply-pipeline/spec.md", "sha256": "1e0efd1e8c641e3169a8e8cb41deed604586d7da0218d5693c1a76abbb8f0011" }
+  ]
+}
