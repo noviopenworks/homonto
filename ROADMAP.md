@@ -98,7 +98,14 @@ monolith.
 Blockers for onto. Independent of the engine-safety gate below. Nothing in
 Next/Later is worth starting while these stand.
 
-### N1. Unify onto's control plane onto the binary
+### N1. Unify onto's control plane onto the binary — ✅ DONE (2026-07-13)
+*Shipped as two changes, both archived on `main`: `onto-binary-authoritative-state`
+(binary owns one versioned schema, on-read migration, `onto set …`/`onto state
+--json`, status/doctor enumerate+classify per F14) and `onto-skills-shell-out`
+(the 8 `onto*` skills invoke the binary — grep-gate enforced — markdown-only copy
+deleted; binary gained `onto new --workflow`, `onto set base-ref/deps/guides`).
+Closes F1/F3/F14. Residual `abandon`/workflow-upgrade transitions deferred to N2.*
+
 - **Problem:** two divergent state models, no reconciliation.
 - **Decision applied:** binary-authoritative (fork decision 1). Skills stop
   writing state and **shell out** to `onto open|advance|close`; the exit gate is
@@ -138,7 +145,12 @@ Next/Later is worth starting while these stand.
 
 
 
-### N3. Fix stale canonical specs (validation must mean truth)
+### N3. Fix stale canonical specs (validation must mean truth) — ✅ DONE (2026-07-13)
+*Archived on `main` (`fix-stale-canonical-specs`): agent-lifecycle retired to a
+tombstone, cli-commands/config-model corrected, and `scripts/spec-command-check.sh`
+(a spec↔code correspondence gate) wired into `scripts/gate.sh`. Closes F5 + F20
+residue. `docs/superpowers/*` historical residue left to F19.*
+
 - **Problem:** `openspec/specs/agent-lifecycle` and `cli-commands` still mandate
   the removed `homonto agents` command group; `openspec validate` reports 15/15
   because it checks form, not correspondence to reality
