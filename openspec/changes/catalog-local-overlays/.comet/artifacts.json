@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/catalog-local-overlays/proposal.md",
+  "openspec_design": "openspec/changes/catalog-local-overlays/design.md",
+  "openspec_tasks": "openspec/changes/catalog-local-overlays/tasks.md",
+  "openspec_delta_spec": "openspec/changes/catalog-local-overlays/specs/framework-expansion/spec.md",
+  "handoff_context": "openspec/changes/catalog-local-overlays/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/catalog-local-overlays/.comet/handoff/design-context.md"
+}
