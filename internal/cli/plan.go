@@ -26,11 +26,20 @@ func planCmd() *cobra.Command {
 			for _, w := range e.Warnings {
 				cmd.Println("warn:", w)
 			}
-			if !plan.HasChanges(sets) {
+			// A digest-only remote repin is invisible to the symlink plan but
+			// still a pending change; surface it here too (F6).
+			repins, err := e.PendingRemoteRepins()
+			if err != nil {
+				return err
+			}
+			if !plan.HasChanges(sets) && len(repins) == 0 {
 				cmd.Println("No changes. Everything up to date.")
 				return nil
 			}
 			cmd.Print(plan.Render(sets))
+			if len(repins) > 0 {
+				cmd.Print(renderRepins(repins))
+			}
 			return nil
 		},
 	}

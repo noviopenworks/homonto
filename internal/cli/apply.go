@@ -40,6 +40,12 @@ func applyCmd() *cobra.Command {
 			for _, w := range e.Warnings {
 				cmd.Println("warn:", w)
 			}
+			// A digest-only remote repin leaves the name-based symlink plan empty
+			// but WILL mutate remote content; surface and confirm it (F6).
+			repins, err := e.PendingRemoteRepins()
+			if err != nil {
+				return err
+			}
 			// A skipped adapter means one tool was never written. Apply still
 			// proceeds for the healthy tools, but the run must exit non-zero so
 			// automation notices (plan/status keep exit 0 with warnings).
@@ -56,8 +62,28 @@ func applyCmd() *cobra.Command {
 			// (any adoptions ride along inside the same Apply).
 			if !plan.HasChanges(sets) {
 				if !plan.HasAdoptions(sets) {
-					// A remote resource's symlink target is name-based, so a
-					// digest-only repin leaves the projection plan empty. Still run
+					// A digest-only repin is invisible to the symlink plan but
+					// mutates remote content: render it and require confirmation
+					// before applying (F6), never under a "no changes" conclusion.
+					if len(repins) > 0 {
+						cmd.Print(renderRepins(repins))
+						if !yes {
+							cmd.Print("\nApply these changes? [y/N] ")
+							r := bufio.NewReader(os.Stdin)
+							line, _ := r.ReadString('\n')
+							if strings.ToLower(strings.TrimSpace(line)) != "y" {
+								cmd.Println("Aborted.")
+								return nil
+							}
+						}
+						if err := e.Apply(sets); err != nil {
+							return err
+						}
+						cmd.Println("Applied.")
+						return skipped()
+					}
+					// A remote resource's symlink target is name-based, so an
+					// unchanged remote leaves the projection plan empty. Still run
 					// apply so remotes are re-fetched, pin-verified, and
 					// re-materialized (fail-closed) rather than silently serving stale
 					// pinned content.
@@ -86,6 +112,9 @@ func applyCmd() *cobra.Command {
 				return skipped()
 			}
 			cmd.Print(plan.Render(sets))
+			if len(repins) > 0 {
+				cmd.Print(renderRepins(repins))
+			}
 			if !yes {
 				cmd.Print("\nApply these changes? [y/N] ")
 				r := bufio.NewReader(os.Stdin)
@@ -104,4 +133,15 @@ func applyCmd() *cobra.Command {
 	}
 	cmd.Flags().Bool("yes", false, "skip confirmation")
 	return cmd
+}
+
+// renderRepins formats digest-only remote repins as terraform-style change
+// lines so plan/apply surface them even though the symlink projection is empty.
+func renderRepins(repins []engine.RemoteRepin) string {
+	var b strings.Builder
+	b.WriteString("remote:\n")
+	for _, r := range repins {
+		fmt.Fprintf(&b, "  ~ subagent.%s (repin): %s -> %s\n", r.Name, r.Old, r.New)
+	}
+	return b.String()
 }

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,6 +19,9 @@ import (
 const (
 	maxRedirects = 5
 	httpTimeout  = 60 * time.Second
+	// gitFetchTimeout bounds a git init/fetch/checkout so a malicious pinned
+	// repository cannot hang the process indefinitely (F27).
+	gitFetchTimeout = 120 * time.Second
 )
 
 // Fetch retrieves a remote source into a validated Tree, selecting a transport
@@ -142,21 +146,31 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 	}
 	defer os.RemoveAll(tmp)
 
+	// Bound every git invocation under a deadline so a malicious pin cannot stall
+	// the process; the caller's context still cancels earlier if it is shorter.
+	ctx, cancel := context.WithTimeout(ctx, gitFetchTimeout)
+	defer cancel()
+
 	// Shallow-fetch only the pinned ref so the download is bounded to a single
 	// commit's objects, not the repository's whole history (bomb/DoS defense).
 	// git init + fetch --depth 1 <ref> works for a commit sha or a tag.
-	gitc := func(args ...string) error {
+	gitcOut := func(args ...string) ([]byte, error) {
 		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", tmp, "-c", "protocol.file.allow=always", "-c", "advice.detachedHead=false"}, args...)...)
-		if out, err := cmd.CombinedOutput(); err != nil {
+		out, err := cmd.CombinedOutput()
+		if err != nil {
 			// Args may include the clone URL (with embedded credentials); redact
 			// each so a failing git invocation cannot leak a secret to logs.
 			safe := make([]string, len(args))
 			for i, a := range args {
 				safe[i] = RedactLocator(a)
 			}
-			return fmt.Errorf("remote: git %v failed: %v: %s", safe, err, out)
+			return out, fmt.Errorf("remote: git %v failed: %v: %s", safe, err, out)
 		}
-		return nil
+		return out, nil
+	}
+	gitc := func(args ...string) error {
+		_, err := gitcOut(args...)
+		return err
 	}
 	if err := gitc("init", "--quiet"); err != nil {
 		return Tree{}, 0, err
@@ -172,6 +186,12 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 	if err := gitc("fetch", "--quiet", "--depth", "1", "origin", ref); err != nil {
 		return Tree{}, 0, err
 	}
+	// Enforce the size and file-count caps BEFORE checkout: ls-tree reads the
+	// fetched objects without writing the working tree, so an oversized pin is
+	// rejected before it can exhaust disk (F27).
+	if err := guardGitTreeSize(gitcOut, lim); err != nil {
+		return Tree{}, 0, err
+	}
 	if err := gitc("checkout", "--quiet", "--detach", "FETCH_HEAD"); err != nil {
 		return Tree{}, 0, err
 	}
@@ -179,6 +199,51 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 		return Tree{}, 0, fmt.Errorf("remote: %w", err)
 	}
 	return treeFromDir(tmp, lim)
+}
+
+// guardGitTreeSize enforces the entry-count and byte caps on a fetched but
+// not-yet-checked-out git tree. It reads `git ls-tree -r --long FETCH_HEAD`,
+// whose blob lines carry each file's size, so the caps are validated from the
+// object store before any working-tree bytes are written (F27). Its errors are
+// worded "before checkout" to distinguish them from the post-walk cap errors.
+func guardGitTreeSize(gitcOut func(args ...string) ([]byte, error), lim Limits) error {
+	out, err := gitcOut("ls-tree", "-r", "--long", "FETCH_HEAD")
+	if err != nil {
+		return err
+	}
+	var total int64
+	count := 0
+	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		// Format: "<mode> <type> <sha> <size>\t<path>". Only blobs carry a numeric
+		// size; trees/submodules carry "-" and are skipped.
+		meta := line
+		if tab := strings.IndexByte(line, '\t'); tab >= 0 {
+			meta = line[:tab]
+		}
+		fields := strings.Fields(meta)
+		if len(fields) < 4 || fields[1] != "blob" {
+			continue
+		}
+		count++
+		if count > lim.MaxEntries {
+			return fmt.Errorf("remote: git source exceeds %d entries before checkout", lim.MaxEntries)
+		}
+		size, perr := strconv.ParseInt(fields[3], 10, 64)
+		if perr != nil {
+			return fmt.Errorf("remote: git ls-tree: unparseable size %q before checkout", fields[3])
+		}
+		if size > lim.MaxEntryBytes {
+			return fmt.Errorf("remote: git source file exceeds the %d-byte per-entry cap before checkout", lim.MaxEntryBytes)
+		}
+		total += size
+		if total > lim.MaxTotalBytes {
+			return fmt.Errorf("remote: git source exceeds the %d-byte total cap before checkout", lim.MaxTotalBytes)
+		}
+	}
+	return nil
 }
 
 // treeFromDir walks a directory into a validated Tree, rejecting symlinks and

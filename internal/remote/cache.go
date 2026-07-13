@@ -30,6 +30,12 @@ func (c *Cache) Has(d Digest) bool {
 func (c *Cache) Put(d Digest, tree Tree) (string, error) {
 	dest := c.Dir(d)
 	if c.Has(d) {
+		// Already present — a concurrent writer beat us to this digest. Re-hash the
+		// existing directory before trusting it; a corrupt or malicious entry must
+		// not be accepted merely because it landed first (F26).
+		if err := c.VerifyContent(d); err != nil {
+			return "", err
+		}
 		return dest, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
@@ -50,15 +56,36 @@ func (c *Cache) Put(d Digest, tree Tree) (string, error) {
 		return "", err
 	}
 	if err := os.Rename(staging, dest); err != nil {
-		// A concurrent writer may have won the race; if the dest now exists, accept
-		// it and let the deferred cleanup remove our stale staging dir.
+		// A concurrent writer may have won the race; if the dest now exists, re-hash
+		// the winner before accepting it and let the deferred cleanup remove our
+		// stale staging dir. A corrupt winner is rejected rather than trusted (F26).
 		if c.Has(d) {
+			if verr := c.VerifyContent(d); verr != nil {
+				return "", verr
+			}
 			return dest, nil
 		}
 		return "", fmt.Errorf("remote: cache commit: %w", err)
 	}
 	committed = true
 	return dest, nil
+}
+
+// VerifyContent re-hashes the cached content for d and reports an error if it is
+// missing or no longer canonically hashes to d. Used to detect on-disk tampering
+// of materialized remote content (doctor) and to re-check a cache-race winner.
+func (c *Cache) VerifyContent(d Digest) error {
+	if !c.Has(d) {
+		return fmt.Errorf("remote: %s is not cached", d)
+	}
+	tree, _, err := treeFromDir(c.Dir(d), DefaultLimits)
+	if err != nil {
+		return fmt.Errorf("remote: reading cached %s: %w", d, err)
+	}
+	if got := CanonicalDigest(tree); !got.Equal(d) {
+		return fmt.Errorf("remote: cached content for %s recomputed as %s (corrupt or tampered)", d, got)
+	}
+	return nil
 }
 
 // GC removes cache directories whose digest is not in referenced. With dryRun it

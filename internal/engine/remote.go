@@ -21,6 +21,48 @@ func (e *Engine) HasRemoteResources() bool {
 	return err == nil && len(declared) > 0
 }
 
+// RemoteRepin describes a declared remote subagent whose pinned digest differs
+// from the digest recorded in the remote lockfile. A digest-only repin does not
+// alter the name-based symlink plan, so apply must surface these separately and
+// require confirmation before mutating remote content (F6).
+type RemoteRepin struct {
+	Name string
+	Old  string // digest recorded in the lock
+	New  string // digest declared in config
+}
+
+// PendingRemoteRepins returns declared remote subagents whose pinned digest
+// differs from the lockfile record, in stable name order. A remote that is
+// declared but not yet locked is NOT reported here: it already surfaces as a new
+// symlink in the projection plan. Only an invisible digest-only change (same
+// name, same link target, different pinned content) is returned.
+func (e *Engine) PendingRemoteRepins() ([]RemoteRepin, error) {
+	declared, err := e.declaredRemoteSubagents()
+	if err != nil {
+		return nil, err
+	}
+	lock, err := remote.LoadLock(e.remoteLockPath())
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(declared))
+	for name := range declared {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var out []RemoteRepin
+	for _, name := range names {
+		entry, ok := lock.Get("subagent", name)
+		if !ok {
+			continue
+		}
+		if entry.Digest != declared[name].Digest {
+			out = append(out, RemoteRepin{Name: name, Old: entry.Digest, New: declared[name].Digest})
+		}
+	}
+	return out, nil
+}
+
 // remoteSubagentDir is the single source of truth for where verified remote
 // subagent content is materialized. materializeRemotes writes it, the adapters
 // link from it, and doctor reads it — they must stay in lockstep.
@@ -59,17 +101,50 @@ func (e *Engine) materializeRemotes() error {
 
 	subagentRoot := e.remoteSubagentDir()
 
-	// Prune remote-content files and lock entries for subagents no longer declared.
-	if err := e.pruneRemoteSubagents(&lock, declared, subagentRoot); err != nil {
-		return err
-	}
-
 	names := make([]string, 0, len(declared))
 	for name := range declared {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
+	// Revoked-but-still-declared content must never remain active. Quarantine it
+	// (remove its materialized file and drop its lock entry) and fail closed
+	// BEFORE any fetch, prune, or activation, so a banned pin's bytes are never
+	// served after a revocation (F30).
+	var revokedNames []string
+	for _, name := range names {
+		pin, err := remote.ParseDigest(declared[name].Digest)
+		if err != nil {
+			return fmt.Errorf("remote subagent %q: %w", name, err)
+		}
+		if rev.Contains(pin) {
+			revokedNames = append(revokedNames, name)
+		}
+	}
+	if len(revokedNames) > 0 {
+		for _, name := range revokedNames {
+			if err := os.Remove(filepath.Join(subagentRoot, name+".md")); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("remote: deactivating revoked %q: %w", name, err)
+			}
+			lock.Remove("subagent", name)
+		}
+		if err := lock.Save(e.remoteLockPath()); err != nil {
+			return err
+		}
+		return fmt.Errorf("remote subagent %q: content is revoked", revokedNames[0])
+	}
+
+	// Stage: fetch AND verify every declared remote into the content-addressed
+	// cache before touching any active content or the lock. Cache writes are
+	// content-keyed staging — they never mutate the active remote root or the
+	// lockfile — so if any remote fails here the whole apply aborts with the
+	// active content and lock untouched (F8: all-or-nothing across remotes).
+	type staged struct {
+		src      remote.RemoteSource
+		pin      remote.Digest
+		cacheDir string
+	}
+	stagedByName := make(map[string]staged, len(names))
 	for _, name := range names {
 		res := declared[name]
 		src, err := remote.ParseRemoteSource(res.Source)
@@ -84,15 +159,26 @@ func (e *Engine) materializeRemotes() error {
 		if err != nil {
 			return fmt.Errorf("remote subagent %q: %w", name, err)
 		}
-		if err := materializeRemoteFile(cacheDir, name, subagentRoot); err != nil {
+		stagedByName[name] = staged{src: src, pin: pin, cacheDir: cacheDir}
+	}
+
+	// Activate: every remote is staged and verified — now mutate active content
+	// and the lock. Prune de-declared installs first, then materialize each
+	// verified remote and record its provenance, then save the lock atomically.
+	if err := e.pruneRemoteSubagents(&lock, declared, subagentRoot); err != nil {
+		return err
+	}
+	for _, name := range names {
+		s := stagedByName[name]
+		if err := materializeRemoteFile(s.cacheDir, name, subagentRoot); err != nil {
 			return fmt.Errorf("remote subagent %q: %w", name, err)
 		}
 		lock.Set(remote.LockEntry{
 			Kind:      "subagent",
 			Name:      name,
-			Locator:   src.URL,
-			Transport: string(src.Transport),
-			Digest:    pin.String(),
+			Locator:   s.src.URL,
+			Transport: string(s.src.Transport),
+			Digest:    s.pin.String(),
 			Size:      fileSize(filepath.Join(subagentRoot, name+".md")),
 		})
 	}
