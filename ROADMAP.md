@@ -285,7 +285,16 @@ only after Now.
   `deviates-from`/`released-in`, deps/refs by id) — a larger follow-on — and
   **whether to give the OpenSpec/comet flow stable IDs too**, which IS a maintainer
   decision about diverging from the external tool everyone's changes use.
-- **Problem (remaining — the graph):** requirements and scenarios are mutable
+- **Traceability-graph slice DONE (2026-07-13, `onto-graph-command` archived):**
+  `onto graph [--json]` — a read-only, config-independent command emitting the
+  change dependency graph over active (`docs/changes/*`) and archived
+  (`docs/changes/archive/*`) changes: nodes (stable id, name, phase, archived) +
+  `depends-on` edges from each change's `deps`, deterministic, F14 no-drop for
+  malformed/missing-state. The first typed edge (`depends-on`) over changes; the
+  richer edge set (`implements`/`tests`/`supersedes`/`deviates-from`/
+  `released-in`) linking changes to code/specs/releases + CI validation remain the
+  larger follow-on.
+- **Problem (remaining — the richer graph):** requirements and scenarios are mutable
   headings; verification maps names to tests by hand. The toolkit cannot yet
   answer "which code, tests, decisions, commits, and release prove scenario X."
 - **Closes:** F13.
