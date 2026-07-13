@@ -119,7 +119,15 @@ Closes F1/F3/F14. Residual `abandon`/workflow-upgrade transitions deferred to N2
   `status`/`doctor` enumerate change directories first and classify (valid /
   malformed / missing-state), so a workspace never silently disappears.
 
-### N2. Make the binary's gates semantic — B1-scoped
+### N2. Make the binary's gates semantic — B1-scoped — ✅ CORE DONE (2026-07-13)
+*Archived on `main` (`onto-semantic-gates`): `onto close` now gates on close-phase
+evidence workflow-aware (full: verify.result==pass + close.merged + guides resolved;
+fix/tweak: verify.result==pass + close.merged); `onto advance` gates leaving-verify
+on verify.result==pass and entering-build on isolation set. 135 tests -race.
+**Deferred N2 follow-ups** (separable, recorded): comet verification-scale-by-risk +
+non-waivable finding classes + skeptic/reviewer subagents (F11/F12); skill-plane
+recovery/atomic bookkeeping (F16/F17); full dep resolver with cycle detection (F10).*
+
 - **Problem:** advance/close check existence + checkboxes, not validity; empty
   unverified work can archive.
 - **Decision applied:** B1 (fork decision 2). The binary enforces that a
