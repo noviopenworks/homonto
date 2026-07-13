@@ -25,6 +25,7 @@ func NewRootCmd() *cobra.Command {
 		},
 	})
 	root.AddCommand(statusCmd())
+	root.AddCommand(graphCmd())
 	root.AddCommand(initCmd())
 	root.AddCommand(newCmd())
 	root.AddCommand(advanceCmd())
