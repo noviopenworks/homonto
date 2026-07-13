@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-catalog-local-overlays-
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/catalog-local-overlays/.comet/handoff/design-context.json
 handoff_hash: 1c4d5063e77ed0d869914b931ebeb7cb674b2f23fdab86e6f61403004cce4235

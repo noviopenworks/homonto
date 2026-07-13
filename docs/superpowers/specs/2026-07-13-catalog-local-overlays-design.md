@@ -3,6 +3,8 @@ comet_change: catalog-local-overlays
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-catalog-local-overlays
+status: final
 ---
 
 # catalog-local-overlays — Technical Design (E1)
