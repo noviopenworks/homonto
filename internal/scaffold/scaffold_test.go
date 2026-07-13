@@ -18,7 +18,7 @@ import (
 // parse+validate path, not just a struct decode.
 func TestScaffoldExamplesUseCurrentFormatAndValidate(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := Init(dir); err != nil {
+	if _, _, err := Init(dir); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(filepath.Join(dir, "homonto.toml"))
@@ -59,7 +59,7 @@ func TestInitCreatesFilesAndSkipsExisting(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "homonto.toml"), []byte("# mine\n"), 0o644)
 
-	created, err := Init(dir)
+	created, _, err := Init(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
