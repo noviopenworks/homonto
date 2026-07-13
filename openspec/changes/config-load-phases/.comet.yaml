@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 0a0fea63bd376adc29ee31b68010d7136e775bed
 design_doc: docs/superpowers/specs/2026-07-13-config-load-phases-design.md
 plan: docs/superpowers/plans/2026-07-13-config-load-phases.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-13-config-load-phases-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-13
-verified_at: null
+verified_at: 2026-07-13
 archived: false
 direct_override: null
 handoff_context: openspec/changes/config-load-phases/.comet/handoff/design-context.json
