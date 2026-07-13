@@ -13,5 +13,7 @@ do*.
 - [`onto-workflow.md`](onto-workflow.md) — the `onto` binary and its spec-driven
   workflow, shipped as a bundled product framework.
 
-Project status, release gate, and implementation backlog live in
-[`../roadmap.md`](../roadmap.md).
+Living capability specs are in [`../../openspec/specs/`](../../openspec/specs/);
+change history is in
+[`../../openspec/changes/archive/`](../../openspec/changes/archive/). The release
+gate lives in [`../release-checklist.md`](../release-checklist.md).

@@ -89,8 +89,7 @@ model = "anthropic/claude-opus-4-8"
 **Model routes.** Any config that enables a model-backed tool must declare
 **all three** routes for it — `[models.<tool>.architectural]`,
 `[models.<tool>.coding]`, and `[models.<tool>.trivial]` — a partial set is
-rejected at load. See the roadmap's [capability
-matrix](../roadmap.md#implemented-capability-matrix).
+rejected at load.
 
 **Targets.** An MCP with no `targets` applies to both `claude` and `opencode`;
 an explicit list restricts it. Only `claude` and `opencode` are valid — a typo

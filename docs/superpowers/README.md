@@ -10,5 +10,6 @@ When a change archives, its design, plan, and report move into
 `implementation-plan.md`, and `verification-report.md`. Nothing in this directory
 is historical truth; it is work in progress.
 
-Project status and the implementation backlog live in
-[`../roadmap.md`](../roadmap.md).
+Living capability specs are in [`../../openspec/specs/`](../../openspec/specs/);
+completed change history is in
+[`../../openspec/changes/archive/`](../../openspec/changes/archive/).

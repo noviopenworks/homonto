@@ -254,8 +254,7 @@ and Comet state/scripts bind the phases together. New development starts with
 designs and implementation plans live under `docs/superpowers/`.
 
 - `docs/personas.md` — which workflow to use (homonto vs onto vs Comet/OpenSpec/Superpowers), and why we build with Comet but ship onto
-- `docs/roadmap.md` — project status, release gate, and implementation backlog (the single source of truth)
-- `openspec/specs/` — living capability specs (SHALL + scenarios)
+- `openspec/specs/` — living capability specs (SHALL + scenarios); the source of truth for shipped behavior
 - `docs/adr/` — accepted / superseded architecture decisions
 - `openspec/changes/` — active Comet/OpenSpec change workspaces (+ archive)
 - `docs/guides/` — user-facing guides
