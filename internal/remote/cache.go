@@ -61,6 +61,23 @@ func (c *Cache) Put(d Digest, tree Tree) (string, error) {
 	return dest, nil
 }
 
+// VerifyContent re-hashes the cached content for d and reports an error if it is
+// missing or no longer canonically hashes to d. Used to detect on-disk tampering
+// of materialized remote content (doctor) and to re-check a cache-race winner.
+func (c *Cache) VerifyContent(d Digest) error {
+	if !c.Has(d) {
+		return fmt.Errorf("remote: %s is not cached", d)
+	}
+	tree, _, err := treeFromDir(c.Dir(d), DefaultLimits)
+	if err != nil {
+		return fmt.Errorf("remote: reading cached %s: %w", d, err)
+	}
+	if got := CanonicalDigest(tree); !got.Equal(d) {
+		return fmt.Errorf("remote: cached content for %s recomputed as %s (corrupt or tampered)", d, got)
+	}
+	return nil
+}
+
 // GC removes cache directories whose digest is not in referenced. With dryRun it
 // reports what would be removed without deleting. It returns the reclaimed
 // digests.

@@ -107,6 +107,33 @@ func (e *Engine) materializeRemotes() error {
 	}
 	sort.Strings(names)
 
+	// Revoked-but-still-declared content must never remain active. Quarantine it
+	// (remove its materialized file and drop its lock entry) and fail closed
+	// BEFORE any fetch, prune, or activation, so a banned pin's bytes are never
+	// served after a revocation (F30).
+	var revokedNames []string
+	for _, name := range names {
+		pin, err := remote.ParseDigest(declared[name].Digest)
+		if err != nil {
+			return fmt.Errorf("remote subagent %q: %w", name, err)
+		}
+		if rev.Contains(pin) {
+			revokedNames = append(revokedNames, name)
+		}
+	}
+	if len(revokedNames) > 0 {
+		for _, name := range revokedNames {
+			if err := os.Remove(filepath.Join(subagentRoot, name+".md")); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("remote: deactivating revoked %q: %w", name, err)
+			}
+			lock.Remove("subagent", name)
+		}
+		if err := lock.Save(e.remoteLockPath()); err != nil {
+			return err
+		}
+		return fmt.Errorf("remote subagent %q: content is revoked", revokedNames[0])
+	}
+
 	// Stage: fetch AND verify every declared remote into the content-addressed
 	// cache before touching any active content or the lock. Cache writes are
 	// content-keyed staging — they never mutate the active remote root or the

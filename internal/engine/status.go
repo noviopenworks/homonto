@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/remote"
 	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/subagentpath"
 )
@@ -134,6 +136,56 @@ func (e *Engine) Doctor() []string {
 		out = append(out, fmt.Sprintf("warn: cannot expand opencode subagents: %v", osaerr))
 	} else {
 		out = append(out, e.doctorSubagents("opencode", opencodeSubagents)...)
+	}
+	out = append(out, e.doctorRemoteDigests()...)
+	return out
+}
+
+// doctorRemoteDigests verifies that each locked remote subagent's materialized
+// content still matches its pinned digest, catching on-disk tampering that the
+// name-based link check cannot see (F30). It re-hashes the cache-backed content
+// and compares the active materialized file's bytes against it.
+func (e *Engine) doctorRemoteDigests() []string {
+	lock, err := remote.LoadLock(e.remoteLockPath())
+	if err != nil {
+		return []string{fmt.Sprintf("warn: remote lock unreadable: %v", err)}
+	}
+	cache := &remote.Cache{Root: e.RemoteCacheRoot}
+	var names []string
+	for _, entry := range lock.Entries {
+		if entry.Kind == "subagent" {
+			names = append(names, entry.Name)
+		}
+	}
+	sort.Strings(names)
+	var out []string
+	for _, name := range names {
+		entry, _ := lock.Get("subagent", name)
+		pin, perr := remote.ParseDigest(entry.Digest)
+		if perr != nil {
+			out = append(out, fmt.Sprintf("warn: remote subagent %q: unparseable locked digest: %v", name, perr))
+			continue
+		}
+		if verr := cache.VerifyContent(pin); verr != nil {
+			out = append(out, fmt.Sprintf("warn: remote subagent %q: %v", name, verr))
+			continue
+		}
+		active := filepath.Join(e.remoteSubagentDir(), name+".md")
+		ab, aerr := os.ReadFile(active)
+		if aerr != nil {
+			out = append(out, fmt.Sprintf("warn: remote subagent %q: materialized content missing (%v)", name, aerr))
+			continue
+		}
+		cb, cerr := os.ReadFile(filepath.Join(cache.Dir(pin), name+".md"))
+		if cerr != nil {
+			out = append(out, fmt.Sprintf("warn: remote subagent %q: cached content missing (%v)", name, cerr))
+			continue
+		}
+		if !bytes.Equal(ab, cb) {
+			out = append(out, fmt.Sprintf("warn: remote subagent %q: materialized content does not match locked digest %s", name, pin))
+			continue
+		}
+		out = append(out, fmt.Sprintf("ok: remote subagent %q digest verified", name))
 	}
 	return out
 }
