@@ -33,11 +33,19 @@ type Catalog struct {
 	version    string
 }
 
+// CurrentManifestSchemaVersion is the framework.toml manifest format version
+// this binary supports. A manifest declaring a higher version is rejected
+// fail-closed at load, so an older binary never silently half-reads a newer
+// manifest (E1 phase-1 forward-safety, mirroring the config/state schema
+// versions). Absent/0 is a legacy manifest, treated as the current version.
+const CurrentManifestSchemaVersion = 1
+
 type frameworkTOML struct {
-	Name         string `toml:"name"`
-	Version      string `toml:"version"`
-	Description  string `toml:"description"`
-	Dependencies struct {
+	ManifestSchema int    `toml:"manifest_schema"`
+	Name           string `toml:"name"`
+	Version        string `toml:"version"`
+	Description    string `toml:"description"`
+	Dependencies   struct {
 		Frameworks []string `toml:"frameworks"`
 	} `toml:"dependencies"`
 	Skills    map[string]string `toml:"skills"`
@@ -102,6 +110,12 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		var ft frameworkTOML
 		if err := toml.Unmarshal(b, &ft); err != nil {
 			return nil, fmt.Errorf("catalog: parse %s: %w", tp, err)
+		}
+		// Forward-safety: refuse a manifest from a newer schema before indexing
+		// any of its resources, so an older binary never silently half-reads a
+		// newer framework manifest. Absent/0 is a legacy manifest (current).
+		if ft.ManifestSchema > CurrentManifestSchemaVersion {
+			return nil, fmt.Errorf("catalog: framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto", dir, ft.ManifestSchema, CurrentManifestSchemaVersion)
 		}
 		if ft.Name != dir {
 			return nil, fmt.Errorf("catalog: framework %q declares name %q; name must equal directory", dir, ft.Name)
