@@ -102,3 +102,15 @@ func parseCapability(s string) (name string, major int, err error) {
 	}
 	return name, n, nil
 }
+
+// SatisfiesLoose is satisfies after stripping any pre-release ("-…") or build
+// ("+…") metadata from the version, so a development build like "0.1.0-dev"
+// satisfies a release constraint like ">=0.1.0". Used for [compat].homonto,
+// where a dev build of a version should be treated as that version.
+func SatisfiesLoose(v, c string) (bool, error) {
+	core := v
+	if i := strings.IndexAny(core, "-+"); i >= 0 {
+		core = core[:i]
+	}
+	return satisfies(core, c)
+}

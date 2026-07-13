@@ -26,9 +26,13 @@ type Framework struct {
 	// this framework offers and depends on; resolved fail-loud at load.
 	Provides             []string
 	RequiredCapabilities []string
-	Skills               map[string]string // skill name -> catalog-relative path ("skills/<n>")
-	Commands             map[string]string // command name -> catalog-relative path ("commands/<n>.md")
-	Subagents            map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
+	// Compat is the [compat].homonto version constraint the framework declares
+	// (empty = unconstrained). The catalog stores it version-agnostically; the
+	// engine, which knows the running homonto version, enforces it.
+	Compat    string
+	Skills    map[string]string // skill name -> catalog-relative path ("skills/<n>")
+	Commands  map[string]string // command name -> catalog-relative path ("commands/<n>.md")
+	Subagents map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
 	// srcFS is the filesystem this framework was read from (the embedded base or
 	// a local overlay). Resource paths are relative to it; carried so a consumer
 	// can resolve overlay content later. The base's is the common case.
@@ -71,6 +75,9 @@ type frameworkTOML struct {
 	Provides struct {
 		Capabilities []string `toml:"capabilities"`
 	} `toml:"provides"`
+	Compat struct {
+		Homonto string `toml:"homonto"`
+	} `toml:"compat"`
 	Skills    map[string]string `toml:"skills"`
 	Commands  map[string]string `toml:"commands"`
 	Subagents map[string]string `toml:"subagents"`
@@ -330,6 +337,7 @@ func (c *Catalog) indexFramework(name string, src fs.FS, ft frameworkTOML) error
 		DependencyConstraints: depConstraints,
 		Provides:              ft.Provides.Capabilities,
 		RequiredCapabilities:  ft.Dependencies.Capabilities,
+		Compat:                ft.Compat.Homonto,
 		Skills:                ft.Skills,
 		Commands:              ft.Commands,
 		Subagents:             ft.Subagents,

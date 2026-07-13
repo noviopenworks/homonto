@@ -299,7 +299,7 @@ func (c *Config) FrameworkCatalog() (*cat.Catalog, error) {
 // (frameworkCatalog indexed the local/remote root under X). Any other source is
 // not expandable (false); validation already rejected it at load, so this is
 // defensive.
-func frameworkCatalogName(fwName, source string) (string, bool) {
+func FrameworkCatalogName(fwName, source string) (string, bool) {
 	if n, ok := strings.CutPrefix(source, "builtin:"); ok && n != "" {
 		return n, true
 	}
@@ -344,7 +344,7 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
-		catName, ok := frameworkCatalogName(fwName, fwRes.Source)
+		catName, ok := FrameworkCatalogName(fwName, fwRes.Source)
 		if !ok {
 			continue
 		}
@@ -418,7 +418,7 @@ func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, er
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
-		catName, ok := frameworkCatalogName(fwName, fwRes.Source)
+		catName, ok := FrameworkCatalogName(fwName, fwRes.Source)
 		if !ok {
 			continue
 		}
@@ -491,7 +491,7 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
-		catName, ok := frameworkCatalogName(fwName, fwRes.Source)
+		catName, ok := FrameworkCatalogName(fwName, fwRes.Source)
 		if !ok {
 			continue
 		}

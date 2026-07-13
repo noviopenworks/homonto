@@ -28,6 +28,7 @@ func statusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			e.HomontoVersion = Version
 			drift, pending, err := e.Status()
 			if err != nil {
 				return err
@@ -93,6 +94,7 @@ func doctorCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			e.HomontoVersion = Version
 			findings := e.Doctor()
 			if output == "json" {
 				if findings == nil {

@@ -25,6 +25,7 @@ func applyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			e.HomontoVersion = Version
 			// Serialize concurrent applies on the same project: two applies must
 			// not plan from the same snapshot and race to a last-writer-wins
 			// outcome on the state and tool files. Held from before Plan (so the

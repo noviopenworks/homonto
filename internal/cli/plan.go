@@ -30,6 +30,7 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			e.HomontoVersion = Version
 			sets, err := e.Plan()
 			if err != nil {
 				return err
