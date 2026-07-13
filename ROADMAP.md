@@ -348,8 +348,10 @@ What turns an opinionated internal toolkit into something others build on.
 - **Started (2026-07-13):** `adapter-conformance-suite` archived — a shared
   `internal/adapter/conformance` suite; claude + opencode pass the core contract
   (Plan->create, Apply, ObserveHashes-clean, idempotent re-Plan, unmanaged
-  preservation). Remaining F55: adoption, drift-reset, secret redaction, malformed
-  docs, conflict safety, codex; plus the Claude/OpenCode structproj consolidation.
+  preservation). F55 conformance core done for claude+opencode (core, drift-reset, malformed-doc,
+  secret non-resolution, foreign-content safety — 3 slices archived). Remaining
+  F55: codex (reduced MCP surface); plus the large Claude/OpenCode structproj
+  consolidation (F40).
 - **Closes:** F40 (both adapters are ~1000 lines duplicating security-sensitive
   planning/link/prune/copy/adopt/drift logic; the Codex `structproj` design is the
   better direction — migrate the two onto the contract), F55 (a reusable
