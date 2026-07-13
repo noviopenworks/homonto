@@ -1,6 +1,6 @@
 workflow: tweak
 language: en
-phase: build
+phase: verify
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -14,8 +14,8 @@ base_ref: f9a91b10964db81975400ef54d01151e20386ede
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: null
-branch_status: pending
+verification_report: docs/superpowers/reports/2026-07-13-plan-json-verify.md
+branch_status: handled
 created_at: 2026-07-13
 verified_at: null
 archived: false
