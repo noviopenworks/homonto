@@ -1,6 +1,6 @@
 # Tasks — status-json-output
 ## 1. status --output json
-- [ ] `--output text|json` on status; json emits drift/pending/warnings as JSON; text unchanged.
+- [x] `--output text|json` on status; json emits drift/pending/warnings as JSON; text unchanged.
       Test: json parses and carries the fields; an invalid --output value errors.
 ## 2. Verify
-- [ ] go test ./internal/cli/... -race, vet, build, openspec validate --all green.
+- [x] go test ./internal/cli/... -race, vet, build, openspec validate --all green.
