@@ -1,0 +1,5 @@
+{
+  "openspec_proposal": "openspec/changes/transactional-remote-apply/proposal.md",
+  "openspec_tasks": "openspec/changes/transactional-remote-apply/tasks.md",
+  "openspec_delta_spec": "openspec/changes/transactional-remote-apply/specs/apply-pipeline/spec.md"
+}

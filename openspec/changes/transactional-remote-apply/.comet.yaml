@@ -1,6 +1,6 @@
 workflow: tweak
 language: en
-phase: open
+phase: verify
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -14,8 +14,14 @@ base_ref: 542ae4d1c484236d0343d610a454777756120a6e
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: null
-branch_status: pending
+verification_report: docs/superpowers/reports/2026-07-13-transactional-remote-apply-verify.md
+branch_status: handled
 created_at: 2026-07-13
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: null
+handoff_hash: null
+classic_profile: tweak
+classic_migration: 1
+run_id: 2b55f3fa-0f45-40c7-bc9d-1e0a870ea20f
