@@ -26,3 +26,32 @@ using only builtin frameworks MUST behave identically to before.
 
 - **WHEN** a framework declares a source that is neither `builtin:` nor `local:`
 - **THEN** loading fails loudly, unchanged from before
+
+## MODIFIED Requirements
+
+### Requirement: a non-builtin, non-local framework source fails at load
+
+`homonto` SHALL reject at config load a `[frameworks.<name>]` declaration whose
+source is neither a `builtin:<name>` source nor a `local:<path>` source, with a
+clear error naming the framework and its source. Builtin and local frameworks
+both expand and install; any other source (for example a bare name or a
+`remote:` source) would expand nothing, so it SHALL be a load error rather than a
+silent no-op.
+
+#### Scenario: an unsupported framework source is rejected
+
+- **GIVEN** a config with `[frameworks.onto] source = "onto"` (a bare name)
+- **WHEN** the config is loaded
+- **THEN** it is rejected naming the framework and the unsupported source, and nothing is installed
+
+#### Scenario: a builtin framework source still loads
+
+- **GIVEN** a config with `[frameworks.onto] source = "builtin:onto"`
+- **WHEN** the config is loaded
+- **THEN** it loads and the framework expands normally
+
+#### Scenario: a local framework source loads
+
+- **GIVEN** a config with `[frameworks.myfw] source = "local:./myfw"` and a matching framework root
+- **WHEN** the config is loaded
+- **THEN** it loads and the local framework expands like a builtin

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"sort"
 	"strings"
 
 	embedded "github.com/noviopenworks/homonto/catalog"
@@ -34,9 +35,16 @@ type Framework struct {
 type Catalog struct {
 	fsys       fs.FS
 	frameworks map[string]Framework
-	skills     map[string]string // skill name -> catalog-relative path (global index)
-	commands   map[string]string // command name -> catalog-relative path (global index)
-	subagents  map[string]string // subagent name -> catalog-relative path (global index)
+	skills     map[string]string // skill name -> source-relative path (global index)
+	commands   map[string]string // command name -> source-relative path (global index)
+	subagents  map[string]string // subagent name -> source-relative path (global index)
+	// skillFS/commandFS/subagentFS map each indexed resource name to the source
+	// filesystem its path is relative to. For a base-only catalog every entry is
+	// the base FS (identical to reading from c.fsys); a local overlay's resources
+	// carry that overlay's FS so their content resolves from the right root.
+	skillFS    map[string]fs.FS
+	commandFS  map[string]fs.FS
+	subagentFS map[string]fs.FS
 	version    string
 }
 
@@ -63,6 +71,14 @@ type frameworkTOML struct {
 // New loads the production catalog from the embedded filesystem.
 func New() (*Catalog, error) { return Load(embedded.FS) }
 
+// NewWithLocal loads the production catalog from the embedded filesystem, then
+// merges each local single-framework root in locals (keyed by framework name).
+// It is LoadWithLocal with the embedded base, the constructor a config uses to
+// resolve its [frameworks.X] source="local:<path>" entries.
+func NewWithLocal(locals map[string]fs.FS) (*Catalog, error) {
+	return LoadWithLocal(embedded.FS, locals)
+}
+
 // Load parses a single catalog source. It is LoadOverlays with no overlays.
 func Load(fsys fs.FS) (*Catalog, error) { return LoadOverlays(fsys) }
 
@@ -74,19 +90,10 @@ func Load(fsys fs.FS) (*Catalog, error) { return LoadOverlays(fsys) }
 // version.txt is read from the base only; dependency-range validation runs once
 // after all sources are indexed so a cross-source dependency is checked.
 func LoadOverlays(base fs.FS, overlays ...fs.FS) (*Catalog, error) {
-	c := &Catalog{
-		fsys:       base,
-		frameworks: map[string]Framework{},
-		skills:     map[string]string{},
-		commands:   map[string]string{},
-		subagents:  map[string]string{},
-	}
-	vb, err := fs.ReadFile(base, "version.txt")
+	c, err := newBaseCatalog(base)
 	if err != nil {
-		return nil, fmt.Errorf("catalog: read version.txt: %w", err)
+		return nil, err
 	}
-	c.version = strings.TrimSpace(string(vb))
-
 	for _, src := range append([]fs.FS{base}, overlays...) {
 		if err := c.mergeSource(src); err != nil {
 			return nil, err
@@ -95,6 +102,59 @@ func LoadOverlays(base fs.FS, overlays ...fs.FS) (*Catalog, error) {
 	if err := c.validateDependencyRanges(); err != nil {
 		return nil, err
 	}
+	return c, nil
+}
+
+// LoadWithLocal loads the base catalog via mergeSource, then merges each local
+// single-framework root in locals (keyed by framework name) via
+// mergeFrameworkRoot. A local root's framework.toml declares one framework at
+// the root with framework-root-relative resource paths; its resources index and
+// materialize as builtin:<name>, reusing the whole projection path. Passing an
+// empty locals map is identical to Load(base). Dependency-range validation runs
+// once after every source is indexed so a cross-source dependency is checked.
+func LoadWithLocal(base fs.FS, locals map[string]fs.FS) (*Catalog, error) {
+	c, err := newBaseCatalog(base)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.mergeSource(base); err != nil {
+		return nil, err
+	}
+	// Deterministic merge order for stable conflict error messages.
+	names := make([]string, 0, len(locals))
+	for name := range locals {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if err := c.mergeFrameworkRoot(name, locals[name]); err != nil {
+			return nil, err
+		}
+	}
+	if err := c.validateDependencyRanges(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// newBaseCatalog allocates a Catalog over base and reads version.txt (base
+// only). It indexes nothing; the caller merges sources.
+func newBaseCatalog(base fs.FS) (*Catalog, error) {
+	c := &Catalog{
+		fsys:       base,
+		frameworks: map[string]Framework{},
+		skills:     map[string]string{},
+		commands:   map[string]string{},
+		subagents:  map[string]string{},
+		skillFS:    map[string]fs.FS{},
+		commandFS:  map[string]fs.FS{},
+		subagentFS: map[string]fs.FS{},
+	}
+	vb, err := fs.ReadFile(base, "version.txt")
+	if err != nil {
+		return nil, fmt.Errorf("catalog: read version.txt: %w", err)
+	}
+	c.version = strings.TrimSpace(string(vb))
 	return c, nil
 }
 
@@ -120,6 +180,7 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 				continue // not a ".md" file
 			}
 			c.subagents[name] = path.Join("subagents", e.Name())
+			c.subagentFS[name] = src
 		}
 	}
 
@@ -150,58 +211,8 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 		if ft.Name != dir {
 			return fmt.Errorf("catalog: framework %q declares name %q; name must equal directory", dir, ft.Name)
 		}
-		for skill, sp := range ft.Skills {
-			if _, err := fs.Stat(src, sp); err != nil {
-				return fmt.Errorf("catalog: framework %q skill %q path %q missing from catalog", dir, skill, sp)
-			}
-			if prev, ok := c.skills[skill]; ok && prev != sp {
-				return fmt.Errorf("catalog: skill %q mapped to both %q and %q", skill, prev, sp)
-			}
-			c.skills[skill] = sp
-		}
-		for command, cp := range ft.Commands {
-			if _, err := fs.Stat(src, cp); err != nil {
-				return fmt.Errorf("catalog: framework %q command %q path %q missing from catalog", dir, command, cp)
-			}
-			if prev, ok := c.commands[command]; ok && prev != cp {
-				return fmt.Errorf("catalog: command %q mapped to both %q and %q", command, prev, cp)
-			}
-			c.commands[command] = cp
-		}
-		for subagent, sap := range ft.Subagents {
-			if _, err := fs.Stat(src, sap); err != nil {
-				return fmt.Errorf("catalog: framework %q subagent %q path %q missing from catalog", dir, subagent, sap)
-			}
-			if prev, ok := c.subagents[subagent]; ok && prev != sap {
-				return fmt.Errorf("catalog: subagent %q mapped to both %q and %q", subagent, prev, sap)
-			}
-			c.subagents[subagent] = sap
-		}
-		// Split each dependency "name@constraint" into the graph name (used for
-		// transitive resolution and cycle detection, unchanged) and its version
-		// constraint (validated below once every framework is indexed).
-		depNames := make([]string, 0, len(ft.Dependencies.Frameworks))
-		var depConstraints map[string]string
-		for _, entry := range ft.Dependencies.Frameworks {
-			name, constraint := parseDep(entry)
-			depNames = append(depNames, name)
-			if constraint != "" {
-				if depConstraints == nil {
-					depConstraints = map[string]string{}
-				}
-				depConstraints[name] = constraint
-			}
-		}
-		c.frameworks[dir] = Framework{
-			srcFS:                 src,
-			Name:                  ft.Name,
-			Version:               ft.Version,
-			Description:           ft.Description,
-			Dependencies:          depNames,
-			DependencyConstraints: depConstraints,
-			Skills:                ft.Skills,
-			Commands:              ft.Commands,
-			Subagents:             ft.Subagents,
+		if err := c.indexFramework(dir, src, ft); err != nil {
+			return err
 		}
 	}
 	// Loose (framework-agnostic) skills and commands: a skills/<dir> holding a
@@ -222,6 +233,7 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 				continue // a skill directory must hold a SKILL.md
 			}
 			c.skills[name] = sp
+			c.skillFS[name] = src
 		}
 	}
 	if entries, err := fs.ReadDir(src, "commands"); err == nil {
@@ -237,9 +249,101 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 				continue // a framework already declares this command
 			}
 			c.commands[name] = path.Join("commands", e.Name())
+			c.commandFS[name] = src
 		}
 	}
 	return nil
+}
+
+// indexFramework indexes one framework's declared resources and metadata into c,
+// reading paths relative to src and recording src as each resource's source FS.
+// Each resource path is validated to exist in src, and the strict shared-index
+// conflict guard rejects a name already mapped to a different path by an earlier
+// source. Shared by mergeSource (base/overlay frameworks under frameworks/<dir>)
+// and mergeFrameworkRoot (a local single-framework root).
+func (c *Catalog) indexFramework(name string, src fs.FS, ft frameworkTOML) error {
+	for skill, sp := range ft.Skills {
+		if _, err := fs.Stat(src, sp); err != nil {
+			return fmt.Errorf("catalog: framework %q skill %q path %q missing from catalog", name, skill, sp)
+		}
+		if prev, ok := c.skills[skill]; ok && prev != sp {
+			return fmt.Errorf("catalog: skill %q mapped to both %q and %q", skill, prev, sp)
+		}
+		c.skills[skill] = sp
+		c.skillFS[skill] = src
+	}
+	for command, cp := range ft.Commands {
+		if _, err := fs.Stat(src, cp); err != nil {
+			return fmt.Errorf("catalog: framework %q command %q path %q missing from catalog", name, command, cp)
+		}
+		if prev, ok := c.commands[command]; ok && prev != cp {
+			return fmt.Errorf("catalog: command %q mapped to both %q and %q", command, prev, cp)
+		}
+		c.commands[command] = cp
+		c.commandFS[command] = src
+	}
+	for subagent, sap := range ft.Subagents {
+		if _, err := fs.Stat(src, sap); err != nil {
+			return fmt.Errorf("catalog: framework %q subagent %q path %q missing from catalog", name, subagent, sap)
+		}
+		if prev, ok := c.subagents[subagent]; ok && prev != sap {
+			return fmt.Errorf("catalog: subagent %q mapped to both %q and %q", subagent, prev, sap)
+		}
+		c.subagents[subagent] = sap
+		c.subagentFS[subagent] = src
+	}
+	// Split each dependency "name@constraint" into the graph name (used for
+	// transitive resolution and cycle detection) and its version constraint
+	// (validated once every framework is indexed).
+	depNames := make([]string, 0, len(ft.Dependencies.Frameworks))
+	var depConstraints map[string]string
+	for _, entry := range ft.Dependencies.Frameworks {
+		dep, constraint := parseDep(entry)
+		depNames = append(depNames, dep)
+		if constraint != "" {
+			if depConstraints == nil {
+				depConstraints = map[string]string{}
+			}
+			depConstraints[dep] = constraint
+		}
+	}
+	c.frameworks[name] = Framework{
+		srcFS:                 src,
+		Name:                  ft.Name,
+		Version:               ft.Version,
+		Description:           ft.Description,
+		Dependencies:          depNames,
+		DependencyConstraints: depConstraints,
+		Skills:                ft.Skills,
+		Commands:              ft.Commands,
+		Subagents:             ft.Subagents,
+	}
+	return nil
+}
+
+// mergeFrameworkRoot indexes a local single-framework root: <src>/framework.toml
+// declares exactly one framework whose name must equal the given name, with
+// framework-root-relative resource paths (validated to exist in src). Resources
+// index with FS=src so their content materializes from the local root, exactly
+// like a builtin framework's from the embedded base.
+func (c *Catalog) mergeFrameworkRoot(name string, src fs.FS) error {
+	b, err := fs.ReadFile(src, "framework.toml")
+	if err != nil {
+		return fmt.Errorf("catalog: read local framework %q framework.toml: %w", name, err)
+	}
+	var ft frameworkTOML
+	if err := toml.Unmarshal(b, &ft); err != nil {
+		return fmt.Errorf("catalog: parse local framework %q framework.toml: %w", name, err)
+	}
+	// Forward-safety mirrors mergeSource: refuse a newer manifest schema before
+	// indexing any resource.
+	if ft.ManifestSchema > CurrentManifestSchemaVersion {
+		return fmt.Errorf("catalog: local framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto", name, ft.ManifestSchema, CurrentManifestSchemaVersion)
+	}
+	if ft.Name != name {
+		return fmt.Errorf("catalog: local framework %q declares name %q; name must equal the framework key", name, ft.Name)
+	}
+	return c.indexFramework(name, src, ft)
 }
 
 // validateDependencyRanges checks every framework's constrained dependencies
@@ -303,6 +407,6 @@ func (c *Catalog) SubagentContent(name string) ([]byte, bool, error) {
 	if !ok {
 		return nil, false, nil
 	}
-	b, err := fs.ReadFile(c.fsys, p)
+	b, err := fs.ReadFile(c.subagentFS[name], p)
 	return b, true, err
 }
