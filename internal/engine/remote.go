@@ -21,6 +21,48 @@ func (e *Engine) HasRemoteResources() bool {
 	return err == nil && len(declared) > 0
 }
 
+// RemoteRepin describes a declared remote subagent whose pinned digest differs
+// from the digest recorded in the remote lockfile. A digest-only repin does not
+// alter the name-based symlink plan, so apply must surface these separately and
+// require confirmation before mutating remote content (F6).
+type RemoteRepin struct {
+	Name string
+	Old  string // digest recorded in the lock
+	New  string // digest declared in config
+}
+
+// PendingRemoteRepins returns declared remote subagents whose pinned digest
+// differs from the lockfile record, in stable name order. A remote that is
+// declared but not yet locked is NOT reported here: it already surfaces as a new
+// symlink in the projection plan. Only an invisible digest-only change (same
+// name, same link target, different pinned content) is returned.
+func (e *Engine) PendingRemoteRepins() ([]RemoteRepin, error) {
+	declared, err := e.declaredRemoteSubagents()
+	if err != nil {
+		return nil, err
+	}
+	lock, err := remote.LoadLock(e.remoteLockPath())
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(declared))
+	for name := range declared {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var out []RemoteRepin
+	for _, name := range names {
+		entry, ok := lock.Get("subagent", name)
+		if !ok {
+			continue
+		}
+		if entry.Digest != declared[name].Digest {
+			out = append(out, RemoteRepin{Name: name, Old: entry.Digest, New: declared[name].Digest})
+		}
+	}
+	return out, nil
+}
+
 // remoteSubagentDir is the single source of truth for where verified remote
 // subagent content is materialized. materializeRemotes writes it, the adapters
 // link from it, and doctor reads it — they must stay in lockstep.
