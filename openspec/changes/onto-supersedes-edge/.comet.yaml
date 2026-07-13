@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: b44fa3e3a93a114e0015d121355728e4fcf565ac
 design_doc: docs/superpowers/specs/2026-07-13-onto-supersedes-edge-design.md
 plan: docs/superpowers/plans/2026-07-13-onto-supersedes-edge.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-13-onto-supersedes-edge-verify.md
 branch_status: handled
 created_at: 2026-07-13
-verified_at: null
+verified_at: 2026-07-13
 archived: false
 direct_override: null
 handoff_context: openspec/changes/onto-supersedes-edge/.comet/handoff/design-context.json
