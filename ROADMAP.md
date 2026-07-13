@@ -128,6 +128,16 @@ on verify.result==pass and entering-build on isolation set. 135 tests -race.
 non-waivable finding classes + skeptic/reviewer subagents (F11/F12); skill-plane
 recovery/atomic bookkeeping (F16/F17); full dep resolver with cycle detection (F10).*
 
+**F10 cycle-detection slice DONE (2026-07-13, `onto-graph-cycle-check` archived):**
+`onto graph` now detects change-dependency cycles in the `depends-on` subgraph
+(`detectDepCycles` — deterministic DFS with canonical-rotation dedup), emitting a
+`cycles` array in `--json` and a trailing `cycles:` section in the human listing;
+`onto graph --check` exits non-zero on a cycle (a CI-usable structural gate),
+serving X1's "typed edges validated in CI" exit gate. This is distinct from the
+catalog's existing *framework*-dep cycle detection. Remaining F10: blocking `onto
+advance`/`onto new` on a cycle (the "blocks entering build" gate-logic slice) and
+date-anchored dep resolution against a registry — both larger, separable.*
+
 - **Problem:** advance/close check existence + checkboxes, not validity; empty
   unverified work can archive.
 - **Decision applied:** B1 (fork decision 2). The binary enforces that a
