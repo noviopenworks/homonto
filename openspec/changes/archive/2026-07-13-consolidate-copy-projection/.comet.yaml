@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-consolidate-copy-projec
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/consolidate-copy-projection/.comet/handoff/design-context.json
 handoff_hash: 66903938adb7ffe5619a2f73857ba20cda86e8e611d7c318740c944770dcd483

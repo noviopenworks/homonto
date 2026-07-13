@@ -2,6 +2,7 @@
 change: consolidate-copy-projection
 design-doc: docs/superpowers/specs/2026-07-13-consolidate-copy-projection-design.md
 base-ref: b83efecedce97958295ca34fd3585d0f8e26dcf4
+archived-with: 2026-07-13-consolidate-copy-projection
 ---
 # Plan — consolidate copy-mode projection
 Safety net: conformance + per-adapter copy-mode tests green each step.
