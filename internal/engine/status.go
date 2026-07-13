@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/remote"
@@ -86,6 +87,11 @@ func (e *Engine) Status() (drift []string, pending int, err error) {
 // Doctor runs environment health checks.
 func (e *Engine) Doctor() []string {
 	var out []string
+	if cl, cerr := catalog.New(); cerr == nil {
+		if f, pending := catalogUpgradeFinding(e.State.CatalogVersionRecorded(), cl.Version()); pending {
+			out = append(out, f)
+		}
+	}
 	if _, err := exec.LookPath("pass"); err != nil {
 		out = append(out, "warn: `pass` not found on PATH (pass: references will fail)")
 	} else {
