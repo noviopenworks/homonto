@@ -34,6 +34,9 @@ func planCmd() *cobra.Command {
 				return err
 			}
 			if !plan.HasChanges(sets) && len(repins) == 0 {
+				if err := coverageComplete(e.Warnings); err != nil {
+					return err
+				}
 				cmd.Println("No changes. Everything up to date.")
 				return nil
 			}

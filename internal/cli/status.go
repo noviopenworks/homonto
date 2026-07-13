@@ -34,6 +34,9 @@ func statusCmd() *cobra.Command {
 				cmd.Println(fmt.Sprintf("%d config change(s) awaiting apply (run `homonto apply`)", pending))
 			}
 			if len(drift) == 0 && pending == 0 {
+				if err := coverageComplete(e.Warnings); err != nil {
+					return err
+				}
 				cmd.Println("No drift.")
 			}
 			return nil
