@@ -300,10 +300,19 @@ only after Now.
   never a partial dir that `allSkillDirsExist` (Stat-only) would mistake for
   complete and never repair. Closes the skill-dir half of F47 (commands/subagents
   already write atomically).
+- **Close archive-ordering slice DONE (2026-07-13, `close-archive-rollback`
+  archived):** `onto close` set `archived: true` and saved before the archive
+  move; a `MkdirAll`/`Rename` failure left the change marked-archived-but-not-moved,
+  contradicting the spec's "archives NOTHING on failure". Now a failed move rolls
+  the flag back to `false`, so a failed close leaves the change fully un-archived.
+  Closes the deterministic error-path half of F4 (a process kill between the save
+  and the rename still has a window — full crash-safety needs location-derived
+  archived state, a larger redesign).
 - **Problem (remaining):** `Apply` reads mutable adapter fields set by a prior
   `Plan`, not the plan alone; adapter and close writes are sequential with no
-  journal (F42). Close still mutates destructively before completion (the
-  binary's F4 archive ordering); catalog materialization is now crash-safe.
+  journal (F42). Catalog materialization and the close error-path are now
+  crash/consistency-safe; the deeper immutability + journaling (F42) and full
+  crash-safety remain.
 - **Closes:** F41, F42, F4, F47, F18 (archive must move all historical
   artifacts, rewrite references, and validate every referenced path and hash
   before marking the change archived — the item-10/11 archives already do this
