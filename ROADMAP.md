@@ -290,10 +290,16 @@ only after Now.
   change dependency graph over active (`docs/changes/*`) and archived
   (`docs/changes/archive/*`) changes: nodes (stable id, name, phase, archived) +
   `depends-on` edges from each change's `deps`, deterministic, F14 no-drop for
-  malformed/missing-state. The first typed edge (`depends-on`) over changes; the
-  richer edge set (`implements`/`tests`/`supersedes`/`deviates-from`/
-  `released-in`) linking changes to code/specs/releases + CI validation remain the
-  larger follow-on.
+  malformed/missing-state. First typed edge: `depends-on`.
+- **`implements` edge DONE (2026-07-13, `onto-graph-implements` archived):** `onto
+  graph` also emits capability nodes (`kind: "capability"`) + `implements` edges
+  (change → each capability from its `specs/<capability>.md` delta specs). The two
+  edges onto can *derive* from what it records (`depends-on`, `implements`) are now
+  delivered. **Remaining typed edges** (`tests`/`released-in`/`supersedes`/
+  `deviates-from`) need data onto does not track (which tests cover a change, which
+  release shipped it, what supersedes what) — a **data-model design decision**, not
+  a mechanical derivation. CI validation + the OpenSpec-divergence question also
+  remain maintainer decisions.
 - **Problem (remaining — the richer graph):** requirements and scenarios are mutable
   headings; verification maps names to tests by hand. The toolkit cannot yet
   answer "which code, tests, decisions, commits, and release prove scenario X."
