@@ -339,10 +339,9 @@ What turns an opinionated internal toolkit into something others build on.
 ### E2. Machine-readable CLI and a stable automation contract
 - **Partial (2026-07-13):** F49, F45, F51, F48, F52, F46, + F50 slices (`status-json-output`, `doctor --output json`) archived on `main` — `NoArgs` on
   positional-free commands, and plan/status no longer claim "up to date"/"No drift"
-  (exit 0) after an adapter warning. Remaining E2: **F50 remainder** — `--output json` for plan/apply/doctor and a
-  *versioned exit-code taxonomy* (a public automation contract). Design-first: the
-  exit-code contract must be decided deliberately, not rushed. `status --output json`
-  is shipped as the additive pilot.
+  (exit 0) after an adapter warning. E2 `--output json` COMPLETE (status, doctor, plan). Remaining E2: only the
+  versioned exit-code taxonomy — shipping opt-in via `--exit-code` (default
+  behavior unchanged) so it never breaks existing automation.
 - **Closes:** F45 (never print "up to date" after skipping an adapter), F46
   (catalog upgrades appear in the plan; doctor reports version mismatch), F49
   (`cobra.NoArgs` everywhere; a stray positional never silently ignored — verified
