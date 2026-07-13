@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/applylock"
 	"github.com/noviopenworks/homonto/internal/engine"
 	"github.com/noviopenworks/homonto/internal/plan"
 	"github.com/spf13/cobra"
@@ -23,6 +24,15 @@ func applyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Serialize concurrent applies on the same project: two applies must
+			// not plan from the same snapshot and race to a last-writer-wins
+			// outcome on the state and tool files. Held from before Plan (so the
+			// snapshot is stable) until the command returns.
+			lock, err := applylock.Acquire(e.StateDir)
+			if err != nil {
+				return err
+			}
+			defer lock.Release()
 			sets, err := e.Plan()
 			if err != nil {
 				return err
