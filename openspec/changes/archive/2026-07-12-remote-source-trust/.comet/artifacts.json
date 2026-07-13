@@ -1,8 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/remote-source-trust/proposal.md",
-  "openspec_design": "openspec/changes/remote-source-trust/design.md",
-  "openspec_tasks": "openspec/changes/remote-source-trust/tasks.md",
-  "handoff_context": "openspec/changes/remote-source-trust/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/remote-source-trust/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-12-remote-source-trust"
-}

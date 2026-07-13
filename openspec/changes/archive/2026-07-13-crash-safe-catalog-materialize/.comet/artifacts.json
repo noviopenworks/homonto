@@ -1,9 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/crash-safe-catalog-materialize/proposal.md",
-  "openspec_design": "openspec/changes/crash-safe-catalog-materialize/design.md",
-  "openspec_tasks": "openspec/changes/crash-safe-catalog-materialize/tasks.md",
-  "openspec_delta_spec": "openspec/changes/crash-safe-catalog-materialize/specs/apply-pipeline/spec.md",
-  "handoff_context": "openspec/changes/crash-safe-catalog-materialize/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/crash-safe-catalog-materialize/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-13-crash-safe-catalog-materialize"
-}

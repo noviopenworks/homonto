@@ -1,9 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/framework-dependency-ranges/proposal.md",
-  "openspec_design": "openspec/changes/framework-dependency-ranges/design.md",
-  "openspec_tasks": "openspec/changes/framework-dependency-ranges/tasks.md",
-  "openspec_delta_spec": "openspec/changes/framework-dependency-ranges/specs/framework-expansion/spec.md",
-  "handoff_context": "openspec/changes/framework-dependency-ranges/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/framework-dependency-ranges/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-13-framework-dependency-ranges"
-}

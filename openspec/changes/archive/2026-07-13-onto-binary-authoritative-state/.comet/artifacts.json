@@ -1,8 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/onto-binary-authoritative-state/proposal.md",
-  "openspec_design": "openspec/changes/onto-binary-authoritative-state/design.md",
-  "openspec_tasks": "openspec/changes/onto-binary-authoritative-state/tasks.md",
-  "handoff_context": "openspec/changes/onto-binary-authoritative-state/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/onto-binary-authoritative-state/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-13-onto-binary-authoritative-state"
-}

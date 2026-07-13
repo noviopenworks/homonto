@@ -1,6 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/transactional-remote-apply/proposal.md",
-  "openspec_tasks": "openspec/changes/transactional-remote-apply/tasks.md",
-  "openspec_delta_spec": "openspec/changes/transactional-remote-apply/specs/apply-pipeline/spec.md",
-  "archive_directory": "openspec/changes/archive/2026-07-13-transactional-remote-apply"
-}

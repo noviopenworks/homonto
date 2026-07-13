@@ -1,6 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/cli-reject-stray-args/proposal.md",
-  "openspec_tasks": "openspec/changes/cli-reject-stray-args/tasks.md",
-  "openspec_delta_spec": "openspec/changes/cli-reject-stray-args/specs/cli-commands/spec.md",
-  "archive_directory": "openspec/changes/archive/2026-07-13-cli-reject-stray-args"
-}

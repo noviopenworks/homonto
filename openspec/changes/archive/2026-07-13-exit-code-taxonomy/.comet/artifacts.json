@@ -1,6 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/exit-code-taxonomy/proposal.md",
-  "openspec_tasks": "openspec/changes/exit-code-taxonomy/tasks.md",
-  "openspec_delta_spec": "openspec/changes/exit-code-taxonomy/specs/cli-commands/spec.md",
-  "archive_directory": "openspec/changes/archive/2026-07-13-exit-code-taxonomy"
-}

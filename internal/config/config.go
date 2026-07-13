@@ -539,8 +539,7 @@ func migrate(c *Config) {
 	// declarative [subagents.<name>] one. Fold every declared agent into an
 	// equivalent copy-mode subagent (a declared [agents.X] wins over an explicit
 	// [subagents.X] of the same name) and drop the agents table, so [agents.X]
-	// still parses but is now projected by `apply` like any other subagent. See
-	// docs/superpowers/specs/2026-07-11-agents-subagents-reconciliation-design.md.
+	// still parses but is now projected by `apply` like any other subagent.
 	if len(c.Agents) > 0 {
 		if c.Subagents == nil {
 			c.Subagents = map[string]Subagent{}

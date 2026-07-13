@@ -1,9 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/plugin-declaration-model/proposal.md",
-  "openspec_design": "openspec/changes/plugin-declaration-model/design.md",
-  "openspec_tasks": "openspec/changes/plugin-declaration-model/tasks.md",
-  "openspec_delta_spec": "openspec/changes/plugin-declaration-model/specs/config-model/spec.md",
-  "handoff_context": "openspec/changes/plugin-declaration-model/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/plugin-declaration-model/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-11-plugin-declaration-model"
-}

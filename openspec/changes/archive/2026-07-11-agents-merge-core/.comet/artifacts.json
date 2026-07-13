@@ -1,9 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/agents-merge-core/proposal.md",
-  "openspec_design": "openspec/changes/agents-merge-core/design.md",
-  "openspec_tasks": "openspec/changes/agents-merge-core/tasks.md",
-  "openspec_delta_spec": "openspec/changes/agents-merge-core/specs/agent-lifecycle/spec.md",
-  "handoff_context": "openspec/changes/agents-merge-core/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/agents-merge-core/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-11-agents-merge-core"
-}

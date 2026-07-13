@@ -10,19 +10,17 @@ operator.
 
 ## Install
 
-The first public tag is intentionally pending until both binaries are ready.
-Once a release is tagged, install a specific version directly:
+Install a tagged release directly:
 
 ```bash
-go install github.com/noviopenworks/homonto@v0.1.0-rc.1   # a tagged release
+go install github.com/noviopenworks/homonto@v0.1.0   # a tagged release
 ```
 
 Tagged releases also ship prebuilt `homonto` and `onto` binaries for
 Linux/macOS/Windows (amd64 and arm64) with a `SHA256SUMS` file, attached to the
 GitHub release.
 
-Until the first tag lands you can install/run the current `homonto` source
-instead:
+Or install/run the current source:
 
 ```bash
 go install github.com/noviopenworks/homonto@main   # current main branch
@@ -187,13 +185,12 @@ only when a managed key inside it actually changes.
 
 homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
 
-- **The public release remains untagged.** Both binaries are implemented:
-  `homonto` provides deterministic projection and agent lifecycle management,
-  while `onto` provides `init`, `new`, `status`, `advance`, `close`, and
-  `doctor` with phase, dependency, archive, and dirty-worktree gates. The
-  release pipeline packages both binaries. What remains is release-integrity
-  evidence: expanded dual-binary Docker E2E, packaging smoke, a clean release
-  rehearsal, and the maintainer-owned `v0.1.0-rc.1` tag.
+- **v0.1.0 is the first public tag.** Both binaries ship: `homonto` provides
+  deterministic projection and agent lifecycle management, while `onto` provides
+  `init`, `new`, `status`, `advance`, `close`, and `doctor` with phase,
+  dependency, archive, and dirty-worktree gates. The release pipeline packages
+  both binaries behind the CI gate (gofmt, mod-tidy, vet, build, `-race`,
+  govulncheck, dual-binary Docker E2E).
 - **Framework skill, command, and subagent projection are all implemented.**
   `[frameworks.X]` resolves through the bundled builtin catalog (`onto`,
   `comet`, `superpowers`, `openspec`), expands dependencies, and
@@ -248,20 +245,15 @@ failure does not lose earlier records.
 
 ### Development workflow
 
-This repo is developed with **Comet**: OpenSpec owns WHAT, Superpowers owns HOW,
-and Comet state/scripts bind the phases together. New development starts with
-`/comet`; active changes live under `openspec/changes/`, and deep technical
-designs and implementation plans live under `docs/superpowers/`.
+The source of truth for shipped behavior is the **code and its tests**. Prior
+capability specs, change workspaces, and design/verify docs were cleared from
+the tree; that history remains in git (`git log`) if you need it.
 
 - `docs/personas.md` — which workflow to use (homonto vs onto vs Comet/OpenSpec/Superpowers), and why we build with Comet but ship onto
-- `openspec/specs/` — living capability specs (SHALL + scenarios); the source of truth for shipped behavior
-- `docs/adr/` — accepted / superseded architecture decisions
-- `openspec/changes/` — active Comet/OpenSpec change workspaces (+ archive)
+- `docs/adr/` — accepted / superseded architecture decisions (the durable rationale)
 - `docs/guides/` — user-facing guides
 - `docs/release-checklist.md` — how to cut a release
 
-Start with `/comet`. Full guide: [docs/guides/comet-workflow.md](docs/guides/comet-workflow.md).
-
-Future agents should start with `/comet` — it inspects `openspec/changes/` and
-each active change's `.comet.yaml` for current state — before trusting older
-reviews or archived change artifacts.
+Read the relevant ADRs and the nearby implementation before changing behavior;
+add or update focused tests for behavior changes and run the narrowest useful
+verification command.

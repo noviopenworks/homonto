@@ -1,9 +1,0 @@
-{
-  "openspec_proposal": "openspec/changes/onto-phase-gates/proposal.md",
-  "openspec_design": "openspec/changes/onto-phase-gates/design.md",
-  "openspec_tasks": "openspec/changes/onto-phase-gates/tasks.md",
-  "openspec_delta_spec": "openspec/changes/onto-phase-gates/specs/onto-binary/spec.md",
-  "handoff_context": "openspec/changes/onto-phase-gates/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/onto-phase-gates/.comet/handoff/design-context.md",
-  "archive_directory": "openspec/changes/archive/2026-07-10-onto-phase-gates"
-}
