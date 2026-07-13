@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,9 +25,16 @@ type Entry struct {
 // it is global (not per-tool) and omitted when empty so pre-catalog state.json
 // files stay backward-compatible (absent = "force materialize").
 type State struct {
+	// SchemaVersion is the state.json format version. Absent/0 means a legacy
+	// (pre-versioning) file and is treated as the current version; a value greater
+	// than CurrentStateSchemaVersion is rejected fail-closed at load.
+	SchemaVersion  int                         `json:"schemaVersion,omitempty"`
 	Managed        map[string]map[string]Entry `json:"managed"`
 	CatalogVersion string                      `json:"catalogVersion,omitempty"`
 }
+
+// CurrentStateSchemaVersion is the state.json schema version this binary writes.
+const CurrentStateSchemaVersion = 1
 
 // CatalogVersionRecorded returns the catalog version last materialized, or "".
 func (s *State) CatalogVersionRecorded() string { return s.CatalogVersion }
@@ -51,6 +59,9 @@ func Load(dir string) (*State, error) {
 	if err := json.Unmarshal(data, s); err != nil {
 		return nil, err
 	}
+	if s.SchemaVersion > CurrentStateSchemaVersion {
+		return nil, fmt.Errorf("state: unknown state schema version %d (this binary supports up to %d) — upgrade homonto", s.SchemaVersion, CurrentStateSchemaVersion)
+	}
 	if s.Managed == nil {
 		s.Managed = map[string]map[string]Entry{}
 	}
@@ -61,6 +72,7 @@ func Load(dir string) (*State, error) {
 // needed. state.json is one of homonto's own control-plane files, so it is
 // written no-follow (a symlinked target is refused, never followed) at 0600.
 func (s *State) Save(dir string) error {
+	s.SchemaVersion = CurrentStateSchemaVersion
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
