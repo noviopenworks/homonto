@@ -16,6 +16,7 @@ func applyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apply",
 		Short: "Project config into the AI tools",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfgPath, _ := cmd.Flags().GetString("config")
 			yes, _ := cmd.Flags().GetBool("yes")

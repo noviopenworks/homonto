@@ -12,6 +12,7 @@ func planCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "plan",
 		Short: "Show what apply would change",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfgPath, _ := cmd.Flags().GetString("config")
 			home, _ := os.UserHomeDir()
