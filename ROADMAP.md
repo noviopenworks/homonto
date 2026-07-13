@@ -347,10 +347,17 @@ only after Now.
 
 ### X3. Workflow profiles and a capability registry
 - **F37 DONE (2026-07-13):** both planes are now versioned + fail-closed on a
-  future version — `state-schema-version` (state.json) and
-  `config-schema-version` (homonto.toml, archived). Remaining X3 (the `ToolID`-keyed
-  capability registry F33/F34; config-loading phase split F43; non-waivable finding
-  classes F11/F12) is a larger refactor — design-first.
+  future version — `state-schema-version` (state.json) and `config-schema-version`
+  (homonto.toml, archived).
+- **F33 adapter-registry DONE (2026-07-13, `adapter-registry` archived):**
+  `internal/adapter/registry` (Deps/Factory/Registry + `Builtins()`) replaces the
+  hardcoded adapter slice in `engine.Build` — the engine no longer imports the
+  concrete adapters, and adding a built-in is one `Register` line in `Builtins()`.
+  Behavior-identical (same three adapters, same order, same options). Remaining X3
+  (F34 interface-type generalization — the `Adapter` contract still binds concrete
+  `config.Config`/`secret.Resolver`/`state.State`; config-loading phase split F43;
+  non-waivable finding classes F11/F12 in the onto/comet workflow) is larger and
+  design-first.
 - **Problem:** verification scale keys on task/file counts, not risk or changed
   requirements, so a one-file security change can get less scrutiny than a large
   refactor (F11); escape hatches are too broad and the skeptic/reviewer subagents
