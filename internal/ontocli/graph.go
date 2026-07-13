@@ -10,12 +10,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// graphNode is one change in the traceability graph.
+// graphNode is one node in the traceability graph — a change (kind "change",
+// carrying id/phase/archived) or a capability (kind "capability", named in the
+// Change field with id/phase empty).
 type graphNode struct {
 	ID       string `json:"id"`
 	Change   string `json:"change"`
 	Phase    string `json:"phase"`
 	Archived bool   `json:"archived"`
+	Kind     string `json:"kind"`
 }
 
 // graphEdge is a typed relationship between changes. Today the only edge type is
@@ -52,11 +55,16 @@ func graphCmd() *cobra.Command {
 				cmd.Println(string(b))
 				return nil
 			}
-			edgesFrom := map[string][]string{}
+			type outEdge struct{ typ, to string }
+			edgesFrom := map[string][]outEdge{}
 			for _, e := range edges {
-				edgesFrom[e.From] = append(edgesFrom[e.From], e.To)
+				edgesFrom[e.From] = append(edgesFrom[e.From], outEdge{e.Type, e.To})
 			}
 			for _, n := range nodes {
+				if n.Kind == "capability" {
+					cmd.Printf("%s (capability)\n", n.Change)
+					continue
+				}
 				suffix := ""
 				if n.Archived {
 					suffix = ", archived"
@@ -66,8 +74,8 @@ func graphCmd() *cobra.Command {
 					id = "no-id"
 				}
 				cmd.Printf("%s (%s, %s%s)\n", n.Change, id, n.Phase, suffix)
-				for _, to := range edgesFrom[n.Change] {
-					cmd.Printf("  → depends-on %s\n", to)
+				for _, e := range edgesFrom[n.Change] {
+					cmd.Printf("  → %s %s\n", e.typ, e.to)
 				}
 			}
 			return nil
@@ -87,15 +95,31 @@ func buildGraph(root string) ([]graphNode, []graphEdge, error) {
 	var nodes []graphNode
 	var edges []graphEdge
 
+	capSeen := map[string]bool{}
 	add := func(dir, fallbackName string, archived bool) {
 		st, class, _ := ontostate.Classify(dir)
 		name := st.Change
 		if class != "valid" || name == "" {
 			name = fallbackName
 		}
-		nodes = append(nodes, graphNode{ID: st.ID, Change: name, Phase: st.Phase, Archived: archived || st.Archived})
+		nodes = append(nodes, graphNode{ID: st.ID, Change: name, Phase: st.Phase, Archived: archived || st.Archived, Kind: "change"})
 		for _, dep := range st.Deps {
 			edges = append(edges, graphEdge{From: name, To: dep, Type: "depends-on"})
+		}
+		// implements: a change's delta specs live at specs/<capability>.md (onto's
+		// flat delta-spec layout). Each names a capability the change implements.
+		if specs, sErr := os.ReadDir(filepath.Join(dir, "specs")); sErr == nil {
+			for _, sf := range specs {
+				if sf.IsDir() || filepath.Ext(sf.Name()) != ".md" {
+					continue
+				}
+				capName := sf.Name()[:len(sf.Name())-len(".md")]
+				edges = append(edges, graphEdge{From: name, To: capName, Type: "implements"})
+				if !capSeen[capName] {
+					capSeen[capName] = true
+					nodes = append(nodes, graphNode{Change: capName, Kind: "capability"})
+				}
+			}
 		}
 	}
 
@@ -122,8 +146,16 @@ func buildGraph(root string) ([]graphNode, []graphEdge, error) {
 		}
 	}
 
-	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Change < nodes[j].Change })
+	sort.Slice(nodes, func(i, j int) bool {
+		if nodes[i].Kind != nodes[j].Kind {
+			return nodes[i].Kind < nodes[j].Kind
+		}
+		return nodes[i].Change < nodes[j].Change
+	})
 	sort.Slice(edges, func(i, j int) bool {
+		if edges[i].Type != edges[j].Type {
+			return edges[i].Type < edges[j].Type
+		}
 		if edges[i].From != edges[j].From {
 			return edges[i].From < edges[j].From
 		}

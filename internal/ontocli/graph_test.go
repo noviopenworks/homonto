@@ -31,6 +31,7 @@ type graphJSON struct {
 		Change   string `json:"change"`
 		Phase    string `json:"phase"`
 		Archived bool   `json:"archived"`
+		Kind     string `json:"kind"`
 	} `json:"nodes"`
 	Edges []struct {
 		From string `json:"from"`
@@ -89,5 +90,53 @@ func TestGraphCommand_ReadOnlyNoConfig(t *testing.T) {
 	cmd.SetArgs([]string{"graph", "--dir", root}) // no homonto.toml present
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("graph in config-less workspace should succeed: %v", err)
+	}
+}
+
+func TestGraphCommand_CapabilityNodesAndImplementsEdges(t *testing.T) {
+	root := t.TempDir()
+	mkState(t, root, "docs/changes/gamma", ontostate.State{Change: "gamma", ID: "dddd4444", Phase: "design"})
+	// gamma's delta spec: specs/mycap.md (onto flat delta-spec layout).
+	if err := os.WriteFile(filepath.Join(root, "docs", "changes", "gamma", "specs", "mycap.md"), []byte("# mycap"), 0o644); err != nil {
+		// ensure the specs dir exists
+		if mkErr := os.MkdirAll(filepath.Join(root, "docs", "changes", "gamma", "specs"), 0o755); mkErr != nil {
+			t.Fatal(mkErr)
+		}
+		if wErr := os.WriteFile(filepath.Join(root, "docs", "changes", "gamma", "specs", "mycap.md"), []byte("# mycap"), 0o644); wErr != nil {
+			t.Fatal(wErr)
+		}
+	}
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"graph", "--json", "--dir", root})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("graph: %v (%s)", err, out.String())
+	}
+	var g graphJSON
+	if err := json.Unmarshal(out.Bytes(), &g); err != nil {
+		t.Fatalf("not JSON: %v", err)
+	}
+	// gamma is a change node; mycap is a capability node.
+	kindOf := map[string]string{}
+	for _, n := range g.Nodes {
+		kindOf[n.Change] = n.Kind
+	}
+	if kindOf["gamma"] != "change" {
+		t.Errorf("gamma kind = %q, want change", kindOf["gamma"])
+	}
+	if kindOf["mycap"] != "capability" {
+		t.Errorf("mycap kind = %q, want capability", kindOf["mycap"])
+	}
+	found := false
+	for _, e := range g.Edges {
+		if e.From == "gamma" && e.To == "mycap" && e.Type == "implements" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("missing implements edge gamma->mycap; edges=%+v", g.Edges)
 	}
 }
