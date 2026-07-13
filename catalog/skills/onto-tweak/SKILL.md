@@ -37,15 +37,14 @@ the full plan — bounded by strict upgrade rules.
 ### 1. Open-lite
 
 One-paragraph `proposal.md` — a `Preset: tweak` line at column 0 under the
-title (the state rebuild greps `^Preset:`), then what + why — plus short
-`tasks.md`, and `state.yaml` with `workflow: tweak`, `phase: build`,
-`created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
-open-lite (`isolation: branch`, `execution: direct`, `tdd: direct`)
-(canonical schema: `onto/references/state-yaml.md`; artifact templates:
-`onto-open/references/`). Branch: `tweak/YYYYMMDD/<name>`. **Commit the
-workspace** before the first task. Stamp `metrics.phases.<phase>` at the
-exit of each phase the change occupies (`build`, `verify`, `close`) — a
-preset never occupies `open`.
+title, then what + why — plus short `tasks.md`. Create the workspace via
+`onto new <name> --workflow tweak`, then `onto set base-ref <name> "$(git
+rev-parse HEAD)"`, `onto set guides <name> pending`, and the default decisions:
+`onto set isolation <name> branch`, `onto set build-mode <name> direct`, `onto
+set tdd-mode <name> direct`. Branch: `tweak/YYYYMMDD/<name>`. **Commit the
+workspace** before the first task. `onto new` records `phase: open`; the
+preset's working phase (build) is derived by the dispatcher — the binary's
+`phase` field is not advanced through the skipped phases (N2, out of scope).
 
 > **GATE (open-lite scope):** confirm this fits a tweak (small, local, no
 > new capability, no existing-spec requirement change) before building —
@@ -73,8 +72,8 @@ workflow.
 ### 4. Close
 
 Full `onto-close` obligations: lint, merge any spec deltas, guides
-`updated` or `"waived: <reason>"`, metrics finalized, final confirmation,
-archive, ship handoff offered.
+`updated` or `"waived: <reason>"`, final confirmation, archive, ship handoff
+offered.
 
 ## Upgrade rules
 
@@ -89,11 +88,10 @@ archive, ship handoff offered.
 > - a new capability emerges
 > - an existing spec's requirements are affected
 >
-> On confirmed upgrade: set `workflow: full`, `phase: design`,
-> `metrics.upgraded: true`, **and annotate the proposal's first line to
-> `Preset: tweak (upgraded to full YYYY-MM-DD)`** (the state-rebuild rules
-> read that marker), then route through `/onto` to backfill the design
-> phase.
+> On confirmed upgrade: **annotate the proposal's first line to `Preset: tweak
+> (upgraded to full YYYY-MM-DD)`** — the dispatcher re-derives `workflow: full`
+> from that marker (no `onto set workflow` exists). Then run `onto advance
+> <name>` to reach design and route through `/onto` to backfill it.
 
 ## Exit checklist (per phase, lite)
 
