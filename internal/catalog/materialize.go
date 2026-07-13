@@ -24,14 +24,20 @@ func (c *Catalog) Materialize(dstRoot string, skillNames []string) error {
 			return fmt.Errorf("catalog: sub %q: %w", sp, err)
 		}
 		dstDir := filepath.Join(dstRoot, name)
-		if err := os.RemoveAll(dstDir); err != nil {
+		// Stage-then-swap so a read error, full disk, or crash mid-walk never
+		// leaves a partially-written skill dir (which allSkillDirsExist would
+		// mistake for complete and never repair). Write into a sibling staging
+		// dir, then atomically swap it into place only after the whole walk
+		// succeeds. Discard any leftover staging from a prior crashed run first.
+		staging := dstDir + ".staging"
+		if err := os.RemoveAll(staging); err != nil {
 			return err
 		}
 		err = fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
-			target := filepath.Join(dstDir, filepath.FromSlash(p))
+			target := filepath.Join(staging, filepath.FromSlash(p))
 			if d.IsDir() {
 				return os.MkdirAll(target, 0o755)
 			}
@@ -47,6 +53,19 @@ func (c *Catalog) Materialize(dstRoot string, skillNames []string) error {
 			return fsutil.WriteControlPlane(target, data, 0o644)
 		})
 		if err != nil {
+			// dstDir is untouched (still the prior complete version); drop the
+			// partial staging so the next run starts clean.
+			_ = os.RemoveAll(staging)
+			return err
+		}
+		// Swap: remove the old dir, then rename staging into place. A crash in
+		// this window leaves dstDir absent (not partial), so the next run
+		// re-materializes rather than trusting a half-written directory.
+		if err := os.RemoveAll(dstDir); err != nil {
+			_ = os.RemoveAll(staging)
+			return err
+		}
+		if err := os.Rename(staging, dstDir); err != nil {
 			return err
 		}
 	}
