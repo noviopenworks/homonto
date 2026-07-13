@@ -319,28 +319,26 @@ func sameResource(a, b Resource) bool {
 	return a.Source == b.Source && a.Scope == b.Scope && slices.Equal(a.Targets, b.Targets)
 }
 
-// ExpandedSkillEntriesForTool returns the effective skills for a tool: explicit
-// [skills.X] entries plus, for each [frameworks.<fw>] source="builtin:<fw>"
-// targeting the tool, its transitively expanded skills. Each expanded skill
-// inherits the framework declaration's scope and targets. A framework skill
-// whose name collides with an explicit [skills.X] entry, or with another
-// framework's skill under a conflicting declaration, is an error, as is a
-// dependency cycle (surfaced from catalog.Expand).
-func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, error) {
+// expandEntriesForTool is the generic per-kind framework-expansion pipeline
+// (F43): explicit [<kind>s.X] entries plus, for each framework declaration
+// targeting the tool, its transitively expanded resources of the kind — tagged
+// builtin:<name> with the framework's scope/targets, merged with the same
+// explicit-clash and conflicting-scope/targets rules for every kind. kind fills
+// the error text ("skill"/"command"/"subagent"); expand adapts the per-kind
+// catalog Expand method to the resource names.
+func (c *Config) expandEntriesForTool(tool, kind string, base []NamedResource, expand func(*cat.Catalog, string) ([]string, error)) ([]NamedResource, error) {
 	byName := map[string]NamedResource{}
 	explicitNames := map[string]bool{}
-	for _, e := range c.SkillEntriesForTool(tool) {
+	for _, e := range base {
 		byName[e.Name] = e
 		explicitNames[e.Name] = true
 	}
-
 	// Deterministic framework iteration order for stable error messages.
 	fwNames := make([]string, 0, len(c.Frameworks))
 	for name := range c.Frameworks {
 		fwNames = append(fwNames, name)
 	}
 	sort.Strings(fwNames)
-
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
@@ -357,39 +355,77 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 				return nil, err
 			}
 		}
-		expanded, err := cl.Expand([]string{catName})
+		names, err := expand(cl, catName)
 		if err != nil {
 			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
 		}
-		for _, es := range expanded {
-			if explicitNames[es.Name] {
-				return nil, fmt.Errorf("config: skill %q is declared both explicitly in [skills] and by framework %q", es.Name, fwName)
+		for _, name := range names {
+			if explicitNames[name] {
+				return nil, fmt.Errorf("config: %s %q is declared both explicitly in [%ss] and by framework %q", kind, name, kind, fwName)
 			}
 			nr := NamedResource{
-				Name: es.Name,
+				Name: name,
 				Resource: Resource{
-					Source:  "builtin:" + es.Name,
+					Source:  "builtin:" + name,
 					Scope:   fwRes.Scope,
 					Targets: fwRes.Targets,
 				},
 				Mode: "link", // framework-expanded resources project as symlinks
 			}
-			if prev, ok := byName[es.Name]; ok {
+			if prev, ok := byName[name]; ok {
 				if !sameResource(prev.Resource, nr.Resource) {
-					return nil, fmt.Errorf("config: skill %q expanded by multiple frameworks with conflicting scope/targets (framework %q)", es.Name, fwName)
+					return nil, fmt.Errorf("config: %s %q expanded by multiple frameworks with conflicting scope/targets (framework %q)", kind, name, fwName)
 				}
 				continue
 			}
-			byName[es.Name] = nr
+			byName[name] = nr
 		}
 	}
-
 	out := make([]NamedResource, 0, len(byName))
 	for _, nr := range byName {
 		out = append(out, nr)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
+}
+
+// skillNames/commandNames/subagentNames extract the expanded resource names (the
+// only field the pipeline uses) from each kind's catalog Expand result.
+func skillNames(e []cat.ExpandedSkill) []string {
+	out := make([]string, len(e))
+	for i, x := range e {
+		out[i] = x.Name
+	}
+	return out
+}
+func commandNames(e []cat.ExpandedCommand) []string {
+	out := make([]string, len(e))
+	for i, x := range e {
+		out[i] = x.Name
+	}
+	return out
+}
+func subagentNames(e []cat.ExpandedSubagent) []string {
+	out := make([]string, len(e))
+	for i, x := range e {
+		out[i] = x.Name
+	}
+	return out
+}
+
+// ExpandedSkillEntriesForTool returns the effective skills for a tool: explicit
+// [skills.X] entries plus, for each [frameworks.<fw>] source="builtin:<fw>"
+// targeting the tool, its transitively expanded skills. Each expanded skill
+// inherits the framework declaration's scope and targets. A framework skill
+// whose name collides with an explicit [skills.X] entry, or with another
+// framework's skill under a conflicting declaration, is an error, as is a
+// dependency cycle (surfaced from catalog.Expand).
+func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, error) {
+	return c.expandEntriesForTool(tool, "skill", c.SkillEntriesForTool(tool),
+		func(cl *cat.Catalog, n string) ([]string, error) {
+			e, err := cl.Expand([]string{n})
+			return skillNames(e), err
+		})
 }
 
 // ExpandedCommandEntriesForTool returns the effective commands for a tool:
@@ -401,68 +437,11 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 // error, as is a dependency cycle (surfaced from catalog.ExpandCommands).
 // Collision is command-vs-command only: a command may share a name with a skill.
 func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, error) {
-	byName := map[string]NamedResource{}
-	explicitNames := map[string]bool{}
-	for _, e := range c.CommandEntriesForTool(tool) {
-		byName[e.Name] = e
-		explicitNames[e.Name] = true
-	}
-
-	// Deterministic framework iteration order for stable error messages.
-	fwNames := make([]string, 0, len(c.Frameworks))
-	for name := range c.Frameworks {
-		fwNames = append(fwNames, name)
-	}
-	sort.Strings(fwNames)
-
-	var cl *cat.Catalog
-	for _, fwName := range fwNames {
-		fwRes := c.Frameworks[fwName]
-		catName, ok := FrameworkCatalogName(fwName, fwRes.Source)
-		if !ok {
-			continue
-		}
-		if !containsString(fwRes.TargetsOrAll(), tool) {
-			continue
-		}
-		if cl == nil {
-			var err error
-			if cl, err = c.FrameworkCatalog(); err != nil {
-				return nil, err
-			}
-		}
-		expanded, err := cl.ExpandCommands([]string{catName})
-		if err != nil {
-			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
-		}
-		for _, ec := range expanded {
-			if explicitNames[ec.Name] {
-				return nil, fmt.Errorf("config: command %q is declared both explicitly in [commands] and by framework %q", ec.Name, fwName)
-			}
-			nr := NamedResource{
-				Name: ec.Name,
-				Resource: Resource{
-					Source:  "builtin:" + ec.Name,
-					Scope:   fwRes.Scope,
-					Targets: fwRes.Targets,
-				},
-			}
-			if prev, ok := byName[ec.Name]; ok {
-				if !sameResource(prev.Resource, nr.Resource) {
-					return nil, fmt.Errorf("config: command %q expanded by multiple frameworks with conflicting scope/targets (framework %q)", ec.Name, fwName)
-				}
-				continue
-			}
-			byName[ec.Name] = nr
-		}
-	}
-
-	out := make([]NamedResource, 0, len(byName))
-	for _, nr := range byName {
-		out = append(out, nr)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out, nil
+	return c.expandEntriesForTool(tool, "command", c.CommandEntriesForTool(tool),
+		func(cl *cat.Catalog, n string) ([]string, error) {
+			e, err := cl.ExpandCommands([]string{n})
+			return commandNames(e), err
+		})
 }
 
 // ExpandedSubagentEntriesForTool returns the effective subagents for a tool:
@@ -474,69 +453,11 @@ func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, er
 // declaration, is an error, as is a dependency cycle (surfaced from
 // catalog.ExpandSubagents). Collision is subagent-vs-subagent only.
 func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, error) {
-	byName := map[string]NamedResource{}
-	explicitNames := map[string]bool{}
-	for _, e := range c.SubagentEntriesForTool(tool) {
-		byName[e.Name] = e
-		explicitNames[e.Name] = true
-	}
-
-	// Deterministic framework iteration order for stable error messages.
-	fwNames := make([]string, 0, len(c.Frameworks))
-	for name := range c.Frameworks {
-		fwNames = append(fwNames, name)
-	}
-	sort.Strings(fwNames)
-
-	var cl *cat.Catalog
-	for _, fwName := range fwNames {
-		fwRes := c.Frameworks[fwName]
-		catName, ok := FrameworkCatalogName(fwName, fwRes.Source)
-		if !ok {
-			continue
-		}
-		if !containsString(fwRes.TargetsOrAll(), tool) {
-			continue
-		}
-		if cl == nil {
-			var err error
-			if cl, err = c.FrameworkCatalog(); err != nil {
-				return nil, err
-			}
-		}
-		expanded, err := cl.ExpandSubagents([]string{catName})
-		if err != nil {
-			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
-		}
-		for _, es := range expanded {
-			if explicitNames[es.Name] {
-				return nil, fmt.Errorf("config: subagent %q is declared both explicitly in [subagents] and by framework %q", es.Name, fwName)
-			}
-			nr := NamedResource{
-				Name: es.Name,
-				Resource: Resource{
-					Source:  "builtin:" + es.Name,
-					Scope:   fwRes.Scope,
-					Targets: fwRes.Targets,
-				},
-				Mode: "link", // framework-expanded resources project as symlinks
-			}
-			if prev, ok := byName[es.Name]; ok {
-				if !sameResource(prev.Resource, nr.Resource) {
-					return nil, fmt.Errorf("config: subagent %q expanded by multiple frameworks with conflicting scope/targets (framework %q)", es.Name, fwName)
-				}
-				continue
-			}
-			byName[es.Name] = nr
-		}
-	}
-
-	out := make([]NamedResource, 0, len(byName))
-	for _, nr := range byName {
-		out = append(out, nr)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out, nil
+	return c.expandEntriesForTool(tool, "subagent", c.SubagentEntriesForTool(tool),
+		func(cl *cat.Catalog, n string) ([]string, error) {
+			e, err := cl.ExpandSubagents([]string{n})
+			return subagentNames(e), err
+		})
 }
 
 func (c *Config) EnabledModelTools() []string {
