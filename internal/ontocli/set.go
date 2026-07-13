@@ -85,6 +85,7 @@ func setCmd() *cobra.Command {
 	cmd.AddCommand(directiveCmd())
 	cmd.AddCommand(baseRefCmd())
 	cmd.AddCommand(depsCmd())
+	cmd.AddCommand(supersedesCmd())
 	cmd.AddCommand(guidesCmd())
 	return cmd
 }
@@ -156,6 +157,30 @@ func depsCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
 	cmd.Flags().StringArrayVar(&deps, "dep", nil, "a dependency change name; repeat for several")
+	return cmd
+}
+
+// supersedesCmd sets the change's supersedes list from a repeatable --change
+// flag. Mirrors depsCmd: --change (not a comma-split positional) keeps names
+// carrying edge characters unambiguous. Ungated — settable in any phase.
+func supersedesCmd() *cobra.Command {
+	var (
+		dir        string
+		supersedes []string
+	)
+	cmd := &cobra.Command{
+		Use:   "supersedes <change> --change <name> [--change <name> ...]",
+		Short: "Set the change names this change supersedes (repeat --change per name)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTransition(cmd, dir, args[0], func(st *ontostate.State) error {
+				st.Supersedes = supersedes
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	cmd.Flags().StringArrayVar(&supersedes, "change", nil, "a superseded change name; repeat for several")
 	return cmd
 }
 

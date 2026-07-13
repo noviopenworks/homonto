@@ -668,23 +668,24 @@ malformed or missing-state change still appears as a node labeled by its
 directory, never silently dropped), and emit one `depends-on` edge for each entry
 in a change's `deps`. It MUST also emit a capability node (`kind: "capability"`)
 for each capability a change declares via a `specs/<capability>.md` delta-spec
-file, and an `implements` edge from the change to that capability. With `--json`
-it MUST emit a `{nodes, edges}` object with deterministic ordering; without it, a
-readable adjacency listing.
+file with an `implements` edge from the change to that capability, and a
+`supersedes` edge from a change to each change named in its `supersedes` list.
+With `--json` it MUST emit a `{nodes, edges}` object with deterministic ordering;
+without it, a readable adjacency listing.
 
-#### Scenario: graph lists active and archived changes with their dependencies
+#### Scenario: graph lists dependency, implements, and supersedes edges
 
-- **GIVEN** an active change depending on an archived change
+- **GIVEN** a change that depends on one change, implements a capability, and
+  supersedes another change
 - **WHEN** `onto graph` runs
-- **THEN** both appear as change nodes (with id/phase/archived) and a `depends-on`
-  edge links the dependent to its dependency
+- **THEN** it emits the `depends-on`, `implements`, and `supersedes` edges for that
+  change
 
-#### Scenario: graph lists implemented capabilities
+#### Scenario: onto set supersedes records the relationship
 
-- **GIVEN** a change with a `specs/<capability>.md` delta spec
-- **WHEN** `onto graph` runs
-- **THEN** the capability appears as a node and an `implements` edge links the
-  change to it
+- **WHEN** `onto set supersedes <change> --change <name>` runs
+- **THEN** the change's `onto-state.yaml` records `<name>` in its `supersedes`
+  list, leaving other fields unchanged
 
 #### Scenario: graph is read-only and needs no config
 

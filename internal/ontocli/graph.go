@@ -21,8 +21,9 @@ type graphNode struct {
 	Kind     string `json:"kind"`
 }
 
-// graphEdge is a typed relationship between changes. Today the only edge type is
-// "depends-on" (from a change to each of its declared deps).
+// graphEdge is a typed relationship between changes. Edge types: "depends-on"
+// (a change → each declared dep), "implements" (a change → each capability its
+// delta specs touch), and "supersedes" (a change → each change it replaces).
 type graphEdge struct {
 	From string `json:"from"`
 	To   string `json:"to"`
@@ -105,6 +106,9 @@ func buildGraph(root string) ([]graphNode, []graphEdge, error) {
 		nodes = append(nodes, graphNode{ID: st.ID, Change: name, Phase: st.Phase, Archived: archived || st.Archived, Kind: "change"})
 		for _, dep := range st.Deps {
 			edges = append(edges, graphEdge{From: name, To: dep, Type: "depends-on"})
+		}
+		for _, sup := range st.Supersedes {
+			edges = append(edges, graphEdge{From: name, To: sup, Type: "supersedes"})
 		}
 		// implements: a change's delta specs live at specs/<capability>.md (onto's
 		// flat delta-spec layout). Each names a capability the change implements.
