@@ -254,3 +254,15 @@ NOT apply a digest change under a "No changes / everything up to date" conclusio
 - **GIVEN** a config whose only change is a remote source's pinned digest
 - **WHEN** the user runs `plan` then `apply`
 - **THEN** `plan` reports the digest change (not "no changes"), and `apply` mutates the remote content only after confirmation
+
+### Requirement: core operations carry Go benchmarks
+
+`homonto` SHALL carry Go benchmark functions (with allocation reporting) for its
+core hot-path operations — config load/expansion and the three-way merge — so a
+performance or allocation regression can be measured with `go test -bench`. This is the
+regression-tracking foundation; allocation budgets and CI wiring build on it.
+
+#### Scenario: the benchmarks run
+
+- **WHEN** `go test -bench=.` runs in the config and merge packages
+- **THEN** the config-load and three-way-merge benchmarks execute and report ns/op and allocations
