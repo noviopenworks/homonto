@@ -86,3 +86,19 @@ func parseDep(entry string) (name, constraint string) {
 	}
 	return entry, ""
 }
+
+// parseCapability splits a capability "name@major" into its name and integer
+// major version. The name must be non-empty and major a non-negative integer;
+// anything else is an error so a malformed capability fails loud.
+func parseCapability(s string) (name string, major int, err error) {
+	i := strings.LastIndex(s, "@")
+	if i <= 0 || i == len(s)-1 {
+		return "", 0, fmt.Errorf("capability %q is not name@major", s)
+	}
+	name = s[:i]
+	n, e := strconv.Atoi(s[i+1:])
+	if e != nil || n < 0 {
+		return "", 0, fmt.Errorf("capability %q has a non-integer major", s)
+	}
+	return name, n, nil
+}

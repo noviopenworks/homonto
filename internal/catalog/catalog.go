@@ -22,9 +22,13 @@ type Framework struct {
 	// DependencyConstraints maps a dependency name to its version constraint
 	// (e.g. ">=0.1.0"); a dependency with no constraint is absent from the map.
 	DependencyConstraints map[string]string
-	Skills                map[string]string // skill name -> catalog-relative path ("skills/<n>")
-	Commands              map[string]string // command name -> catalog-relative path ("commands/<n>.md")
-	Subagents             map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
+	// Provides / RequiredCapabilities are the capabilities (each "name@major")
+	// this framework offers and depends on; resolved fail-loud at load.
+	Provides             []string
+	RequiredCapabilities []string
+	Skills               map[string]string // skill name -> catalog-relative path ("skills/<n>")
+	Commands             map[string]string // command name -> catalog-relative path ("commands/<n>.md")
+	Subagents            map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
 	// srcFS is the filesystem this framework was read from (the embedded base or
 	// a local overlay). Resource paths are relative to it; carried so a consumer
 	// can resolve overlay content later. The base's is the common case.
@@ -61,8 +65,12 @@ type frameworkTOML struct {
 	Version        string `toml:"version"`
 	Description    string `toml:"description"`
 	Dependencies   struct {
-		Frameworks []string `toml:"frameworks"`
+		Frameworks   []string `toml:"frameworks"`
+		Capabilities []string `toml:"capabilities"`
 	} `toml:"dependencies"`
+	Provides struct {
+		Capabilities []string `toml:"capabilities"`
+	} `toml:"provides"`
 	Skills    map[string]string `toml:"skills"`
 	Commands  map[string]string `toml:"commands"`
 	Subagents map[string]string `toml:"subagents"`
@@ -102,6 +110,9 @@ func LoadOverlays(base fs.FS, overlays ...fs.FS) (*Catalog, error) {
 	if err := c.validateDependencyRanges(); err != nil {
 		return nil, err
 	}
+	if err := c.validateCapabilities(); err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -132,6 +143,9 @@ func LoadWithLocal(base fs.FS, locals map[string]fs.FS) (*Catalog, error) {
 		}
 	}
 	if err := c.validateDependencyRanges(); err != nil {
+		return nil, err
+	}
+	if err := c.validateCapabilities(); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -314,6 +328,8 @@ func (c *Catalog) indexFramework(name string, src fs.FS, ft frameworkTOML) error
 		Description:           ft.Description,
 		Dependencies:          depNames,
 		DependencyConstraints: depConstraints,
+		Provides:              ft.Provides.Capabilities,
+		RequiredCapabilities:  ft.Dependencies.Capabilities,
 		Skills:                ft.Skills,
 		Commands:              ft.Commands,
 		Subagents:             ft.Subagents,
@@ -344,6 +360,33 @@ func (c *Catalog) mergeFrameworkRoot(name string, src fs.FS) error {
 		return fmt.Errorf("catalog: local framework %q declares name %q; name must equal the framework key", name, ft.Name)
 	}
 	return c.indexFramework(name, src, ft)
+}
+
+// validateCapabilities resolves every framework's required capabilities against
+// the capabilities provided across all indexed frameworks (a capability is an
+// interface, so multiple providers are fine). An unresolved requirement, or a
+// malformed capability string, fails loud. Runs after all sources are merged.
+func (c *Catalog) validateCapabilities() error {
+	provided := map[string]bool{}
+	for name, fw := range c.frameworks {
+		for _, cap := range fw.Provides {
+			if _, _, err := parseCapability(cap); err != nil {
+				return fmt.Errorf("catalog: framework %q provides malformed capability %q: %w", name, cap, err)
+			}
+			provided[cap] = true
+		}
+	}
+	for name, fw := range c.frameworks {
+		for _, req := range fw.RequiredCapabilities {
+			if _, _, err := parseCapability(req); err != nil {
+				return fmt.Errorf("catalog: framework %q requires malformed capability %q: %w", name, req, err)
+			}
+			if !provided[req] {
+				return fmt.Errorf("catalog: framework %q requires capability %q, but no loaded framework provides it", name, req)
+			}
+		}
+	}
+	return nil
 }
 
 // validateDependencyRanges checks every framework's constrained dependencies
