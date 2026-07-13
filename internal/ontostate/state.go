@@ -44,7 +44,10 @@ func ValidWorkflow(w string) bool { return validWorkflows[w] }
 // "pending", "updated", or any "waived:<reason>". The waived form is a prefix,
 // not a fixed member, so guides cannot use the enum-setter machinery.
 func ValidGuides(v string) bool {
-	return v == "" || v == "pending" || v == "updated" || strings.HasPrefix(v, "waived:")
+	if r, ok := strings.CutPrefix(v, "waived:"); ok {
+		return strings.TrimSpace(r) != "" // a waiver must carry a reason
+	}
+	return v == "" || v == "pending" || v == "updated"
 }
 
 // Verify holds the gated verify-phase fields.

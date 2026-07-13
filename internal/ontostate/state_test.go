@@ -512,3 +512,18 @@ func TestValidate_Guides_RejectsUnknown(t *testing.T) {
 		t.Fatal("Validate() with guides \"done\" = nil, want error")
 	}
 }
+
+func TestValidGuides_Shapes(t *testing.T) {
+	ok := []string{"", "pending", "updated", "waived: deferred to N7", "waived:x"}
+	for _, v := range ok {
+		if !ValidGuides(v) {
+			t.Errorf("ValidGuides(%q) = false, want true", v)
+		}
+	}
+	bad := []string{"done", "waived", "waived:", "waived:   "} // empty/whitespace reason rejected
+	for _, v := range bad {
+		if ValidGuides(v) {
+			t.Errorf("ValidGuides(%q) = true, want false", v)
+		}
+	}
+}
