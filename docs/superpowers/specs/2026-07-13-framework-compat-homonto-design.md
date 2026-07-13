@@ -3,6 +3,8 @@ comet_change: framework-compat-homonto
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-framework-compat-homonto
+status: final
 ---
 
 # framework-compat-homonto — Technical Design (E1)
