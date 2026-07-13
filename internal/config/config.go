@@ -178,19 +178,28 @@ type Marketplaces struct {
 	Claude map[string]Marketplace `toml:"claude"`
 }
 
+// CurrentConfigSchemaVersion is the homonto.toml schema version this binary
+// supports. A config declaring a higher version is rejected fail-closed at load.
+const CurrentConfigSchemaVersion = 1
+
 // Config is the tool-agnostic desired state parsed from homonto.toml.
 type Config struct {
-	MCPs         map[string]MCP      `toml:"mcps"`
-	Frameworks   map[string]Resource `toml:"frameworks"`
-	Skills       map[string]Resource `toml:"skills"`
-	Commands     map[string]Resource `toml:"commands"`
-	Subagents    map[string]Subagent `toml:"subagents"`
-	Models       ModelConfig         `toml:"models"`
-	Plugins      Plugins             `toml:"plugins"`
-	Settings     Settings            `toml:"settings"`
-	TUI          TUI                 `toml:"tui"`
-	Marketplaces Marketplaces        `toml:"marketplaces"`
-	Agents       map[string]Agent    `toml:"agents"`
+	// SchemaVersion is the homonto.toml format version. Absent/0 means a legacy
+	// (pre-versioning) config and is treated as the current version; a value
+	// greater than CurrentConfigSchemaVersion is rejected fail-closed at load so
+	// an older binary never silently mis-applies a newer config.
+	SchemaVersion int                 `toml:"schema_version,omitempty"`
+	MCPs          map[string]MCP      `toml:"mcps"`
+	Frameworks    map[string]Resource `toml:"frameworks"`
+	Skills        map[string]Resource `toml:"skills"`
+	Commands      map[string]Resource `toml:"commands"`
+	Subagents     map[string]Subagent `toml:"subagents"`
+	Models        ModelConfig         `toml:"models"`
+	Plugins       Plugins             `toml:"plugins"`
+	Settings      Settings            `toml:"settings"`
+	TUI           TUI                 `toml:"tui"`
+	Marketplaces  Marketplaces        `toml:"marketplaces"`
+	Agents        map[string]Agent    `toml:"agents"`
 }
 
 func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
@@ -499,6 +508,13 @@ func Load(path string) (*Config, error) {
 	var c Config
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	// Forward-safety: refuse a config from a newer schema before any adapter,
+	// plan, or apply logic runs, so an older binary never silently mis-applies
+	// fields it does not understand (TOML unmarshal drops unknown keys). Absent/0
+	// is a legacy config, treated as the current version.
+	if c.SchemaVersion > CurrentConfigSchemaVersion {
+		return nil, fmt.Errorf("parse config: unknown config schema version %d (this binary supports up to %d) — upgrade homonto", c.SchemaVersion, CurrentConfigSchemaVersion)
 	}
 	// Option C: the imperative [agents.<name>] model is superseded by the
 	// declarative [subagents.<name>] one. Fold every declared agent into an
