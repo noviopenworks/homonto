@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -9,11 +10,15 @@ import (
 )
 
 func statusCmd() *cobra.Command {
-	return &cobra.Command{
+	var output string
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show config drift since last apply",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if output != "text" && output != "json" {
+				return fmt.Errorf("status: --output %q is not one of text|json", output)
+			}
 			cfgPath, _ := cmd.Flags().GetString("config")
 			home, _ := os.UserHomeDir()
 			e, err := engine.Build(cfgPath, home, "homonto")
@@ -23,6 +28,25 @@ func statusCmd() *cobra.Command {
 			drift, pending, err := e.Status()
 			if err != nil {
 				return err
+			}
+			if output == "json" {
+				payload := struct {
+					Drift    []string `json:"drift"`
+					Pending  int      `json:"pending"`
+					Warnings []string `json:"warnings"`
+				}{Drift: drift, Pending: pending, Warnings: e.Warnings}
+				if payload.Drift == nil {
+					payload.Drift = []string{}
+				}
+				if payload.Warnings == nil {
+					payload.Warnings = []string{}
+				}
+				b, merr := json.MarshalIndent(payload, "", "  ")
+				if merr != nil {
+					return merr
+				}
+				cmd.Println(string(b))
+				return nil
 			}
 			for _, w := range e.Warnings {
 				cmd.Println("warn:", w)
@@ -42,6 +66,8 @@ func statusCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&output, "output", "text", "output format: text or json")
+	return cmd
 }
 
 func doctorCmd() *cobra.Command {
