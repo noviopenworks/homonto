@@ -459,9 +459,20 @@ What turns an opinionated internal toolkit into something others build on.
   signature change (no 28-site ripple). **E1's F36 is now essentially complete:
   manifest-schema + dependency-ranges + capabilities + compat + all three
   framework sources (builtin/local/remote).**
-- **Remaining E1:** F38 only (D4: `[plugins]` is enable/disable *enablement*
-  projection, not an install *lifecycle* — an honest spec/doc clarification, since
-  renaming the TOML key would break configs).
+- **F38 RESOLVED — no change needed (2026-07-13).** The "true plugin capability
+  or honest rename" concern is already satisfied honestly: the specs describe
+  `[plugins]` as **"Plugin enable/disable projection"** (`tool-adapters` spec) and
+  the `config-model` "Plugin declaration model" declares only `source`/`enabled`/
+  `config` — nothing in the specs, README, or guides oversells it as install/
+  lifecycle/management (verified by grep). So no rename is warranted (and renaming
+  the TOML key would break configs), and a true install-*lifecycle* is a large
+  feature not justified now. The framing is accurate as shipped.
+- **E1 is now COMPLETE (F35, F36, F38).** The framework ecosystem installs from
+  anywhere (builtin/local/remote) through one validated, versioned path with
+  dependency ranges, capabilities, and homonto-compat — the E1 exit gate ("a
+  fourth framework or a local framework installs through the same validated,
+  versioned path; unsupported source/kind combinations fail loudly") is met and
+  exceeded (remote frameworks too).
 - **F34 re-assessment (2026-07-13):** decoupling the `Adapter` contract from the
   concrete `config.Config`/`secret.Resolver`/`state.State` means introducing
   interfaces that each have exactly ONE implementation — textbook premature
