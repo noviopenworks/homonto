@@ -17,10 +17,13 @@ type Framework struct {
 	Name         string
 	Version      string
 	Description  string
-	Dependencies []string          // framework names
-	Skills       map[string]string // skill name -> catalog-relative path ("skills/<n>")
-	Commands     map[string]string // command name -> catalog-relative path ("commands/<n>.md")
-	Subagents    map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
+	Dependencies []string // framework names (version constraints stripped)
+	// DependencyConstraints maps a dependency name to its version constraint
+	// (e.g. ">=0.1.0"); a dependency with no constraint is absent from the map.
+	DependencyConstraints map[string]string
+	Skills                map[string]string // skill name -> catalog-relative path ("skills/<n>")
+	Commands              map[string]string // command name -> catalog-relative path ("commands/<n>.md")
+	Subagents             map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
 }
 
 // Catalog is the loaded, indexed catalog.
@@ -147,14 +150,49 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			}
 			c.subagents[subagent] = sap
 		}
+		// Split each dependency "name@constraint" into the graph name (used for
+		// transitive resolution and cycle detection, unchanged) and its version
+		// constraint (validated below once every framework is indexed).
+		depNames := make([]string, 0, len(ft.Dependencies.Frameworks))
+		var depConstraints map[string]string
+		for _, entry := range ft.Dependencies.Frameworks {
+			name, constraint := parseDep(entry)
+			depNames = append(depNames, name)
+			if constraint != "" {
+				if depConstraints == nil {
+					depConstraints = map[string]string{}
+				}
+				depConstraints[name] = constraint
+			}
+		}
 		c.frameworks[dir] = Framework{
-			Name:         ft.Name,
-			Version:      ft.Version,
-			Description:  ft.Description,
-			Dependencies: ft.Dependencies.Frameworks,
-			Skills:       ft.Skills,
-			Commands:     ft.Commands,
-			Subagents:    ft.Subagents,
+			Name:                  ft.Name,
+			Version:               ft.Version,
+			Description:           ft.Description,
+			Dependencies:          depNames,
+			DependencyConstraints: depConstraints,
+			Skills:                ft.Skills,
+			Commands:              ft.Commands,
+			Subagents:             ft.Subagents,
+		}
+	}
+
+	// Validate dependency version ranges now that every framework is indexed: a
+	// constrained dependency must resolve to a known framework whose version
+	// satisfies the constraint, else fail loud (E1 compatibility gate).
+	for name, fw := range c.frameworks {
+		for dep, constraint := range fw.DependencyConstraints {
+			target, ok := c.frameworks[dep]
+			if !ok {
+				return nil, fmt.Errorf("catalog: framework %q depends on %q@%s, but %q is not a known framework", name, dep, constraint, dep)
+			}
+			ok, err := satisfies(target.Version, constraint)
+			if err != nil {
+				return nil, fmt.Errorf("catalog: framework %q dependency %q: %w", name, dep, err)
+			}
+			if !ok {
+				return nil, fmt.Errorf("catalog: framework %q requires %q@%s, but %q is version %s", name, dep, constraint, dep, target.Version)
+			}
 		}
 	}
 

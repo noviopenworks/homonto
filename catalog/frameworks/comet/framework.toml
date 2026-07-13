@@ -3,7 +3,7 @@ version = "0.1.0"
 description = "Comet five-phase OpenSpec workflow"
 
 [dependencies]
-frameworks = ["superpowers", "openspec"]
+frameworks = ["superpowers@>=0.1.0", "openspec@>=0.1.0"]
 
 [skills]
 comet = "skills/comet"
