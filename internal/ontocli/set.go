@@ -86,6 +86,7 @@ func setCmd() *cobra.Command {
 	cmd.AddCommand(baseRefCmd())
 	cmd.AddCommand(depsCmd())
 	cmd.AddCommand(supersedesCmd())
+	cmd.AddCommand(deviatesFromCmd())
 	cmd.AddCommand(guidesCmd())
 	return cmd
 }
@@ -181,6 +182,31 @@ func supersedesCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
 	cmd.Flags().StringArrayVar(&supersedes, "change", nil, "a superseded change name; repeat for several")
+	return cmd
+}
+
+// deviatesFromCmd sets the change's deviates-from list from a repeatable --from
+// flag. Mirrors supersedesCmd: --from (not a comma-split positional) keeps
+// target names carrying edge characters unambiguous. Ungated — settable in any
+// phase.
+func deviatesFromCmd() *cobra.Command {
+	var (
+		dir     string
+		targets []string
+	)
+	cmd := &cobra.Command{
+		Use:   "deviates-from <change> --from <name> [--from <name> ...]",
+		Short: "Set the targets this change knowingly deviates from (repeat --from per target)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTransition(cmd, dir, args[0], func(st *ontostate.State) error {
+				st.DeviatesFrom = targets
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	cmd.Flags().StringArrayVar(&targets, "from", nil, "a target this change deviates from; repeat for several")
 	return cmd
 }
 
