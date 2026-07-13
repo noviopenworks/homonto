@@ -4,6 +4,7 @@ description = "Comet five-phase OpenSpec workflow"
 
 [dependencies]
 frameworks = ["superpowers@>=0.1.0", "openspec@>=0.1.0"]
+capabilities = ["spec-workflow@1"]
 
 [skills]
 comet = "skills/comet"

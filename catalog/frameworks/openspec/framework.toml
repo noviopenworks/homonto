@@ -2,6 +2,9 @@ name = "openspec"
 version = "0.1.0"
 description = "OpenSpec change-management skills"
 
+[provides]
+capabilities = ["spec-workflow@1"]
+
 [dependencies]
 frameworks = []
 
