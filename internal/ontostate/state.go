@@ -88,20 +88,23 @@ type State struct {
 	// ID is a stable, name-independent identifier assigned once at `onto new` and
 	// never rewritten by any later command, so a change's identity survives a
 	// rename. Absent on legacy states (never retro-minted on read).
-	ID        string   `yaml:"id,omitempty" json:"id,omitempty"`
-	Workflow  string   `yaml:"workflow,omitempty" json:"workflow,omitempty"`
-	Phase     string   `yaml:"phase" json:"phase"`
-	Created   string   `yaml:"created,omitempty" json:"created,omitempty"`
-	BaseRef   string   `yaml:"base_ref,omitempty" json:"base_ref,omitempty"`
-	Deps      []string `yaml:"deps,omitempty" json:"deps,omitempty"`
-	Isolation string   `yaml:"isolation,omitempty" json:"isolation,omitempty"`
-	BuildMode string   `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
-	TDDMode   string   `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
-	Verify    Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
-	Close     Close    `yaml:"close,omitempty" json:"close,omitempty"`
-	Directive string   `yaml:"directive,omitempty" json:"directive,omitempty"`
-	Guides    string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
-	Archived  bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
+	ID       string   `yaml:"id,omitempty" json:"id,omitempty"`
+	Workflow string   `yaml:"workflow,omitempty" json:"workflow,omitempty"`
+	Phase    string   `yaml:"phase" json:"phase"`
+	Created  string   `yaml:"created,omitempty" json:"created,omitempty"`
+	BaseRef  string   `yaml:"base_ref,omitempty" json:"base_ref,omitempty"`
+	Deps     []string `yaml:"deps,omitempty" json:"deps,omitempty"`
+	// Supersedes lists change names this change replaces/obsoletes (a traceability
+	// relationship surfaced by `onto graph`). Ungated: never blocks a transition.
+	Supersedes []string `yaml:"supersedes,omitempty" json:"supersedes,omitempty"`
+	Isolation  string   `yaml:"isolation,omitempty" json:"isolation,omitempty"`
+	BuildMode  string   `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
+	TDDMode    string   `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
+	Verify     Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
+	Close      Close    `yaml:"close,omitempty" json:"close,omitempty"`
+	Directive  string   `yaml:"directive,omitempty" json:"directive,omitempty"`
+	Guides     string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
+	Archived   bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
 
 	// observational (carried, never gated)
 	Observed Observed `yaml:"observed,omitempty" json:"observed,omitempty"`
