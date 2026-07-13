@@ -2,6 +2,9 @@
 .env
 # Release build output from scripts/build-release.sh.
 /dist/
+# Locally-built binaries (e.g. `go build ./cmd/onto`, `go build .`).
+/onto
+/homonto
 graphify-out/
 __pycache__/
 # Project-scoped dogfood skill links (machine-specific absolute symlinks).
