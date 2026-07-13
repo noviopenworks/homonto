@@ -85,6 +85,30 @@ func setCmd() *cobra.Command {
 	cmd.AddCommand(directiveCmd())
 	cmd.AddCommand(baseRefCmd())
 	cmd.AddCommand(depsCmd())
+	cmd.AddCommand(guidesCmd())
+	return cmd
+}
+
+// guidesCmd sets the guides obligation field. It cannot use enumSetterCmd
+// because the "waived:<reason>" form is a prefix, not a fixed enum member.
+func guidesCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "guides <change> <value>",
+		Short: "Set a change's guides obligation: pending, updated, or waived:<reason>",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name, value := args[0], args[1]
+			return runTransition(cmd, dir, name, func(st *ontostate.State) error {
+				if !ontostate.ValidGuides(value) || value == "" {
+					return fmt.Errorf("onto set guides: %q is not one of pending|updated|waived:<reason>", value)
+				}
+				st.Guides = value
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
 	return cmd
 }
 

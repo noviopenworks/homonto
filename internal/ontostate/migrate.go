@@ -59,8 +59,9 @@ func isLegacy(b []byte) bool {
 // migrateLegacy maps a legacy shape onto the current State. Fields the legacy
 // file lacks map to their zero value, which the schema treats as "unset".
 // Renames: execution->build_mode, tdd->tdd_mode, verify.mode->verify.scale,
-// metrics.upgraded->preset_escalated. The observational-only "guides" field is
-// intentionally not carried (change B re-derives it; it is never gated).
+// metrics.upgraded->preset_escalated. "guides" is now a gated field but a
+// legacy file's guides value is intentionally not carried: it re-resolves at
+// close (onto-close sets it), and empty is a valid guides shape.
 func migrateLegacy(l legacyState) State {
 	return State{
 		SchemaVersion: CurrentSchemaVersion,

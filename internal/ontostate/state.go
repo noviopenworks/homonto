@@ -40,6 +40,13 @@ var (
 // ValidWorkflow reports whether w is a recognized workflow value.
 func ValidWorkflow(w string) bool { return validWorkflows[w] }
 
+// ValidGuides reports whether v is a recognized guides value: empty (unset),
+// "pending", "updated", or any "waived:<reason>". The waived form is a prefix,
+// not a fixed member, so guides cannot use the enum-setter machinery.
+func ValidGuides(v string) bool {
+	return v == "" || v == "pending" || v == "updated" || strings.HasPrefix(v, "waived:")
+}
+
 // Verify holds the gated verify-phase fields.
 type Verify struct {
 	Scale  string `yaml:"scale,omitempty" json:"scale,omitempty"`   // light | full | ""
@@ -78,6 +85,7 @@ type State struct {
 	Verify    Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
 	Close     Close    `yaml:"close,omitempty" json:"close,omitempty"`
 	Directive string   `yaml:"directive,omitempty" json:"directive,omitempty"`
+	Guides    string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
 	Archived  bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
 
 	// observational (carried, never gated)
@@ -141,6 +149,9 @@ func (s State) Validate() error {
 	}
 	if s.Verify.Result != "" && !validVerifyResults[s.Verify.Result] {
 		return fmt.Errorf("onto-state: verify.result %q is not one of pending|pass|fail", s.Verify.Result)
+	}
+	if !ValidGuides(s.Guides) {
+		return fmt.Errorf("onto-state: guides %q is not one of pending|updated|waived:<reason>", s.Guides)
 	}
 	return nil
 }
