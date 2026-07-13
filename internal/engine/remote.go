@@ -189,6 +189,68 @@ func (e *Engine) materializeRemotes() error {
 	return lock.Save(e.remoteLockPath())
 }
 
+// resolveRemoteFrameworks resolves every declared [frameworks.X]
+// source="remote:<url>" through the SAME trust pipeline as remote subagents
+// (resolver + revocation list), returning name → verified cache dir. Each cache
+// dir is a framework root (framework.toml + resources) that FrameworkCatalog
+// overlays exactly like a local framework. A digest mismatch, fetch failure, or
+// revoked pin returns an error the caller propagates fail-closed — no new
+// fetch/verify/digest code lives here; resolver.Resolve verifies the content
+// against the pin before returning the dir. A config with no remote frameworks
+// returns (nil, nil) with no network access, so the builtin/local path is
+// unchanged.
+func (e *Engine) resolveRemoteFrameworks() (map[string]string, error) {
+	declared := map[string]config.Resource{}
+	for name, fw := range e.Cfg.Frameworks {
+		if remote.IsRemoteSource(fw.Source) {
+			declared[name] = fw
+		}
+	}
+	if len(declared) == 0 {
+		return nil, nil
+	}
+
+	rev, err := remote.LoadRevocations(e.remoteRevokedPath())
+	if err != nil {
+		return nil, err
+	}
+	resolver := &remote.Resolver{
+		Cache:       &remote.Cache{Root: e.RemoteCacheRoot},
+		Revocations: rev,
+		Limits:      remote.DefaultLimits,
+	}
+
+	names := make([]string, 0, len(declared))
+	for name := range declared {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	out := make(map[string]string, len(names))
+	for _, name := range names {
+		res := declared[name]
+		src, err := remote.ParseRemoteSource(res.Source)
+		if err != nil {
+			return nil, fmt.Errorf("remote framework %q: %w", name, err)
+		}
+		pin, err := remote.ParseDigest(res.Digest)
+		if err != nil {
+			return nil, fmt.Errorf("remote framework %q: %w", name, err)
+		}
+		// Revoked content must never be served, even from a warm cache: fail
+		// closed before Resolve, mirroring materializeRemotes (F30).
+		if rev.Contains(pin) {
+			return nil, fmt.Errorf("remote framework %q: content is revoked", name)
+		}
+		cacheDir, err := resolver.Resolve(context.Background(), src, pin)
+		if err != nil {
+			return nil, fmt.Errorf("remote framework %q: %w", name, err)
+		}
+		out[name] = cacheDir
+	}
+	return out, nil
+}
+
 // GCRemoteCache reclaims content-addressed cache entries that no remote lock
 // entry references. With dryRun it reports what would be removed without
 // deleting. This is an explicit maintenance operation, kept out of apply so a
