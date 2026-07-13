@@ -299,9 +299,22 @@ only after Now.
   cfg; `engine.Apply` passes `e.Cfg`. Behavior-preserving (same cfg → identical
   entries), ~135 test call sites updated. Closes the "`Apply` reads mutable
   adapter fields set by a prior `Plan`" X2 concern.
-- **Remaining X2:** only transaction journals (F42) — per-operation apply/close
-  journals for crash rollback/resume — plus, optionally, driving `Apply` purely
-  from the `ChangeSet` (a larger rethink). F41/F47/F4/stateless-Apply are done.
+- **Remaining X2:** only transaction journals (F42) — plus, optionally, driving
+  `Apply` purely from the `ChangeSet` (a larger rethink). F41/F47/F4/
+  stateless-Apply are done.
+- **F42 re-assessment (2026-07-13):** the journal's motivating concern —
+  "adapter writes are sequential with no journal" → unsafe partial apply — is
+  **already mitigated by construction**. `engine.Apply` saves state after each
+  adapter; every managed write is atomic per key (`WriteControlPlane`/
+  `WriteAtomic`/`link`, and skill dirs now stage-swap); and the **adopt path
+  self-heals** a file written-but-not-yet-recorded (a crash between the write and
+  the state save is re-adopted on the next run, since disk-matches-desired-but-
+  absent-from-state → adopt). So apply is already crash-resilient/resumable
+  without data loss. A journal (F42) would add explicit crash *detection* and an
+  audit trail — not correctness — making it a lower-value, design-latitude
+  greenfield item best scoped with a maintainer decision on desired semantics
+  (roll-forward/resume already works; rollback of applied changes is likely
+  undesirable). De-prioritized accordingly.
 - **Catalog-materialization slice DONE (2026-07-13,
   `crash-safe-catalog-materialize` archived):** `catalog.Materialize` now
   stage-then-swaps each builtin skill dir (`<skill>.staging` → `RemoveAll` old +
