@@ -1,0 +1,6 @@
+{
+  "openspec_proposal": "openspec/changes/perf-benchmarks/proposal.md",
+  "openspec_tasks": "openspec/changes/perf-benchmarks/tasks.md",
+  "openspec_delta_spec": "openspec/changes/perf-benchmarks/specs/apply-pipeline/spec.md",
+  "build_tasks_complete": "openspec/changes/perf-benchmarks/tasks.md"
+}
