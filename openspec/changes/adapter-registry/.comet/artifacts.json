@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/adapter-registry/proposal.md",
+  "openspec_design": "openspec/changes/adapter-registry/design.md",
+  "openspec_tasks": "openspec/changes/adapter-registry/tasks.md",
+  "openspec_delta_spec": "openspec/changes/adapter-registry/specs/adapter-contract/spec.md",
+  "handoff_context": "openspec/changes/adapter-registry/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/adapter-registry/.comet/handoff/design-context.md"
+}
