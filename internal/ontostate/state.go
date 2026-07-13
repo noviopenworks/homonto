@@ -104,7 +104,7 @@ func Load(path string) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("onto-state: failed to read %s: %w", path, err)
 	}
-	state, err := Parse(b)
+	state, err := parseAndMigrate(b, path)
 	if err != nil {
 		return State{}, fmt.Errorf("%s: %w", path, err)
 	}
