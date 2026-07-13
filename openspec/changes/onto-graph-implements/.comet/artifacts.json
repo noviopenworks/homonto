@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/onto-graph-implements/proposal.md",
+  "openspec_design": "openspec/changes/onto-graph-implements/design.md",
+  "openspec_tasks": "openspec/changes/onto-graph-implements/tasks.md",
+  "openspec_delta_spec": "openspec/changes/onto-graph-implements/specs/onto-binary/spec.md",
+  "handoff_context": "openspec/changes/onto-graph-implements/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/onto-graph-implements/.comet/handoff/design-context.md"
+}

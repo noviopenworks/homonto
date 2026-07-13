@@ -1,0 +1,14 @@
+{
+  "change": "onto-graph-implements",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "ce0aa62388dcaabbe08be2cb15b926c40242b64a6e0455fa780c0c29b48ea80c",
+  "files": [
+    { "path": "openspec/changes/onto-graph-implements/proposal.md", "sha256": "447fed856d69dccc27093e43b9a6c0656828e36263941ad24ed03f9ec3654261" },
+    { "path": "openspec/changes/onto-graph-implements/design.md", "sha256": "b71ac89f538a98003ea945124cac99ae9d5ca636a1943906dc36466fcbf8b0e0" },
+    { "path": "openspec/changes/onto-graph-implements/tasks.md", "sha256": "d30724f9d66278239785d4f91a69586cb709eb458423f06b7da295b6168035fa" },
+    { "path": "openspec/changes/onto-graph-implements/specs/onto-binary/spec.md", "sha256": "b02a89e575c048644d5f19c4d448436d7e59f5fc14301d19bd89e873e903601c" }
+  ]
+}
