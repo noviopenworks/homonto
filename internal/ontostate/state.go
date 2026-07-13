@@ -109,6 +109,11 @@ type State struct {
 	Directive    string   `yaml:"directive,omitempty" json:"directive,omitempty"`
 	Guides       string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
 	Archived     bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
+	// Abandoned marks the unsuccessful terminal state — a change cancelled without
+	// completing, distinct from the successful archived/close terminal. Ungated:
+	// set by `onto abandon`, it never blocks a transition (it makes the change
+	// terminal, which `onto advance` enforces separately).
+	Abandoned bool `yaml:"abandoned,omitempty" json:"abandoned,omitempty"`
 
 	// observational (carried, never gated)
 	Observed Observed `yaml:"observed,omitempty" json:"observed,omitempty"`
