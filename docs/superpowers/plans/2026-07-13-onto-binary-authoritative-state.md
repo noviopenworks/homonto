@@ -2,6 +2,7 @@
 change: onto-binary-authoritative-state
 design-doc: docs/superpowers/specs/2026-07-13-onto-binary-authoritative-state-design.md
 base-ref: cad5274b6d859e66de874edd68bb994c2e97b774
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 # onto-binary-authoritative-state Implementation Plan
@@ -31,6 +32,7 @@ base-ref: cad5274b6d859e66de874edd68bb994c2e97b774
 
 The design shows `State{ SchemaVersion; Core; Observed }`. The design explicitly delegates exact grouping to this plan ("Exact command names/grouping are refined in the implementation plan"). This plan implements the **gated core as flat top-level fields on `State`** (preserving the legacy binary `onto-state.yaml` wire format — those fields are already top-level — and every existing `st.Phase` / `State{Change: …}` call site) and the **observational group as a nested `Observed` field**. `Validate()` inspects only the core fields and never reads `Observed`, which delivers the design's behavioral contract (an unknown/garbage observational field can never break a gate) without a wire-format break or a wide call-site refactor.
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 1: Versioned typed schema + shape validation + round-trip
@@ -275,6 +277,7 @@ git add internal/ontostate/state.go internal/ontostate/state_test.go
 git commit -m "feat(ontostate): versioned typed schema with core/observed split and shape validation"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 2: On-read migration from both legacy shapes
@@ -565,6 +568,7 @@ git add internal/ontostate/migrate.go internal/ontostate/migrate_test.go interna
 git commit -m "feat(ontostate): migrate legacy binary and rich skill state on read"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 3: Directory-aware LoadChange, both-legacy conflict policy, and Classify
@@ -793,6 +797,7 @@ git add internal/ontostate/migrate.go internal/ontostate/loadchange_test.go
 git commit -m "feat(ontostate): directory-aware LoadChange with dual-legacy conflict policy and Classify"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 4: `onto set` transition group — enum setters
@@ -1010,6 +1015,7 @@ git add internal/ontocli/set.go internal/ontocli/root.go internal/ontocli/set_te
 git commit -m "feat(ontocli): add onto set transition group with enum-gated field setters"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 5: `onto set close-merged` and `onto set directive`
@@ -1137,6 +1143,7 @@ git add internal/ontocli/set.go internal/ontocli/set_test.go
 git commit -m "feat(ontocli): add onto set close-merged and directive transitions"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 6: `onto state <change> --json` structured read
@@ -1292,6 +1299,7 @@ git add internal/ontocli/statecmd.go internal/ontocli/statecmd_test.go internal/
 git commit -m "feat(ontocli): add onto state --json structured read"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 7: `onto status` — enumerate directories then classify
@@ -1393,6 +1401,7 @@ git add internal/ontocli/status.go internal/ontocli/status_test.go
 git commit -m "feat(ontocli): onto status enumerates change dirs then classifies valid/malformed/missing-state"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 8: `onto doctor` — missing-state directory is a finding
@@ -1493,6 +1502,7 @@ git add internal/ontocli/doctor.go internal/ontocli/doctor_test.go
 git commit -m "feat(ontocli): onto doctor reports missing-state change dirs as findings"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Task 9: Full gate + change-B handoff note
@@ -1534,6 +1544,7 @@ git add openspec/changes/onto-binary-authoritative-state/tasks.md
 git commit -m "chore(onto): record onto-binary-authoritative-state completion and change-B surface"
 ```
 
+archived-with: 2026-07-13-onto-binary-authoritative-state
 ---
 
 ## Self-Review

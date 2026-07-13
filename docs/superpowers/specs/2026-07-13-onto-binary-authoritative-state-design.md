@@ -2,6 +2,8 @@
 comet_change: onto-binary-authoritative-state
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-13-onto-binary-authoritative-state
+status: final
 ---
 
 # onto-binary-authoritative-state — Technical Design
