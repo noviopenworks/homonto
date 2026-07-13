@@ -3,6 +3,8 @@ comet_change: config-expand-pipeline
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-config-expand-pipeline
+status: final
 ---
 
 # config-expand-pipeline — Technical Design (X3/F43)
