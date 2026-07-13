@@ -1,7 +1,7 @@
 # Tasks — consolidate-file-projection
 
 ## 1. fileproj contract
-- [ ] Add `internal/adapter/fileproj` (Link, Project, Conflicts, ApplyState,
+- [x] Add `internal/adapter/fileproj` (Link, Project, Conflicts, ApplyState,
       ApplyLinks, Observe + recordedDst + " -> " constant). Table-driven unit
       tests; green in isolation.
 
