@@ -38,10 +38,13 @@ command that produced them.
 Homonto is a **declarative configuration projector** for AI coding tools
 (Claude Code and OpenCode, plus a Codex MCP pilot): a single TOML config is planned, confirmed,
 and atomically projected into each tool's native files, with state tracking
-ownership and drift. `onto` is its sibling **spec-driven workflow operator** —
-a phase-machine CLI that gates an OpenSpec-style change lifecycle
-(init → new → advance → close → archive). Both binaries ship from one
-repository and one module.
+ownership and drift. `onto` is homonto's **native, binary-enforced spec-driven
+workflow** (2026-07-13 hierarchy decision — see `ROADMAP.md`): a phase-machine
+CLI that gates an OpenSpec-style change lifecycle
+(init → new → advance → close → archive). Comet/OpenSpec/Superpowers remain
+*unenforced alternative* workflows. Both binaries ship from one repository and one
+module. *In-progress:* unifying onto onto a single binary-authoritative control
+plane (`ROADMAP.md` N1) — today the skill and binary planes still diverge.
 
 ## Architecture Summary
 
@@ -136,11 +139,19 @@ direction.
 ## Current Release Gate
 
 `v0.1.0` is **not yet cut** (`git tag --list` is empty). Four release-integrity
-items must close before `v0.1.0-rc.1`. **All four are closed** — and every other
-backlog item (8 Public Stabilization, 9 Resource Coherence, 10 Remote Trust, 11
-Ecosystem Expansion) is **done** as well. The only remaining backlog item is
-cutting and dogfood-verifying `v0.1.0-rc.1` itself (item 7), a maintainer-owned
-push of `main` + tag.
+items are closed, and every other backlog item (8 Public Stabilization, 9
+Resource Coherence, 10 Remote Trust, 11 Ecosystem Expansion) is **done**. The RC
+tag (item 7) is nonetheless **held** by a 2026-07-13 maintainer decision: the
+release-integrity *gates* are green, but the 2026-07-13 harsh review
+(`FINDINGS.MD` → `ROADMAP.md`) found live **engine-safety** holes in the projector
+the RC would ship — arbitrary deletion via tampered state (F7), non-transactional
+remote apply (F8/F30), a symlink-following control-plane writer (F25), and no
+cross-process locking (F29). Because the engine is T-hostile (it consumes remote
+content and deletes files), these are real security defects, not robustness nits.
+**Sequence to the RC:** fix stale canonical specs (`ROADMAP.md` N3), close the
+engine-safety gate (`ROADMAP.md` N4/N5/N6), *then* cut and dogfood-verify the tag.
+Cutting now with `remote:` flag-gated experimental was considered and rejected in
+favour of a clean engine-safety story before any public tag.
 
 - [x] **1. Agent ownership safety.** De-declared target records survive `agents
   update`; deletion failure is treated as prune failure and retains ownership;
@@ -279,18 +290,25 @@ gate remains open without a recorded exception.
 - **Problem (historical):** local rehearsal, CI, and release publication ran
   different check sets; the release workflow's gate was strictly weaker than CI.
 
-### 7. Release Candidate — *open*
+### 7. Release Candidate — *held (2026-07-13 maintainer decision)*
 
-- **Problem:** no release has been cut or dogfood-verified.
+- **Problem:** no release has been cut or dogfood-verified — **and** the projector
+  the RC would ship has open engine-safety defects the RC must not carry.
 - **Scope:** cut `v0.1.0-rc.1`; run a clean install, apply, upgrade, onto
   lifecycle, agent lifecycle, and rollback cycle from **downloaded artifacts**
   (not a local build). Non-goal: promoting to `v0.1.0` (item 8).
-- **Dependencies:** items 1–6 (all release-integrity gates closed first).
+- **Dependencies:** items 1–6 (release-integrity gates, closed) **plus** the
+  truth-and-safety gates the harsh review added: `ROADMAP.md` **N3** (stale
+  canonical specs — one-day fix) and the engine-safety gate **N4/N5/N6**
+  (arbitrary deletion, transactional remote apply, no-follow writer, locking).
+  The RC is held until N3 + N4/N5/N6 close.
 - **Primary files:** `docs/release-checklist.md`, release workflow.
-- **Acceptance:** RC install + workflow + rollback succeed outside the repo.
+- **Acceptance:** RC install + workflow + rollback succeed outside the repo, with
+  no open engine-safety defect from the review's gate B.
 - **Verify:** follow `docs/release-checklist.md` post-tag smoke from a clean
   home.
-- **Exit gate:** clean RC cycle with no open release-blocking defect.
+- **Exit gate:** clean RC cycle with no open release-blocking defect and gate B
+  closed.
 
 ### 8. Public Stabilization — *done (2026-07-11, `437e822`, `97457fe`)*
 
@@ -416,9 +434,10 @@ These horizons are directional, not calendar-locked. Each has the same
 dependency ordering as the backlog.
 
 - **Months 1–3 — Public stabilization.** Failure-path + fuzz coverage and file
-  splits **delivered** (item 8); RC promotion (item 7) is the remaining
-  maintainer step. *Exit gate:* `v0.1.0` promoted with no open release-blocking
-  defect.
+  splits **delivered** (item 8); RC promotion (item 7) is **held** pending the
+  review's truth-and-safety gates (`ROADMAP.md` N3 + engine-safety N4/N5/N6), not
+  just a maintainer push. *Exit gate:* `v0.1.0` promoted with no open
+  release-blocking defect and the engine-safety gate closed.
 - **Months 3–6 — Resource coherence. Delivered** (item 9). Agents reconciled
   into declarative `[subagents]`; scope, mode, and removal path unified.
 - **Months 6–9 — Remote trust boundary. Delivered** (item 10, `ADR 0013`).

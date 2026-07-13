@@ -40,51 +40,94 @@ create empty files, check boxes, and archive unverified work
 So the roadmap's first job is not new features. It is making onto **true and
 safe**, then building the spec-driven core the name already claims.
 
-## The strategic fork (decide first)
+## The strategic fork — RESOLVED (2026-07-13)
 
-Everything in "Now" depends on one decision the maintainer must make:
+Everything in "Now" depended on one decision. It is now made. The decision chain
+below is locked; the "Now" items are rewritten to match it.
 
-**Which onto control plane is authoritative?** Three coherent answers:
+1. **Which control plane is authoritative? → Binary.** Enforcement is the point
+   of onto, not portability. One Go engine owns one versioned state schema and
+   deterministic phase transitions; skills *invoke* the binary, they do not edit
+   state files. This **ends the markdown-only / "no external CLI" promise** — that
+   copy in `onto*/SKILL.md` is now false and must be deleted, and onto now carries
+   a **hard dependency on the compiled binary** (no graceful markdown fallback).
 
-1. **Binary-authoritative** (review's recommendation): one Go engine owns one
-   versioned state schema and deterministic phase transitions; skills *invoke*
-   the binary instead of editing state files by hand. Strongest guarantees;
-   largest build; ends the markdown-only promise.
-2. **Skill-authoritative**: retire the binary's state ownership; the binary
-   becomes a thin validator/reporter over `state.yaml`. Preserves the
-   markdown-only design; the "no external CLI" ethos survives; weaker
-   enforcement (agent-run gates).
-3. **Split by product**: onto-the-binary and onto-the-framework are *different
-   products* with different names and audiences, each internally coherent, with
-   a documented migration path. Honest, but doubles the surface.
+2. **What does the binary enforce? → B1: ceremony, not judgment.** The binary can
+   cheaply verify *structural* facts (a named artifact exists, checkboxes are
+   ticked, a well-formed `verification-result: pass` token is present). It cannot
+   read a design doc and decide it is sound. So the agent performs the semantic
+   judgment and emits a machine-checkable token; the binary enforces that the
+   **token exists and is well-formed** and trusts the judgment behind it. onto's
+   guarantee is therefore *"an honest agent cannot skip a step,"* **not** *"no
+   agent can ship bad work."* We own the weaker claim on purpose — B2 (the binary
+   re-deriving evidence: running tests, mechanically checking scenario coverage)
+   is out of scope, much of it isn't mechanically decidable, and it is not funded.
 
-No further onto feature work should land before this is chosen — building on two
-planes multiplies every later fix. This is the gate on the whole "Now" horizon.
+3. **Threat model → T-honest for onto, T-hostile for the engine.** B1 defends
+   against a *forgetful/sloppy* agent, not a *malicious* one — nobody's threat
+   model is "an attacker forges a spec-driven audit trail on my own repo," and if
+   they hand-write the pass token B1 is worthless anyway. So onto's gates
+   explicitly assume an honest agent. The **projection engine is different**: it
+   consumes remote content and deletes files, so it faces a real adversary
+   (tampered state, hostile remotes). This split is load-bearing below: it moves
+   the security findings (F7/F25/F29 and remote transactionality) **out of onto's
+   blockers and into a separate engine-safety gate** — still P0 *for the engine*,
+   but no longer coupled to onto's truth problem.
+
+4. **Product hierarchy (F21) → homonto is the product; onto is its native,
+   binary-enforced workflow.** Because onto now requires the homonto toolchain, it
+   is no longer a standalone framework sitting beside Comet/OpenSpec/Superpowers —
+   those remain *unenforced alternative* workflows you can drive projection with;
+   only onto is enforced by the binary.
+
+5. **Dogfooding → we build with Comet, we ship onto.** This repo continues to
+   develop with Comet; onto is a shipped-but-not-self-used product. This is an
+   honest choice with a **standing tax**: onto never gets the dogfooding feedback
+   loop that made the projector 8/10, which is exactly why onto scored 2/10. Two
+   obligations replace that loop and are now *non-optional* (see N7): a
+   full-lifecycle onto E2E/conformance suite, and an F21 persona/selection doc.
+
+Consequence for sequencing: onto's truth problem (N1/N2/N3) and the engine's
+safety problem (N4/N5/N6) are now **two independent release gates**, not one
+monolith.
 
 ---
 
-## Now — Truth & Safety (P0)
+## Now — onto Truth (P0, gate A)
 
-Blockers. Nothing in Next/Later is worth starting while these stand.
+Blockers for onto. Independent of the engine-safety gate below. Nothing in
+Next/Later is worth starting while these stand.
 
-### N1. Unify onto's control plane
+### N1. Unify onto's control plane onto the binary
 - **Problem:** two divergent state models, no reconciliation.
+- **Decision applied:** binary-authoritative (fork decision 1). Skills stop
+  writing state and **shell out** to `onto open|advance|close`; the exit gate is
+  not "both planes read one file" but "skills contain **zero direct state
+  writes**."
 - **Closes:** F1, F3, F14 (state deleted or skill-only → invisible to binary
   status/doctor), and unblocks F2/F4/F9/F10.
-- **Exit gate:** one authoritative state schema with a version field; the other
-  plane reads or invokes it, never writes a parallel file; `status`/`doctor`
-  enumerate change directories first and classify (valid / malformed /
-  missing-state), so a workspace never silently disappears.
+- **Exit gate:** one authoritative state schema with a version field; every skill
+  transition is a binary invocation, no skill writes `state.yaml`/`onto-state.yaml`
+  directly; the "markdown-only / no external CLI" copy is deleted from the skills;
+  `status`/`doctor` enumerate change directories first and classify (valid /
+  malformed / missing-state), so a workspace never silently disappears.
 
-### N2. Make the binary's gates semantic
+### N2. Make the binary's gates semantic — B1-scoped
 - **Problem:** advance/close check existence + checkboxes, not validity; empty
   unverified work can archive.
+- **Decision applied:** B1 (fork decision 2). The binary enforces that a
+  well-formed, agent-emitted evidence **token** exists and is structurally valid;
+  it does **not** re-derive the judgment (no running tests, no mechanical scenario
+  proof). Guarantee = "an honest agent cannot skip a step." T-honest (decision 3):
+  no defense against a forged token is in scope here.
 - **Closes:** F2, F9 (workflow-aware transitions + `onto new --workflow
   full|fix|tweak`), F10 (one shared dep resolver that blocks entering build,
   date-anchored exact match, cycle detection).
-- **Exit gate:** a phase advances only on real evidence — confirmed design,
-  scenario coverage, `Result: pass`, merged deltas, resolved ADRs/guides — with
-  fix/tweak presets gated on their own reduced artifact set, not the full one.
+- **Exit gate:** a phase advances only when the phase's evidence token is present
+  and well-formed — a confirmed-design marker, a scenario-coverage token, a
+  `Result: pass` record, a merged-deltas marker, resolved ADRs/guides — with
+  fix/tweak presets gated on their own reduced token set, not the full one. The
+  binary trusts the token's *contents*; it enforces its *presence and shape*.
 - **Workflow safety (also here):** isolation (branch/worktree) is chosen
   **before the first workspace commit**, so open/design work never lands on
   `main` (F15 — verified: skills commit at open/design exit but the branch is
@@ -105,6 +148,32 @@ Blockers. Nothing in Next/Later is worth starting while these stand.
 - **Exit gate:** every living spec matches shipped behavior; CI carries a
   spec↔code correspondence check (even a coarse "spec names a command the CLI
   doesn't register" grep) so form-valid-but-false specs fail.
+- **Note:** this is the one-day fix that is a hard blocker for the RC tag (see
+  Open decisions §2), independent of the rest of gate A.
+
+### N7. Substitutes for dogfooding (because we ship onto but build with Comet)
+- **Problem:** fork decision 5 means onto never gets the feedback loop that made
+  the projector 8/10 — the two-plane drift, fake gates, and archive rot the review
+  found are exactly what daily use would have surfaced. Nobody on the team lives
+  in onto, so its correctness cannot come from use.
+- **Closes:** F21 (product hierarchy has no persona/selection matrix), and it is
+  the safety net for N1/N2 landing without a human catching regressions in use.
+- **Exit gate (both, non-optional):**
+  1. a **full-lifecycle onto E2E/conformance suite** that drives
+     `open → design → build → verify → archive` end-to-end and asserts the B1
+     gates actually *reject* bad work (empty artifacts, missing/malformed evidence
+     token, unmerged deltas) — this replaces the feedback loop we declined;
+  2. an **F21 persona/selection doc**: "homonto is the product; onto is its native
+     binary-enforced workflow; we build with Comet and ship onto; here is who onto
+     is for and why we don't use it ourselves." Comet/OpenSpec/Superpowers are
+     documented as unenforced alternatives.
+
+## Now — Engine Safety (P0, gate B)
+
+Separated from gate A by the threat-model decision: the projection engine faces a
+real adversary (T-hostile) — it consumes remote content and deletes files — so
+these stay P0 **for the engine**, but they are **not onto blockers** and gate the
+RC scope rather than onto's truth. They can proceed in parallel with gate A.
 
 ### N4. Close the arbitrary-deletion and traversal holes
 - **Problem:** copy-mode prune takes its destination from unvalidated
@@ -279,13 +348,19 @@ caveat the review surfaced.
 - Parallel new adapters: the contract and conformance suite (X3) come first, then
   one pilot at a time.
 
-## Open maintainer decisions
+## Maintainer decisions — RESOLVED (2026-07-13)
 
-1. **The strategic fork above** — which onto control plane is authoritative. Gates
-   the whole Now horizon.
-2. **`v0.1.0-rc.1`**: the release-integrity gates are green (`docs/roadmap.md`
-   item 7), but N3 (stale canonical specs) and N4/N5 (security holes) argue for
-   fixing truth-and-safety before a public tag. Cut RC now, or hold for Now?
-3. **Product hierarchy** (F21): is onto a workflow *inside* homonto, a sibling
-   product, or one of several interchangeable workflows (with Comet/OpenSpec/
-   Superpowers)? The answer drives E1's framework model and all user-facing docs.
+1. **The strategic fork** — RESOLVED: binary-authoritative + B1 + T-honest-for-onto
+   / T-hostile-for-engine. See "The strategic fork — RESOLVED" above.
+2. **`v0.1.0-rc.1`** — RESOLVED: **HOLD the tag.** The release-integrity gates are
+   green (`docs/roadmap.md` item 7), but the RC ships the projector, which is
+   T-hostile, and gate B (N4/N5/N6 — arbitrary deletion, non-transactional remote
+   apply, symlink-following writer, no locking) is not yet closed. We do not
+   publish a tag with live engine-safety holes. N3 (stale specs) is also a hard
+   blocker. Sequence: fix N3, close gate B, then cut the RC. (Considered and
+   rejected: cut now with `remote:` flag-gated experimental — rejected in favour of
+   a clean engine-safety story before any public tag.)
+3. **Product hierarchy** (F21) — RESOLVED: homonto is the product; onto is its
+   native, binary-enforced workflow; Comet/OpenSpec/Superpowers are unenforced
+   alternatives. We build with Comet and ship onto. The persona/selection doc that
+   makes this honest to users is tracked as N7.
