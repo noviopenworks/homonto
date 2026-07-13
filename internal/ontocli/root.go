@@ -1,17 +1,26 @@
 package ontocli
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/noviopenworks/homonto/internal/buildinfo"
+	"github.com/spf13/cobra"
+)
 
-// Version is the onto build version. Release builds stamp it via
+// devVersion is the unstamped default; release builds override Version via
 // -ldflags "-X github.com/noviopenworks/homonto/internal/ontocli.Version=...".
-var Version = "0.1.0-dev"
+const devVersion = "0.1.0-dev"
+
+// Version is the onto build version. It is a constant-initialized string so the
+// linker's -X stamp takes effect; when unstamped (e.g. `go install ...@tag`,
+// which applies no ldflags) buildinfo.Resolve recovers the module version.
+var Version = devVersion
 
 // NewRootCmd builds the root cobra command and registers subcommands.
 func NewRootCmd() *cobra.Command {
+	version := buildinfo.Resolve(Version, devVersion)
 	root := &cobra.Command{
 		Use:           "onto",
 		Short:         "Managed spec-driven workflow operator",
-		Version:       Version,
+		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -20,7 +29,7 @@ func NewRootCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print the onto version",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cmd.Printf("onto %s\n", Version)
+			cmd.Printf("onto %s\n", version)
 			return nil
 		},
 	})
