@@ -368,11 +368,16 @@ only after Now.
 - **Remaining X3:** F34 (interface-type generalization) — **YAGNI, deliberately
   not built**: introducing interfaces for the single-implementation
   `config.Config`/`secret.Resolver`/`state.State` would add indirection and
-  worsen the code; wait for a second implementation. F11/F12 (risk-based
-  verification scale + non-waivable finding classes + reviewer/skeptic subagents)
-  are onto/comet **workflow prompt-engineering** — a different discipline, verified
-  by structure not Go tests, and the B1 decision keeps that judgment out of the
-  binary. So X3's Go-implementable core (F37/F33/F43) is done.
+  worsen the code; wait for a second implementation.
+- **F11/F12 DONE (2026-07-13, `onto-verify-risk-gates` archived):** the
+  onto-verify skill now scales verification by RISK not just size — a diff
+  touching a security-sensitive surface (secret resolution, remote fetch/verify,
+  file deletion/pruning, permission/ownership) forces full regardless of file
+  count, so a one-file security change is never under-scrutinized — and declares
+  security/data-loss/failed-core-acceptance findings CRITICAL and non-waivable in
+  any mode. Per B1 this judgment lives in the skill, not the binary (a bundled
+  `code-reviewer` subagent and fresh-context skeptics were already present).
+  **X3 is now complete except F34 (YAGNI, correctly not built).**
 - **Problem:** verification scale keys on task/file counts, not risk or changed
   requirements, so a one-file security change can get less scrutiny than a large
   refactor (F11); escape hatches are too broad and the skeptic/reviewer subagents
