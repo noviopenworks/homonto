@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: build
+phase: verify
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -8,13 +8,13 @@ subagent_dispatch: null
 tdd_mode: tdd
 review_mode: standard
 isolation: branch
-verify_mode: null
+verify_mode: full
 auto_transition: true
 base_ref: bb7458d7cbe07e0c8acad577f123e26e3721cfea
 design_doc: docs/superpowers/specs/2026-07-13-framework-dependency-ranges-design.md
 plan: docs/superpowers/plans/2026-07-13-framework-dependency-ranges.md
 verify_result: pending
-verification_report: null
+verification_report: docs/superpowers/reports/2026-07-13-framework-dependency-ranges-verify.md
 branch_status: pending
 created_at: 2026-07-13
 verified_at: null
