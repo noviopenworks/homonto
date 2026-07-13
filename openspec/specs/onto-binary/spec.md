@@ -57,7 +57,8 @@ The gated core SHALL include at least: change, workflow (`full|fix|tweak`), phas
 (`open|design|build|verify|close`), created, base_ref, deps, isolation
 (`branch|worktree|""`), build_mode (`direct|subagent|""`), tdd_mode
 (`tdd|direct|""`), verify scale (`light|full|""`), verify result
-(`pending|pass|fail`), close merged (bool), archived (bool), and the directive
+(`pending|pass|fail`), close merged (bool), guides
+(`pending|updated|"waived: <reason>"|""`), archived (bool), and the directive
 string. Observational fields (metrics, task counts, verify rounds, escalation
 flag) SHALL be carried through reads and writes but SHALL never gate a
 transition. Writes SHALL always emit the current `schema_version`.
@@ -79,6 +80,12 @@ with `close` as the terminal phase and `archived` as a terminal boolean.
 - **GIVEN** a valid `onto-state.yaml` carrying `schema_version`, a gated core, and observational fields
 - **WHEN** the state model loads it
 - **THEN** it returns the typed state and the derived phase without error, preserving observational fields
+
+#### Scenario: guides accepts pending, updated, and waived forms
+
+- **GIVEN** a change whose `guides` is being set
+- **WHEN** it is set to `pending`, `updated`, or a value beginning `waived:`
+- **THEN** the value is accepted; any other non-empty value is rejected with a clear error and no write
 
 #### Scenario: legacy state migrates on read
 
@@ -200,19 +207,31 @@ error.
 
 ### Requirement: onto new creates a change skeleton
 
-`onto new <change-name>` SHALL create `docs/changes/<change-name>/` containing an
-`onto-state.yaml` (`change` = the name, `workflow` defaulting to `full`, `phase`
-= `open`, `created` = the current date) and empty-but-present `proposal.md` and
-`tasks.md` skeleton files. It SHALL run the framework-install gate first (same as
-`onto init`), SHALL validate `<change-name>` is kebab-case with no path traversal
-(reject `..`, `/`, empty), and SHALL REFUSE with a non-zero exit and NO writes if
-`docs/changes/<change-name>/` already exists (never clobber an existing change).
+`onto new <change-name> [--workflow full|fix|tweak]` SHALL create
+`docs/changes/<change-name>/` containing an `onto-state.yaml` (`change` = the
+name, `workflow` = the `--workflow` value defaulting to `full`, `phase` = `open`,
+`created` = the current date) and empty-but-present `proposal.md` and `tasks.md`
+skeleton files. `--workflow` SHALL accept only `full`, `fix`, or `tweak`; any
+other value SHALL be rejected with a non-zero exit and no writes. It SHALL run the
+framework-install gate first (same as `onto init`), SHALL validate `<change-name>`
+is kebab-case with no path traversal (reject `..`, `/`, empty), and SHALL REFUSE
+with a non-zero exit and NO writes if `docs/changes/<change-name>/` already exists.
 
-#### Scenario: new creates the open-phase skeleton
+#### Scenario: new creates the open-phase skeleton with the chosen workflow
 
 - **GIVEN** a prepared workspace (framework-install gate passes) with no `docs/changes/feature-x/`
-- **WHEN** `onto new feature-x` runs
-- **THEN** `docs/changes/feature-x/onto-state.yaml` (phase open), `proposal.md`, and `tasks.md` exist, and the command reports the created change, exiting 0
+- **WHEN** `onto new feature-x --workflow fix` runs
+- **THEN** `docs/changes/feature-x/onto-state.yaml` exists with `phase: open` and `workflow: fix`, alongside `proposal.md` and `tasks.md`, exiting 0
+
+#### Scenario: new defaults workflow to full
+
+- **WHEN** `onto new feature-y` runs with no `--workflow`
+- **THEN** the created `onto-state.yaml` has `workflow: full`
+
+#### Scenario: new rejects an invalid workflow
+
+- **WHEN** `onto new feature-z --workflow epic` runs
+- **THEN** it exits non-zero with a validation error and creates nothing
 
 #### Scenario: new refuses to clobber an existing change
 
@@ -224,12 +243,6 @@ error.
 
 - **WHEN** `onto new "../evil"` (or a non-kebab-case / empty name) runs
 - **THEN** it exits non-zero with a validation error and creates nothing
-
-#### Scenario: new requires the framework install
-
-- **GIVEN** a workspace without `homonto.toml` or `[frameworks.onto]` or the applied onto framework
-- **WHEN** `onto new feature-x` runs
-- **THEN** it prints the same framework-install guidance as `onto init`, creates nothing, and exits non-zero
 
 ### Requirement: phase-aware skeleton validation
 
@@ -512,10 +525,12 @@ and `github.com/noviopenworks/homonto/internal/ontocli` for `onto`. A single
 The `onto` binary SHALL expose, through its CLI, a command for every gated state
 mutation of an active change and a structured read of a change's full state, so a
 caller can drive the entire workflow lifecycle without editing a state file by
-hand. Each transition command SHALL validate the presence and shape of the field
-it sets (rejecting a malformed value with a clear error) and SHALL write through
-the versioned state model. The structured read SHALL emit the full validated
-state (including derived phase) as JSON.
+hand. This SHALL include setters for isolation, build mode, tdd mode, verify scale,
+verify result, close merged, directive, base ref, deps, and guides. Each
+transition command SHALL validate the presence and shape of the field it sets
+(rejecting a malformed value with a clear error) and SHALL write through the
+versioned state model. The structured read SHALL emit the full validated state
+(including derived phase) as JSON.
 
 #### Scenario: a transition command sets a gated field with validation
 
@@ -523,6 +538,12 @@ state (including derived phase) as JSON.
 - **WHEN** the corresponding `onto` transition command runs with a valid value
 - **THEN** the field is written through the state model and a subsequent read reflects it
 - **AND** running it with a value outside the field's allowed shape is rejected with a clear error and no write
+
+#### Scenario: base-ref and deps setters record creation fields
+
+- **GIVEN** an active change
+- **WHEN** `onto set base-ref <change> <ref>` and `onto set deps <change> --dep a --dep b` run
+- **THEN** the state records the base ref and the dependency list, reflected in a subsequent read
 
 #### Scenario: structured read emits the full state as JSON
 

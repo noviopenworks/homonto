@@ -2,6 +2,7 @@
 change: onto-skills-shell-out
 design-doc: docs/superpowers/specs/2026-07-13-onto-skills-shell-out-design.md
 base-ref: eef55ce8122fbd85bb66627f64086cacb44ef827
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 # onto-skills-shell-out Implementation Plan
@@ -24,6 +25,7 @@ base-ref: eef55ce8122fbd85bb66627f64086cacb44ef827
 - **Field-name mapping (skill vocabulary → binary vocabulary), used throughout Layer B:** skill `decisions.execution` → binary `build-mode`; skill `decisions.tdd` → binary `tdd-mode`; skill `verify.mode` → binary `verify-scale`. These are pre-existing renames (see `internal/ontostate/migrate.go` lines 59–63); do not introduce new aliases.
 - **NON-GOALS — do not implement:** workflow-aware transition *rules*, semantic gates, a dep resolver, an `onto abandon` command, an `onto set workflow` command, a backward-phase setter (all N2); homonto-engine work; observational setters; any schema redesign beyond the additive `Guides` field.
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## File Structure
@@ -52,6 +54,7 @@ The `onto` binary's forward-only, artifact-gated `onto advance` and terminal `on
 
 These are handled by the **markdown dispatcher's file-based derivation, which is unchanged** (`onto/SKILL.md` §3: "state.yaml is a cache of truth, not truth" — phase is derived from artifacts; workflow from the proposal's `Preset:` marker). So the Layer-B rewrites **drop the redundant `phase:` / `workflow:` cache writes** (the dispatcher re-derives them) and route the fields that DO have setters (verify-result, decisions, guides, base-ref, deps, close-merged) through the binary. The genuinely un-mapped write — **abandon's `abandoned:` field** (not in the schema) — remains a single documented manual state note, explicitly excepted by the gate. See the Risks section.
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task A1: `onto new --workflow full|fix|tweak`
@@ -194,6 +197,7 @@ git add internal/ontocli/new.go internal/ontocli/new_test.go internal/ontostate/
 git commit -m "feat(onto): onto new --workflow full|fix|tweak (default full, reject invalid)"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task A2: `onto set base-ref` and `onto set deps`
@@ -332,6 +336,7 @@ git add internal/ontocli/set.go internal/ontocli/set_test.go
 git commit -m "feat(onto): onto set base-ref and onto set deps (repeatable --dep)"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task A3: `Guides` gated field + `onto set guides`
@@ -527,6 +532,7 @@ git add internal/ontostate/state.go internal/ontostate/migrate.go internal/ontos
 git commit -m "feat(onto): add guides gated field + onto set guides (no schema bump)"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Layer B — rewrite the eight skills to shell out
@@ -555,6 +561,7 @@ Every Layer-B task edits Markdown only. After each task, run the grep gate from 
 | backward `phase:` (revision/reopen), `workflow:` upgrade | **dropped** — dispatcher re-derives from artifacts/`Preset:` marker |
 | `abandoned:` + `archived: true` (abandon) | documented manual write, gate-excepted (no command; N2) |
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1a: rewrite `onto-open`
@@ -605,6 +612,7 @@ git add catalog/skills/onto-open/SKILL.md
 git commit -m "docs(onto): onto-open shells out to the binary for state writes"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1b: rewrite `onto-design`
@@ -636,6 +644,7 @@ git add catalog/skills/onto-design/SKILL.md
 git commit -m "docs(onto): onto-design shells out for the phase advance"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1c: rewrite `onto-build`
@@ -691,6 +700,7 @@ git add catalog/skills/onto-build/SKILL.md
 git commit -m "docs(onto): onto-build shells out for decisions, advance, revision"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1d: rewrite `onto-verify`
@@ -724,6 +734,7 @@ git add catalog/skills/onto-verify/SKILL.md
 git commit -m "docs(onto): onto-verify shells out for scale/result/advance, drops metrics"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1e: rewrite `onto-close`
@@ -770,6 +781,7 @@ git add catalog/skills/onto-close/SKILL.md
 git commit -m "docs(onto): onto-close shells out for guides/close-merged/archive, drops metrics"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1f: rewrite `onto-fix`
@@ -822,6 +834,7 @@ git add catalog/skills/onto-fix/SKILL.md
 git commit -m "docs(onto): onto-fix shells out; preset phase stays derivation-driven"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B1g: rewrite `onto-tweak`
@@ -865,6 +878,7 @@ git add catalog/skills/onto-tweak/SKILL.md
 git commit -m "docs(onto): onto-tweak shells out; preset phase stays derivation-driven"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task B2: delete the "markdown-only / no external CLI" copy from `onto/SKILL.md`
@@ -938,6 +952,7 @@ git add catalog/skills/onto/SKILL.md
 git commit -m "docs(onto): drop markdown-only/no-CLI copy; state the hard onto binary dependency"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task C1: the grep enforcement gate
@@ -1049,6 +1064,7 @@ git add scripts/onto-skills-shell-out-check.sh scripts/gate.sh
 git commit -m "test(onto): grep gate — onto* skills must shell out for state writes"
 ```
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Task C2: full verification gate
@@ -1082,6 +1098,7 @@ Expected: ALL GATE CHECKS PASSED, including the new "onto skills shell out" step
 
 - [x] **Step 6: Commit any final adjustments** (only if a fix was needed; otherwise nothing to commit).
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Self-Review
@@ -1099,6 +1116,7 @@ Expected: ALL GATE CHECKS PASSED, including the new "onto skills shell out" step
 
 **Type consistency:** `ValidWorkflow` / `ValidGuides` exported helpers used consistently (A1, A3). `runTransition` signature matches `internal/ontocli/set.go` line 15. `enumSetterCmd` untouched. `StringArrayVar` (cobra) used for repeatable `--dep`. `fullFixtureState()` gains `Guides` before its use in round-trip and idempotency tests.
 
+archived-with: 2026-07-13-onto-skills-shell-out
 ---
 
 ## Risks (flagged)

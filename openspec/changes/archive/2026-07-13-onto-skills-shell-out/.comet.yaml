@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-onto-skills-shell-out-v
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/onto-skills-shell-out/.comet/handoff/design-context.json
 handoff_hash: 79620e1354b3453be8bb6b385d35aa84501665e4d9d98fc42a425666ac6cc80b

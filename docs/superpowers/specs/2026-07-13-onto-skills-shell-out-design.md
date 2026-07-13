@@ -2,6 +2,8 @@
 comet_change: onto-skills-shell-out
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-13-onto-skills-shell-out
+status: final
 ---
 
 # onto-skills-shell-out — Technical Design
