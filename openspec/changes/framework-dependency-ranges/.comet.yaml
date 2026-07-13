@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: design
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: bb7458d7cbe07e0c8acad577f123e26e3721cfea
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-13-framework-dependency-ranges-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-13
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/framework-dependency-ranges/.comet/handoff/design-context.json
+handoff_hash: 78af88f114a4776aee52d81eb768ed56f706c3ca8d90ca7805be482087245791
+classic_profile: full
+classic_migration: 1
+run_id: 389b4141-a458-43dc-8568-5c1081bb8d50
