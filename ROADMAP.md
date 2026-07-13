@@ -293,10 +293,17 @@ only after Now.
   (`Apply` still reads mutable adapter fields set by a prior `Plan`, not the plan
   alone), transaction journals (F42), versioned staging swapped atomically (F47),
   and enforced close/archive validation (F4, F18).
+- **Catalog-materialization slice DONE (2026-07-13,
+  `crash-safe-catalog-materialize` archived):** `catalog.Materialize` now
+  stage-then-swaps each builtin skill dir (`<skill>.staging` → `RemoveAll` old +
+  `Rename`), so a crash/error mid-walk leaves the prior complete dir or none —
+  never a partial dir that `allSkillDirsExist` (Stat-only) would mistake for
+  complete and never repair. Closes the skill-dir half of F47 (commands/subagents
+  already write atomically).
 - **Problem (remaining):** `Apply` reads mutable adapter fields set by a prior
   `Plan`, not the plan alone; adapter and close writes are sequential with no
-  journal (F42). Catalog and close both mutate destructively before completion
-  (F47, and the binary's F4 archive ordering).
+  journal (F42). Close still mutates destructively before completion (the
+  binary's F4 archive ordering); catalog materialization is now crash-safe.
 - **Closes:** F41, F42, F4, F47, F18 (archive must move all historical
   artifacts, rewrite references, and validate every referenced path and hash
   before marking the change archived — the item-10/11 archives already do this
