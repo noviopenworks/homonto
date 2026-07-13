@@ -319,6 +319,11 @@ only after Now.
 What turns an opinionated internal toolkit into something others build on.
 
 ### E1. A real framework ecosystem model
+- **Started (2026-07-13):** F35 done (`reject-non-builtin-frameworks`) — a non-builtin
+  `[frameworks.X]` source now fails loudly at load instead of silently installing
+  nothing. Remaining E1 (F36 versioned manifests + dependencies/capabilities/
+  compatibility ranges + local/custom framework resolution; F38 plugin lifecycle)
+  is the large ecosystem model — design-first.
 - **Closes:** F35 (a `local:` framework must fail at load, never silently install
   nothing — verified: `internal/config/config.go:256` skips non-builtin), F36
   (versioned manifests with dependencies, provided/required capabilities,
