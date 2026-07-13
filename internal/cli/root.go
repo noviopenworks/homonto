@@ -25,6 +25,6 @@ func NewRootCmd() *cobra.Command {
 			return nil
 		},
 	})
-	root.AddCommand(planCmd(), applyCmd(), statusCmd(), doctorCmd(), initCmd(), importCmd())
+	root.AddCommand(planCmd(), applyCmd(), statusCmd(), doctorCmd(), initCmd(), importCmd(), cacheCmd())
 	return root
 }
