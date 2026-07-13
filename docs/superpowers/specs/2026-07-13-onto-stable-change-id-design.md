@@ -3,6 +3,8 @@ comet_change: onto-stable-change-id
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-onto-stable-change-id
+status: final
 ---
 
 # onto-stable-change-id — Technical Design (X1)

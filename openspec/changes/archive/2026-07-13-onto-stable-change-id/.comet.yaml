@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-onto-stable-change-id-v
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/onto-stable-change-id/.comet/handoff/design-context.json
 handoff_hash: bf4af8d7eb26b85439c7e32eedf651a2c6c33734f964267439b64ac52864f6ca
