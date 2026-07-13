@@ -33,6 +33,7 @@ func cacheGCCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			e.HomontoVersion = Version
 			reclaimed, err := e.GCRemoteCache(dryRun)
 			if err != nil {
 				return err

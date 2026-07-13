@@ -29,6 +29,10 @@ type Engine struct {
 	Home                string
 	ProjectRoot         string // directory of homonto.toml; skill-scope project root
 	Resolver            *secret.Resolver
+	// HomontoVersion is the running binary version, set by the CLI. When set, Plan
+	// enforces each declared framework's [compat].homonto range fail-closed; empty
+	// (tests/unstamped) skips the check.
+	HomontoVersion string
 	// Warnings collects non-fatal per-adapter failures from the last Plan (e.g.
 	// an unparseable tool file); other tools still proceed.
 	Warnings []string
@@ -119,6 +123,9 @@ func (e *Engine) SubagentDir() string { return e.SubagentCatalogRoot }
 // unparseable) is skipped with a warning so the other tools still proceed; its
 // file is never written. Warnings from the run are recorded on e.Warnings.
 func (e *Engine) Plan() ([]adapter.ChangeSet, error) {
+	if err := e.checkFrameworkCompat(); err != nil {
+		return nil, err
+	}
 	e.Warnings = nil
 	var sets []adapter.ChangeSet
 	for _, a := range e.Adapters {
