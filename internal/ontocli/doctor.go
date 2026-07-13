@@ -45,32 +45,36 @@ func runDoctor(cmd *cobra.Command, root string) error {
 		}
 	}
 
-	// 2. active changes: the single "*" cannot cross a path separator, so it
-	// matches only direct children of docs/changes/ and never reaches archived
-	// changes at docs/changes/archive/<name>/.
-	active, _ := filepath.Glob(filepath.Join(root, "docs", "changes", "*", "onto-state.yaml"))
-	for _, path := range active {
-		changeDir := filepath.Dir(path)
-		name := filepath.Base(changeDir)
-
-		st, err := ontostate.Load(path)
-		if err != nil {
-			findings = append(findings, fmt.Sprintf("%s: invalid onto-state.yaml: %v", name, err))
-			continue
-		}
-		phase, err := st.DerivePhase()
-		if err != nil {
-			findings = append(findings, fmt.Sprintf("%s: cannot derive phase: %v", name, err))
-			continue
-		}
-		if err := ontostate.ValidateSkeleton(changeDir); err != nil {
-			findings = append(findings, fmt.Sprintf("%s: phase %s missing artifact: %v", name, phase, err))
-		}
-		if unresolved := ontostate.DepsResolved(root, st.Deps); len(unresolved) > 0 {
-			findings = append(findings, fmt.Sprintf("%s: unresolved dependencies: %v", name, unresolved))
-		}
-		if st.Archived {
-			findings = append(findings, name+": active change marked archived: true (belongs under docs/changes/archive/)")
+	// 2. active changes: enumerate change directories first (excluding
+	// archive/), then classify. A missing-state or malformed directory is a
+	// finding — a deleted state file is reported, never silently skipped (F14).
+	changesDir := filepath.Join(root, "docs", "changes")
+	if entries, readErr := os.ReadDir(changesDir); readErr == nil {
+		for _, e := range entries {
+			if !e.IsDir() || e.Name() == "archive" {
+				continue
+			}
+			name := e.Name()
+			changeDir := filepath.Join(changesDir, name)
+			st, class, classErr := ontostate.Classify(changeDir)
+			switch class {
+			case "missing-state":
+				findings = append(findings, name+": missing-state (change directory has no state file)")
+				continue
+			case "malformed":
+				findings = append(findings, fmt.Sprintf("%s: malformed state: %v", name, classErr))
+				continue
+			}
+			phase := st.Phase
+			if skErr := ontostate.ValidateSkeleton(changeDir); skErr != nil {
+				findings = append(findings, fmt.Sprintf("%s: phase %s missing artifact: %v", name, phase, skErr))
+			}
+			if unresolved := ontostate.DepsResolved(root, st.Deps); len(unresolved) > 0 {
+				findings = append(findings, fmt.Sprintf("%s: unresolved dependencies: %v", name, unresolved))
+			}
+			if st.Archived {
+				findings = append(findings, name+": active change marked archived: true (belongs under docs/changes/archive/)")
+			}
 		}
 	}
 

@@ -98,7 +98,7 @@ func TestDoctorCommand_MissingDocsDir(t *testing.T) {
 	}
 }
 
-// 3. invalid active state (malformed YAML) → non-nil, names change + "invalid".
+// 3. malformed active state (malformed YAML) → non-nil, names change + "malformed".
 func TestDoctorCommand_InvalidActiveState(t *testing.T) {
 	tmp := t.TempDir()
 	seedDocsLayout(t, tmp)
@@ -111,8 +111,8 @@ func TestDoctorCommand_InvalidActiveState(t *testing.T) {
 	if !strings.Contains(out, "broken") {
 		t.Errorf("out = %q, want it to name %q", out, "broken")
 	}
-	if !strings.Contains(out, "invalid") {
-		t.Errorf("out = %q, want it to contain %q", out, "invalid")
+	if !strings.Contains(out, "malformed") {
+		t.Errorf("out = %q, want it to contain %q", out, "malformed")
 	}
 }
 
@@ -211,5 +211,26 @@ func TestDoctorCommand_UngatedReadOnly(t *testing.T) {
 		if _, ok := before[path]; !ok {
 			t.Errorf("command created a new file: %s", path)
 		}
+	}
+}
+
+func TestDoctor_MissingStateDir_IsFinding(t *testing.T) {
+	dir := t.TempDir()
+	for _, d := range []string{"changes", "specs", "adr", "guides"} {
+		if err := os.MkdirAll(filepath.Join(dir, "docs", d), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+	}
+	// a change directory with no state file (deleted)
+	if err := os.MkdirAll(filepath.Join(dir, "docs", "changes", "gamma"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	out, err := runOnto(t, "doctor", "--dir", dir)
+	if err == nil {
+		t.Fatal("doctor exited 0 with a missing-state change dir, want non-zero")
+	}
+	if !strings.Contains(out, "gamma") || !strings.Contains(out, "missing-state") {
+		t.Errorf("output = %q, want a gamma missing-state finding", out)
 	}
 }
