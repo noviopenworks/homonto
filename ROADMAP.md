@@ -328,10 +328,12 @@ What turns an opinionated internal toolkit into something others build on.
   validated, versioned path; unsupported source/kind combinations fail loudly.
 
 ### E2. Machine-readable CLI and a stable automation contract
-- **Partial (2026-07-13):** F49, F45, F51, F48, F52, F46 (`doctor-reports-catalog-upgrade`) archived on `main` — `NoArgs` on
+- **Partial (2026-07-13):** F49, F45, F51, F48, F52, F46, + a F50 first slice (`status-json-output`) archived on `main` — `NoArgs` on
   positional-free commands, and plan/status no longer claim "up to date"/"No drift"
-  (exit 0) after an adapter warning. Remaining E2: **F50 only** (`--output json` + a versioned exit-code taxonomy) — a
-  substantial cross-cutting feature best done with a design phase, not a tweak.
+  (exit 0) after an adapter warning. Remaining E2: **F50 remainder** — `--output json` for plan/apply/doctor and a
+  *versioned exit-code taxonomy* (a public automation contract). Design-first: the
+  exit-code contract must be decided deliberately, not rushed. `status --output json`
+  is shipped as the additive pilot.
 - **Closes:** F45 (never print "up to date" after skipping an adapter), F46
   (catalog upgrades appear in the plan; doctor reports version mismatch), F49
   (`cobra.NoArgs` everywhere; a stray positional never silently ignored — verified
