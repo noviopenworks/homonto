@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: design
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: 4b5b8ebd2a7ac9ecd90d1307e682a19b5fd018af
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-13-stateless-adapter-apply-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-13
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/stateless-adapter-apply/.comet/handoff/design-context.json
+handoff_hash: 31fb7b98e857cf898b4d502f3c93baec1b86ca6ffee69fa65edb725387246c9f
+classic_profile: full
+classic_migration: 1
+run_id: 4bf6053a-e38a-40ea-ae50-3f9ca5ac8ca0
