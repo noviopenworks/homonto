@@ -121,6 +121,19 @@ func (e *Engine) Plan() ([]adapter.ChangeSet, error) {
 // before any write on error), then apply each adapter, saving state after each
 // successful adapter so a later failure never loses an earlier one's record.
 func (e *Engine) Apply(sets []adapter.ChangeSet) error {
+	// Fail closed on a malformed plan before any side effect: an unknown tool
+	// (otherwise silently skipped below) or an operation with an undefined action
+	// (otherwise a silent no-op) must abort — never quietly drop a change to a
+	// user's config files.
+	knownTools := make(map[string]bool, len(e.Adapters))
+	for _, a := range e.Adapters {
+		knownTools[a.Name()] = true
+	}
+	for _, cs := range sets {
+		if err := cs.Validate(knownTools); err != nil {
+			return err
+		}
+	}
 	for _, cs := range sets {
 		for _, c := range cs.Changes {
 			// Deletes carry no New value; nothing to resolve. Adopt is non-secret
