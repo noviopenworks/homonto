@@ -40,6 +40,14 @@ var (
 // ValidWorkflow reports whether w is a recognized workflow value.
 func ValidWorkflow(w string) bool { return validWorkflows[w] }
 
+// GuidesResolved reports whether the guides obligation is discharged: either
+// "updated" or a "waived:<reason>". Empty and "pending" are unresolved. It
+// answers the close-phase question "were the guides dealt with", distinct from
+// ValidGuides which only checks the value is well-formed.
+func GuidesResolved(v string) bool {
+	return v == "updated" || strings.HasPrefix(v, "waived:")
+}
+
 // ValidGuides reports whether v is a recognized guides value: empty (unset),
 // "pending", "updated", or any "waived:<reason>". The waived form is a prefix,
 // not a fixed member, so guides cannot use the enum-setter machinery.

@@ -260,12 +260,152 @@ func TestAdvanceCommand_TerminalPhaseRefused(t *testing.T) {
 	}
 }
 
+// setVerifyResult rewrites the change's onto-state.yaml with verify.result set
+// to the given value, preserving the rest of the seeded state. It is used by
+// advance tests that must satisfy (or deliberately miss) the leaving-verify
+// evidence gate.
+func setVerifyResult(t *testing.T, root, name, result string) {
+	t.Helper()
+	statePath := filepath.Join(root, "docs", "changes", name, "onto-state.yaml")
+	st, err := ontostate.Load(statePath)
+	if err != nil {
+		t.Fatalf("setVerifyResult: load: %v", err)
+	}
+	st.Verify.Result = result
+	if err := ontostate.Save(statePath, st); err != nil {
+		t.Fatalf("setVerifyResult: save: %v", err)
+	}
+}
+
+// TestAdvanceCommand_LeavingVerifyBlockedWithoutPass verifies that a verify-
+// phase change whose verify.result is still pending cannot advance, the error
+// names the missing verification, and the phase is left at verify.
+func TestAdvanceCommand_LeavingVerifyBlockedWithoutPass(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedChange(t, dir, "feature-x", "verify")
+	setVerifyResult(t, dir, "feature-x", "pending")
+	commitAll(t, dir, "seed change")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"advance", "feature-x", "--dir", dir})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("execute() = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "verify.result") {
+		t.Errorf("execute() error = %q, want it to mention %q", err.Error(), "verify.result")
+	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-x", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading onto-state.yaml: %v", err)
+	}
+	if st.Phase != "verify" {
+		t.Errorf("st.Phase = %q, want unchanged %q", st.Phase, "verify")
+	}
+}
+
+// TestAdvanceCommand_LeavingVerifyAllowedWithPass verifies that once
+// verify.result=pass is recorded, a clean-worktree verify change advances into
+// close.
+func TestAdvanceCommand_LeavingVerifyAllowedWithPass(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedChange(t, dir, "feature-x", "verify")
+	setVerifyResult(t, dir, "feature-x", "pass")
+	commitAll(t, dir, "seed change")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"advance", "feature-x", "--dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-x", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading onto-state.yaml: %v", err)
+	}
+	if st.Phase != "close" {
+		t.Errorf("st.Phase = %q, want %q", st.Phase, "close")
+	}
+}
+
+// TestAdvanceCommand_EnteringBuildBlockedWithoutIsolation verifies a design-
+// phase change with no isolation set cannot advance into build, the error
+// names the missing isolation, and the phase is left at design.
+func TestAdvanceCommand_EnteringBuildBlockedWithoutIsolation(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedChange(t, dir, "feature-x", "design")
+	commitAll(t, dir, "seed change")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"advance", "feature-x", "--dir", dir})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("execute() = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "isolation") {
+		t.Errorf("execute() error = %q, want it to mention %q", err.Error(), "isolation")
+	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-x", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading onto-state.yaml: %v", err)
+	}
+	if st.Phase != "design" {
+		t.Errorf("st.Phase = %q, want unchanged %q", st.Phase, "design")
+	}
+}
+
+// TestAdvanceCommand_EnteringBuildAllowedWithIsolation verifies that once
+// isolation is chosen, a design change advances into build.
+func TestAdvanceCommand_EnteringBuildAllowedWithIsolation(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedChange(t, dir, "feature-x", "design")
+	if _, err := runOnto(t, "set", "isolation", "feature-x", "worktree", "--dir", dir); err != nil {
+		t.Fatalf("set isolation: %v", err)
+	}
+	commitAll(t, dir, "seed change")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"advance", "feature-x", "--dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-x", "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("loading onto-state.yaml: %v", err)
+	}
+	if st.Phase != "build" {
+		t.Errorf("st.Phase = %q, want %q", st.Phase, "build")
+	}
+}
+
 // TestAdvanceCommand_VerifyToCloseBlockedByDirtyWorktree verifies that
 // entering "close" is refused when the worktree is dirty, even though every
-// required artifact is present, and leaves the phase unchanged.
+// required artifact is present and verify.result=pass, and leaves the phase
+// unchanged. verify.result is set to pass so the dirty-worktree gate — not the
+// leaving-verify evidence gate — is what blocks.
 func TestAdvanceCommand_VerifyToCloseBlockedByDirtyWorktree(t *testing.T) {
 	dir := prepWorkspace(t)
 	seedChange(t, dir, "feature-x", "verify")
+	setVerifyResult(t, dir, "feature-x", "pass")
 	commitAll(t, dir, "seed change")
 	dirtyWorktree(t, dir)
 

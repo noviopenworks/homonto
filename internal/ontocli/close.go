@@ -29,9 +29,44 @@ func closeCmd() *cobra.Command {
 	return cmd
 }
 
+// closeEvidenceGate refuses close unless the loaded state carries the
+// close-phase evidence tokens its workflow produces (B1: the token is present
+// and well-formed, not merely artifact files on disk). Every workflow requires
+// verify.result==pass and close.merged==true; a full workflow additionally
+// requires guides resolved (updated or waived:<reason>). fix/tweak presets are
+// gated on the reduced set they actually produce and do NOT require guides. An
+// empty workflow is treated as full (strictest, fail-safe). Each missing token
+// yields an error naming exactly what is absent; the caller archives nothing.
+func closeEvidenceGate(st ontostate.State) error {
+	if st.Verify.Result != "pass" {
+		result := st.Verify.Result
+		if result == "" {
+			result = "unset"
+		}
+		return fmt.Errorf("onto close: missing passing verification (verify.result=%s); run and record a passing verification before close", result)
+	}
+	if !st.Close.Merged {
+		return fmt.Errorf("onto close: change not merged (close.merged=false); mark the change merged before close")
+	}
+	// guides are required only for the full workflow; the reduced fix/tweak
+	// presets never produce them. Empty workflow is treated as full.
+	if st.Workflow == "full" || st.Workflow == "" {
+		if !ontostate.GuidesResolved(st.Guides) {
+			guides := st.Guides
+			if guides == "" {
+				guides = "unset"
+			}
+			return fmt.Errorf("onto close: unresolved guides (guides=%s); update or waive guides before close", guides)
+		}
+	}
+	return nil
+}
+
 // runClose enforces, in order: gate(root); validChangeName(name); that
 // docs/changes/<name>/onto-state.yaml loads; that its phase is "close" (the
-// terminal phase reached via repeated "onto advance"); that every
+// terminal phase reached via repeated "onto advance"); that the workflow's
+// close-phase evidence tokens are present and well-formed
+// (closeEvidenceGate); that every
 // dependency named in st.Deps has already been archived
 // (ontostate.DepsResolved); that the worktree is clean and that cleanliness
 // is determinable; and that the dated archive target does not already
@@ -57,6 +92,10 @@ func runClose(cmd *cobra.Command, root, name string) error {
 
 	if st.Phase != "close" {
 		return fmt.Errorf("onto close: change %q is at phase %q; run `onto advance` until it reaches close", name, st.Phase)
+	}
+
+	if err := closeEvidenceGate(st); err != nil {
+		return err
 	}
 
 	unresolved := ontostate.DepsResolved(root, st.Deps)

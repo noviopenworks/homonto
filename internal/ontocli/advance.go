@@ -47,7 +47,9 @@ func advanceCmd() *cobra.Command {
 // docs/changes/<name>/onto-state.yaml loads; that its phase has a next
 // phase; that every RequiredArtifacts(st.Phase) file — the current phase's
 // cumulative deliverables — is present in the change directory; that, when
-// leaving "build", tasks.md has no unchecked items;
+// leaving "build", tasks.md has no unchecked items; that the transition's
+// evidence token is present — leaving "verify" requires verify.result==pass,
+// and entering "build" requires isolation chosen (branch|worktree);
 // and a worktree-dirty check that unconditionally blocks entering "close"
 // (refusing when dirtiness can't even be determined) but only warns for
 // every other transition. Only once all of these pass does it flip the
@@ -88,6 +90,21 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 		if !done {
 			return fmt.Errorf("onto advance: cannot leave build: tasks.md has unchecked items")
 		}
+	}
+
+	// Phase-evidence gates: beyond artifact existence and checked tasks,
+	// certain transitions require a recorded evidence token. Leaving verify
+	// requires a passing verification; entering build requires a chosen
+	// isolation so planning work is never committed unisolated.
+	if st.Phase == "verify" && st.Verify.Result != "pass" {
+		result := st.Verify.Result
+		if result == "" {
+			result = "unset"
+		}
+		return fmt.Errorf("onto advance: cannot leave verify: missing passing verification (verify.result=%s)", result)
+	}
+	if next == "build" && st.Isolation == "" {
+		return fmt.Errorf("onto advance: cannot enter build: missing isolation (set branch or worktree)")
 	}
 
 	dirty, determinable := worktreeDirty(root)

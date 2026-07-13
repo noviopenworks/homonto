@@ -98,8 +98,15 @@ func TestConformance_FullLifecycle_HappyPath(t *testing.T) {
 
 	// Walk the phases. Commit before each advance so the worktree is clean:
 	// the verify→close transition (and close itself) refuse a dirty worktree,
-	// so a committed tree makes the whole lifecycle deterministic.
+	// so a committed tree makes the whole lifecycle deterministic. Before
+	// leaving verify, record verify.result=pass so the advance evidence gate is
+	// satisfied (isolation, needed to enter build, was set above).
 	for _, want := range []string{"design", "build", "verify", "close"} {
+		if want == "close" {
+			if _, err := runOnto(t, "set", "verify-result", name, "pass", "--dir", root); err != nil {
+				t.Fatalf("onto set verify-result pass: %v", err)
+			}
+		}
 		commitAll(t, root, "seed before advance to "+want)
 		if _, err := runOnto(t, "advance", name, "--dir", root); err != nil {
 			t.Fatalf("onto advance to %s: %v", want, err)
@@ -107,6 +114,15 @@ func TestConformance_FullLifecycle_HappyPath(t *testing.T) {
 		if v := readStateJSON(t, root, name); v.Phase != want || v.DerivedPhase != want {
 			t.Fatalf("after advance to %s: %+v, want phase=%s derived=%s", want, v, want, want)
 		}
+	}
+
+	// Record the remaining close-phase evidence a full workflow requires:
+	// close.merged and resolved guides. verify.result=pass was set above.
+	if _, err := runOnto(t, "set", "close-merged", name, "--dir", root); err != nil {
+		t.Fatalf("onto set close-merged: %v", err)
+	}
+	if _, err := runOnto(t, "set", "guides", name, "updated", "--dir", root); err != nil {
+		t.Fatalf("onto set guides updated: %v", err)
 	}
 
 	// close archives the change: the directory moves under archive/ and the
