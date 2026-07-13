@@ -406,11 +406,15 @@ What turns an opinionated internal toolkit into something others build on.
   `catalog.Load` via a minimal hand-rolled comparator (`internal/catalog/
   version.go`, no new module dep); the expansion graph still keys on the name.
   Real consumer: `comet` declares `superpowers@>=0.1.0` + `openspec@>=0.1.0`.
-- **Remaining E1 (decision-gated):** `[compat].homonto` range (reuses the new
-  comparator — next bounded slice if a homonto binary version reference exists);
-  capabilities (**D2**); local/custom framework resolution via the trust pipeline
-  (**D1**); F38 plugin lifecycle vs honest rename (**D4**). Each is designed and
-  waits on the D1–D5 answers.
+- **Remaining E1 (prerequisite/decision-gated):** `[compat].homonto` range —
+  reuses the comparator BUT has real prerequisites that make it premature now:
+  the catalog can't import `internal/cli.Version` (layering — it must be
+  injected), the binary version is `0.1.0-dev` (a pre-release the minimal `x.y.z`
+  comparator rejects by design), and **no framework needs a homonto constraint
+  yet** (no consumer). Capabilities (**D2**) and local/custom resolution via the
+  trust pipeline (**D1**) have no consumer until local frameworks exist; F38 is a
+  lifecycle-vs-rename decision (**D4**). Each is designed and waits on the D1–D5
+  answers or a real consumer.
 - **Closes:** F35 (a `local:` framework must fail at load, never silently install
   nothing — verified: `internal/config/config.go:256` skips non-builtin), F36
   (versioned manifests with dependencies, provided/required capabilities,
