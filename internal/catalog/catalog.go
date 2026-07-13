@@ -276,6 +276,23 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 	return nil
 }
 
+// validResourceName rejects a resource name that is not a plain single path
+// component. A framework-manifest key (skill/command/subagent name) later becomes
+// a local filesystem path element during materialization and linking —
+// filepath.Join(root, name) followed by os.RemoveAll / os.Rename / symlink
+// creation — so an empty, ".", "..", or separator-bearing name could escape the
+// managed root and delete or overwrite arbitrary files (a pinned-remote or shared
+// local framework would otherwise be an arbitrary-write vector). Mirrors
+// config.validateResourceName; duplicated here because catalog must not import
+// config (see the package doc).
+func validResourceName(kind, name string) error {
+	if name == "" || name == "." || name == ".." ||
+		strings.ContainsAny(name, `/\`) || name != path.Base(name) {
+		return fmt.Errorf("catalog: %s name %q is not a plain name (path traversal rejected)", kind, name)
+	}
+	return nil
+}
+
 // indexFramework indexes one framework's declared resources and metadata into c,
 // reading paths relative to src and recording src as each resource's source FS.
 // Each resource path is validated to exist in src, and the strict shared-index
@@ -284,6 +301,9 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 // and mergeFrameworkRoot (a local single-framework root).
 func (c *Catalog) indexFramework(name string, src fs.FS, ft frameworkTOML) error {
 	for skill, sp := range ft.Skills {
+		if err := validResourceName("skill", skill); err != nil {
+			return err
+		}
 		if _, err := fs.Stat(src, sp); err != nil {
 			return fmt.Errorf("catalog: framework %q skill %q path %q missing from catalog", name, skill, sp)
 		}
@@ -294,6 +314,9 @@ func (c *Catalog) indexFramework(name string, src fs.FS, ft frameworkTOML) error
 		c.skillFS[skill] = src
 	}
 	for command, cp := range ft.Commands {
+		if err := validResourceName("command", command); err != nil {
+			return err
+		}
 		if _, err := fs.Stat(src, cp); err != nil {
 			return fmt.Errorf("catalog: framework %q command %q path %q missing from catalog", name, command, cp)
 		}
@@ -304,6 +327,9 @@ func (c *Catalog) indexFramework(name string, src fs.FS, ft frameworkTOML) error
 		c.commandFS[command] = src
 	}
 	for subagent, sap := range ft.Subagents {
+		if err := validResourceName("subagent", subagent); err != nil {
+			return err
+		}
 		if _, err := fs.Stat(src, sap); err != nil {
 			return fmt.Errorf("catalog: framework %q subagent %q path %q missing from catalog", name, subagent, sap)
 		}
