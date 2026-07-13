@@ -38,20 +38,19 @@ bigger. Read `notes.md` first if present.
 ### 2. Plan-ready gate
 
 > **GATE (plan-ready + execution config):** pause. The user reviews the plan
-> and chooses the execution configuration, recorded in `state.yaml` under
-> `decisions:`:
+> and chooses the execution configuration, recorded through the binary:
 >
-> - `isolation: branch | worktree` — branch for simple changes; worktree for
->   parallel work or a dirty current branch
-> - `execution: direct | subagent` — direct in-session; subagent only when
->   real background dispatch capability exists
-> - `tdd: tdd | direct` — tdd for anything with testable logic; direct for
->   content/docs deliverables
+> - `onto set isolation <name> branch|worktree` — branch for simple changes;
+>   worktree for parallel work or a dirty current branch
+> - `onto set build-mode <name> direct|subagent` — direct in-session; subagent
+>   only when real background dispatch capability exists
+> - `onto set tdd-mode <name> tdd|direct` — tdd for anything with testable
+>   logic; direct for content/docs deliverables
 >
 > This gate MAY be pre-authorized: if the user gave an explicit directive
-> (e.g. "run to completion with defaults"), record it **verbatim** in
-> `decisions.directive` and proceed with the recorded config — but still
-> surface the plan summary so the user sees what will happen.
+> (e.g. "run to completion with defaults"), record it **verbatim** via `onto
+> set directive <name> "<text>"` and proceed with the recorded config — but
+> still surface the plan summary so the user sees what will happen.
 >
 > **What qualifies as a directive**: an explicit, unprompted instruction
 > covering future gates. Acquiescence is not one — "go ahead", "sounds
@@ -115,9 +114,11 @@ prohibited.
   `Under revision` row wins at every intermediate state** — (1) flip
   `design.md`'s status line to `Status: Under revision`, (2) if a
   `verification.md` exists, flip its `Result:` line to
-  `Result: superseded (revision <date>)` and set `state.yaml`
-  `verify.result: pending` (the cache must not keep claiming a pass the
-  file has withdrawn), (3) set `phase: design`. A stale pass can then
+  `Result: superseded (revision <date>)` and run `onto set verify-result
+  <name> pending` (the cache must not keep claiming a pass the file has
+  withdrawn), (3) the `Status: Under revision` marker now drives the
+  dispatcher's derivation to `design` (files win downward) — no phase field
+  is written; the next dispatch routes to design. A stale pass can then
   never teleport the revised change past build/verify. The derivation
   routes to design until the approach gate re-confirms (new
   `Status: Confirmed` + date), after which build resumes.
@@ -135,7 +136,6 @@ prohibited.
       still uncommitted in `docs/changes/<name>/` commits now)
 - [ ] Project build + test suite run fresh and pass (state the commands and
       results — do not rely on memory)
-- [ ] `decisions:` in `state.yaml` filled (isolation, execution, tdd)
-- [ ] `state.yaml` phase advanced: `build → verify`;
-      `metrics.phases.build: <today>` stamped
+- [ ] Decisions recorded via `onto set isolation|build-mode|tdd-mode <name> …`
+- [ ] Phase advanced build → verify via `onto advance <name>`
 - [ ] Announce the transition and load `onto-verify`
