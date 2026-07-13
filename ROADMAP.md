@@ -378,7 +378,14 @@ What turns an opinionated internal toolkit into something others build on.
   (`subagentcopy.*`) consolidation — a small optional change wrapping the already-
   shared `internal/copyfile` (opencode's array-based `plugin.*` stays adapter-owned
   by design). **E3 exit gate met** (conformance suite every adapter passes; the two
-  big adapters reduced to shared cores + thin per-tool builders).
+  big adapters reduced to shared cores + thin per-tool builders). **Copy-mode
+  follow-on DONE (2026-07-13, `consolidate-copy-projection` archived):** new
+  `internal/adapter/copyproj` (wrapping the shared `internal/copyfile`) now owns
+  both adapters' `subagentcopy.*` reconciler; F7 prune-root guard + local-edit
+  `.bak` backup preserved. **The adapter-consolidation story is now complete across
+  all three surfaces** (structured-doc / file-projection / copy-mode): the two big
+  adapters dropped **claude 1037→714, opencode 999→731**, behind the shared
+  `structproj`+`jsoncodec`+`fileproj`+`copyproj` cores.
 - **Closes:** F40 (both adapters are ~1000 lines duplicating security-sensitive
   planning/link/prune/copy/adopt/drift logic; the Codex `structproj` design is the
   better direction — migrate the two onto the contract), F55 (a reusable
