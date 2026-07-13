@@ -301,12 +301,19 @@ only after Now.
   it explicitly. `State.Supersedes []string` (ungated), `onto set supersedes
   <change> --change <name>...` (mirrors `deps`), and an `onto graph` `supersedes`
   edge (change → each change it replaces). Deterministic, ungated, test-covered.
-- **Remaining typed edges** (`tests`/`released-in`/`deviates-from`) need data onto
-  does not track (which tests cover a change, which release shipped it, what a
-  change deviates from). `deviates-from` is the next mechanical mirror of the
-  settable-list pattern; `tests`/`released-in` genuinely need concepts onto lacks
-  (a test registry, a release model) and stay design-gated. CI validation + the
-  OpenSpec-divergence question remain maintainer decisions.
+- **`deviates-from` edge DONE (2026-07-13, `onto-deviates-from-edge` archived):**
+  `State.DeviatesFrom []string` (ungated), `onto set deviates-from <change> --from
+  <name>...`, and an `onto graph` `deviates-from` edge (change → each target it
+  knowingly diverges from — an honest record of implementation divergence). All
+  four change→target edges onto can track from settable/derivable data
+  (`depends-on`, `implements`, `supersedes`, `deviates-from`) are now delivered.
+- **Remaining typed edges** (`tests`/`released-in`) genuinely need concepts onto
+  does not model — a test registry (which tests cover a change) and a release
+  model (which release shipped it). A bare settable string list for either would
+  be an unvalidated dump with no consumer, so they stay design-gated pending a
+  real need. CI edge-validation + the OpenSpec-divergence question remain
+  maintainer decisions. **X1 is complete to the limit of what onto can derive or
+  cleanly track; the rest is decision-gated, not mechanical.**
 - **Problem (remaining — the richer graph):** requirements and scenarios are mutable
   headings; verification maps names to tests by hand. The toolkit cannot yet
   answer "which code, tests, decisions, commits, and release prove scenario X."
