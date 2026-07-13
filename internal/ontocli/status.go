@@ -51,11 +51,11 @@ func runStatus(cmd *cobra.Command, root string) error {
 			cmd.Printf("%s: missing-state\n", e.Name())
 		case "malformed":
 			cmd.Printf("%s: malformed (%v)\n", e.Name(), classErr)
-		default: // valid
+		default: // valid — label by the enumerated directory (consistent with doctor)
 			if skeletonErr := ontostate.ValidateSkeleton(changeDir); skeletonErr != nil {
-				cmd.Printf("%s: %s — skeleton: %v\n", st.Change, st.Phase, skeletonErr)
+				cmd.Printf("%s: %s — skeleton: %v\n", e.Name(), st.Phase, skeletonErr)
 			} else {
-				cmd.Printf("%s: %s — skeleton ok\n", st.Change, st.Phase)
+				cmd.Printf("%s: %s — skeleton ok\n", e.Name(), st.Phase)
 			}
 		}
 	}

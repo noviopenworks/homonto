@@ -2,8 +2,19 @@ package ontostate
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
+
+func TestParseAndMigrate_FutureVersion_Rejected(t *testing.T) {
+	got, err := parseAndMigrate([]byte("schema_version: 999\nchange: c\nphase: build\n"), "onto-state.yaml")
+	if err == nil {
+		t.Fatalf("parseAndMigrate accepted schema_version 999, want error; got %+v", got)
+	}
+	if !strings.Contains(err.Error(), "schema_version") {
+		t.Errorf("error = %q, want it to name schema_version", err.Error())
+	}
+}
 
 // legacy 7-field binary onto-state.yaml (no schema_version).
 const legacyBinaryYAML = `change: legacy-bin
