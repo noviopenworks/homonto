@@ -357,6 +357,11 @@ What turns an opinionated internal toolkit into something others build on.
   reduced to contract + per-tool codec.
 
 ### E4. Supply chain, CI, and release integrity
+- **Partial (2026-07-13):** F58 (`perf-benchmarks` — BenchmarkLoad + BenchmarkMerge
+  foundation) archived; F59 (build doc aligned to the pinned `go1.26.5` toolchain,
+  `17c9c85`). Remaining E4 (CI real-tool E2E, native multi-OS CI, coverage/fuzz
+  gates, signed provenance, comet-runtime provenance F23/F24) needs CI/external
+  infrastructure not available in this environment.
 - **Closes:** F32/F60 (pin action SHAs and tool versions; enforce SemVer,
   protected ancestry, approval, signed provenance, SBOMs, attestations), F53
   (CI runs the real-tool E2E matrix, no `|| true` swallowing exit status), F54
