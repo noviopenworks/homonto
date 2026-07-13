@@ -42,7 +42,7 @@ func Fetch(ctx context.Context, src RemoteSource, lim Limits) (Tree, int64, erro
 // uses a default. Only https is reachable here (the locator rejects plain http).
 func fetchHTTPS(ctx context.Context, url string, lim Limits, client *http.Client) (Tree, int64, error) {
 	if !strings.HasPrefix(url, "https://") {
-		return Tree{}, 0, fmt.Errorf("remote: https transport requires an https:// URL, got %q", url)
+		return Tree{}, 0, fmt.Errorf("remote: https transport requires an https:// URL, got %q", RedactLocator(url))
 	}
 	base := http.DefaultClient
 	if client != nil {
@@ -68,11 +68,11 @@ func fetchHTTPS(ctx context.Context, url string, lim Limits, client *http.Client
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return Tree{}, 0, fmt.Errorf("remote: fetch %q: %w", url, err)
+		return Tree{}, 0, fmt.Errorf("remote: fetch %q: %w", RedactLocator(url), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return Tree{}, 0, fmt.Errorf("remote: fetch %q: unexpected status %s", url, resp.Status)
+		return Tree{}, 0, fmt.Errorf("remote: fetch %q: unexpected status %s", RedactLocator(url), resp.Status)
 	}
 	// Bound the compressed download; the decompressed stream is bounded again by
 	// ValidateTarGz. One extra byte detects an overflow.
@@ -134,7 +134,7 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 		cloneURL = cloneURL[:i]
 	}
 	if ref == "" {
-		return Tree{}, 0, fmt.Errorf("remote: git source %q must pin a ref with #<commit-or-tag>", url)
+		return Tree{}, 0, fmt.Errorf("remote: git source %q must pin a ref with #<commit-or-tag>", RedactLocator(url))
 	}
 	tmp, err := os.MkdirTemp("", "homonto-git-*")
 	if err != nil {
@@ -148,7 +148,13 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 	gitc := func(args ...string) error {
 		cmd := exec.CommandContext(ctx, "git", append([]string{"-C", tmp, "-c", "protocol.file.allow=always", "-c", "advice.detachedHead=false"}, args...)...)
 		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("remote: git %v failed: %v: %s", args, err, out)
+			// Args may include the clone URL (with embedded credentials); redact
+			// each so a failing git invocation cannot leak a secret to logs.
+			safe := make([]string, len(args))
+			for i, a := range args {
+				safe[i] = RedactLocator(a)
+			}
+			return fmt.Errorf("remote: git %v failed: %v: %s", safe, err, out)
 		}
 		return nil
 	}

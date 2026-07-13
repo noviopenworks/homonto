@@ -163,7 +163,9 @@ func materializeRemoteFile(cacheDir, name, destRoot string) error {
 	if err := os.MkdirAll(destRoot, 0o755); err != nil {
 		return err
 	}
-	return fsutil.WriteAtomic(filepath.Join(destRoot, name+".md"), data)
+	// The remote content root is under .homonto (control plane): write no-follow
+	// so a planted symlink cannot redirect the materialized file.
+	return fsutil.WriteControlPlane(filepath.Join(destRoot, name+".md"), data, 0o600)
 }
 
 func fileSize(p string) int64 {

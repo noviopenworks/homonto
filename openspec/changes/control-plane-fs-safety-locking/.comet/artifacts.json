@@ -1,0 +1,5 @@
+{
+  "openspec_proposal": "openspec/changes/control-plane-fs-safety-locking/proposal.md",
+  "openspec_tasks": "openspec/changes/control-plane-fs-safety-locking/tasks.md",
+  "openspec_delta_spec": "openspec/changes/control-plane-fs-safety-locking/specs/apply-pipeline/spec.md"
+}

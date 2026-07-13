@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/noviopenworks/homonto/internal/fsutil"
 )
 
 // Materialize extracts each named builtin skill from the embedded FS into
@@ -40,7 +42,9 @@ func (c *Catalog) Materialize(dstRoot string, skillNames []string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			return os.WriteFile(target, data, 0o644)
+			// Catalog files live under .homonto (control plane); write no-follow
+			// so a planted symlink cannot redirect materialization.
+			return fsutil.WriteControlPlane(target, data, 0o644)
 		})
 		if err != nil {
 			return err
@@ -67,7 +71,7 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 		if err := os.MkdirAll(dstRoot, 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(dstRoot, name+".md"), data, 0o644); err != nil {
+		if err := fsutil.WriteControlPlane(filepath.Join(dstRoot, name+".md"), data, 0o644); err != nil {
 			return err
 		}
 	}
@@ -94,7 +98,7 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
 		if err := os.MkdirAll(dstRoot, 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(dstRoot, name+".md"), data, 0o644); err != nil {
+		if err := fsutil.WriteControlPlane(filepath.Join(dstRoot, name+".md"), data, 0o644); err != nil {
 			return err
 		}
 	}

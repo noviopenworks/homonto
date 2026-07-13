@@ -55,11 +55,14 @@ type lockDoc struct {
 	Remotes []LockEntry `json:"remotes"`
 }
 
-// Set inserts or replaces an entry.
+// Set inserts or replaces an entry. The locator is redacted here so a
+// credential embedded in a remote source can never be persisted to the lockfile,
+// regardless of the caller.
 func (l *Lock) Set(e LockEntry) {
 	if l.Entries == nil {
 		l.Entries = map[string]LockEntry{}
 	}
+	e.Locator = RedactLocator(e.Locator)
 	l.Entries[e.key()] = e
 }
 
@@ -96,7 +99,9 @@ func (l Lock) Save(path string) error {
 	if err := enc.Encode(doc); err != nil {
 		return fmt.Errorf("remote: lock: %w", err)
 	}
-	return fsutil.WriteAtomic(path, buf.Bytes())
+	// remote.lock.json is one of homonto's own control-plane files: write it
+	// no-follow (a planted symlink is refused) rather than through a symlink.
+	return fsutil.WriteControlPlane(path, buf.Bytes(), 0o600)
 }
 
 func (l Lock) sorted() []LockEntry {
