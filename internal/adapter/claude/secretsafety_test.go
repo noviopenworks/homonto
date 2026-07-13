@@ -30,7 +30,7 @@ func TestRenderedPlanNeverLeaksSecret(t *testing.T) {
 		t.Fatalf("create plan should show the unresolved token:\n%s", rendered)
 	}
 
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -99,7 +99,7 @@ func TestSecretToLiteralTransitionRedacts(t *testing.T) {
 
 	// apply the secret-backed MCP (disk now holds resolved "SECRET")
 	cs, _ := a.Plan(cfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 

@@ -42,7 +42,7 @@ func TestClaudeProjectsPluginConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -81,7 +81,7 @@ func TestClaudePluginConfigDeDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -97,7 +97,7 @@ func TestClaudePluginConfigDeDeclared(t *testing.T) {
 	if findChange(cs2, "delete", "pluginconfig.hud@official") == nil {
 		t.Fatalf("expected delete for pluginconfig.hud@official, got %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(c2, cs2, resolver(), st); err != nil {
 		t.Fatalf("apply c2: %v", err)
 	}
 	doc, _ := os.ReadFile(settings)
@@ -123,7 +123,7 @@ func TestClaudeAdoptsPluginConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
-	if err := a.Apply(cs0, resolver(), seed); err != nil {
+	if err := a.Apply(c, cs0, resolver(), seed); err != nil {
 		t.Fatalf("seed apply: %v", err)
 	}
 	settings := filepath.Join(home, ".claude", "settings.json")
@@ -141,7 +141,7 @@ func TestClaudeAdoptsPluginConfig(t *testing.T) {
 	if findChange(cs, "adopt", "pluginconfig.hud@official") == nil {
 		t.Fatalf("expected adopt for pluginconfig.hud@official, got %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if _, ok := st.Get("claude", "pluginconfig.hud@official"); !ok {
@@ -169,7 +169,7 @@ func TestClaudePluginConfigPlanDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	var first string
@@ -209,7 +209,7 @@ func TestClaudePluginConfigWithEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

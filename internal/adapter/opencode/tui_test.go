@@ -28,7 +28,7 @@ func TestOpenCodeTUICreatesFileWithTheme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	raw, err := os.ReadFile(tuiPath(home))
@@ -56,7 +56,7 @@ func TestOpenCodeTUIPreservesUnrelatedKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	raw, _ := os.ReadFile(tuiPath(home))
@@ -82,7 +82,7 @@ func TestOpenCodeTUIPrunesDeDeclaredKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan1: %v", err)
 	}
-	if err := a.Apply(cs1, noSecret(), st); err != nil {
+	if err := a.Apply(c1, cs1, noSecret(), st); err != nil {
 		t.Fatalf("apply1: %v", err)
 	}
 
@@ -101,7 +101,7 @@ func TestOpenCodeTUIPrunesDeDeclaredKey(t *testing.T) {
 	if !sawDelete {
 		t.Fatalf("expected a delete for de-declared tui.theme, got %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, noSecret(), st); err != nil {
+	if err := a.Apply(c2, cs2, noSecret(), st); err != nil {
 		t.Fatalf("apply2: %v", err)
 	}
 	raw, _ := os.ReadFile(tuiPath(home))
@@ -140,7 +140,7 @@ func TestOpenCodeTUIAdoptLeavesFileByteIdentical(t *testing.T) {
 	if !sawAdopt {
 		t.Fatal("expected an adopt for tui.theme")
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	got, _ := os.ReadFile(tuiPath(home))
@@ -175,7 +175,7 @@ func TestOpenCodeTUIOnlyLeavesOpencodeJsoncByteIdentical(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	// tui.json got the theme...
@@ -208,7 +208,7 @@ func TestOpenCodeTUIAndSettingsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	cs2, _ := a.Plan(c, st)

@@ -65,7 +65,7 @@ func TestPlanThenApplyIsSurgicalAndIdempotent(t *testing.T) {
 	if len(cs.Changes) == 0 {
 		t.Fatal("expected changes on first plan")
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -102,7 +102,7 @@ func TestSecretWithSpecialCharsDoesNotCorruptFile(t *testing.T) {
 		Pass:   func(string) (string, error) { return `x","injected":"y`, nil },
 	}
 	cs, _ := a.Plan(cfg(), st)
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(cfg(), cs, res, st); err != nil {
 		t.Fatalf("apply with quote-bearing secret: %v", err)
 	}
 	mj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
@@ -131,7 +131,7 @@ func TestStateHasNoPlaintextSecret(t *testing.T) {
 	st, _ := state.Load(dir)
 
 	cs, _ := a.Plan(cfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.Save(dir); err != nil {
@@ -153,7 +153,7 @@ func TestSecretDriftPlanIsRedacted(t *testing.T) {
 
 	// first apply records hashed state
 	cs, _ := a.Plan(cfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -221,7 +221,7 @@ func TestClaudeAdoptOnlyApplyLeavesFileByteIdentical(t *testing.T) {
 	if !sawAdopt {
 		t.Fatal("expected at least one adopt change")
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -259,7 +259,7 @@ func TestSkillsOnlyConfigPlansAndAppliesLinks(t *testing.T) {
 	if nonNoop == 0 {
 		t.Fatal("skills-only config: plan must contain a non-noop change for the missing link")
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	dst := filepath.Join(home, ".claude", "skills", "onto")

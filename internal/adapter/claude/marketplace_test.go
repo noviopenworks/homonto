@@ -43,7 +43,7 @@ func TestClaudeProjectsMarketplace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -88,7 +88,7 @@ func TestClaudeMarketplaceAutoUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	doc, _ := os.ReadFile(settings)
@@ -113,7 +113,7 @@ func TestClaudeMarketplaceDeDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -128,7 +128,7 @@ func TestClaudeMarketplaceDeDeclared(t *testing.T) {
 	if findChange(cs2, "delete", "marketplace.local") == nil {
 		t.Fatalf("expected delete for marketplace.local, got %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(c2, cs2, resolver(), st); err != nil {
 		t.Fatalf("apply c2: %v", err)
 	}
 	doc, _ := os.ReadFile(settings)
@@ -156,7 +156,7 @@ func TestClaudeAdoptsMarketplace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
-	if err := a.Apply(cs0, resolver(), seed); err != nil {
+	if err := a.Apply(c, cs0, resolver(), seed); err != nil {
 		t.Fatalf("seed apply: %v", err)
 	}
 	settings := filepath.Join(home, ".claude", "settings.json")
@@ -174,7 +174,7 @@ func TestClaudeAdoptsMarketplace(t *testing.T) {
 	if findChange(cs, "adopt", "marketplace.official") == nil {
 		t.Fatalf("expected adopt for marketplace.official, got %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if _, ok := st.Get("claude", "marketplace.official"); !ok {
@@ -202,7 +202,7 @@ func TestClaudeMarketplacePlanDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	var first string
@@ -248,7 +248,7 @@ func TestClaudeFourNamespaceIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

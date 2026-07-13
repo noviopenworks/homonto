@@ -351,22 +351,32 @@ func mcpDocPath(key string) string     { return "mcp." + jsonutil.EscapePath(tri
 func settingDocPath(key string) string { return jsonutil.EscapePath(trim(key, "setting.")) }
 func tuiDocPath(key string) string     { return jsonutil.EscapePath(trim(key, "tui.")) }
 
-func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
+// expand resolves the config's skill/command/subagent entries for opencode into
+// the adapter's instance fields. Both Plan and Apply call it first so Apply's
+// file entries derive from the supplied config rather than a prior Plan.
+func (a *Adapter) expand(c *config.Config) error {
 	skills, err := c.ExpandedSkillEntriesForTool("opencode")
 	if err != nil {
-		return adapter.ChangeSet{}, err
+		return err
 	}
 	a.skills = skills
 	commands, err := c.ExpandedCommandEntriesForTool("opencode")
 	if err != nil {
-		return adapter.ChangeSet{}, err
+		return err
 	}
 	a.commands = commands
 	subagents, err := c.ExpandedSubagentEntriesForTool("opencode")
 	if err != nil {
-		return adapter.ChangeSet{}, err
+		return err
 	}
 	a.subagents = subagents
+	return nil
+}
+
+func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
+	if err := a.expand(c); err != nil {
+		return adapter.ChangeSet{}, err
+	}
 	doc, err := readStandardized(a.cfgFile())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -590,7 +600,10 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	return out, nil
 }
 
-func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
+func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
+	if err := a.expand(cfg); err != nil {
+		return err
+	}
 	doc, err := readStandardized(a.cfgFile())
 	if err != nil {
 		return err

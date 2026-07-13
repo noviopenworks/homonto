@@ -56,7 +56,7 @@ func TestOpenCodeEnabledPluginAppendedNoDup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	got := pluginArray(t, p)
@@ -65,7 +65,7 @@ func TestOpenCodeEnabledPluginAppendedNoDup(t *testing.T) {
 	}
 	// Idempotent: a second apply must not duplicate.
 	cs2, _ := a.Plan(c, st)
-	if err := a.Apply(cs2, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	if got := pluginArray(t, p); len(got) != 2 {
@@ -87,7 +87,7 @@ func TestOpenCodeDisabledManagedPluginRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan enabled: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(on, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := st.Get("opencode", "plugin.@x/quota"); !ok {
@@ -103,7 +103,7 @@ func TestOpenCodeDisabledManagedPluginRemoved(t *testing.T) {
 	if findChange(cs2, "delete", "plugin.@x/quota") == nil {
 		t.Fatalf("disabled managed plugin: expected delete, got %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, noSecret(), st); err != nil {
+	if err := a.Apply(off, cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	got := pluginArray(t, p)
@@ -151,7 +151,7 @@ func TestOpenCodeDisabledUnmanagedEntryPreserved(t *testing.T) {
 	if findChange(cs, "delete", "plugin.@x/quota") != nil {
 		t.Fatalf("unmanaged entry must not be deleted: %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	got := pluginArray(t, p)

@@ -19,7 +19,7 @@ func (failingAdapter) Name() string { return "boom" }
 func (failingAdapter) Plan(*config.Config, *state.State) (adapter.ChangeSet, error) {
 	return adapter.ChangeSet{Tool: "boom"}, nil
 }
-func (failingAdapter) Apply(adapter.ChangeSet, *secret.Resolver, *state.State) error {
+func (failingAdapter) Apply(*config.Config, adapter.ChangeSet, *secret.Resolver, *state.State) error {
 	// Deliberately does NOT contain the tool name: the engine must add it.
 	return errors.New("adapter exploded")
 }

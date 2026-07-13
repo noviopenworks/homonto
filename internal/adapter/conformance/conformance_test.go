@@ -278,7 +278,7 @@ func TestAdaptersPassCoreContract(t *testing.T) {
 			}
 
 			// (b) Apply writes without error.
-			if err := a.Apply(cs, noSecret(), st); err != nil {
+			if err := a.Apply(tc.newConfig(), cs, noSecret(), st); err != nil {
 				t.Fatalf("apply: %v", err)
 			}
 
@@ -347,7 +347,7 @@ func applyFresh(t *testing.T, tc adapterCase) (adapter.Adapter, string, *state.S
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(tc.newConfig(), cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	return a, home, st
@@ -420,7 +420,7 @@ func TestAdaptersDetectAndResetDrift(t *testing.T) {
 			}
 
 			// (d) Re-Apply resets the key; ObserveHashes is clean again.
-			if err := a.Apply(cs, noSecret(), st); err != nil {
+			if err := a.Apply(tc.newConfig(), cs, noSecret(), st); err != nil {
 				t.Fatalf("re-apply: %v", err)
 			}
 			e2, ok := st.Get(tc.name, tc.driftKey)
@@ -476,7 +476,7 @@ func TestAdaptersSurviveMalformedDoc(t *testing.T) {
 			}
 			// Plan tolerated the malformed doc; Apply must also not panic. An
 			// error from Apply is acceptable too — only a panic fails the check.
-			_ = a.Apply(cs, noSecret(), st)
+			_ = a.Apply(tc.newConfig(), cs, noSecret(), st)
 		})
 	}
 }
@@ -561,7 +561,7 @@ func TestAdaptersNeverLeakSecretViaObserveOrState(t *testing.T) {
 				t.Fatalf("plan secret config: %v", err)
 			}
 			// Apply with a resolver that WOULD resolve the reference to plaintext.
-			if err := a.Apply(cs, secretResolver(), st); err != nil {
+			if err := a.Apply(tc.secretConfig(), cs, secretResolver(), st); err != nil {
 				t.Fatalf("apply secret config: %v", err)
 			}
 
@@ -652,7 +652,7 @@ func TestAdaptersDoNotSilentlyClobberForeignContent(t *testing.T) {
 			if err != nil {
 				t.Fatalf("seed plan: %v", err)
 			}
-			if err := a.Apply(csSeed, noSecret(), scratch); err != nil {
+			if err := a.Apply(tc.newConfig(), csSeed, noSecret(), scratch); err != nil {
 				t.Fatalf("seed apply: %v", err)
 			}
 			tc.driftMutate(t, home) // disk[driftKey] is now foreign (!= desired)

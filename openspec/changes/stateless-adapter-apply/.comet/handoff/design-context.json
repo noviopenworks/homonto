@@ -1,0 +1,14 @@
+{
+  "change": "stateless-adapter-apply",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "31fb7b98e857cf898b4d502f3c93baec1b86ca6ffee69fa65edb725387246c9f",
+  "files": [
+    { "path": "openspec/changes/stateless-adapter-apply/proposal.md", "sha256": "aedd44a28fe967370c044a85a5fafd256397879e93da3647484c3248b13924b5" },
+    { "path": "openspec/changes/stateless-adapter-apply/design.md", "sha256": "9d0b00655abb92704ebfeb7cdf794e3b6924f2262b79d0504db82bcdc527f410" },
+    { "path": "openspec/changes/stateless-adapter-apply/tasks.md", "sha256": "57a3a4df7c79965a8b1ff614f2d9a094a4f2cc082e0b28b6dab5fbda7b6af48d" },
+    { "path": "openspec/changes/stateless-adapter-apply/specs/apply-pipeline/spec.md", "sha256": "9537e0fb854782677361ee18bc3d914d541dfc592a85ea0c0d6a09179c11e7ba" }
+  ]
+}

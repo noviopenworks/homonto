@@ -172,7 +172,7 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 		}
 		// Name the tool in every per-adapter failure: with several adapters an
 		// unwrapped error leaves the user guessing which file broke.
-		if err := a.Apply(cs, e.Resolver, e.State); err != nil {
+		if err := a.Apply(e.Cfg, cs, e.Resolver, e.State); err != nil {
 			return fmt.Errorf("%s: %w", cs.Tool, err)
 		}
 		// Persist immediately: a partial apply must keep the record of every

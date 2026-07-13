@@ -35,7 +35,7 @@ func TestCopyModeSubagentProjection(t *testing.T) {
 		if err != nil {
 			t.Fatalf("plan: %v", err)
 		}
-		if err := a.Apply(cs, resolver(), st); err != nil {
+		if err := a.Apply(cfg, cs, resolver(), st); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
 	}
@@ -88,7 +88,7 @@ func TestCopyModeSubagentProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan(empty): %v", err)
 	}
-	if err := a.Apply(csEmpty, resolver(), st); err != nil {
+	if err := a.Apply(empty, csEmpty, resolver(), st); err != nil {
 		t.Fatalf("apply(empty): %v", err)
 	}
 	if _, err := os.Stat(dst); !os.IsNotExist(err) {

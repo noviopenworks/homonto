@@ -31,7 +31,7 @@ func applyObserveCfg(t *testing.T, home, content string) (*Adapter, *state.State
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(observeCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	return a, st

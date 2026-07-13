@@ -45,7 +45,7 @@ func TestCodexCompatibilityFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(cfg, cs, res, st); err != nil {
 		t.Fatal(err)
 	}
 	doc, _ := os.ReadFile(path)
@@ -70,7 +70,7 @@ func TestCodexCompatibilityFixture(t *testing.T) {
 			t.Fatalf("second plan should be all-noop, got %+v", cs2.Changes)
 		}
 	}
-	if err := a.Apply(cs2, res, st); err != nil {
+	if err := a.Apply(cfg, cs2, res, st); err != nil {
 		t.Fatal(err)
 	}
 	after, _ := os.ReadFile(path)
@@ -80,7 +80,7 @@ func TestCodexCompatibilityFixture(t *testing.T) {
 
 	// 3. de-declare prunes the managed server; unmanaged content survives.
 	cs3, _ := a.Plan(&config.Config{}, st)
-	if err := a.Apply(cs3, res, st); err != nil {
+	if err := a.Apply(&config.Config{}, cs3, res, st); err != nil {
 		t.Fatal(err)
 	}
 	doc, _ = os.ReadFile(path)

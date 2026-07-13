@@ -45,7 +45,7 @@ func TestOpenCodeProjectsMCPAndPreservesKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -85,7 +85,7 @@ func TestOpenCodeSecretMCPIsIdempotent(t *testing.T) {
 	res := &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "SECRET", nil }}
 
 	cs, _ := a.Plan(c, st)
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(c, cs, res, st); err != nil {
 		t.Fatal(err)
 	}
 	cs2, _ := a.Plan(c, st)
@@ -172,7 +172,7 @@ func TestOpenCodeAdoptOnlyApplyLeavesFileByteIdentical(t *testing.T) {
 	if !sawAdopt {
 		t.Fatal("expected at least one adopt change")
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -192,7 +192,7 @@ func TestOpenCodeCreateStillWritesFile(t *testing.T) {
 		MCPs: map[string]config.MCP{"codegraph": {Command: []string{"codegraph", "serve"}, Targets: []string{"opencode"}}},
 	}
 	cs, _ := a.Plan(c, st)
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	raw, err := os.ReadFile(a.cfgFile())
@@ -213,7 +213,7 @@ func TestOpenCodeLinksOwnedSkill(t *testing.T) {
 	c := cfgWithSkills("user", "graphify")
 
 	cs, _ := a.Plan(c, st)
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(home, ".config", "opencode", "skills", "graphify")
@@ -243,7 +243,7 @@ func TestOpenCodeSkillsOnlyPlanShowsLinkChanges(t *testing.T) {
 	if nonNoop == 0 {
 		t.Fatal("skills-only config: plan must contain a non-noop change for the missing link")
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	cs2, _ := a.Plan(c, st)

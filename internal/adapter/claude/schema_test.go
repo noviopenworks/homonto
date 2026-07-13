@@ -77,7 +77,7 @@ func TestApplyOntoRealClaudeJSONPreservesSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
