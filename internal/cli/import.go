@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/importer"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +30,15 @@ func importCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := os.WriteFile(cfgPath, data, 0o644); err != nil {
+			// Back up an existing config before overwriting it (F48), so a
+			// forced import over a valid hand-tuned config is recoverable.
+			if existing, rerr := os.ReadFile(cfgPath); rerr == nil {
+				if berr := os.WriteFile(cfgPath+".bak", existing, 0o644); berr != nil {
+					return fmt.Errorf("import: backing up existing config to %s.bak: %w", cfgPath, berr)
+				}
+				cmd.Println("backed up existing config to", cfgPath+".bak")
+			}
+			if err := fsutil.WriteAtomic(cfgPath, data); err != nil {
 				return err
 			}
 			cmd.Println("wrote", cfgPath)
