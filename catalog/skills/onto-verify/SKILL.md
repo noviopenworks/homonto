@@ -26,12 +26,15 @@ Set the verification scale via `onto set verify-scale <name> light|full`:
 - **full** — `workflow: full`, any upgraded preset, a diff touching more
   than **5 non-test files** in `base_ref..HEAD` (the same count and
   test-file exclusion as the preset upgrade triggers — one rule, three
-  citations), or a new capability. Checks every delta-spec scenario, the
-  full design, and the regression suite.
+  citations), a new capability, **or a diff touching a security-sensitive
+  surface** — secret resolution, remote fetch/verify, file deletion/pruning,
+  or permission/ownership — regardless of file count. Scale keys on risk, not
+  just size: a one-file security change is never under-scrutinized. Checks
+  every delta-spec scenario, the full design, and the regression suite.
 - **light** — a preset within its limits (≤5 non-test files, by
-  construction under the upgrade gates). Checks the changed behavior's
-  scenarios plus the regression suite; the report may be brief but never
-  absent.
+  construction under the upgrade gates) **and touching no security-sensitive
+  surface** (else full applies). Checks the changed behavior's scenarios plus
+  the regression suite; the report may be brief but never absent.
 
 ### 2. Check against design and specs
 
@@ -55,9 +58,13 @@ fresh-context skeptics** — conformance (refute each scenario claim) and
 robustness (edge cases, drift/recovery paths) — prompted to refute, never
 approve; light mode uses one optional skeptic with skips recorded. Triage
 findings per the protocol: a refuted claim fails its scenario; new defects
-are CRITICAL-fix or gate-decided deviations. No dispatch capability →
-record the skipped pass in the report's Adversarial section
-(protocol-mandated skips live there, no acceptor needed).
+are CRITICAL-fix or gate-decided deviations. **Non-waivable classes:** a
+security defect, data loss, or a failed core-acceptance scenario is CRITICAL
+and must be fixed — it is never waived, skipped, or gate-accepted as a
+deviation, in light or full mode. Only lower-severity findings are eligible
+for a recorded skip. No dispatch capability → record the skipped pass in the
+report's Adversarial section (protocol-mandated skips live there, no acceptor
+needed) — but a non-waivable-class finding already surfaced still blocks.
 
 ### 3. Regression
 
