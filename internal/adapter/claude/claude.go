@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/adapter/fileproj"
 	"github.com/noviopenworks/homonto/internal/adapter/jsoncodec"
 	"github.com/noviopenworks/homonto/internal/adapter/structproj"
 	"github.com/noviopenworks/homonto/internal/commandpath"
@@ -15,7 +16,6 @@ import (
 	"github.com/noviopenworks/homonto/internal/copyfile"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
-	"github.com/noviopenworks/homonto/internal/link"
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/state"
@@ -134,12 +134,22 @@ func (a *Adapter) inactiveSkillsDir(scope string) string {
 	return d
 }
 
-// links maps each owned skill's destination to its content source. Each skill
-// resource carries its own scope, so dst is computed per entry.
-func (a *Adapter) links() map[string]string {
-	out := map[string]string{}
-	for _, entry := range a.skills {
-		out[filepath.Join(a.skillsDir(entry.Resource.Scope), entry.Name)] = a.skillSource(entry)
+// skillFileLinks builds the desired managed skill symlinks for the fileproj
+// contract: destination, content source, state key, and the same-named link at
+// the other scope (Inactive is "" when there is nothing to relocate from).
+func (a *Adapter) skillFileLinks() []fileproj.Link {
+	var out []fileproj.Link
+	for _, e := range a.skills {
+		inact := ""
+		if d := a.inactiveSkillsDir(e.Resource.Scope); d != "" {
+			inact = filepath.Join(d, e.Name)
+		}
+		out = append(out, fileproj.Link{
+			Dst:      filepath.Join(a.skillsDir(e.Resource.Scope), e.Name),
+			Src:      a.skillSource(e),
+			Key:      "skill." + e.Name,
+			Inactive: inact,
+		})
 	}
 	return out
 }
@@ -173,11 +183,21 @@ func (a *Adapter) commandSource(entry config.NamedResource) string {
 	return filepath.Join(a.content, "commands", localSourceName(entry.Resource.Source, entry.Name)+".md")
 }
 
-// commandLinks maps each owned command's destination (<name>.md) to its source.
-func (a *Adapter) commandLinks() map[string]string {
-	out := map[string]string{}
-	for _, entry := range a.commands {
-		out[filepath.Join(a.commandsDir(entry.Resource.Scope), entry.Name+".md")] = a.commandSource(entry)
+// commandFileLinks builds the desired managed command symlinks for the fileproj
+// contract (destination is <name>.md).
+func (a *Adapter) commandFileLinks() []fileproj.Link {
+	var out []fileproj.Link
+	for _, e := range a.commands {
+		inact := ""
+		if d := a.inactiveCommandsDir(e.Resource.Scope); d != "" {
+			inact = filepath.Join(d, e.Name+".md")
+		}
+		out = append(out, fileproj.Link{
+			Dst:      filepath.Join(a.commandsDir(e.Resource.Scope), e.Name+".md"),
+			Src:      a.commandSource(e),
+			Key:      "command." + e.Name,
+			Inactive: inact,
+		})
 	}
 	return out
 }
@@ -215,14 +235,25 @@ func (a *Adapter) subagentSource(entry config.NamedResource) string {
 	return filepath.Join(a.content, "subagents", localSourceName(entry.Resource.Source, entry.Name)+".md")
 }
 
-// subagentLinks maps each owned subagent's destination (<name>.md) to its source.
-func (a *Adapter) subagentLinks() map[string]string {
-	out := map[string]string{}
-	for _, entry := range a.subagents {
-		if entry.Mode == "copy" {
-			continue // copy-mode subagents are projected as content files, not links
+// subagentFileLinks builds the desired managed subagent symlinks for the
+// fileproj contract. Copy-mode subagents are projected as content files (not
+// links), so they are skipped here and reconciled by applyCopySubagents.
+func (a *Adapter) subagentFileLinks() []fileproj.Link {
+	var out []fileproj.Link
+	for _, e := range a.subagents {
+		if e.Mode == "copy" {
+			continue
 		}
-		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = a.subagentSource(entry)
+		inact := ""
+		if d := a.inactiveSubagentsDir(e.Resource.Scope); d != "" {
+			inact = filepath.Join(d, e.Name+".md")
+		}
+		out = append(out, fileproj.Link{
+			Dst:      filepath.Join(a.subagentsDir(e.Resource.Scope), e.Name+".md"),
+			Src:      a.subagentSource(e),
+			Key:      "subagent." + e.Name,
+			Inactive: inact,
+		})
 	}
 	return out
 }
@@ -458,131 +489,26 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "plugin.", filterDesired(des, "plugin."), sj, st, codec, pluginPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "pluginconfig.", filterDesired(des, "pluginconfig."), sj, st, codec, pluginConfigPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "marketplace.", filterDesired(des, "marketplace."), sj, st, codec, marketplacePath)...)
-	ops, err := link.Plan(a.links(), a.managedRoots()...)
+	// File-projection namespaces go through the shared symlink contract: each
+	// Project call emits create/relocate/relink + adopt for its links and plans
+	// NO deletes — the generic delete loop below stays the single source of
+	// file-prefix deletes.
+	roots := a.managedRoots()
+	skillChanges, err := fileproj.Project("claude", a.skillFileLinks(), st, roots)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
-	entryByName := map[string]config.NamedResource{}
-	for _, entry := range a.skills {
-		entryByName[entry.Name] = entry
-	}
-	for _, op := range ops {
-		name := filepath.Base(op.Dst)
-		entry := entryByName[name]
-		inactive := a.inactiveSkillsDir(entry.Resource.Scope)
-		// A create whose same-named link still exists (as our managed symlink) at
-		// the other scope is a scope switch: render it as a relocate so the move —
-		// and the prune of the old link Apply performs — is visible before confirm.
-		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name), a.managedRoots()...) {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: filepath.Join(inactive, name), New: op.Dst + " -> " + op.Src})
-		} else if op.Cur == "" {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "skill." + name, New: op.Dst + " -> " + op.Src})
-		} else {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "skill." + name, Old: op.Cur, New: op.Src})
-		}
-	}
-	// Adopt a correct-but-unrecorded skill link — one already on disk pointing at
-	// its content, but absent from state (or stale). link.Plan omits a correct
-	// link, so without this a lost state.json for a skills-only config could never
-	// be rebuilt (apply short-circuits with no change). Mirrors mcp/setting/plugin
-	// adoption: state-only, the on-disk link is left untouched.
-	opDst := map[string]bool{}
-	for _, op := range ops {
-		opDst[op.Dst] = true
-	}
-	for _, entry := range a.skills {
-		name := entry.Name
-		dst := filepath.Join(a.skillsDir(entry.Resource.Scope), name)
-		if opDst[dst] {
-			continue // a create/relink/relocate already covers it
-		}
-		src := a.skillSource(entry)
-		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
-			continue // not a correct link into content
-		}
-		if e, ok := st.Get("claude", "skill."+name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
-			continue // already recorded → a true noop, nothing to do
-		}
-		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "skill." + name, New: dst + " -> " + src})
-	}
-	// ---- command links (parallel to skills) ----
-	cmdOps, err := link.Plan(a.commandLinks(), a.managedRoots()...)
+	cs.Changes = append(cs.Changes, skillChanges...)
+	commandChanges, err := fileproj.Project("claude", a.commandFileLinks(), st, roots)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
-	cmdByName := map[string]config.NamedResource{}
-	for _, entry := range a.commands {
-		cmdByName[entry.Name] = entry
-	}
-	for _, op := range cmdOps {
-		name := strings.TrimSuffix(filepath.Base(op.Dst), ".md")
-		entry := cmdByName[name]
-		inactive := a.inactiveCommandsDir(entry.Resource.Scope)
-		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name+".md"), a.managedRoots()...) {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "command." + name, Old: filepath.Join(inactive, name+".md"), New: op.Dst + " -> " + op.Src})
-		} else if op.Cur == "" {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "command." + name, New: op.Dst + " -> " + op.Src})
-		} else {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "command." + name, Old: op.Cur, New: op.Src})
-		}
-	}
-	cmdOpDst := map[string]bool{}
-	for _, op := range cmdOps {
-		cmdOpDst[op.Dst] = true
-	}
-	for _, entry := range a.commands {
-		dst := filepath.Join(a.commandsDir(entry.Resource.Scope), entry.Name+".md")
-		if cmdOpDst[dst] {
-			continue
-		}
-		src := a.commandSource(entry)
-		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
-			continue
-		}
-		if e, ok := st.Get("claude", "command."+entry.Name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
-			continue
-		}
-		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "command." + entry.Name, New: dst + " -> " + src})
-	}
-	// ---- subagent links (parallel to commands) ----
-	subOps, err := link.Plan(a.subagentLinks(), a.managedRoots()...)
+	cs.Changes = append(cs.Changes, commandChanges...)
+	subagentChanges, err := fileproj.Project("claude", a.subagentFileLinks(), st, roots)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
-	subByName := map[string]config.NamedResource{}
-	for _, entry := range a.subagents {
-		subByName[entry.Name] = entry
-	}
-	for _, op := range subOps {
-		name := strings.TrimSuffix(filepath.Base(op.Dst), ".md")
-		entry := subByName[name]
-		inactive := a.inactiveSubagentsDir(entry.Resource.Scope)
-		if op.Cur == "" && inactive != "" && link.IsManaged(filepath.Join(inactive, name+".md"), a.managedRoots()...) {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "subagent." + name, Old: filepath.Join(inactive, name+".md"), New: op.Dst + " -> " + op.Src})
-		} else if op.Cur == "" {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: "subagent." + name, New: op.Dst + " -> " + op.Src})
-		} else {
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: "subagent." + name, Old: op.Cur, New: op.Src})
-		}
-	}
-	subOpDst := map[string]bool{}
-	for _, op := range subOps {
-		subOpDst[op.Dst] = true
-	}
-	for _, entry := range a.subagents {
-		dst := filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")
-		if subOpDst[dst] {
-			continue
-		}
-		src := a.subagentSource(entry)
-		if tgt, err := os.Readlink(dst); err != nil || tgt != src {
-			continue
-		}
-		if e, ok := st.Get("claude", "subagent."+entry.Name); ok && e.Applied == secret.Hash(dst+" -> "+src) {
-			continue
-		}
-		cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: "subagent." + entry.Name, New: dst + " -> " + src})
-	}
+	cs.Changes = append(cs.Changes, subagentChanges...)
 	// Orphans: a state key no longer declared in config is de-declared — plan a
 	// delete. (A declared key missing from disk is drift, handled above.) Old is
 	// always redacted: a removed key's provenance is stale by definition.
@@ -669,77 +595,33 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 			out[k] = v
 		}
 	}
+	// File-projection keys (skill./command./subagent.*) live on disk as symlinks;
+	// each re-hashes its recorded link through the shared contract, reading at the
+	// recorded dst so a pending scope switch is not misread as drift.
+	for k, v := range fileproj.Observe("claude", "skill.", st) {
+		out[k] = v
+	}
+	for k, v := range fileproj.Observe("claude", "command.", st) {
+		out[k] = v
+	}
+	for k, v := range fileproj.Observe("claude", "subagent.", st) {
+		out[k] = v
+	}
 	for _, key := range st.Keys("claude") {
-		if hasPrefix(key, "skill.") {
-			// skill.* lives on disk as a symlink, not a JSON value. Its Applied was
-			// stored as Hash(dst + " -> " + src); reproduce it by reading the link at
-			// the dst state recorded — NOT at the current scope's skillsDir. A pending
-			// [skills] scope switch changes skillsDir but leaves the applied link in
-			// place; reading the new scope's (empty) location would make an intact old
-			// link look "missing" (false drift) instead of a pending relocation Plan
-			// already surfaces.
-			e, ok := st.Get("claude", key)
-			if !ok {
-				continue
-			}
-			dst, ok := recordedDst(e.Desired)
-			if !ok {
-				continue
-			}
-			target, err := os.Readlink(dst)
-			if err != nil {
-				continue // missing or not a symlink → omit (engine infers missing)
-			}
-			out[key] = secret.Hash(dst + " -> " + target)
+		if !hasPrefix(key, "subagentcopy.") {
 			continue
 		}
-		if hasPrefix(key, "command.") {
-			e, ok := st.Get("claude", key)
-			if !ok {
-				continue
-			}
-			dst, ok := recordedDst(e.Desired)
-			if !ok {
-				continue
-			}
-			target, err := os.Readlink(dst)
-			if err != nil {
-				continue
-			}
-			out[key] = secret.Hash(dst + " -> " + target)
+		// A copy-mode subagent lives on disk as a real file; its Applied is the
+		// content hash and Desired holds the dst path.
+		e, ok := st.Get("claude", key)
+		if !ok {
 			continue
 		}
-		if hasPrefix(key, "subagent.") {
-			e, ok := st.Get("claude", key)
-			if !ok {
-				continue
-			}
-			dst, ok := recordedDst(e.Desired)
-			if !ok {
-				continue
-			}
-			target, err := os.Readlink(dst)
-			if err != nil {
-				continue
-			}
-			out[key] = secret.Hash(dst + " -> " + target)
-			continue
+		content, err := os.ReadFile(e.Desired)
+		if err != nil {
+			continue // missing → omit (engine infers missing)
 		}
-		if hasPrefix(key, "subagentcopy.") {
-			// A copy-mode subagent lives on disk as a real file; its Applied is the
-			// content hash and Desired holds the dst path.
-			e, ok := st.Get("claude", key)
-			if !ok {
-				continue
-			}
-			content, err := os.ReadFile(e.Desired)
-			if err != nil {
-				continue // missing → omit (engine infers missing)
-			}
-			out[key] = copyfile.Hash(content)
-			continue
-		}
-		// Structured-document keys were re-hashed above via structproj.Observe.
+		out[key] = copyfile.Hash(content)
 	}
 	return out, nil
 }
@@ -788,55 +670,36 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	}
 	// File-projection keys (skill./command./subagent.): adopt records state only;
 	// delete removes the managed symlink. Their create/update are handled by the
-	// link.Link pass below; noop and subagentcopy.* are handled elsewhere.
-	for _, c := range cs.Changes {
-		if !(hasPrefix(c.Key, "skill.") || hasPrefix(c.Key, "command.") || hasPrefix(c.Key, "subagent.")) {
-			continue
-		}
-		switch c.Action {
-		case "adopt":
-			// A correct-but-unrecorded symlink recorded into state without touching
-			// disk; its value is "dst -> src", recorded like a freshly linked one.
-			st.Set("claude", c.Key, c.New, secret.Hash(c.New))
-		case "delete":
-			// Only a symlink into our content dir is removed; anything else is a
-			// conflict error inside link.Remove. A de-declared resource is no longer
-			// in a.skills/commands/subagents, so recover the on-disk location from the
-			// dst state recorded for it. Fall back to user scope when state is missing.
-			var dst string
-			if e, ok := st.Get("claude", c.Key); ok {
-				dst, _ = recordedDst(e.Desired)
-			}
-			if dst == "" {
-				switch {
-				case hasPrefix(c.Key, "skill."):
-					dst = filepath.Join(a.skillsDir("user"), trim(c.Key, "skill."))
-				case hasPrefix(c.Key, "command."):
-					dst = filepath.Join(a.commandsDir("user"), trim(c.Key, "command.")+".md")
-				case hasPrefix(c.Key, "subagent."):
-					dst = filepath.Join(a.subagentsDir("user"), trim(c.Key, "subagent.")+".md")
-				}
-			}
-			if err := link.Remove(dst, a.managedRoots()...); err != nil {
-				return err
-			}
-			st.Delete("claude", c.Key)
-		}
+	// fileproj.ApplyLinks pass below; noop and subagentcopy.* are handled
+	// elsewhere. The fallback recovers a de-declared key's on-disk dst at user
+	// scope when state lacks a recorded dst, matching the prior inline behavior.
+	roots := a.managedRoots()
+	if err := fileproj.ApplyState("claude", filterChanges(cs.Changes, "skill."), st, roots, func(k string) string {
+		return filepath.Join(a.skillsDir("user"), trim(k, "skill."))
+	}); err != nil {
+		return err
 	}
-	// Fail fast on link conflicts before writing any file. Both skill and
-	// command conflicts must be detected here, before any JSON write or state
+	if err := fileproj.ApplyState("claude", filterChanges(cs.Changes, "command."), st, roots, func(k string) string {
+		return filepath.Join(a.commandsDir("user"), trim(k, "command.")+".md")
+	}); err != nil {
+		return err
+	}
+	if err := fileproj.ApplyState("claude", filterChanges(cs.Changes, "subagent."), st, roots, func(k string) string {
+		return filepath.Join(a.subagentsDir("user"), trim(k, "subagent.")+".md")
+	}); err != nil {
+		return err
+	}
+	// Fail fast on link conflicts before writing any file. A conflict in any of
+	// the three namespaces must be detected here, before any JSON write or state
 	// mutation below — otherwise a command conflict could let Apply partially
 	// write JSON and commit skill-link state before erroring.
-	links := a.links()
-	if _, err := link.Plan(links, a.managedRoots()...); err != nil {
+	if err := fileproj.Conflicts(a.skillFileLinks(), roots); err != nil {
 		return err
 	}
-	cmdLinks := a.commandLinks()
-	if _, err := link.Plan(cmdLinks, a.managedRoots()...); err != nil {
+	if err := fileproj.Conflicts(a.commandFileLinks(), roots); err != nil {
 		return err
 	}
-	subLinks := a.subagentLinks()
-	if _, err := link.Plan(subLinks, a.managedRoots()...); err != nil {
+	if err := fileproj.Conflicts(a.subagentFileLinks(), roots); err != nil {
 		return err
 	}
 	// Fail fast on a copy-mode subagent conflict too, before any file is written.
@@ -859,67 +722,18 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 			return err
 		}
 	}
-	// Prune a link left at a skill's inactive scope after a per-resource scope
-	// switch, so no orphan remains. Only our own managed symlink is removed
-	// (IsManaged guards it); a foreign file or an absent path is left untouched
-	// — never an error. Each skill carries its own scope, so the inactive dir is
-	// computed per entry.
-	for _, entry := range a.skills {
-		inactive := a.inactiveSkillsDir(entry.Resource.Scope)
-		if inactive == "" {
-			continue
-		}
-		old := filepath.Join(inactive, entry.Name)
-		if link.IsManaged(old, a.managedRoots()...) {
-			if err := link.Remove(old, a.managedRoots()...); err != nil {
-				return err
-			}
-		}
+	// Prune each namespace's inactive-scope orphan (left after a per-resource
+	// scope switch), then create the link and record state. Runs after the JSON
+	// writes. Only our own managed symlink is ever removed (IsManaged guards it);
+	// a foreign file or an absent path is left untouched.
+	if err := fileproj.ApplyLinks("claude", a.skillFileLinks(), st, roots); err != nil {
+		return err
 	}
-	for dst, src := range links {
-		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {
-			return err
-		}
-		// Record the link in state so pruning sees de-declared skills later.
-		st.Set("claude", "skill."+filepath.Base(dst), dst+" -> "+src, secret.Hash(dst+" -> "+src))
+	if err := fileproj.ApplyLinks("claude", a.commandFileLinks(), st, roots); err != nil {
+		return err
 	}
-	// Prune a command link left at its inactive scope after a scope switch.
-	for _, entry := range a.commands {
-		inactive := a.inactiveCommandsDir(entry.Resource.Scope)
-		if inactive == "" {
-			continue
-		}
-		old := filepath.Join(inactive, entry.Name+".md")
-		if link.IsManaged(old, a.managedRoots()...) {
-			if err := link.Remove(old, a.managedRoots()...); err != nil {
-				return err
-			}
-		}
-	}
-	for dst, src := range cmdLinks {
-		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {
-			return err
-		}
-		st.Set("claude", "command."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
-	}
-	// Prune a subagent link left at its inactive scope after a scope switch.
-	for _, entry := range a.subagents {
-		inactive := a.inactiveSubagentsDir(entry.Resource.Scope)
-		if inactive == "" {
-			continue
-		}
-		old := filepath.Join(inactive, entry.Name+".md")
-		if link.IsManaged(old, a.managedRoots()...) {
-			if err := link.Remove(old, a.managedRoots()...); err != nil {
-				return err
-			}
-		}
-	}
-	for dst, src := range subLinks {
-		if _, err := link.Link(src, dst, a.managedRoots()...); err != nil {
-			return err
-		}
-		st.Set("claude", "subagent."+strings.TrimSuffix(filepath.Base(dst), ".md"), dst+" -> "+src, secret.Hash(dst+" -> "+src))
+	if err := fileproj.ApplyLinks("claude", a.subagentFileLinks(), st, roots); err != nil {
+		return err
 	}
 	// Reconcile copy-mode subagent content files (write/update/prune + state),
 	// backing up any local edit. Conflicts were already rejected above.
