@@ -33,7 +33,7 @@ func (r *Resolver) Resolve(ctx context.Context, src RemoteSource, pin Digest) (s
 	}
 	got := CanonicalDigest(tree)
 	if !got.Equal(pin) {
-		return "", fmt.Errorf("remote: pin mismatch for %q: declared %s but content is %s", src.URL, pin, got)
+		return "", fmt.Errorf("remote: pin mismatch for %q: declared %s but content is %s", RedactLocator(src.URL), pin, got)
 	}
 	if r.Revocations.Contains(got) {
 		return "", fmt.Errorf("remote: content %s is revoked", got)

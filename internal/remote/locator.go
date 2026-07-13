@@ -39,7 +39,7 @@ func ParseRemoteSource(source string) (RemoteSource, error) {
 	}
 	url := strings.TrimPrefix(source, RemoteSourcePrefix)
 	if url == "" {
-		return RemoteSource{}, fmt.Errorf("remote source %q has an empty URL", source)
+		return RemoteSource{}, fmt.Errorf("remote source %q has an empty URL", RedactLocator(source))
 	}
 	kind, err := transportForURL(url)
 	if err != nil {
@@ -57,8 +57,8 @@ func transportForURL(url string) (TransportKind, error) {
 	case strings.HasPrefix(url, "file://"):
 		return TransportFile, nil
 	case strings.HasPrefix(url, "http://"):
-		return "", fmt.Errorf("remote source %q: plain http is not allowed, use https", url)
+		return "", fmt.Errorf("remote source %q: plain http is not allowed, use https", RedactLocator(url))
 	default:
-		return "", fmt.Errorf("remote source %q: unsupported scheme (want https://, file://, or git+https://)", url)
+		return "", fmt.Errorf("remote source %q: unsupported scheme (want https://, file://, or git+https://)", RedactLocator(url))
 	}
 }

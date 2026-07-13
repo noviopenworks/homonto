@@ -55,11 +55,14 @@ type lockDoc struct {
 	Remotes []LockEntry `json:"remotes"`
 }
 
-// Set inserts or replaces an entry.
+// Set inserts or replaces an entry. The locator is redacted here so a
+// credential embedded in a remote source can never be persisted to the lockfile,
+// regardless of the caller.
 func (l *Lock) Set(e LockEntry) {
 	if l.Entries == nil {
 		l.Entries = map[string]LockEntry{}
 	}
+	e.Locator = RedactLocator(e.Locator)
 	l.Entries[e.key()] = e
 }
 
