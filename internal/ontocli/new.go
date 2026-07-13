@@ -86,6 +86,7 @@ func runNew(cmd *cobra.Command, root, name, workflow string) error {
 
 	st := ontostate.State{
 		Change:   name,
+		ID:       ontostate.NewID(),
 		Workflow: workflow,
 		Phase:    "open",
 		Created:  time.Now().Format("2006-01-02"),

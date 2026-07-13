@@ -1,0 +1,7 @@
+{
+  "openspec_proposal": "openspec/changes/onto-stable-change-id/proposal.md",
+  "openspec_tasks": "openspec/changes/onto-stable-change-id/tasks.md",
+  "openspec_delta_spec": "openspec/changes/onto-stable-change-id/specs/onto-binary/spec.md",
+  "handoff_context": "openspec/changes/onto-stable-change-id/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/onto-stable-change-id/.comet/handoff/design-context.md"
+}
