@@ -103,8 +103,25 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 		}
 		return fmt.Errorf("onto advance: cannot leave verify: missing passing verification (verify.result=%s)", result)
 	}
-	if next == "build" && st.Isolation == "" {
-		return fmt.Errorf("onto advance: cannot enter build: missing isolation (set branch or worktree)")
+	if next == "build" {
+		if st.Isolation == "" {
+			return fmt.Errorf("onto advance: cannot enter build: missing isolation (set branch or worktree)")
+		}
+		// A change cannot enter build if it participates in a depends-on cycle —
+		// no valid build order exists (F10). A cycle is a structural fact about the
+		// recorded deps (B1: shape, not judgment). Reuses onto graph's detector.
+		if _, edges, gErr := buildGraph(root); gErr != nil {
+			return fmt.Errorf("onto advance: cannot enter build: reading change graph: %w", gErr)
+		} else {
+			for _, cyc := range detectDepCycles(edges) {
+				for _, member := range cyc {
+					if member == name {
+						return fmt.Errorf("onto advance: cannot enter build: %q is in a dependency cycle: %s → %s",
+							name, strings.Join(cyc, " → "), cyc[0])
+					}
+				}
+			}
+		}
 	}
 
 	dirty, determinable := worktreeDirty(root)
