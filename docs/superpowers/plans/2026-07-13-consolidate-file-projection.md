@@ -2,6 +2,7 @@
 change: consolidate-file-projection
 design-doc: docs/superpowers/specs/2026-07-13-consolidate-file-projection-design.md
 base-ref: 7008b18ab961c4b749781da4b44a33aae1e77769
+archived-with: 2026-07-13-consolidate-file-projection
 ---
 
 # Plan — consolidate file-projection
