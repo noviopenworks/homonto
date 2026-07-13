@@ -1,0 +1,14 @@
+{
+  "change": "adapter-registry",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "8a8c3d712abb455f8b03c27cf3f747d27378b2abf9ec520d50b9ab1dd79f86ca",
+  "files": [
+    { "path": "openspec/changes/adapter-registry/proposal.md", "sha256": "64c7c44b44e58a6d2555fa1d0c726e5778368127b34b25adb33f70bd9b7c3acf" },
+    { "path": "openspec/changes/adapter-registry/design.md", "sha256": "1174851303cda5117f944824262be00c4ecc156ff3b492f624e09512c35d6abc" },
+    { "path": "openspec/changes/adapter-registry/tasks.md", "sha256": "93a01d77edde7809a3ca542770f56597620c58bf347127cb966b3b4d623fe920" },
+    { "path": "openspec/changes/adapter-registry/specs/adapter-contract/spec.md", "sha256": "cda6702b51bb9dc146130540d7a0a890c4c4ecd6a08813780dac2fbe6f573059" }
+  ]
+}
