@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: build
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: branch
 verify_mode: null
 auto_transition: true
 base_ref: ed1ad8d80e38203bfec20822c466dce79d336e1e
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-13-onto-skills-shell-out-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-13
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/onto-skills-shell-out/.comet/handoff/design-context.json
+handoff_hash: 79620e1354b3453be8bb6b385d35aa84501665e4d9d98fc42a425666ac6cc80b
+classic_profile: full
+classic_migration: 1
+run_id: 47977b5a-58ef-4f21-bef6-27ee413e6a11
