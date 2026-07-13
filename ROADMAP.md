@@ -450,10 +450,18 @@ What turns an opinionated internal toolkit into something others build on.
   remote overlays) fail-loud — depend on an *interface*, not a framework name.
   Consumer: openspec provides `spec-workflow@1`, comet requires it. Multiple
   providers allowed; capability-free frameworks unchanged.
-- **Remaining E1:** `[compat].homonto` (needs `cli.Version` injection into the
-  catalog + pre-release handling; now has a consumer via shared frameworks) and
-  F38 (D4: `[plugins]` is enable/disable projection, not an install lifecycle — an
-  honest doc clarification, since renaming the TOML key would break configs).
+- **[compat].homonto DONE (2026-07-13, `framework-compat-homonto` archived):** a
+  `framework.toml` `[compat].homonto` constraint is enforced fail-loud by the
+  engine against the running version (`Engine.HomontoVersion`, set by the CLI to
+  `cli.Version`), before projection; `catalog.SatisfiesLoose` strips pre-release/
+  build metadata so a `0.1.0-dev` build satisfies `>=0.1.0`. Catalog stays
+  version-agnostic (stores `Compat`); used the Engine field not a `Build`
+  signature change (no 28-site ripple). **E1's F36 is now essentially complete:
+  manifest-schema + dependency-ranges + capabilities + compat + all three
+  framework sources (builtin/local/remote).**
+- **Remaining E1:** F38 only (D4: `[plugins]` is enable/disable *enablement*
+  projection, not an install *lifecycle* — an honest spec/doc clarification, since
+  renaming the TOML key would break configs).
 - **F34 re-assessment (2026-07-13):** decoupling the `Adapter` contract from the
   concrete `config.Config`/`secret.Resolver`/`state.State` means introducing
   interfaces that each have exactly ONE implementation — textbook premature
