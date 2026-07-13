@@ -297,17 +297,33 @@ func (a *Adapter) applyCopySubagents(st *state.State) error {
 			}
 		}
 	}
-	rec, pruned, err := copyfile.Apply(ops)
+	rec, pruned, _, err := copyfile.Apply(ops, a.copyPruneRoots())
 	if err != nil {
 		return err
 	}
 	for dst, h := range rec {
 		st.Set("claude", "subagentcopy."+copySubagentName(dst), dst, h)
 	}
+	// Refused prunes (dst outside the managed root — a tampered state entry) are
+	// deliberately NOT in `pruned`, so their ownership record is retained rather
+	// than dropped and the out-of-root file is never deleted.
 	for _, dst := range pruned {
 		st.Delete("claude", "subagentcopy."+copySubagentName(dst))
 	}
 	return nil
+}
+
+// copyPruneRoots are the directories a copy-mode subagent file may legitimately
+// live in (user + project agent dirs). copyfile.Apply refuses to delete a prune
+// destination — reconstructed from an untrusted state entry — that resolves
+// outside these roots, so a tampered state.json path cannot delete an arbitrary
+// file (F7). The project dir is included only when a project root is known.
+func (a *Adapter) copyPruneRoots() []string {
+	roots := []string{a.subagentsDir("user")}
+	if a.projectRoot != "" {
+		roots = append(roots, a.subagentsDir("project"))
+	}
+	return roots
 }
 
 // localSourceName resolves a skill resource's content subdirectory: a local:

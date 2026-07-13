@@ -12,7 +12,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/noviopenworks/homonto/internal/fsutil"
 )
@@ -130,20 +132,29 @@ func Plan(desired map[string][]byte, recorded map[string]string) ([]Op, error) {
 // files keep their record) and the pruned destinations. Conflict and LocalEdit
 // are the caller's responsibility (a conflict must abort the run before Apply; a
 // local edit is merged/backed-up by the caller) and are ignored here.
-func Apply(ops []Op) (recorded map[string]string, pruned []string, err error) {
+func Apply(ops []Op, pruneRoots []string) (recorded map[string]string, pruned, refused []string, err error) {
 	recorded = map[string]string{}
 	for _, op := range ops {
 		switch op.Action {
 		case Create, Update:
 			if err := fsutil.WriteAtomic(op.Dst, op.Content); err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			recorded[op.Dst] = Hash(op.Content)
 		case Noop:
 			recorded[op.Dst] = Hash(op.Content)
 		case Prune:
+			// The prune destination comes from a recorded state entry, which is
+			// untrusted: a tampered state.json could point it at an arbitrary file
+			// (F7). Delete only when it resolves under a managed root; otherwise
+			// refuse — the file is left intact and the caller retains ownership
+			// (the entry is not reported as pruned).
+			if !prunePermitted(op.Dst, pruneRoots) {
+				refused = append(refused, op.Dst)
+				continue
+			}
 			if err := os.Remove(op.Dst); err != nil && !os.IsNotExist(err) {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			pruned = append(pruned, op.Dst)
 		case Conflict, LocalEdit:
@@ -151,5 +162,25 @@ func Apply(ops []Op) (recorded map[string]string, pruned []string, err error) {
 		}
 	}
 	sort.Strings(pruned)
-	return recorded, pruned, nil
+	sort.Strings(refused)
+	return recorded, pruned, refused, nil
+}
+
+// prunePermitted reports whether dst resolves inside one of roots — the managed
+// provider directories a copy-mode file may legitimately live in. Both dst and
+// each root are cleaned first, so an absolute foreign path or a traversal that
+// escapes (…/root/../elsewhere) is rejected. An empty root set permits nothing
+// (fail-closed): a prune with no confinement roots is never allowed to delete.
+func prunePermitted(dst string, roots []string) bool {
+	clean := filepath.Clean(dst)
+	for _, root := range roots {
+		if root == "" {
+			continue
+		}
+		root = filepath.Clean(root)
+		if clean == root || strings.HasPrefix(clean, root+string(os.PathSeparator)) {
+			return true
+		}
+	}
+	return false
 }
