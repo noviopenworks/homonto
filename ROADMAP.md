@@ -222,7 +222,15 @@ state path can't delete an arbitrary file. 195 tests -race.*
   lock; git runs under a deadline with size guards, and a cache-race winner is
   re-hashed before acceptance.
 
-### N6. Control-plane filesystem safety and locking
+### N6. Control-plane filesystem safety and locking — ✅ DONE (2026-07-13)
+*Archived on `main` (`control-plane-fs-safety-locking`): F25 — `fsutil.WriteControlPlane`
+no-follow writer for `.homonto` state/cache/lock/catalog (refuses a symlinked
+destination); F29 — `internal/applylock` O_EXCL project lock so a second `apply`
+fails fast; F31 — `remote.RedactLocator` strips userinfo/secret query tokens from
+the lockfile and every URL-bearing error. 577 tests -race. (No-follow ships
+destination-symlink refusal; full intermediate root-confinement noted as optional
+future tightening.)*
+
 - **Problem:** `WriteAtomic` follows symlinks (correct for tool configs, unsafe
   for `.homonto` state/cache/lock/catalog); no cross-process lock, so two
   applies last-writer-win and apply races GC (verified: no flock/O_EXCL in
