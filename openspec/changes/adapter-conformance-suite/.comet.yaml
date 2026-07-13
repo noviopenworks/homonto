@@ -14,8 +14,8 @@ base_ref: 46d864858e5c0f983f11c34c17171d14e0f3871f
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: null
-branch_status: pending
+verification_report: docs/superpowers/reports/2026-07-13-adapter-conformance-verify.md
+branch_status: handled
 created_at: 2026-07-13
 verified_at: null
 archived: false
