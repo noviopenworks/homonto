@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-onto-graph-implements-v
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/onto-graph-implements/.comet/handoff/design-context.json
 handoff_hash: ce0aa62388dcaabbe08be2cb15b926c40242b64a6e0455fa780c0c29b48ea80c

@@ -3,6 +3,8 @@ comet_change: onto-graph-implements
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-onto-graph-implements
+status: final
 ---
 
 # onto-graph-implements — Technical Design (X1)
