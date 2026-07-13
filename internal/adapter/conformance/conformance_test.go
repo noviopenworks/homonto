@@ -2,8 +2,13 @@
 // exercises the adapter.Adapter contract uniformly against every registered
 // adapter, rather than relying only on per-adapter ad-hoc tests. A new adapter
 // (or a regression in an existing one) that diverges from the core contract is
-// caught here. This is the first slice (ROADMAP E3 / finding F55): it asserts
-// the create / observe-clean / idempotent-replan / unmanaged-preservation core.
+// caught here. The first slice (ROADMAP E3 / finding F55) asserted the create /
+// observe-clean / idempotent-replan / unmanaged-preservation core. This second
+// slice extends the same shared harness with two further properties every
+// adapter must honor: drift detection + reset (an out-of-band change to a
+// managed file is seen by ObserveHashes and reset by a re-Apply) and
+// malformed-doc safety (a pre-existing malformed tool document never panics
+// Plan or Apply — they error or recover).
 package conformance
 
 import (
@@ -15,6 +20,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/adapter/claude"
 	"github.com/noviopenworks/homonto/internal/adapter/opencode"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/state"
 )
@@ -38,6 +44,19 @@ type adapterCase struct {
 	// unmanaged-preservation check plants its file (claude -> ~/.claude,
 	// opencode -> ~/.config/opencode).
 	managedDir func(home string) string
+	// driftKey is the state key whose backing on-disk value driftMutate changes
+	// out-of-band; the drift check asserts ObserveHashes flags it and a re-Apply
+	// resets it. Leave driftMutate nil to skip the drift check for this adapter
+	// (the check t.Skips with an explanation).
+	driftKey string
+	// driftMutate changes the bytes of the file that backs driftKey, out-of-band
+	// (as a user hand-editing the tool's config would). It must alter driftKey's
+	// value away from the managed value so ObserveHashes reports drift.
+	driftMutate func(t *testing.T, home string)
+	// malformed plants a pre-existing MALFORMED (unparseable) tool document where
+	// the adapter reads/writes, before any Plan. The malformed-doc check then runs
+	// Plan+Apply and asserts neither panics. Leave nil to skip (with explanation).
+	malformed func(t *testing.T, home string)
 }
 
 // noSecret is a resolver with no secret material; the conformance configs
@@ -66,6 +85,18 @@ func cases() []adapterCase {
 				mustWrite(t, filepath.Join(home, ".claude", "settings.json"), "{}")
 			},
 			managedDir: func(home string) string { return filepath.Join(home, ".claude") },
+			// setting.model lives on disk as the "model" key in ~/.claude/settings.json.
+			driftKey: "setting.model",
+			driftMutate: func(t *testing.T, home string) {
+				t.Helper()
+				// Hand-edit the managed setting to a different value out-of-band.
+				mustWrite(t, filepath.Join(home, ".claude", "settings.json"), `{"model":"sonnet"}`)
+			},
+			malformed: func(t *testing.T, home string) {
+				t.Helper()
+				// A pre-existing, unparseable ~/.claude.json (truncated object).
+				mustWrite(t, filepath.Join(home, ".claude.json"), `{"mcpServers": {`)
+			},
 		},
 		{
 			name:       "opencode",
@@ -80,6 +111,32 @@ func cases() []adapterCase {
 			},
 			seed:       nil, // opencode.Apply creates ~/.config/opencode/opencode.jsonc on a real create.
 			managedDir: func(home string) string { return filepath.Join(home, ".config", "opencode") },
+			// setting.theme lives on disk as the "theme" key in ~/.config/opencode/opencode.jsonc.
+			driftKey: "setting.theme",
+			driftMutate: func(t *testing.T, home string) {
+				t.Helper()
+				p := filepath.Join(home, ".config", "opencode", "opencode.jsonc")
+				raw, err := os.ReadFile(p)
+				if err != nil {
+					t.Fatalf("read opencode config for drift mutation: %v", err)
+				}
+				doc, err := jsonutil.Standardize(raw)
+				if err != nil {
+					t.Fatalf("standardize opencode config: %v", err)
+				}
+				out, err := jsonutil.SetJSON(doc, "theme", "light")
+				if err != nil {
+					t.Fatalf("set theme out-of-band: %v", err)
+				}
+				mustWrite(t, p, string(out))
+			},
+			malformed: func(t *testing.T, home string) {
+				t.Helper()
+				dir := filepath.Join(home, ".config", "opencode")
+				mustMkdir(t, dir)
+				// A pre-existing, unparseable opencode.jsonc (dangling value).
+				mustWrite(t, filepath.Join(dir, "opencode.jsonc"), `{"theme": }`)
+			},
 		},
 	}
 }
@@ -175,6 +232,159 @@ func TestAdaptersPassCoreContract(t *testing.T) {
 			if string(got) != unmanagedBody {
 				t.Fatalf("unmanaged file mutated by apply.\nwant: %q\ngot:  %q", unmanagedBody, string(got))
 			}
+		})
+	}
+}
+
+// applyFresh builds the adapter for tc on fresh temp dirs, seeds it, and runs
+// one Plan+Apply of tc.newConfig() so every managed key is on disk and recorded
+// in state. It returns the adapter, its $HOME, and the populated state — the
+// starting point the drift check mutates. It mirrors the core test's own setup.
+func applyFresh(t *testing.T, tc adapterCase) (adapter.Adapter, string, *state.State) {
+	t.Helper()
+	home, content := t.TempDir(), t.TempDir()
+	if tc.seed != nil {
+		tc.seed(t, home)
+	}
+	a := tc.newAdapter(home, content)
+	st, err := state.Load(t.TempDir())
+	if err != nil {
+		t.Fatalf("state.Load: %v", err)
+	}
+	cs, err := a.Plan(tc.newConfig(), st)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if err := a.Apply(cs, noSecret(), st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	return a, home, st
+}
+
+// TestAdaptersDetectAndResetDrift runs the drift-detection/reset contract check
+// against every adapter: after Plan+Apply of a managed resource,
+//
+//	(a) the driftKey starts clean (ObserveHashes hash == Entry.Applied);
+//	(b) an out-of-band change to its backing file makes ObserveHashes report the
+//	    key as differing from Entry.Applied (drift detected);
+//	(c) a second Plan yields a non-noop change for that key (a reset/update);
+//	(d) after re-Apply, ObserveHashes reports the key clean again (reset to the
+//	    managed value).
+func TestAdaptersDetectAndResetDrift(t *testing.T) {
+	for _, tc := range cases() {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.driftMutate == nil {
+				// No adapter in the table currently opts out; a future adapter
+				// whose managed values are not file-backed would skip here.
+				t.Skipf("adapter %q declares no driftMutate (no file-backed managed key to mutate)", tc.name)
+			}
+			a, home, st := applyFresh(t, tc)
+
+			// (a) The key we are about to drift starts clean.
+			e0, ok := st.Get(tc.name, tc.driftKey)
+			if !ok {
+				t.Fatalf("drift key %q not recorded in state after apply", tc.driftKey)
+			}
+			obs0, err := a.ObserveHashes(st)
+			if err != nil {
+				t.Fatalf("observe (pre-drift): %v", err)
+			}
+			if obs0[tc.driftKey] != e0.Applied {
+				t.Fatalf("precondition: %q not clean before mutation: observed %q != Applied %q",
+					tc.driftKey, obs0[tc.driftKey], e0.Applied)
+			}
+
+			// Mutate the backing file out-of-band.
+			tc.driftMutate(t, home)
+
+			// (b) ObserveHashes now flags the key as drifted.
+			obs1, err := a.ObserveHashes(st)
+			if err != nil {
+				t.Fatalf("observe (post-drift): %v", err)
+			}
+			h1, ok := obs1[tc.driftKey]
+			if !ok {
+				t.Fatalf("drifted key %q vanished from ObserveHashes (expected present-but-differing)", tc.driftKey)
+			}
+			if h1 == e0.Applied {
+				t.Fatalf("out-of-band change to %q not detected: observed hash still == Applied %q", tc.driftKey, e0.Applied)
+			}
+
+			// (c) A re-Plan proposes a non-noop reset for the drifted key.
+			cs, err := a.Plan(tc.newConfig(), st)
+			if err != nil {
+				t.Fatalf("plan after drift: %v", err)
+			}
+			var reset *adapter.Change
+			for i := range cs.Changes {
+				if cs.Changes[i].Key == tc.driftKey && cs.Changes[i].Action != "noop" {
+					reset = &cs.Changes[i]
+					break
+				}
+			}
+			if reset == nil {
+				t.Fatalf("plan after drift proposes no reset for %q: %+v", tc.driftKey, cs.Changes)
+			}
+
+			// (d) Re-Apply resets the key; ObserveHashes is clean again.
+			if err := a.Apply(cs, noSecret(), st); err != nil {
+				t.Fatalf("re-apply: %v", err)
+			}
+			e2, ok := st.Get(tc.name, tc.driftKey)
+			if !ok {
+				t.Fatalf("drift key %q missing from state after reset", tc.driftKey)
+			}
+			obs2, err := a.ObserveHashes(st)
+			if err != nil {
+				t.Fatalf("observe (post-reset): %v", err)
+			}
+			h2, ok := obs2[tc.driftKey]
+			if !ok {
+				t.Fatalf("reset key %q missing from ObserveHashes (should be clean/on-disk)", tc.driftKey)
+			}
+			if h2 != e2.Applied {
+				t.Fatalf("re-apply did not reset %q to clean: observed %q != Applied %q", tc.driftKey, h2, e2.Applied)
+			}
+		})
+	}
+}
+
+// TestAdaptersSurviveMalformedDoc runs the malformed-doc safety contract check
+// against every adapter: a pre-existing, unparseable tool document sitting where
+// the adapter reads/writes must not crash Plan or Apply. Returning an error is
+// the expected, acceptable outcome; recovering is acceptable; a panic is a
+// conformance failure. The deferred recover converts any panic into a clear
+// fatal instead of aborting the whole test binary.
+func TestAdaptersSurviveMalformedDoc(t *testing.T) {
+	for _, tc := range cases() {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.malformed == nil {
+				t.Skipf("adapter %q declares no malformed fixture (no single-doc read/write path to corrupt)", tc.name)
+			}
+			home, content := t.TempDir(), t.TempDir()
+			tc.malformed(t, home)
+			a := tc.newAdapter(home, content)
+			st, err := state.Load(t.TempDir())
+			if err != nil {
+				t.Fatalf("state.Load: %v", err)
+			}
+
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("adapter %q panicked on a malformed tool doc (must error or recover, never panic): %v", tc.name, r)
+				}
+			}()
+
+			cs, planErr := a.Plan(tc.newConfig(), st)
+			if planErr != nil {
+				// Erroring on a malformed doc is the expected, safe outcome.
+				return
+			}
+			// Plan tolerated the malformed doc; Apply must also not panic. An
+			// error from Apply is acceptable too — only a panic fails the check.
+			_ = a.Apply(cs, noSecret(), st)
 		})
 	}
 }
