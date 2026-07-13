@@ -5,13 +5,15 @@ description: onto workflow dispatcher. Use when starting, resuming, or asking ab
 
 # onto — Workflow Dispatcher
 
-onto is a self-contained, markdown-only development workflow. Five phases —
-**open → design → build → verify → close** — plus two preset paths
-(`onto-fix` for bugs, `onto-tweak` for small non-bug changes). All artifacts
-live in one `docs/` tree; phase state lives in an agent-managed
-`docs/changes/<name>/state.yaml` that is always cross-checked against real
-file state. There are no scripts and no external workflow CLIs: the skills
-are the machinery.
+onto is a five-phase development workflow — **open → design → build → verify →
+close** — plus two preset paths (`onto-fix` for bugs, `onto-tweak` for small
+non-bug changes). All artifacts live in one `docs/` tree. **Every state
+mutation goes through the `onto` binary** (`onto new`, `onto set …`, `onto
+advance`, `onto close`): it is the single authority for `onto-state.yaml` and a
+hard dependency of these skills — the tooling preflight below fails loudly if it
+is missing. The skills never hand-edit the state file. Phase is always
+cross-checked against real file state: the state file is a cache of truth, not
+truth.
 
 The dispatcher does exactly four things, in order: preflight → discover →
 derive → route. It never performs phase work itself.
@@ -21,6 +23,12 @@ derive → route. It never performs phase work itself.
 Run these checks before anything else. A missing tool produces a WARNING
 and the workflow proceeds — degraded is still working; the warning tells
 the user what they are missing and how to fix it.
+
+0. **onto binary** (required — this is the one hard dependency). Run `onto
+   version`. On failure, STOP: the skills drive all workflow state through the
+   `onto` binary; without it no phase can mutate state safely. Tell the user to
+   install/build it (`go build ./cmd/onto`) before proceeding. This is the only
+   preflight check that halts; `rtk` and `graphify` below still warn-never-halt.
 
 1. **rtk** — run `rtk --version`. On success, all subsequent shell
    operations in every onto phase go through rtk (or the rtk hook rewrites
@@ -55,8 +63,10 @@ skip it (a `templates/`, a scratch dir, an editor folder is not a phantom
 active change; never rebuild a state.yaml into it). Also sweep
 `docs/changes/archive/*/state.yaml` for `archived: false`: that is a
 close interrupted between the `git mv` and the flag — surface it and
-finish the archive (set `archived: true`). If a `state.yaml` carries an
-`abandoned:` reason it is retired — never list it as active.
+finish the interrupted archive (the moved workspace still needs its
+`archived: true` flag the halted `onto close` never wrote).
+If a change carries an `abandoned:` reason it is retired — never list it
+as active.
 
 | Active changes | User input | Behavior |
 |---|---|---|
@@ -192,17 +202,24 @@ grows — never talk a change *down* from full to a preset.
 **Reopen and abandon** (both need explicit user intent):
 
 - **Reopen** — a defect found after verify passed but *before* archive:
-  route to build. Reset `phase: build`, add tasks for the fix, and flip
-  `verification.md`'s `Result:` line to `Result: superseded (reopened
-  <date>)` with `state.yaml verify.result: pending` (same invalidation the
-  mid-build revision uses) so the stale pass can't re-route to close. A
-  defect in an *archived* change is new work — open a fresh `fix` change
-  whose proposal references the archived one; archives are never edited.
-- **Abandon** — the user drops a change: write `abandoned: "<reason>"`
-  (the user's words) and `archived: true` in `state.yaml`, `git mv` the
-  workspace to `docs/changes/archive/YYYY-MM-DD-<name>/` in one commit, and
-  stop. It leaves the active list and never routes anywhere again. No
-  spec merge, no ADR numbering — an abandoned change lands nothing.
+  route to build. Add tasks for the fix in `tasks.md` and run `onto set
+  verify-result <name> pending`; flip `verification.md`'s `Result:` line to
+  `Result: superseded (reopened <date>)`. The unchecked tasks plus the
+  invalidated result drive the dispatcher's derivation back to build — no
+  phase field is written. A defect in an *archived* change is new work — open
+  a fresh `fix` change whose proposal references the archived one; archives
+  are never edited.
+- **Abandon** — the user drops a change: there is no `onto abandon` command
+  (deferred to N2), so this is the single sanctioned direct state note. Add
+  `abandoned: "<reason>"` (the user's words) to `onto-state.yaml`, then `onto
+  close <name>` to move the workspace to `docs/changes/archive/YYYY-MM-DD-<name>/`
+  and set `archived: true`, in one commit. It leaves the active list and never
+  routes anywhere again. No spec merge, no ADR numbering.
+
+  (`onto close` requires `phase: close`; an abandoned change may be at any
+  phase. If `onto close` refuses, fall back to the manual `git mv` +
+  `archived: true` note — record which was used. This residual is the flagged
+  N2 gap.)
 
 ## 5. GitHub entry points (contract)
 
@@ -227,8 +244,8 @@ including its gates and exit checklist. Never execute phase work here.
 Every sub-skill contains `> **GATE:**` blocks — blocking user decisions.
 A gate may only be skipped when the user explicitly pre-answered *that same
 question*; a blanket directive (e.g. "run to completion") pre-answers only
-the gates that say so, and must be recorded verbatim in
-`decisions.directive` in `state.yaml`. When in doubt, stop and ask.
+the gates that say so, and must be recorded verbatim via `onto set directive
+<name> "<text>"`. When in doubt, stop and ask.
 
 ## Prose discipline (every artifact)
 
