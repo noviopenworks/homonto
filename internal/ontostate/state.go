@@ -97,14 +97,18 @@ type State struct {
 	// Supersedes lists change names this change replaces/obsoletes (a traceability
 	// relationship surfaced by `onto graph`). Ungated: never blocks a transition.
 	Supersedes []string `yaml:"supersedes,omitempty" json:"supersedes,omitempty"`
-	Isolation  string   `yaml:"isolation,omitempty" json:"isolation,omitempty"`
-	BuildMode  string   `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
-	TDDMode    string   `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
-	Verify     Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
-	Close      Close    `yaml:"close,omitempty" json:"close,omitempty"`
-	Directive  string   `yaml:"directive,omitempty" json:"directive,omitempty"`
-	Guides     string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
-	Archived   bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
+	// DeviatesFrom lists targets (decisions, specs, or prior changes) this change
+	// knowingly diverges from — an honest record of implementation divergence
+	// surfaced by `onto graph`. Ungated: never blocks a transition.
+	DeviatesFrom []string `yaml:"deviates_from,omitempty" json:"deviates_from,omitempty"`
+	Isolation    string   `yaml:"isolation,omitempty" json:"isolation,omitempty"`
+	BuildMode    string   `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
+	TDDMode      string   `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
+	Verify       Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
+	Close        Close    `yaml:"close,omitempty" json:"close,omitempty"`
+	Directive    string   `yaml:"directive,omitempty" json:"directive,omitempty"`
+	Guides       string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
+	Archived     bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
 
 	// observational (carried, never gated)
 	Observed Observed `yaml:"observed,omitempty" json:"observed,omitempty"`

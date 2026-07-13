@@ -23,7 +23,8 @@ type graphNode struct {
 
 // graphEdge is a typed relationship between changes. Edge types: "depends-on"
 // (a change → each declared dep), "implements" (a change → each capability its
-// delta specs touch), and "supersedes" (a change → each change it replaces).
+// delta specs touch), "supersedes" (a change → each change it replaces), and
+// "deviates-from" (a change → each target it knowingly diverges from).
 type graphEdge struct {
 	From string `json:"from"`
 	To   string `json:"to"`
@@ -109,6 +110,9 @@ func buildGraph(root string) ([]graphNode, []graphEdge, error) {
 		}
 		for _, sup := range st.Supersedes {
 			edges = append(edges, graphEdge{From: name, To: sup, Type: "supersedes"})
+		}
+		for _, dev := range st.DeviatesFrom {
+			edges = append(edges, graphEdge{From: name, To: dev, Type: "deviates-from"})
 		}
 		// implements: a change's delta specs live at specs/<capability>.md (onto's
 		// flat delta-spec layout). Each names a capability the change implements.
