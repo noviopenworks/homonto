@@ -121,10 +121,19 @@ func runClose(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto close: %w", err)
 	}
 
+	// If the archive move fails after archived:true was written, roll the flag
+	// back and re-save the in-place state, so a failed close leaves the change
+	// fully un-archived (never marked archived while still at its original path).
+	rollback := func() {
+		st.Archived = false
+		_ = ontostate.Save(statePath, st)
+	}
 	if err := os.MkdirAll(filepath.Join(root, "docs", "changes", "archive"), 0o755); err != nil {
+		rollback()
 		return fmt.Errorf("onto close: creating archive directory: %w", err)
 	}
 	if err := os.Rename(changeDir, archiveDir); err != nil {
+		rollback()
 		return fmt.Errorf("onto close: moving %s to %s: %w", changeDir, archiveDir, err)
 	}
 
