@@ -289,10 +289,19 @@ only after Now.
   `byName` lookup) or an undefined action (previously a silent no-op) before any
   secret resolution, materialization, or write. Low-churn/non-breaking (constants
   keep the historical string values). This closes the F41 "plan actions are
-  unrestricted strings" gap. **Remaining X2:** the deeper immutability
-  (`Apply` still reads mutable adapter fields set by a prior `Plan`, not the plan
-  alone), transaction journals (F42), versioned staging swapped atomically (F47),
-  and enforced close/archive validation (F4, F18).
+  unrestricted strings" gap.
+- **Stateless-Apply slice DONE (2026-07-13, `stateless-adapter-apply` archived):**
+  `Adapter.Apply` now takes `cfg *config.Config` and re-derives its
+  skill/command/subagent entries via a shared `expand(cfg)` helper called at the
+  top of both `Plan` and `Apply` — removing Apply's hidden precondition (it
+  previously read `a.skills`/`a.commands`/`a.subagents` populated only by a prior
+  `Plan` on the same instance, silently under-applying otherwise). Codex ignores
+  cfg; `engine.Apply` passes `e.Cfg`. Behavior-preserving (same cfg → identical
+  entries), ~135 test call sites updated. Closes the "`Apply` reads mutable
+  adapter fields set by a prior `Plan`" X2 concern.
+- **Remaining X2:** only transaction journals (F42) — per-operation apply/close
+  journals for crash rollback/resume — plus, optionally, driving `Apply` purely
+  from the `ChangeSet` (a larger rethink). F41/F47/F4/stateless-Apply are done.
 - **Catalog-materialization slice DONE (2026-07-13,
   `crash-safe-catalog-materialize` archived):** `catalog.Materialize` now
   stage-then-swaps each builtin skill dir (`<skill>.staging` → `RemoveAll` old +
