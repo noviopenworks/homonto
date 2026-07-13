@@ -163,7 +163,14 @@ residue. `docs/superpowers/*` historical residue left to F19.*
 - **Note:** this is the one-day fix that is a hard blocker for the RC tag (see
   Open decisions §2), independent of the rest of gate A.
 
-### N7. Substitutes for dogfooding (because we ship onto but build with Comet)
+### N7. Substitutes for dogfooding (because we ship onto but build with Comet) — ✅ DONE (2026-07-13)
+*Archived on `main` (`onto-dogfooding-substitutes`): `docs/personas.md` (F21 —
+homonto=product / onto=native binary-enforced workflow / Comet et al.=unenforced
+alternatives / build-with-Comet-ship-onto, linked from README) + a full-lifecycle
+onto conformance suite (`internal/ontocli/conformance_test.go`, 6 tests) asserting
+the gates reject bad work (missing artifact, invalid workflow, out-of-shape
+enum/guides, malformed/missing state). No onto gate weakness found.*
+
 - **Problem:** fork decision 5 means onto never gets the feedback loop that made
   the projector 8/10 — the two-plane drift, fake gates, and archive rot the review
   found are exactly what daily use would have surfaced. Nobody on the team lives
