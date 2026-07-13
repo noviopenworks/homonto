@@ -106,6 +106,14 @@ Next/Later is worth starting while these stand.
 deleted; binary gained `onto new --workflow`, `onto set base-ref/deps/guides`).
 Closes F1/F3/F14. Residual `abandon`/workflow-upgrade transitions deferred to N2.*
 
+**`abandon` transition DONE (2026-07-13, `onto-abandon-transition` archived):**
+onto now has an unsuccessful terminal — `State.Abandoned` (ungated, mirrors
+`Archived`), `onto abandon <change>` (idempotent, refuses an archived change),
+`onto advance` refuses an abandoned change, and `onto graph` surfaces it
+(`abandoned` in `--json` + human suffix). A cancelled change is no longer stuck
+active. Residual: the workflow-upgrade (tweak→full preset-escalate) transition —
+lower value for onto's simpler presets, still deferred.*
+
 - **Problem:** two divergent state models, no reconciliation.
 - **Decision applied:** binary-authoritative (fork decision 1). Skills stop
   writing state and **shell out** to `onto open|advance|close`; the exit gate is
