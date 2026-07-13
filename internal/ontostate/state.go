@@ -84,7 +84,11 @@ type State struct {
 	SchemaVersion int `yaml:"schema_version,omitempty" json:"schema_version,omitempty"`
 
 	// gated core
-	Change    string   `yaml:"change" json:"change"`
+	Change string `yaml:"change" json:"change"`
+	// ID is a stable, name-independent identifier assigned once at `onto new` and
+	// never rewritten by any later command, so a change's identity survives a
+	// rename. Absent on legacy states (never retro-minted on read).
+	ID        string   `yaml:"id,omitempty" json:"id,omitempty"`
 	Workflow  string   `yaml:"workflow,omitempty" json:"workflow,omitempty"`
 	Phase     string   `yaml:"phase" json:"phase"`
 	Created   string   `yaml:"created,omitempty" json:"created,omitempty"`
