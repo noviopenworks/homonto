@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/config-schema-version/proposal.md",
+  "openspec_design": "openspec/changes/config-schema-version/design.md",
+  "openspec_tasks": "openspec/changes/config-schema-version/tasks.md",
+  "openspec_delta_spec": "openspec/changes/config-schema-version/specs/config-model/spec.md",
+  "handoff_context": "openspec/changes/config-schema-version/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/config-schema-version/.comet/handoff/design-context.md"
+}
