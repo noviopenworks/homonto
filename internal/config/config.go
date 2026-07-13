@@ -208,6 +208,23 @@ type Config struct {
 	// through the Expanded* method signatures. Empty for a config not built via
 	// Load (e.g. decode in tests): local frameworks then resolve relative to cwd.
 	baseDir string
+
+	// remoteFrameworkDirs maps a [frameworks.X] source="remote:<url>" name to the
+	// verified cache dir the engine resolved through the remote trust pipeline
+	// (fetch → verify → digest-pin → revocation). The engine injects it via
+	// SetRemoteFrameworkDirs after resolution so FrameworkCatalog overlays a
+	// remote framework root exactly like a local:<path> one. Nil for a config with
+	// no remote frameworks (or before resolution): the builtin path is unchanged.
+	remoteFrameworkDirs map[string]string
+}
+
+// SetRemoteFrameworkDirs injects the verified cache dirs the engine resolved for
+// this config's remote frameworks (name → cache dir). FrameworkCatalog then
+// overlays each as a framework root keyed by its config name, so both expansion
+// (Plan) and catalog materialization (apply) see the remote framework's
+// resources projected as builtin:<name>, identical to a local framework.
+func (c *Config) SetRemoteFrameworkDirs(dirs map[string]string) {
+	c.remoteFrameworkDirs = dirs
 }
 
 func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
@@ -262,6 +279,13 @@ func (c *Config) FrameworkCatalog() (*cat.Catalog, error) {
 		}
 		locals[name] = os.DirFS(root)
 	}
+	// Overlay each remote framework's verified cache dir keyed by its config name,
+	// exactly like a local framework root. The engine resolved and digest-verified
+	// the dir through the trust pipeline before injecting it, so this path adds no
+	// fetch/verify logic — it merges an already-trusted framework root.
+	for name, dir := range c.remoteFrameworkDirs {
+		locals[name] = os.DirFS(dir)
+	}
 	if len(locals) == 0 {
 		return loadedCatalog()
 	}
@@ -270,15 +294,22 @@ func (c *Config) FrameworkCatalog() (*cat.Catalog, error) {
 
 // frameworkCatalogName maps a [frameworks.X] declaration to the catalog
 // framework name to expand, and reports whether it is expandable. A builtin:<n>
-// source expands framework n from the embedded catalog; a local:<path> source
-// expands the framework keyed by the config name X (frameworkCatalog indexed the
-// local root under X). Any other source is not expandable (false); validation
-// already rejected it at load, so this is defensive.
+// source expands framework n from the embedded catalog; a local:<path> or
+// remote:<url> source expands the framework keyed by the config name X
+// (frameworkCatalog indexed the local/remote root under X). Any other source is
+// not expandable (false); validation already rejected it at load, so this is
+// defensive.
 func frameworkCatalogName(fwName, source string) (string, bool) {
 	if n, ok := strings.CutPrefix(source, "builtin:"); ok && n != "" {
 		return n, true
 	}
 	if strings.HasPrefix(source, "local:") {
+		return fwName, true
+	}
+	// A remote framework expands by its config-key name (FrameworkCatalog overlaid
+	// its verified cache dir under X), exactly like a local one; its resources are
+	// tagged builtin:<name> through the same projection.
+	if remote.IsRemoteSource(source) {
 		return fwName, true
 	}
 	return "", false
@@ -838,11 +869,13 @@ func validateResources(kind string, resources map[string]Resource) error {
 }
 
 // validateFrameworkResources validates [frameworks.X] entries. A framework
-// source must be builtin:<name> (expanded from the embedded catalog) or
-// local:<path> (a local framework root resolved relative to the config dir).
-// Unlike skills/commands, a local FRAMEWORK source MAY carry path components, so
-// the plain-name guard is deliberately not applied here. Every other source —
-// remote:, a bare name, or a typo — expands nothing and is rejected loudly (F35).
+// source must be builtin:<name> (expanded from the embedded catalog),
+// local:<path> (a local framework root resolved relative to the config dir), or
+// remote:<url> (a framework root fetched through the trust pipeline, which
+// REQUIRES a sha256 digest pin). Unlike skills/commands, a local FRAMEWORK
+// source MAY carry path components, so the plain-name guard is deliberately not
+// applied here. A bare name or a typo expands nothing and is rejected loudly
+// (F35); a digest on a builtin/local source is a no-op and rejected.
 func validateFrameworkResources(resources map[string]Resource) error {
 	for name, r := range resources {
 		if err := validateResourceName("frameworks", name); err != nil {
@@ -857,13 +890,35 @@ func validateFrameworkResources(resources map[string]Resource) error {
 		default:
 			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, r.Scope)
 		}
+		// A remote: framework installs through the same trust pipeline as a remote
+		// subagent, so it REQUIRES a valid sha256 digest pin (parsed here so a
+		// malformed remote framework fails at load, mirroring remote subagents).
+		// builtin:/local: keep their existing rule: a digest on them is a no-op and
+		// rejected.
+		if remote.IsRemoteSource(r.Source) {
+			if _, err := remote.ParseRemoteSource(r.Source); err != nil {
+				return fmt.Errorf("parse config: %s %v", label, err)
+			}
+			if r.Digest == "" {
+				return fmt.Errorf("parse config: %s remote source %q requires a digest = \"sha256:<hex>\" pin", label, r.Source)
+			}
+			if _, err := remote.ParseDigest(r.Digest); err != nil {
+				return fmt.Errorf("parse config: %s %v", label, err)
+			}
+			for _, target := range r.Targets {
+				if !isResourceTarget(target) {
+					return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
+				}
+			}
+			continue
+		}
 		if r.Digest != "" {
 			return fmt.Errorf("parse config: %s digest is only valid on a remote: source", label)
 		}
 		builtinOK := strings.HasPrefix(r.Source, "builtin:") && strings.TrimPrefix(r.Source, "builtin:") != ""
 		localOK := strings.HasPrefix(r.Source, "local:") && strings.TrimPrefix(r.Source, "local:") != ""
 		if !builtinOK && !localOK {
-			return fmt.Errorf("parse config: %s source %q must be a builtin:<name> or local:<path> source (only builtin and local frameworks are supported; another source would expand nothing)", label, r.Source)
+			return fmt.Errorf("parse config: %s source %q must be a builtin:<name>, local:<path>, or remote:<url> source (another source would expand nothing)", label, r.Source)
 		}
 		for _, target := range r.Targets {
 			if !isResourceTarget(target) {

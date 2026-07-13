@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/remote-frameworks/proposal.md",
+  "openspec_design": "openspec/changes/remote-frameworks/design.md",
+  "openspec_tasks": "openspec/changes/remote-frameworks/tasks.md",
+  "openspec_delta_spec": "openspec/changes/remote-frameworks/specs/framework-expansion/spec.md",
+  "handoff_context": "openspec/changes/remote-frameworks/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/remote-frameworks/.comet/handoff/design-context.md"
+}

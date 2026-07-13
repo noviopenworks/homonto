@@ -67,7 +67,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{
+	e := &Engine{
 		Cfg: cfg,
 		Adapters: registry.Builtins().Build(registry.Deps{
 			Home:               home,
@@ -89,7 +89,21 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 		Home:                home,
 		ProjectRoot:         projectRoot,
 		Resolver:            secret.NewResolver(),
-	}, nil
+	}
+	// Resolve any [frameworks.X] source="remote:<url>" through the trust pipeline
+	// now that the cache/lock/revocation paths are known, and inject the verified
+	// cache dirs so BOTH Plan (framework expansion) and materializeCatalog (which
+	// builds via Cfg.FrameworkCatalog()) overlay the remote framework roots. A
+	// config with no remote frameworks resolves nothing (no network); a bad,
+	// mismatched, or revoked digest fails closed here and aborts Build.
+	dirs, err := e.resolveRemoteFrameworks()
+	if err != nil {
+		return nil, err
+	}
+	if len(dirs) > 0 {
+		cfg.SetRemoteFrameworkDirs(dirs)
+	}
+	return e, nil
 }
 
 // CatalogDir returns the materialized builtin catalog root.
