@@ -23,15 +23,62 @@ var validPhases = map[string]bool{
 	"close":  true,
 }
 
-// State models the contents of onto-state.yaml.
+// CurrentSchemaVersion is the schema_version every write emits.
+const CurrentSchemaVersion = 1
+
+// enum membership sets for optional gated core fields. An empty value is
+// always allowed (legacy-tolerant); a non-empty value must be a member.
+var (
+	validWorkflows     = map[string]bool{"full": true, "fix": true, "tweak": true}
+	validIsolations    = map[string]bool{"branch": true, "worktree": true}
+	validBuildModes    = map[string]bool{"direct": true, "subagent": true}
+	validTDDModes      = map[string]bool{"tdd": true, "direct": true}
+	validVerifyScales  = map[string]bool{"light": true, "full": true}
+	validVerifyResults = map[string]bool{"pending": true, "pass": true, "fail": true}
+)
+
+// Verify holds the gated verify-phase fields.
+type Verify struct {
+	Scale  string `yaml:"scale,omitempty" json:"scale,omitempty"`   // light | full | ""
+	Result string `yaml:"result,omitempty" json:"result,omitempty"` // pending | pass | fail
+}
+
+// Close holds the gated close-phase progress fields.
+type Close struct {
+	Merged bool `yaml:"merged,omitempty" json:"merged,omitempty"`
+}
+
+// Observed carries observational state. It is never gated: no field here may
+// block a transition, and unknown values in it can never break a gate.
+type Observed struct {
+	Metrics         map[string]string `yaml:"metrics,omitempty" json:"metrics,omitempty"` // phase -> YYYY-MM-DD
+	TasksTotal      int               `yaml:"tasks_total,omitempty" json:"tasks_total,omitempty"`
+	VerifyRounds    int               `yaml:"verify_rounds,omitempty" json:"verify_rounds,omitempty"`
+	PresetEscalated bool              `yaml:"preset_escalated,omitempty" json:"preset_escalated,omitempty"`
+}
+
+// State models onto-state.yaml: a schema_version, a flat gated core, and a
+// carried observational group. Validation inspects the core only.
 type State struct {
-	Change   string   `yaml:"change"`
-	Workflow string   `yaml:"workflow,omitempty"`
-	Phase    string   `yaml:"phase"`
-	Created  string   `yaml:"created,omitempty"`
-	BaseRef  string   `yaml:"base_ref,omitempty"`
-	Deps     []string `yaml:"deps,omitempty"`
-	Archived bool     `yaml:"archived,omitempty"`
+	SchemaVersion int `yaml:"schema_version,omitempty" json:"schema_version,omitempty"`
+
+	// gated core
+	Change    string   `yaml:"change" json:"change"`
+	Workflow  string   `yaml:"workflow,omitempty" json:"workflow,omitempty"`
+	Phase     string   `yaml:"phase" json:"phase"`
+	Created   string   `yaml:"created,omitempty" json:"created,omitempty"`
+	BaseRef   string   `yaml:"base_ref,omitempty" json:"base_ref,omitempty"`
+	Deps      []string `yaml:"deps,omitempty" json:"deps,omitempty"`
+	Isolation string   `yaml:"isolation,omitempty" json:"isolation,omitempty"`
+	BuildMode string   `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
+	TDDMode   string   `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
+	Verify    Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
+	Close     Close    `yaml:"close,omitempty" json:"close,omitempty"`
+	Directive string   `yaml:"directive,omitempty" json:"directive,omitempty"`
+	Archived  bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
+
+	// observational (carried, never gated)
+	Observed Observed `yaml:"observed,omitempty" json:"observed,omitempty"`
 }
 
 // Parse decodes raw YAML bytes into a State. It never panics; malformed
@@ -57,22 +104,40 @@ func Load(path string) (State, error) {
 	if err != nil {
 		return State{}, fmt.Errorf("onto-state: failed to read %s: %w", path, err)
 	}
-	state, err := Parse(b)
+	state, err := parseAndMigrate(b, path)
 	if err != nil {
 		return State{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return state, nil
 }
 
-// Validate checks that the State satisfies the invariants required to
-// derive a workflow phase: Change must be non-empty and Phase must be one
-// of the known onto workflow phases.
+// Validate checks presence and shape of the gated core: Change and Phase must
+// be present/known, and every optional enum, when non-empty, must be a member
+// of its set. It never inspects Observed (B1: shape, not judgment).
 func (s State) Validate() error {
 	if s.Change == "" {
 		return fmt.Errorf("onto-state: change is required")
 	}
 	if !validPhases[s.Phase] {
 		return fmt.Errorf("onto-state: phase %q is not one of open|design|build|verify|close", s.Phase)
+	}
+	if s.Workflow != "" && !validWorkflows[s.Workflow] {
+		return fmt.Errorf("onto-state: workflow %q is not one of full|fix|tweak", s.Workflow)
+	}
+	if s.Isolation != "" && !validIsolations[s.Isolation] {
+		return fmt.Errorf("onto-state: isolation %q is not one of branch|worktree", s.Isolation)
+	}
+	if s.BuildMode != "" && !validBuildModes[s.BuildMode] {
+		return fmt.Errorf("onto-state: build_mode %q is not one of direct|subagent", s.BuildMode)
+	}
+	if s.TDDMode != "" && !validTDDModes[s.TDDMode] {
+		return fmt.Errorf("onto-state: tdd_mode %q is not one of tdd|direct", s.TDDMode)
+	}
+	if s.Verify.Scale != "" && !validVerifyScales[s.Verify.Scale] {
+		return fmt.Errorf("onto-state: verify.scale %q is not one of light|full", s.Verify.Scale)
+	}
+	if s.Verify.Result != "" && !validVerifyResults[s.Verify.Result] {
+		return fmt.Errorf("onto-state: verify.result %q is not one of pending|pass|fail", s.Verify.Result)
 	}
 	return nil
 }
@@ -94,6 +159,7 @@ func Marshal(s State) ([]byte, error) {
 // writes to a temp file next to path and renames it into place, removing
 // the temp file if any step fails.
 func Save(path string, s State) error {
+	s.SchemaVersion = CurrentSchemaVersion
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("onto-state: failed to create directory for %s: %w", path, err)
 	}

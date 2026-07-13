@@ -1,6 +1,7 @@
 package ontocli
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/noviopenworks/homonto/internal/ontostate"
@@ -26,36 +27,36 @@ func statusCmd() *cobra.Command {
 }
 
 func runStatus(cmd *cobra.Command, root string) error {
-	// The single "*" wildcard only matches direct children of docs/changes/
-	// (it does not cross path separators), so it structurally cannot match
-	// archived changes, which live one level deeper at
-	// docs/changes/archive/<name>/onto-state.yaml. Archived changes are
-	// therefore excluded from the results by the shape of this glob, with
-	// no separate filtering step required.
-	matches, err := filepath.Glob(filepath.Join(root, "docs", "changes", "*", "onto-state.yaml"))
+	// Enumerate change directories first, then classify each — so a change
+	// directory whose state file was deleted surfaces as a missing-state row
+	// instead of silently vanishing (F14). The "archive" directory holds
+	// archived changes one level deeper and is skipped here.
+	changesDir := filepath.Join(root, "docs", "changes")
+	entries, err := os.ReadDir(changesDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // no changes dir: nothing to report, still read-only
+		}
 		return err
 	}
 
-	for _, path := range matches {
-		changeDir := filepath.Base(filepath.Dir(path))
-
-		state, loadErr := ontostate.Load(path)
-		if loadErr != nil {
-			cmd.Printf("%s: invalid (%v)\n", changeDir, loadErr)
+	for _, e := range entries {
+		if !e.IsDir() || e.Name() == "archive" {
 			continue
 		}
-
-		phase, deriveErr := state.DerivePhase()
-		if deriveErr != nil {
-			cmd.Printf("%s: invalid (%v)\n", changeDir, deriveErr)
-			continue
-		}
-
-		if skeletonErr := ontostate.ValidateSkeleton(filepath.Dir(path)); skeletonErr != nil {
-			cmd.Printf("%s: %s — skeleton: %v\n", state.Change, phase, skeletonErr)
-		} else {
-			cmd.Printf("%s: %s — skeleton ok\n", state.Change, phase)
+		changeDir := filepath.Join(changesDir, e.Name())
+		st, class, classErr := ontostate.Classify(changeDir)
+		switch class {
+		case "missing-state":
+			cmd.Printf("%s: missing-state\n", e.Name())
+		case "malformed":
+			cmd.Printf("%s: malformed (%v)\n", e.Name(), classErr)
+		default: // valid — label by the enumerated directory (consistent with doctor)
+			if skeletonErr := ontostate.ValidateSkeleton(changeDir); skeletonErr != nil {
+				cmd.Printf("%s: %s — skeleton: %v\n", e.Name(), st.Phase, skeletonErr)
+			} else {
+				cmd.Printf("%s: %s — skeleton ok\n", e.Name(), st.Phase)
+			}
 		}
 	}
 

@@ -198,8 +198,10 @@ func TestSave_NonExistentSubdir_CreatesDirAndFileAndCleansUpTemp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned unexpected error: %v", err)
 	}
-	if !reflect.DeepEqual(got, state) {
-		t.Errorf("Load(Save(state)) = %+v, want %+v", got, state)
+	want := state
+	want.SchemaVersion = CurrentSchemaVersion // Save now stamps the current schema version
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Load(Save(state)) = %+v, want %+v", got, want)
 	}
 
 	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
@@ -413,5 +415,83 @@ func TestDepsResolved_PrefixCollision_DoesNotResolveShorterDep(t *testing.T) {
 	want := []string{"a"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("DepsResolved(root, [a]) = %v, want %v (ab archive must not resolve dep a)", got, want)
+	}
+}
+
+func fullFixtureState() State {
+	return State{
+		SchemaVersion: CurrentSchemaVersion,
+		Change:        "onto-binary-authoritative-state",
+		Workflow:      "full",
+		Phase:         "verify",
+		Created:       "2026-07-13",
+		BaseRef:       "cad5274",
+		Deps:          []string{"onto-binary-foundation"},
+		Isolation:     "worktree",
+		BuildMode:     "subagent",
+		TDDMode:       "tdd",
+		Verify:        Verify{Scale: "full", Result: "pass"},
+		Close:         Close{Merged: true},
+		Directive:     "user said: ship it without asking again",
+		Archived:      false,
+		Observed: Observed{
+			Metrics:         map[string]string{"open": "2026-07-13", "build": "2026-07-13"},
+			TasksTotal:      9,
+			VerifyRounds:    2,
+			PresetEscalated: true,
+		},
+	}
+}
+
+func TestMarshalParse_RoundTrip_PreservesEveryGatedField(t *testing.T) {
+	want := fullFixtureState()
+	b, err := Marshal(want)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := Parse(b)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round-trip mismatch:\n got  %+v\n want %+v", got, want)
+	}
+}
+
+func TestSave_StampsCurrentSchemaVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "onto-state.yaml")
+	if err := Save(path, State{Change: "x", Phase: "open"}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.SchemaVersion != CurrentSchemaVersion {
+		t.Errorf("SchemaVersion = %d, want %d", got.SchemaVersion, CurrentSchemaVersion)
+	}
+}
+
+func TestValidate_MalformedEnum_Rejected(t *testing.T) {
+	cases := map[string]State{
+		"isolation":     {Change: "c", Phase: "open", Isolation: "vm"},
+		"build_mode":    {Change: "c", Phase: "open", BuildMode: "manual"},
+		"tdd_mode":      {Change: "c", Phase: "open", TDDMode: "maybe"},
+		"verify.scale":  {Change: "c", Phase: "open", Verify: Verify{Scale: "medium"}},
+		"verify.result": {Change: "c", Phase: "open", Verify: Verify{Result: "green"}},
+		"workflow":      {Change: "c", Phase: "open", Workflow: "epic"},
+	}
+	for name, st := range cases {
+		if err := st.Validate(); err == nil {
+			t.Errorf("Validate() accepted malformed %s, want error", name)
+		}
+	}
+}
+
+func TestValidate_EmptyOptionalEnums_Accepted(t *testing.T) {
+	st := State{Change: "c", Phase: "open"}
+	if err := st.Validate(); err != nil {
+		t.Errorf("Validate() rejected empty optionals: %v", err)
 	}
 }
