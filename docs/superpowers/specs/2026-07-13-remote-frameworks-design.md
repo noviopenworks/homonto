@@ -3,6 +3,8 @@ comet_change: remote-frameworks
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-remote-frameworks
+status: final
 ---
 
 # remote-frameworks — Technical Design (E1)
