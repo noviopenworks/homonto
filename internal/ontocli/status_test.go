@@ -64,8 +64,24 @@ func TestStatusCommand_ReportsValidAndInvalidChanges(t *testing.T) {
 	if !strings.Contains(got, "alpha: build") {
 		t.Errorf("output = %q, want it to contain %q", got, "alpha: build")
 	}
-	if !strings.Contains(got, "beta:") || !strings.Contains(got, "invalid") {
-		t.Errorf("output = %q, want a line for beta containing %q", got, "invalid")
+	if !strings.Contains(got, "beta:") || !strings.Contains(got, "malformed") {
+		t.Errorf("output = %q, want a line for beta containing %q", got, "malformed")
+	}
+}
+
+func TestStatusCommand_DeletedStateFile_IsMissingStateRow(t *testing.T) {
+	dir := t.TempDir()
+	// a change directory that exists but has no state file (deleted)
+	if err := os.MkdirAll(filepath.Join(dir, "docs", "changes", "gamma"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	out, err := runOnto(t, "status", "--dir", dir)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !strings.Contains(out, "gamma") || !strings.Contains(out, "missing-state") {
+		t.Errorf("output = %q, want a gamma missing-state row (not silently dropped)", out)
 	}
 }
 
@@ -235,7 +251,7 @@ func TestStatusCommand_ReportsInvalidPhase(t *testing.T) {
 	if !strings.Contains(got, "alpha: build") {
 		t.Errorf("output = %q, want it to contain %q", got, "alpha: build")
 	}
-	if !strings.Contains(got, "gamma:") || !strings.Contains(got, "invalid") {
-		t.Errorf("output = %q, want a line for gamma containing %q", got, "invalid")
+	if !strings.Contains(got, "gamma:") || !strings.Contains(got, "malformed") {
+		t.Errorf("output = %q, want a line for gamma containing %q", got, "malformed")
 	}
 }
