@@ -298,6 +298,10 @@ only after Now.
   the archived record.
 
 ### X3. Workflow profiles and a capability registry
+- **Started (2026-07-13):** F37 state half done (`state-schema-version` — state.json
+  is versioned, future rejected fail-closed). Remaining X3 (config schema version;
+  the `ToolID`-keyed capability registry F33/F34; config-loading phase split F43;
+  non-waivable finding classes F11/F12) is a large refactor — design-first.
 - **Problem:** verification scale keys on task/file counts, not risk or changed
   requirements, so a one-file security change can get less scrutiny than a large
   refactor (F11); escape hatches are too broad and the skeptic/reviewer subagents
