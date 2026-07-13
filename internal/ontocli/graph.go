@@ -2,9 +2,11 @@ package ontocli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/noviopenworks/homonto/internal/ontostate"
 	"github.com/spf13/cobra"
@@ -37,6 +39,7 @@ func graphCmd() *cobra.Command {
 	var (
 		dir    string
 		asJSON bool
+		check  bool
 	)
 	cmd := &cobra.Command{
 		Use:   "graph",
@@ -46,46 +49,152 @@ func graphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			cycles := detectDepCycles(edges)
 			if asJSON {
 				b, mErr := json.MarshalIndent(struct {
-					Nodes []graphNode `json:"nodes"`
-					Edges []graphEdge `json:"edges"`
-				}{Nodes: nodes, Edges: edges}, "", "  ")
+					Nodes  []graphNode `json:"nodes"`
+					Edges  []graphEdge `json:"edges"`
+					Cycles [][]string  `json:"cycles"`
+				}{Nodes: nodes, Edges: edges, Cycles: cycles}, "", "  ")
 				if mErr != nil {
 					return mErr
 				}
 				cmd.Println(string(b))
-				return nil
+			} else {
+				type outEdge struct{ typ, to string }
+				edgesFrom := map[string][]outEdge{}
+				for _, e := range edges {
+					edgesFrom[e.From] = append(edgesFrom[e.From], outEdge{e.Type, e.To})
+				}
+				for _, n := range nodes {
+					if n.Kind == "capability" {
+						cmd.Printf("%s (capability)\n", n.Change)
+						continue
+					}
+					suffix := ""
+					if n.Archived {
+						suffix = ", archived"
+					}
+					id := n.ID
+					if id == "" {
+						id = "no-id"
+					}
+					cmd.Printf("%s (%s, %s%s)\n", n.Change, id, n.Phase, suffix)
+					for _, e := range edgesFrom[n.Change] {
+						cmd.Printf("  → %s %s\n", e.typ, e.to)
+					}
+				}
+				if len(cycles) > 0 {
+					cmd.Println("cycles:")
+					for _, cyc := range cycles {
+						cmd.Printf("  %s → %s\n", strings.Join(cyc, " → "), cyc[0])
+					}
+				}
 			}
-			type outEdge struct{ typ, to string }
-			edgesFrom := map[string][]outEdge{}
-			for _, e := range edges {
-				edgesFrom[e.From] = append(edgesFrom[e.From], outEdge{e.Type, e.To})
-			}
-			for _, n := range nodes {
-				if n.Kind == "capability" {
-					cmd.Printf("%s (capability)\n", n.Change)
-					continue
-				}
-				suffix := ""
-				if n.Archived {
-					suffix = ", archived"
-				}
-				id := n.ID
-				if id == "" {
-					id = "no-id"
-				}
-				cmd.Printf("%s (%s, %s%s)\n", n.Change, id, n.Phase, suffix)
-				for _, e := range edgesFrom[n.Change] {
-					cmd.Printf("  → %s %s\n", e.typ, e.to)
-				}
+			// --check turns a detected cycle into a non-zero exit; without it, graph
+			// stays a purely-informational read-only command (exit zero).
+			if check && len(cycles) > 0 {
+				return fmt.Errorf("onto graph: %d dependency cycle(s) detected", len(cycles))
 			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root to inspect")
-	cmd.Flags().BoolVar(&asJSON, "json", false, "emit {nodes, edges} JSON")
+	cmd.Flags().BoolVar(&asJSON, "json", false, "emit {nodes, edges, cycles} JSON")
+	cmd.Flags().BoolVar(&check, "check", false, "exit non-zero if the dependency graph has a cycle")
 	return cmd
+}
+
+// detectDepCycles finds cycles in the depends-on subgraph. Each returned cycle is
+// an ordered list of change names forming the loop, rotated to start at its
+// lexicographically smallest member and de-duplicated, so the result is
+// deterministic regardless of directory read order. It reports a representative
+// cycle for each cyclic strongly-connected region reached via a DFS back edge —
+// enough to prove a build order does not exist. Only depends-on edges count.
+func detectDepCycles(edges []graphEdge) [][]string {
+	adj := map[string][]string{}
+	nodeSet := map[string]bool{}
+	for _, e := range edges {
+		if e.Type != "depends-on" {
+			continue
+		}
+		adj[e.From] = append(adj[e.From], e.To)
+		nodeSet[e.From] = true
+		nodeSet[e.To] = true
+	}
+	for k := range adj {
+		sort.Strings(adj[k])
+	}
+	starts := make([]string, 0, len(nodeSet))
+	for n := range nodeSet {
+		starts = append(starts, n)
+	}
+	sort.Strings(starts)
+
+	const (
+		white = 0
+		gray  = 1
+		black = 2
+	)
+	color := map[string]int{}
+	var stack []string
+	seen := map[string]bool{}
+	var cycles [][]string
+
+	var dfs func(u string)
+	dfs = func(u string) {
+		color[u] = gray
+		stack = append(stack, u)
+		for _, v := range adj[u] {
+			switch color[v] {
+			case white:
+				dfs(v)
+			case gray:
+				idx := -1
+				for i, s := range stack {
+					if s == v {
+						idx = i
+						break
+					}
+				}
+				if idx >= 0 {
+					norm := normalizeCycle(stack[idx:])
+					key := strings.Join(norm, "\x00")
+					if !seen[key] {
+						seen[key] = true
+						cycles = append(cycles, norm)
+					}
+				}
+			}
+		}
+		stack = stack[:len(stack)-1]
+		color[u] = black
+	}
+
+	for _, n := range starts {
+		if color[n] == white {
+			dfs(n)
+		}
+	}
+	sort.Slice(cycles, func(i, j int) bool {
+		return strings.Join(cycles[i], "\x00") < strings.Join(cycles[j], "\x00")
+	})
+	return cycles
+}
+
+// normalizeCycle rotates a cycle path to begin at its lexicographically smallest
+// member, yielding one canonical representation per cycle. It copies the input.
+func normalizeCycle(cyc []string) []string {
+	min := 0
+	for i := 1; i < len(cyc); i++ {
+		if cyc[i] < cyc[min] {
+			min = i
+		}
+	}
+	out := make([]string, 0, len(cyc))
+	out = append(out, cyc[min:]...)
+	out = append(out, cyc[:min]...)
+	return out
 }
 
 // buildGraph enumerates active (docs/changes/*) and archived
