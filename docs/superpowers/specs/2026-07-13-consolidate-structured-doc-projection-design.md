@@ -1,9 +1,15 @@
 ---
-change: consolidate-structured-doc-projection
+comet_change: consolidate-structured-doc-projection
+role: technical-design
+canonical_spec: openspec
 status: draft
 ---
 
-# Design Doc — consolidate structured-doc projection onto structproj
+# consolidate-structured-doc-projection — Technical Design
+
+Deep design for F40 (structured-doc slice). OpenSpec is the canonical spec;
+this document is the technical design and defers to `openspec/changes/
+consolidate-structured-doc-projection/specs` for normative requirements.
 
 ## Problem
 
