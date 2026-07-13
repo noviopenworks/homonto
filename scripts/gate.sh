@@ -45,6 +45,9 @@ printf '[mcps.demo]\ncommand = ["true"]\n' > /tmp/gate-homonto.toml
 step "spec<->command correspondence"
 ./scripts/spec-command-check.sh
 
+step "onto skills shell out (no direct state writes)"
+./scripts/onto-skills-shell-out-check.sh
+
 step "govulncheck ./..."
 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
