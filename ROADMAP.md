@@ -345,6 +345,11 @@ What turns an opinionated internal toolkit into something others build on.
   degraded / warning / abort / doctor-findings that a CI pipeline can depend on.
 
 ### E3. Adapter conformance and the Claude/OpenCode consolidation
+- **Started (2026-07-13):** `adapter-conformance-suite` archived — a shared
+  `internal/adapter/conformance` suite; claude + opencode pass the core contract
+  (Plan->create, Apply, ObserveHashes-clean, idempotent re-Plan, unmanaged
+  preservation). Remaining F55: adoption, drift-reset, secret redaction, malformed
+  docs, conflict safety, codex; plus the Claude/OpenCode structproj consolidation.
 - **Closes:** F40 (both adapters are ~1000 lines duplicating security-sensitive
   planning/link/prune/copy/adopt/drift logic; the Codex `structproj` design is the
   better direction — migrate the two onto the contract), F55 (a reusable
