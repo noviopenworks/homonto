@@ -3,6 +3,8 @@ comet_change: framework-ecosystem-model
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-framework-ecosystem-model
+status: final
 ---
 
 # framework-ecosystem-model — Technical Design (E1)

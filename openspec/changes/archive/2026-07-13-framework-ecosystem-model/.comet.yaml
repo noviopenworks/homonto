@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-framework-ecosystem-mod
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/framework-ecosystem-model/.comet/handoff/design-context.json
 handoff_hash: 9b866b2a1490e1e4a625b80b3faf3d49f5d977375314c79fcd424167a709fd65
