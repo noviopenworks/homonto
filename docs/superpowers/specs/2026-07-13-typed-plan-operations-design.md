@@ -3,6 +3,8 @@ comet_change: typed-plan-operations
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-typed-plan-operations
+status: final
 ---
 
 # typed-plan-operations — Technical Design

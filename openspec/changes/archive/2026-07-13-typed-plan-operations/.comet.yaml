@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-typed-plan-operations-v
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/typed-plan-operations/.comet/handoff/design-context.json
 handoff_hash: a0b26a83aacf16b884322b4ea353b3bc5572030e937ca4f34597e172c72f4773
