@@ -429,8 +429,26 @@ What turns an opinionated internal toolkit into something others build on.
   `local:<path>` framework acceptance (lift F35 for `local:`; build the catalog
   with per-config overlays, de-globalizing `loadedCatalog`) and engine
   materialization of overlay content from each framework's `srcFS`.
-- **Remaining E1 (prerequisite/decision-gated):** `[compat].homonto` range —
-  reuses the comparator BUT has real prerequisites that make it premature now:
+- **Remote-framework Plan-time finding (2026-07-13):** remote frameworks would
+  reuse BOTH the shipped `internal/remote` trust pipeline (fetch/verify/digest-pin/
+  revocation) AND the local-framework overlay infra (fetch+verify to a cache dir →
+  it becomes a `LoadWithLocal` overlay). BUT unlike remote *subagents* (whose
+  content `Plan` never needs), a remote *framework's* resources are only known by
+  reading its manifest — remote content — so **`Plan` would have to fetch over the
+  network to expand it**. That is a genuine design decision (network in a dry-run
+  `Plan`, or a separate resolve step + lockfile-cached manifest) and a maintainer
+  call, not a bounded slice. Scoped, not built.
+- **F34 re-assessment (2026-07-13):** decoupling the `Adapter` contract from the
+  concrete `config.Config`/`secret.Resolver`/`state.State` means introducing
+  interfaces that each have exactly ONE implementation — textbook premature
+  abstraction (YAGNI): it would add indirection without benefit and arguably
+  worsen the code. It should wait for a second real implementation to justify the
+  seam. Not built by design judgment.
+- **Remaining E1 (prerequisite/decision-gated):** `[compat].homonto` range now
+  has a potential consumer (a local framework could declare it) but still needs
+  version injection (`cli.Version` layering) + pre-release handling; it and
+  capabilities (**D2**) are most useful once remote/shared frameworks exist. The
+  original prematurity note:
   the catalog can't import `internal/cli.Version` (layering — it must be
   injected), the binary version is `0.1.0-dev` (a pre-release the minimal `x.y.z`
   comparator rejects by design), and **no framework needs a homonto constraint
