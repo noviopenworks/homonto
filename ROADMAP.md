@@ -358,11 +358,21 @@ only after Now.
   the ~200-line `config.Load` monolith is split into explicit ordered phases —
   `decode` (parse + schema guard) → `migrate` (`[agents]`→`[subagents]` fold) →
   `normalize` (scope defaulting) → `validate` (all validation) — extracted
-  in-order with no rule change; 74 config tests pass unchanged. The generic
-  per-kind "expand" pipeline is a follow-on. Remaining X3 (F34 interface-type
-  generalization — the `Adapter` contract still binds concrete `config.Config`/
-  `secret.Resolver`/`state.State`; non-waivable finding classes F11/F12 in the
-  onto/comet workflow; the generic expand pipeline) is larger or different-domain.
+  in-order with no rule change; 74 config tests pass unchanged.
+- **F43 COMPLETE (2026-07-13, `config-expand-pipeline` archived):** the generic
+  per-kind "expand" pipeline — the ~220 lines triplicated across
+  `Expanded{Skill,Command,Subagent}EntriesForTool` collapsed into one
+  `expandEntriesForTool(tool, kind, base, expand)` + three thin wrappers
+  (behavior-identical, 75 config tests unchanged). F43's full split
+  (decode→migrate→normalize→validate→**expand**) is now done.
+- **Remaining X3:** F34 (interface-type generalization) — **YAGNI, deliberately
+  not built**: introducing interfaces for the single-implementation
+  `config.Config`/`secret.Resolver`/`state.State` would add indirection and
+  worsen the code; wait for a second implementation. F11/F12 (risk-based
+  verification scale + non-waivable finding classes + reviewer/skeptic subagents)
+  are onto/comet **workflow prompt-engineering** — a different discipline, verified
+  by structure not Go tests, and the B1 decision keeps that judgment out of the
+  binary. So X3's Go-implementable core (F37/F33/F43) is done.
 - **Problem:** verification scale keys on task/file counts, not risk or changed
   requirements, so a one-file security change can get less scrutiny than a large
   refactor (F11); escape hatches are too broad and the skeptic/reviewer subagents
