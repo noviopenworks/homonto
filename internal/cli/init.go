@@ -15,12 +15,15 @@ func initCmd() *cobra.Command {
 			if len(args) == 1 {
 				dir = args[0]
 			}
-			created, err := scaffold.Init(dir)
+			created, updated, err := scaffold.Init(dir)
 			if err != nil {
 				return err
 			}
 			for _, p := range created {
 				cmd.Println("created", p)
+			}
+			for _, p := range updated {
+				cmd.Println("updated", p)
 			}
 			return nil
 		},
