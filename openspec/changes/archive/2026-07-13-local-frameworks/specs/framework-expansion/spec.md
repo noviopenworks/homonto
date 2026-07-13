@@ -29,7 +29,7 @@ using only builtin frameworks MUST behave identically to before.
 
 ## MODIFIED Requirements
 
-### Requirement: a non-builtin, non-local framework source fails at load
+### Requirement: a non-builtin framework source fails at load
 
 `homonto` SHALL reject at config load a `[frameworks.<name>]` declaration whose
 source is neither a `builtin:<name>` source nor a `local:<path>` source, with a

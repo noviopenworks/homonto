@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-local-frameworks-verify
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/local-frameworks/.comet/handoff/design-context.json
 handoff_hash: 8e08c004ad353df279b8c33c5d1f1382dd7dd3d142f57e615bbaa87dd44f4370

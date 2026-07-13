@@ -3,6 +3,8 @@ comet_change: local-frameworks
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-local-frameworks
+status: final
 ---
 
 # local-frameworks — Technical Design (E1)
