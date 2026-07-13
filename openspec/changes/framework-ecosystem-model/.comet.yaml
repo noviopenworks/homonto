@@ -20,8 +20,8 @@ created_at: 2026-07-13
 verified_at: null
 archived: false
 direct_override: null
-handoff_context: null
-handoff_hash: null
+handoff_context: openspec/changes/framework-ecosystem-model/.comet/handoff/design-context.json
+handoff_hash: 9b866b2a1490e1e4a625b80b3faf3d49f5d977375314c79fcd424167a709fd65
 classic_profile: full
 classic_migration: 1
 run_id: c14d135a-6525-4e44-b1a7-7d60710823f7

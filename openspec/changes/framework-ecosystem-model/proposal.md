@@ -28,11 +28,14 @@ same validated, versioned path**:
 
 ## What Changes
 
-**This change is design-only.** It produces the E1 ecosystem-model architecture
-(the manifest schema, resolution/validation pipeline, capability + compatibility
-model, local-source trust reuse, conflict policy, and a phased delivery plan
-with an MVP), and surfaces the maintainer decisions the model needs, stopping at
-the design-approval point before any implementation.
+This change delivers the E1 ecosystem-model **design** (the manifest schema,
+resolution/validation pipeline, capability + compatibility model, local-source
+trust reuse, conflict policy, phased plan, and the D1-D5 maintainer decisions)
+**and implements the phase-1 MVP** — the additive `manifest_schema` field plus a
+fail-closed guard in the framework loader — which the design shows is independent
+of D1-D4. The broader model (capabilities, compat ranges, local/custom
+resolution, F38) remains design for phased follow-on changes pending those
+decisions.
 
 ## Impact
 
