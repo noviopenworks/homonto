@@ -1,0 +1,6 @@
+{
+  "openspec_proposal": "openspec/changes/init-augment-existing-gitignore/proposal.md",
+  "openspec_tasks": "openspec/changes/init-augment-existing-gitignore/tasks.md",
+  "openspec_delta_spec": "openspec/changes/init-augment-existing-gitignore/specs/cli-commands/spec.md",
+  "build_tasks_complete": "openspec/changes/init-augment-existing-gitignore/tasks.md"
+}
