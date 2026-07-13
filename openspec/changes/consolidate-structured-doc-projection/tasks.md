@@ -1,7 +1,7 @@
 # Tasks — consolidate-structured-doc-projection
 
 ## 1. Shared JSON codec
-- [ ] Add a `structproj.Codec` backed by `internal/jsonutil` (EnsureRoot→
+- [x] Add a `structproj.Codec` backed by `internal/jsonutil` (EnsureRoot→
       ObjectRoot, Get→GetJSON, Set→SetJSON, Delete→DeleteJSON, Canonical→
       Canonical), shared by claude + opencode. TDD: codec unit test round-trips
       get/set/delete/canonical and normalizes an empty doc.
