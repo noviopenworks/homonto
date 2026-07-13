@@ -707,11 +707,30 @@ func validateResources(kind string, resources map[string]Resource) error {
 		if err := validateSource(label, r.Source, r.Digest, false); err != nil {
 			return err
 		}
+		if err := validateLocalPlainName(label, r.Source); err != nil {
+			return err
+		}
 		for _, target := range r.Targets {
 			if !isResourceTarget(target) {
 				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
 			}
 		}
+	}
+	return nil
+}
+
+// validateLocalPlainName rejects a local: source that is not a plain name (no
+// `.`/`..`/path separators), so it can never resolve/link/materialize a file
+// outside the provider root. It is a no-op for non-local sources. Shared by
+// validateResources (skills/commands) and validateSubagents so the two paths
+// cannot drift.
+func validateLocalPlainName(label, source string) error {
+	src, ok := strings.CutPrefix(source, "local:")
+	if !ok {
+		return nil
+	}
+	if src == "" || src == "." || src == ".." || strings.ContainsAny(src, `/\`) || src != filepath.Base(src) {
+		return fmt.Errorf("parse config: %s local source %q must be a plain name (no path components)", label, source)
 	}
 	return nil
 }
@@ -737,10 +756,8 @@ func validateSubagents(subagents map[string]Subagent) error {
 		}
 		// A local: source is resolved to a file by name; reject a path-traversal
 		// name so it cannot read/link outside the provider root.
-		if src, ok := strings.CutPrefix(s.Source, "local:"); ok {
-			if src == "" || src == "." || src == ".." || strings.ContainsAny(src, `/\`) || src != filepath.Base(src) {
-				return fmt.Errorf("parse config: %s local source %q must be a plain name (no path components)", label, s.Source)
-			}
+		if err := validateLocalPlainName(label, s.Source); err != nil {
+			return err
 		}
 		for _, target := range s.Targets {
 			if !isResourceTarget(target) {

@@ -152,7 +152,7 @@ func TestApplyWritesPrunesAndRecords(t *testing.T) {
 		{Dst: prune, Action: Prune},
 		{Dst: foreign, Action: Conflict, Content: []byte("ours")},
 	}
-	rec, pruned, err := Apply(ops)
+	rec, pruned, _, err := Apply(ops, []string{dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,6 +180,69 @@ func TestApplyWritesPrunesAndRecords(t *testing.T) {
 	}
 	if len(pruned) != 1 || pruned[0] != prune {
 		t.Fatalf("pruned = %v, want [%s]", pruned, prune)
+	}
+}
+
+// TestApplyConfinesPruneToRoots: prune deletes only destinations under a managed
+// root (F7). A tampered state entry whose Dst resolves OUTSIDE the root — an
+// absolute foreign path or a traversal that escapes — is refused: the file is not
+// deleted, it is not listed in pruned (so ownership is retained), and it surfaces
+// in refused. An in-root managed file still prunes normally.
+func TestApplyConfinesPruneToRoots(t *testing.T) {
+	root := t.TempDir()
+	outsideDir := t.TempDir()
+
+	inRoot := filepath.Join(root, "managed.md")
+	absOutside := filepath.Join(outsideDir, "victim.md")
+	write(t, inRoot, []byte("ours"))
+	write(t, absOutside, []byte("victim"))
+
+	// A traversal Dst that cleans to a path outside root (…/root/../victim.md).
+	traversal := filepath.Join(root, "..", filepath.Base(outsideDir), "victim.md")
+
+	ops := []Op{
+		{Dst: inRoot, Action: Prune},
+		{Dst: absOutside, Action: Prune},
+		{Dst: traversal, Action: Prune},
+	}
+	_, pruned, refused, err := Apply(ops, []string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The in-root file is pruned; the out-of-root file survives untouched.
+	if _, err := os.Stat(inRoot); !os.IsNotExist(err) {
+		t.Fatal("in-root managed file was not pruned")
+	}
+	if b, _ := os.ReadFile(absOutside); string(b) != "victim" {
+		t.Fatalf("out-of-root file was deleted; prune confinement failed: %q", b)
+	}
+
+	if len(pruned) != 1 || pruned[0] != inRoot {
+		t.Fatalf("pruned = %v, want only [%s]", pruned, inRoot)
+	}
+	// Both out-of-root destinations (absolute + traversal) are reported refused.
+	if len(refused) != 2 {
+		t.Fatalf("refused = %v, want the two out-of-root destinations", refused)
+	}
+}
+
+// TestApplyRefusesAllPrunesWithoutRoots: fail-closed — an empty root set refuses
+// every prune rather than deleting unconfined.
+func TestApplyRefusesAllPrunesWithoutRoots(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "x.md")
+	write(t, p, []byte("ours"))
+
+	_, pruned, refused, err := Apply([]Op{{Dst: p, Action: Prune}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(p); string(b) != "ours" {
+		t.Fatalf("file deleted with no confinement roots: %q", b)
+	}
+	if len(pruned) != 0 || len(refused) != 1 {
+		t.Fatalf("pruned=%v refused=%v; want no prune, one refusal", pruned, refused)
 	}
 }
 
