@@ -134,9 +134,14 @@ recovery/atomic bookkeeping (F16/F17); full dep resolver with cycle detection (F
 `cycles` array in `--json` and a trailing `cycles:` section in the human listing;
 `onto graph --check` exits non-zero on a cycle (a CI-usable structural gate),
 serving X1's "typed edges validated in CI" exit gate. This is distinct from the
-catalog's existing *framework*-dep cycle detection. Remaining F10: blocking `onto
-advance`/`onto new` on a cycle (the "blocks entering build" gate-logic slice) and
-date-anchored dep resolution against a registry — both larger, separable.*
+catalog's existing *framework*-dep cycle detection.
+**F10 entering-build cycle gate DONE (2026-07-13, `onto-advance-cycle-gate`
+archived):** `onto advance` now refuses `design → build` when the change
+participates in a `depends-on` cycle (reusing `buildGraph` + `detectDepCycles`),
+naming the cycle and writing nothing — the F10 "dep resolver blocks entering
+build" intent, enforced under B1 (a cycle is a structural fact of recorded deps).
+Remaining F10: date-anchored dep resolution against a registry (needs a
+change-registry concept onto doesn't model — design-gated, separable).*
 
 - **Problem:** advance/close check existence + checkboxes, not validity; empty
   unverified work can archive.
