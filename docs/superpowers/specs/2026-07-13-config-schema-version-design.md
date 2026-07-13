@@ -3,6 +3,8 @@ comet_change: config-schema-version
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-config-schema-version
+status: final
 ---
 
 # config-schema-version — Technical Design
