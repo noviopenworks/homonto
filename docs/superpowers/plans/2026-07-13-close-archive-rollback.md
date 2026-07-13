@@ -2,6 +2,7 @@
 change: close-archive-rollback
 design-doc: docs/superpowers/specs/2026-07-13-close-archive-rollback-design.md
 base-ref: fae08c9e0d499be9b5643d0ef957a1a243837bd9
+archived-with: 2026-07-13-close-archive-rollback
 ---
 # Plan
 1. runClose rolls back archived on move failure (TDD: injected failure). Commit.

@@ -3,6 +3,8 @@ comet_change: close-archive-rollback
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-close-archive-rollback
+status: final
 ---
 
 # close-archive-rollback — Technical Design
