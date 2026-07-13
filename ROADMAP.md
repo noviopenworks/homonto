@@ -360,8 +360,16 @@ What turns an opinionated internal toolkit into something others build on.
   (Plan->create, Apply, ObserveHashes-clean, idempotent re-Plan, unmanaged
   preservation). F55 conformance COMPLETE for all three adapters (claude, opencode, codex) —
   core, drift-reset, malformed-doc, secret non-resolution, foreign-content (4
-  slices archived). Remaining E3: only the large Claude/OpenCode structproj
-  consolidation (F40) — a high-risk refactor of two ~1000-line adapters, design-first.
+  slices archived). **F40 structured-doc slice DONE (2026-07-13,
+  `consolidate-structured-doc-projection` archived):** claude + opencode now
+  project their structured-document managed keys through the shared `structproj`
+  core via one shared `internal/adapter/jsoncodec` (Codec over `jsonutil`),
+  mirroring Codex — the duplicated diff/write/observe control-flow was removed
+  (claude 1037→948, opencode 999→954). Behavior-preserving, pinned by the
+  conformance suite; 645 tests green under -race. Remaining F40: the
+  **file-projection** consolidation (symlinked skills/commands/subagents,
+  copy-subagents) — a separate, higher-risk change needing its own shared
+  contract (opencode's array-based `plugin.*` also stays adapter-owned).
 - **Closes:** F40 (both adapters are ~1000 lines duplicating security-sensitive
   planning/link/prune/copy/adopt/drift logic; the Codex `structproj` design is the
   better direction — migrate the two onto the contract), F55 (a reusable
