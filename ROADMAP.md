@@ -187,7 +187,13 @@ real adversary (T-hostile) — it consumes remote content and deletes files — 
 these stay P0 **for the engine**, but they are **not onto blockers** and gate the
 RC scope rather than onto's truth. They can proceed in parallel with gate A.
 
-### N4. Close the arbitrary-deletion and traversal holes
+### N4. Close the arbitrary-deletion and traversal holes — ✅ DONE (2026-07-13)
+*Archived on `main` (`close-deletion-traversal-holes`): F28 — `validateResources`
+now applies the `local:` plain-name check via a shared helper (skills/commands
+can't drift from subagents); F7 — copy-mode prune confined at the `copyfile.Apply`
+choke point to the managed provider roots (fail-closed, `..`-safe), so a tampered
+state path can't delete an arbitrary file. 195 tests -race.*
+
 - **Problem:** copy-mode prune takes its destination from unvalidated
   `Entry.Desired` in state; a tampered state.json with a matching hash deletes
   an arbitrary file (verified: `internal/adapter/claude/claude.go:248`,
