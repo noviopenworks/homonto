@@ -4,13 +4,14 @@
 
 ### Requirement: copy-mode prune is confined to the managed provider root
 
-Copy-mode pruning SHALL delete only a destination that resolves under the managed
-provider root for its tool and scope. Before removing a recorded managed file, the
-adapter SHALL reconstruct/validate the destination from the resource's identity
-(tool, scope, kind, plain name) and SHALL refuse to delete — treating it as a prune
-failure that retains ownership — any destination that resolves outside that root.
-A tampered state entry whose recorded path points outside the managed root SHALL
-NOT cause an arbitrary file deletion.
+Copy-mode pruning SHALL delete only a destination that resolves under a managed
+provider root. The adapter SHALL supply the set of managed roots (its user and,
+when known, project provider directories) and the pruning step SHALL refuse to
+delete — treating it as a prune failure that retains ownership — any recorded
+destination that resolves outside every managed root (including via `..`
+traversal). With an empty managed-root set the pruning step SHALL refuse every
+delete (fail-closed). A tampered state entry whose recorded path points outside
+the managed roots SHALL NOT cause an arbitrary file deletion.
 
 #### Scenario: prune refuses an out-of-root destination
 
