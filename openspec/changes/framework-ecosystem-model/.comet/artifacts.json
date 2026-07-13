@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/framework-ecosystem-model/proposal.md",
+  "openspec_design": "openspec/changes/framework-ecosystem-model/design.md",
+  "openspec_tasks": "openspec/changes/framework-ecosystem-model/tasks.md",
+  "openspec_delta_spec": "openspec/changes/framework-ecosystem-model/specs/framework-expansion/spec.md",
+  "handoff_context": "openspec/changes/framework-ecosystem-model/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/framework-ecosystem-model/.comet/handoff/design-context.md"
+}
