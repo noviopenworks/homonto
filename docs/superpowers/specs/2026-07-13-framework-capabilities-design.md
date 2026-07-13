@@ -3,6 +3,8 @@ comet_change: framework-capabilities
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-framework-capabilities
+status: final
 ---
 
 # framework-capabilities — Technical Design (E1)

@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-framework-capabilities-
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/framework-capabilities/.comet/handoff/design-context.json
 handoff_hash: 2d7268e9ba6838c1b4056217602ef9f8a56fcdeef6d575b8255e97d06ed29bba
