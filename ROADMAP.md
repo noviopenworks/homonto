@@ -282,11 +282,21 @@ only after Now.
   `supersedes`, `deviates-from`, `released-in`) validated in CI.
 
 ### X2. Immutable typed plans and transaction journals
-- **Problem:** plan actions/payloads are unrestricted strings and `Apply` reads
-  mutable adapter fields set by a prior `Plan`, not the plan alone; adapter and
-  close writes are sequential with no journal (F41, F42). Catalog and close both
-  mutate destructively before completion (F47, and the binary's F4 archive
-  ordering).
+- **Typed-operations slice DONE (2026-07-13, `typed-plan-operations` archived):**
+  `adapter.Action` is now a defined type with constants + `Valid()`;
+  `ChangeSet.Validate(knownTools)` and a fail-closed check at the top of
+  `engine.Apply` reject an unknown tool (previously **silently skipped** by the
+  `byName` lookup) or an undefined action (previously a silent no-op) before any
+  secret resolution, materialization, or write. Low-churn/non-breaking (constants
+  keep the historical string values). This closes the F41 "plan actions are
+  unrestricted strings" gap. **Remaining X2:** the deeper immutability
+  (`Apply` still reads mutable adapter fields set by a prior `Plan`, not the plan
+  alone), transaction journals (F42), versioned staging swapped atomically (F47),
+  and enforced close/archive validation (F4, F18).
+- **Problem (remaining):** `Apply` reads mutable adapter fields set by a prior
+  `Plan`, not the plan alone; adapter and close writes are sequential with no
+  journal (F42). Catalog and close both mutate destructively before completion
+  (F47, and the binary's F4 archive ordering).
 - **Closes:** F41, F42, F4, F47, F18 (archive must move all historical
   artifacts, rewrite references, and validate every referenced path and hash
   before marking the change archived — the item-10/11 archives already do this
