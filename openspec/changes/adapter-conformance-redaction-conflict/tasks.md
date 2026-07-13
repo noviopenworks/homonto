@@ -5,4 +5,4 @@
       managed key is not silently clobbered/adopted. Skip explicitly (comment) if an
       adapter can't express a check.
 ## 2. Verify
-- [ ] go test ./internal/adapter/... -race, vet, build, openspec validate --all green.
+- [x] go test ./internal/adapter/... -race, vet, build, openspec validate --all green.
