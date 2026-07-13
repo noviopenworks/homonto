@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: open
+phase: design
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: d9315f3295bbd13d23ffa4dc3d13a66ece275b8d
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-13-framework-compat-homonto-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-13
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: openspec/changes/framework-compat-homonto/.comet/handoff/design-context.json
+handoff_hash: 9745b625b60545d7dc19c2ae2fe759faf1dd9eabd1c8de836e81ecf5a7ea7f63
+classic_profile: full
+classic_migration: 1
+run_id: c4e1aaf8-f263-41c1-bc66-ee4ddcd4e857

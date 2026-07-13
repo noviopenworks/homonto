@@ -1,0 +1,14 @@
+{
+  "change": "framework-compat-homonto",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "9745b625b60545d7dc19c2ae2fe759faf1dd9eabd1c8de836e81ecf5a7ea7f63",
+  "files": [
+    { "path": "openspec/changes/framework-compat-homonto/proposal.md", "sha256": "47c4915f80142df5d8d11a38e70c1dbda880c6ae6f9f769f26f17576fc215c53" },
+    { "path": "openspec/changes/framework-compat-homonto/design.md", "sha256": "19a9d1accb991f6efc3a29aa5bd27dc1fd9048bb8ef95239da6918430cd3838c" },
+    { "path": "openspec/changes/framework-compat-homonto/tasks.md", "sha256": "bd6fd1cb9f9a8e1cdeefe597d3da85fae0eed30fe1cb68166e95e6bfc753a763" },
+    { "path": "openspec/changes/framework-compat-homonto/specs/framework-expansion/spec.md", "sha256": "d14182ac5a40b42400302bc356d534ef8a9087e17cb190d5ea90fe8f5fa6fb98" }
+  ]
+}
