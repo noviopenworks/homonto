@@ -59,17 +59,23 @@ func (e *Engine) materializeRemotes() error {
 
 	subagentRoot := e.remoteSubagentDir()
 
-	// Prune remote-content files and lock entries for subagents no longer declared.
-	if err := e.pruneRemoteSubagents(&lock, declared, subagentRoot); err != nil {
-		return err
-	}
-
 	names := make([]string, 0, len(declared))
 	for name := range declared {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
+	// Stage: fetch AND verify every declared remote into the content-addressed
+	// cache before touching any active content or the lock. Cache writes are
+	// content-keyed staging — they never mutate the active remote root or the
+	// lockfile — so if any remote fails here the whole apply aborts with the
+	// active content and lock untouched (F8: all-or-nothing across remotes).
+	type staged struct {
+		src      remote.RemoteSource
+		pin      remote.Digest
+		cacheDir string
+	}
+	stagedByName := make(map[string]staged, len(names))
 	for _, name := range names {
 		res := declared[name]
 		src, err := remote.ParseRemoteSource(res.Source)
@@ -84,15 +90,26 @@ func (e *Engine) materializeRemotes() error {
 		if err != nil {
 			return fmt.Errorf("remote subagent %q: %w", name, err)
 		}
-		if err := materializeRemoteFile(cacheDir, name, subagentRoot); err != nil {
+		stagedByName[name] = staged{src: src, pin: pin, cacheDir: cacheDir}
+	}
+
+	// Activate: every remote is staged and verified — now mutate active content
+	// and the lock. Prune de-declared installs first, then materialize each
+	// verified remote and record its provenance, then save the lock atomically.
+	if err := e.pruneRemoteSubagents(&lock, declared, subagentRoot); err != nil {
+		return err
+	}
+	for _, name := range names {
+		s := stagedByName[name]
+		if err := materializeRemoteFile(s.cacheDir, name, subagentRoot); err != nil {
 			return fmt.Errorf("remote subagent %q: %w", name, err)
 		}
 		lock.Set(remote.LockEntry{
 			Kind:      "subagent",
 			Name:      name,
-			Locator:   src.URL,
-			Transport: string(src.Transport),
-			Digest:    pin.String(),
+			Locator:   s.src.URL,
+			Transport: string(s.src.Transport),
+			Digest:    s.pin.String(),
 			Size:      fileSize(filepath.Join(subagentRoot, name+".md")),
 		})
 	}
