@@ -386,9 +386,25 @@ What turns an opinionated internal toolkit into something others build on.
 ### E1. A real framework ecosystem model
 - **Started (2026-07-13):** F35 done (`reject-non-builtin-frameworks`) — a non-builtin
   `[frameworks.X]` source now fails loudly at load instead of silently installing
-  nothing. Remaining E1 (F36 versioned manifests + dependencies/capabilities/
-  compatibility ranges + local/custom framework resolution; F38 plugin lifecycle)
-  is the large ecosystem model — design-first.
+  nothing.
+- **Design + phase-1 MVP DONE (2026-07-13, `framework-ecosystem-model` archived):**
+  the full E1 ecosystem-model **design** is delivered (`design.md` +
+  `docs/superpowers/specs/2026-07-13-framework-ecosystem-model-design.md`):
+  additive manifest v2 (schema version, `[compat].homonto`, `[provides]`
+  capabilities, versioned dependency ranges), a resolution pipeline extending the
+  catalog loader, **reuse of the shipped `internal/remote/` trust pipeline for
+  local/custom frameworks**, an explicit conflict policy, and a phased plan — plus
+  the **D1–D5 maintainer decisions** that gate implementation. Key finding: the
+  catalog already does transitive dependency resolution + cycle detection +
+  duplicate-resource conflict rejection, so those E1 concerns are already handled.
+  The **phase-1 MVP** shipped: `framework.toml` gains `manifest_schema`, rejected
+  fail-closed in `catalog.Load` when newer (forward-safety mirroring config/state),
+  pure additive — builtins load unchanged.
+- **Remaining E1 (decision/semver-gated):** `[compat].homonto` + dependency
+  version-range checks (need a semver comparator — no lib in `go.mod` yet);
+  capabilities (**D2**); local/custom framework resolution via the trust pipeline
+  (**D1**); F38 plugin lifecycle vs honest rename (**D4**). Each is designed and
+  waits on the D1–D5 answers or a semver dependency decision.
 - **Closes:** F35 (a `local:` framework must fail at load, never silently install
   nothing — verified: `internal/config/config.go:256` skips non-builtin), F36
   (versioned manifests with dependencies, provided/required capabilities,
