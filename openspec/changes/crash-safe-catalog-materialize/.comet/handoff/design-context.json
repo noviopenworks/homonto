@@ -1,0 +1,14 @@
+{
+  "change": "crash-safe-catalog-materialize",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "cea8fec6a8c8551d4cb8ec359a8b03d00c4d586b8bcacd4fb42184121a3c29cc",
+  "files": [
+    { "path": "openspec/changes/crash-safe-catalog-materialize/proposal.md", "sha256": "3f4af323c9288f264cb858f22e5c894a659dc0678409302e4e9e7b810b6ad22a" },
+    { "path": "openspec/changes/crash-safe-catalog-materialize/design.md", "sha256": "1fedf828d45253d0a17a2f8831e39f527046bcd330252ac958ebfbc08e36eb2b" },
+    { "path": "openspec/changes/crash-safe-catalog-materialize/tasks.md", "sha256": "90b685f31b269cd06a59e5dec6f92cee25b9c4c3f04ac10f921ee005cec291c3" },
+    { "path": "openspec/changes/crash-safe-catalog-materialize/specs/apply-pipeline/spec.md", "sha256": "aecba1ac87e9c86389c6625ca1a86fc6327f161e61fc9e4d3c30ffa6b5d4d84a" }
+  ]
+}
