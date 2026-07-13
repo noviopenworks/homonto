@@ -1,6 +1,6 @@
 workflow: tweak
 language: en
-phase: open
+phase: verify
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -8,14 +8,14 @@ subagent_dispatch: null
 tdd_mode: direct
 review_mode: off
 isolation: branch
-verify_mode: full
+verify_mode: light
 auto_transition: true
 base_ref: 17c9c851e8b6d4ed6c5f31cf9002385f647d8707
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: docs/superpowers/reports/2026-07-13-perf-benchmarks-verify.md
-branch_status: handled
+verification_report: null
+branch_status: pending
 created_at: 2026-07-13
 verified_at: null
 archived: false
