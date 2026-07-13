@@ -71,21 +71,41 @@ func statusCmd() *cobra.Command {
 }
 
 func doctorCmd() *cobra.Command {
-	return &cobra.Command{
+	var output string
+	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check environment health",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if output != "text" && output != "json" {
+				return fmt.Errorf("doctor: --output %q is not one of text|json", output)
+			}
 			cfgPath, _ := cmd.Flags().GetString("config")
 			home, _ := os.UserHomeDir()
 			e, err := engine.Build(cfgPath, home, "homonto")
 			if err != nil {
 				return err
 			}
-			for _, l := range e.Doctor() {
+			findings := e.Doctor()
+			if output == "json" {
+				if findings == nil {
+					findings = []string{}
+				}
+				b, merr := json.MarshalIndent(struct {
+					Findings []string `json:"findings"`
+				}{Findings: findings}, "", "  ")
+				if merr != nil {
+					return merr
+				}
+				cmd.Println(string(b))
+				return nil
+			}
+			for _, l := range findings {
 				cmd.Println(l)
 			}
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&output, "output", "text", "output format: text or json")
+	return cmd
 }
