@@ -272,14 +272,26 @@ The features that would make "spec-driven" true rather than aspirational. Start
 only after Now.
 
 ### X1. Stable IDs and a typed traceability graph
-- **Problem:** requirements and scenarios are mutable headings; verification maps
-  names to tests by hand (verified: `openspec/specs/*/spec.md` use
-  `### Requirement: <name>`). The toolkit cannot answer "which code, tests,
-  decisions, commits, and release prove scenario X."
+- **Stable-id core DONE for onto (2026-07-13, `onto-stable-change-id` archived):**
+  a change now carries a stable, name-independent `id` in `onto-state.yaml`,
+  assigned once by `onto new` (`ontostate.NewID`, crypto/rand 8-hex) and never
+  rewritten (`set`/`advance`/`close` preserve it), so a change's identity survives
+  a rename; legacy states load with an empty id, never retro-minted. **Scope
+  decision (made, not deferred):** X1's stated tension is with *OpenSpec's*
+  name-matching, which is external tooling homonto doesn't own — but **onto is
+  homonto's own binary-enforced workflow**, so the stable-id core was delivered
+  there, where it needs no OpenSpec change. The genuinely-remaining X1 is: the
+  **typed traceability graph** (typed edges `implements`/`tests`/`supersedes`/
+  `deviates-from`/`released-in`, deps/refs by id) — a larger follow-on — and
+  **whether to give the OpenSpec/comet flow stable IDs too**, which IS a maintainer
+  decision about diverging from the external tool everyone's changes use.
+- **Problem (remaining — the graph):** requirements and scenarios are mutable
+  headings; verification maps names to tests by hand. The toolkit cannot yet
+  answer "which code, tests, decisions, commits, and release prove scenario X."
 - **Closes:** F13.
-- **Exit gate:** immutable IDs for capabilities, requirements, scenarios,
-  decisions, tasks, and evidence; typed edges (`implements`, `tests`,
-  `supersedes`, `deviates-from`, `released-in`) validated in CI.
+- **Exit gate:** immutable IDs (now present for onto changes) for capabilities,
+  requirements, scenarios, decisions, tasks, and evidence; typed edges validated
+  in CI.
 
 ### X2. Immutable typed plans and transaction journals
 - **Typed-operations slice DONE (2026-07-13, `typed-plan-operations` archived):**
