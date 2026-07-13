@@ -92,7 +92,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 
 // Apply writes managed MCP tables into config.toml (only when a managed key
 // changed), preserving unmanaged content, and records state.
-func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
+func (a *Adapter) Apply(_ *config.Config, cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
 	disk, err := a.read()
 	if err != nil {
 		return err

@@ -35,7 +35,7 @@ func TestAdoptRecordsStateWithoutWritingFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
-	if err := a.Apply(cs0, resolver(), seed); err != nil {
+	if err := a.Apply(c, cs0, resolver(), seed); err != nil {
 		t.Fatalf("seed apply: %v", err)
 	}
 
@@ -54,7 +54,7 @@ func TestAdoptRecordsStateWithoutWritingFile(t *testing.T) {
 		t.Fatalf("mcp.cg must be adopt, not noop, when absent from state: %+v", cs.Changes)
 	}
 
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -85,7 +85,7 @@ func TestStaleAppliedRefreshedViaAdopt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan c1: %v", err)
 	}
-	if err := a.Apply(cs1, resolver(), st); err != nil {
+	if err := a.Apply(c1, cs1, resolver(), st); err != nil {
 		t.Fatalf("apply c1: %v", err)
 	}
 
@@ -98,7 +98,7 @@ func TestStaleAppliedRefreshedViaAdopt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan scratch: %v", err)
 	}
-	if err := a.Apply(csScratch, resolver(), scratch); err != nil {
+	if err := a.Apply(c2, csScratch, resolver(), scratch); err != nil {
 		t.Fatalf("apply scratch: %v", err)
 	}
 
@@ -126,7 +126,7 @@ func TestStaleAppliedRefreshedViaAdopt(t *testing.T) {
 	}
 
 	before, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c2, cs, resolver(), st); err != nil {
 		t.Fatalf("apply c2: %v", err)
 	}
 
@@ -160,7 +160,7 @@ func TestAdoptedKeyIsPruneable(t *testing.T) {
 
 	seed, _ := state.Load(t.TempDir())
 	cs0, _ := a.Plan(c, seed)
-	if err := a.Apply(cs0, resolver(), seed); err != nil {
+	if err := a.Apply(c, cs0, resolver(), seed); err != nil {
 		t.Fatalf("seed apply: %v", err)
 	}
 
@@ -170,7 +170,7 @@ func TestAdoptedKeyIsPruneable(t *testing.T) {
 	if findChange(cs, "adopt", "mcp.cg") == nil {
 		t.Fatalf("precondition: expected adopt, got %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

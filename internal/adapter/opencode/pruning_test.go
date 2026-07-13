@@ -36,7 +36,7 @@ func TestOpenCodeRemovedMCPIsPruned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,7 +51,7 @@ func TestOpenCodeRemovedMCPIsPruned(t *testing.T) {
 	if del.Old != adapter.SecretRedaction {
 		t.Fatalf("delete Old must always be redacted (stale provenance), got %q", del.Old)
 	}
-	if err := a.Apply(cs2, noSecret(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	raw, _ := os.ReadFile(filepath.Join(home, ".config", "opencode", "opencode.jsonc"))
@@ -77,7 +77,7 @@ func TestOpenCodeRemovedPluginIsRemovedFromArray(t *testing.T) {
 	c := &config.Config{Plugins: config.Plugins{OpenCode: map[string]config.Plugin{"quota": {Source: "@x/quota"}}}}
 
 	cs, _ := a.Plan(c, st)
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -88,7 +88,7 @@ func TestOpenCodeRemovedPluginIsRemovedFromArray(t *testing.T) {
 	if findChange(cs2, "delete", "plugin.@x/quota") == nil {
 		t.Fatalf("plan lacks a delete for the de-declared plugin: %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, noSecret(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	raw, _ := os.ReadFile(filepath.Join(dir, "opencode.jsonc"))
@@ -111,7 +111,7 @@ func TestOpenCodeRemovedSkillLinkIsPruned(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 
 	cs, _ := a.Plan(cfgWithSkills("user", "foo"), st)
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(cfgWithSkills("user", "foo"), cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	dst := filepath.Join(home, ".config", "opencode", "skills", "foo")
@@ -126,7 +126,7 @@ func TestOpenCodeRemovedSkillLinkIsPruned(t *testing.T) {
 	if findChange(cs2, "delete", "skill.foo") == nil {
 		t.Fatalf("plan lacks a delete for the removed skill: %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, noSecret(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {

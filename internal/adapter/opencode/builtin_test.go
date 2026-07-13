@@ -34,7 +34,7 @@ func TestBuiltinSkillLinksToCatalogRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	dst := filepath.Join(home, ".config", "opencode", "skills", "brainstorming")
@@ -63,7 +63,7 @@ func TestBuiltinSkillPrunedWhenDeDeclared(t *testing.T) {
 	a := New(home, t.TempDir()).WithCatalogRoot(catalogRoot)
 	st, _ := state.Load(t.TempDir())
 	cs, _ := a.Plan(builtinCfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	dst := filepath.Join(home, ".config", "opencode", "skills", "brainstorming")
@@ -71,7 +71,7 @@ func TestBuiltinSkillPrunedWhenDeDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan empty: %v", err)
 	}
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, resolver(), st); err != nil {
 		t.Fatalf("apply empty: %v", err)
 	}
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
@@ -115,7 +115,7 @@ func TestBuiltinCommandLinksToCommandCatalogRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinCmdCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -146,7 +146,7 @@ func TestBuiltinCommandPrunedWhenDeDeclared(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 
 	cs, _ := a.Plan(builtinCmdCfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinCmdCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	dst := filepath.Join(home, ".config", "opencode", "command", "example-command.md")
@@ -155,7 +155,7 @@ func TestBuiltinCommandPrunedWhenDeDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan empty: %v", err)
 	}
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, resolver(), st); err != nil {
 		t.Fatalf("apply empty: %v", err)
 	}
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
@@ -190,7 +190,7 @@ func TestBuiltinCommandConflictNotClobbered(t *testing.T) {
 	cs := adapter.ChangeSet{Tool: "opencode", Changes: []adapter.Change{
 		{Action: "create", Key: "setting.foo", New: `"bar"`},
 	}}
-	if err := a.Apply(cs, resolver(), st); err == nil {
+	if err := a.Apply(builtinCmdCfg(), cs, resolver(), st); err == nil {
 		t.Fatal("expected Apply to fail fast on the command link conflict")
 	}
 	if _, err := os.Stat(a.cfgFile()); !os.IsNotExist(err) {
@@ -217,7 +217,7 @@ func TestBuiltinSubagentLinksToSubagentCatalogRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinSubagentCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -247,7 +247,7 @@ func TestBuiltinSubagentPrunedWhenDeDeclared(t *testing.T) {
 	a := New(home, t.TempDir()).WithSubagentCatalogRoot(saRoot)
 	st, _ := state.Load(t.TempDir())
 	cs, _ := a.Plan(builtinSubagentCfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinSubagentCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	dst := filepath.Join(home, ".config", "opencode", "agent", "code-reviewer.md")
@@ -255,7 +255,7 @@ func TestBuiltinSubagentPrunedWhenDeDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan empty: %v", err)
 	}
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, resolver(), st); err != nil {
 		t.Fatalf("apply empty: %v", err)
 	}
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
@@ -276,7 +276,7 @@ func TestBuiltinSubagentConflictNotClobbered(t *testing.T) {
 	a := New(home, t.TempDir()).WithSubagentCatalogRoot(saRoot)
 	st, _ := state.Load(t.TempDir())
 	cs, _ := a.Plan(builtinSubagentCfg(), st)
-	if err := a.Apply(cs, resolver(), st); err == nil {
+	if err := a.Apply(builtinSubagentCfg(), cs, resolver(), st); err == nil {
 		t.Fatal("expected conflict error, got nil")
 	}
 	b, _ := os.ReadFile(dst)
@@ -307,7 +307,7 @@ func TestBuiltinSubagentAdoptsExistingLink(t *testing.T) {
 	if !adopted {
 		t.Fatalf("pre-existing correct link not adopted: %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(builtinSubagentCfg(), cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if tgt, _ := os.Readlink(dst); tgt != src {

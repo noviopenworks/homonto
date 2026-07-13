@@ -56,7 +56,7 @@ func TestCodexProjectsMCP(t *testing.T) {
 	if len(cs.Changes) != 1 || cs.Changes[0].Action != "create" || cs.Changes[0].Key != "mcp.demo" {
 		t.Fatalf("unexpected changes: %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(cfgWithCodexMCP(), cs, res, st); err != nil {
 		t.Fatal(err)
 	}
 	doc := configTOML(t, home)
@@ -87,7 +87,7 @@ func TestCodexPrunesDeDeclared(t *testing.T) {
 	st := emptyState(t)
 	res := secret.NewResolver()
 	cs, _ := a.Plan(cfgWithCodexMCP(), st)
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(cfgWithCodexMCP(), cs, res, st); err != nil {
 		t.Fatal(err)
 	}
 	// de-declare all MCPs
@@ -96,7 +96,7 @@ func TestCodexPrunesDeDeclared(t *testing.T) {
 	if len(cs2.Changes) != 1 || cs2.Changes[0].Action != "delete" {
 		t.Fatalf("want delete, got %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, res, st); err != nil {
+	if err := a.Apply(empty, cs2, res, st); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := tomlutil.Get(configTOML(t, home), "mcp_servers.demo"); ok {
@@ -149,7 +149,7 @@ func TestCodexDottedMCPName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(c, cs, res, st); err != nil {
 		t.Fatal(err)
 	}
 	doc := configTOML(t, home)
@@ -179,7 +179,7 @@ func TestCodexDeleteDoesNotRecreateAbsentFile(t *testing.T) {
 		"demo": {Command: []string{"srv"}, Targets: []string{"codex"}},
 	}}
 	cs, _ := a.Plan(cfg, st)
-	if err := a.Apply(cs, res, st); err != nil {
+	if err := a.Apply(cfg, cs, res, st); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(home, ".codex", "config.toml")
@@ -188,7 +188,7 @@ func TestCodexDeleteDoesNotRecreateAbsentFile(t *testing.T) {
 	}
 	// de-declare → delete change; apply must not recreate the file
 	cs2, _ := a.Plan(&config.Config{}, st)
-	if err := a.Apply(cs2, res, st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, res, st); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

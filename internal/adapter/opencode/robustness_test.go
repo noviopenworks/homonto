@@ -81,7 +81,7 @@ func TestOpenCodeDottedNamesLandAsLiteralKeysAndConverge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

@@ -20,7 +20,7 @@ func seedDisk(t *testing.T, home string, c *config.Config) *Adapter {
 	if err != nil {
 		t.Fatalf("seed plan: %v", err)
 	}
-	if err := a.Apply(cs0, noSecret(), seed); err != nil {
+	if err := a.Apply(c, cs0, noSecret(), seed); err != nil {
 		t.Fatalf("seed apply: %v", err)
 	}
 	return a
@@ -46,7 +46,7 @@ func TestOpenCodeAdoptSettingRecordsState(t *testing.T) {
 		t.Fatalf("setting.theme must be adopt, not noop, when absent from state: %+v", cs.Changes)
 	}
 
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if _, ok := st.Get("opencode", "setting.theme"); !ok {
@@ -73,7 +73,7 @@ func TestOpenCodeAdoptPluginRecordsState(t *testing.T) {
 		t.Fatalf("plugin.@x/quota must be adopt, not noop, when absent from state: %+v", cs.Changes)
 	}
 
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if _, ok := st.Get("opencode", "plugin.@x/quota"); !ok {
@@ -98,7 +98,7 @@ func TestOpenCodeStaleAppliedRefreshedViaAdopt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan c1: %v", err)
 	}
-	if err := a.Apply(cs1, noSecret(), st); err != nil {
+	if err := a.Apply(c1, cs1, noSecret(), st); err != nil {
 		t.Fatalf("apply c1: %v", err)
 	}
 
@@ -111,7 +111,7 @@ func TestOpenCodeStaleAppliedRefreshedViaAdopt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan scratch: %v", err)
 	}
-	if err := a.Apply(csScratch, noSecret(), scratch); err != nil {
+	if err := a.Apply(c2, csScratch, noSecret(), scratch); err != nil {
 		t.Fatalf("apply scratch: %v", err)
 	}
 
@@ -140,7 +140,7 @@ func TestOpenCodeStaleAppliedRefreshedViaAdopt(t *testing.T) {
 
 	cfg := filepath.Join(home, ".config", "opencode", "opencode.jsonc")
 	before, _ := os.ReadFile(cfg)
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c2, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply c2: %v", err)
 	}
 
@@ -183,7 +183,7 @@ func TestOpenCodeAdoptedKeysArePruneable(t *testing.T) {
 	if findChange(cs, "adopt", "setting.theme") == nil || findChange(cs, "adopt", "plugin.@x/quota") == nil {
 		t.Fatalf("precondition: expected adopt for both keys, got %+v", cs.Changes)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -211,7 +211,7 @@ func TestOpenCodeAdoptDoesNotDropDiskValue(t *testing.T) {
 
 	st, _ := state.Load(t.TempDir())
 	cs, _ := a.Plan(c, st)
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	after, _ := os.ReadFile(cfg)

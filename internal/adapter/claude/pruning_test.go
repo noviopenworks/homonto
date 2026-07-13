@@ -34,7 +34,7 @@ func TestClaudeRemovedMCPIsPruned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,7 +54,7 @@ func TestClaudeRemovedMCPIsPruned(t *testing.T) {
 		t.Fatalf("plan lacks a delete for the de-declared setting: %+v", cs2.Changes)
 	}
 
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	mj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
@@ -84,7 +84,7 @@ func TestClaudeDriftIsNotMistakenForOrphan(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 
 	cs, _ := a.Plan(cfg(), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfg(), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	// Wipe the tool file out-of-band; config still declares everything.
@@ -111,7 +111,7 @@ func TestClaudeRemovedSkillLinkIsPruned(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 
 	cs, _ := a.Plan(cfgWithSkills("user", "foo"), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfgWithSkills("user", "foo"), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	dst := filepath.Join(home, ".claude", "skills", "foo")
@@ -126,7 +126,7 @@ func TestClaudeRemovedSkillLinkIsPruned(t *testing.T) {
 	if findChange(cs2, "delete", "skill.foo") == nil {
 		t.Fatalf("plan lacks a delete for the removed skill: %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, resolver(), st); err != nil {
+	if err := a.Apply(&config.Config{}, cs2, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
@@ -147,7 +147,7 @@ func TestClaudePruneNeverRemovesNonHomontoFile(t *testing.T) {
 	st, _ := state.Load(t.TempDir())
 
 	cs, _ := a.Plan(cfgWithSkills("user", "foo"), st)
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(cfgWithSkills("user", "foo"), cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	// The user replaces the link with their own file, then de-declares foo.
@@ -162,7 +162,7 @@ func TestClaudePruneNeverRemovesNonHomontoFile(t *testing.T) {
 	if findChange(cs2, "delete", "skill.foo") == nil {
 		t.Fatalf("plan lacks a delete for the removed skill: %+v", cs2.Changes)
 	}
-	if err := a.Apply(cs2, resolver(), st); err == nil {
+	if err := a.Apply(&config.Config{}, cs2, resolver(), st); err == nil {
 		t.Fatal("expected a conflict error, not silent removal of a user file")
 	}
 	got, err := os.ReadFile(dst)

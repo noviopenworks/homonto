@@ -31,7 +31,7 @@ func TestProjectScopeLinksUnderProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("user plan: %v", err)
 	}
-	if err := aUser.Apply(cs, noSecret(), st); err != nil {
+	if err := aUser.Apply(cUser, cs, noSecret(), st); err != nil {
 		t.Fatalf("user apply: %v", err)
 	}
 	homeDst := filepath.Join(home, ".config", "opencode", "skills", "onto")
@@ -95,7 +95,7 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	}
 
 	// 3. Apply: project link created, home link pruned.
-	if err := aProj.Apply(cs2, noSecret(), st); err != nil {
+	if err := aProj.Apply(cProj, cs2, noSecret(), st); err != nil {
 		t.Fatalf("project apply: %v", err)
 	}
 	if _, err := os.Readlink(filepath.Join(proj, ".opencode", "skills", "onto")); err != nil {
@@ -119,7 +119,7 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	aU := New(home, content).WithProjectRoot(proj)
 	cU := cfgWithSkills("user", "foo")
 	cs, _ := aU.Plan(cU, st)
-	if err := aU.Apply(cs, noSecret(), st); err != nil {
+	if err := aU.Apply(cU, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	homeDst := filepath.Join(home, ".config", "opencode", "skills", "foo")
@@ -130,7 +130,7 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	aP := New(home, content).WithProjectRoot(proj)
 	cP := cfgWithSkills("project")
 	cs2, _ := aP.Plan(cP, st)
-	if err := aP.Apply(cs2, noSecret(), st); err != nil {
+	if err := aP.Apply(cP, cs2, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(homeDst); err == nil {
@@ -166,7 +166,7 @@ func TestSkillAdoptRebuildsState(t *testing.T) {
 	if found == nil || found.Action != "adopt" {
 		t.Fatalf("expected adopt for skill.foo, got %+v", found)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := st.Get("opencode", "skill.foo"); !ok {
@@ -199,7 +199,7 @@ func TestRelocationPruneLeavesForeignFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply must not error on a foreign file at the inactive path: %v", err)
 	}
 	if b, err := os.ReadFile(foreign); err != nil || string(b) != "mine" {
@@ -232,7 +232,7 @@ func TestMixedScopesProjectIndependently(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, noSecret(), st); err != nil {
+	if err := a.Apply(c, cs, noSecret(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

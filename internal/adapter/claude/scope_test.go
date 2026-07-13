@@ -32,7 +32,7 @@ func TestProjectScopeLinksUnderProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	aU := New(home, content).WithProjectRoot(proj)
 	cU := cfgWithSkills("user", "foo")
 	cs, _ := aU.Plan(cU, st)
-	if err := aU.Apply(cs, resolver(), st); err != nil {
+	if err := aU.Apply(cU, cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	homeDst := filepath.Join(home, ".claude", "skills", "foo")
@@ -80,7 +80,7 @@ func TestRemoveAndSwitchLeavesNoOrphan(t *testing.T) {
 	aP := New(home, content).WithProjectRoot(proj)
 	cP := cfgWithSkills("project")
 	cs2, _ := aP.Plan(cP, st)
-	if err := aP.Apply(cs2, resolver(), st); err != nil {
+	if err := aP.Apply(cP, cs2, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(homeDst); err == nil {
@@ -119,7 +119,7 @@ func TestSkillAdoptRebuildsState(t *testing.T) {
 	if found == nil || found.Action != "adopt" {
 		t.Fatalf("expected adopt for skill.foo, got %+v", found)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := st.Get("claude", "skill.foo"); !ok {
@@ -157,7 +157,7 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("user plan: %v", err)
 	}
-	if err := aUser.Apply(cs, resolver(), st); err != nil {
+	if err := aUser.Apply(cUser, cs, resolver(), st); err != nil {
 		t.Fatalf("user apply: %v", err)
 	}
 	homeDst := filepath.Join(home, ".claude", "skills", "onto")
@@ -186,7 +186,7 @@ func TestScopeSwitchRelocatesLink(t *testing.T) {
 	}
 
 	// 3. Apply the switch: project link created, home link pruned (no orphan).
-	if err := aProj.Apply(cs2, resolver(), st); err != nil {
+	if err := aProj.Apply(cProj, cs2, resolver(), st); err != nil {
 		t.Fatalf("project apply: %v", err)
 	}
 	projDst := filepath.Join(proj, ".claude", "skills", "onto")
@@ -229,7 +229,7 @@ func TestSubagentScopeSwitchRelocatesLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("user plan: %v", err)
 	}
-	if err := aUser.Apply(cs, resolver(), st); err != nil {
+	if err := aUser.Apply(cUser, cs, resolver(), st); err != nil {
 		t.Fatalf("user apply: %v", err)
 	}
 	homeDst := filepath.Join(home, ".claude", "agents", "onto.md")
@@ -258,7 +258,7 @@ func TestSubagentScopeSwitchRelocatesLink(t *testing.T) {
 	}
 
 	// 3. Apply the switch: project link created, home link pruned (no orphan).
-	if err := aProj.Apply(cs2, resolver(), st); err != nil {
+	if err := aProj.Apply(cProj, cs2, resolver(), st); err != nil {
 		t.Fatalf("project apply: %v", err)
 	}
 	projDst := filepath.Join(proj, ".claude", "agents", "onto.md")
@@ -305,7 +305,7 @@ func TestMixedScopesProjectIndependently(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

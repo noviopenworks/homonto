@@ -404,22 +404,32 @@ func marketplacePath(key string) string {
 	return "extraKnownMarketplaces." + jsonutil.EscapePath(trim(key, "marketplace."))
 }
 
-func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
+// expand resolves the config's skill/command/subagent entries for claude into
+// the adapter's instance fields. Both Plan and Apply call it first so Apply's
+// file entries derive from the supplied config rather than a prior Plan.
+func (a *Adapter) expand(c *config.Config) error {
 	skills, err := c.ExpandedSkillEntriesForTool("claude")
 	if err != nil {
-		return adapter.ChangeSet{}, err
+		return err
 	}
 	a.skills = skills
 	commands, err := c.ExpandedCommandEntriesForTool("claude")
 	if err != nil {
-		return adapter.ChangeSet{}, err
+		return err
 	}
 	a.commands = commands
 	subagents, err := c.ExpandedSubagentEntriesForTool("claude")
 	if err != nil {
-		return adapter.ChangeSet{}, err
+		return err
 	}
 	a.subagents = subagents
+	return nil
+}
+
+func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
+	if err := a.expand(c); err != nil {
+		return adapter.ChangeSet{}, err
+	}
 	mj, err := readStandardized(a.claudeJSON())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -578,7 +588,10 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	return out, nil
 }
 
-func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
+func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
+	if err := a.expand(cfg); err != nil {
+		return err
+	}
 	mj, err := readStandardized(a.claudeJSON())
 	if err != nil {
 		return err

@@ -47,7 +47,7 @@ func TestDottedMCPNameLandsAsLiteralKeyAndConverges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -90,7 +90,7 @@ func TestPluginNameWithSpecialsLandsAsLiteralKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := a.Apply(cs, resolver(), st); err != nil {
+	if err := a.Apply(c, cs, resolver(), st); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
