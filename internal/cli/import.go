@@ -11,6 +11,7 @@ func importCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import",
 		Short: "Bootstrap homonto.toml from your current setup",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfgPath, _ := cmd.Flags().GetString("config")
 			force, _ := cmd.Flags().GetBool("force")
