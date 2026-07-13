@@ -353,11 +353,16 @@ only after Now.
   `internal/adapter/registry` (Deps/Factory/Registry + `Builtins()`) replaces the
   hardcoded adapter slice in `engine.Build` — the engine no longer imports the
   concrete adapters, and adding a built-in is one `Register` line in `Builtins()`.
-  Behavior-identical (same three adapters, same order, same options). Remaining X3
-  (F34 interface-type generalization — the `Adapter` contract still binds concrete
-  `config.Config`/`secret.Resolver`/`state.State`; config-loading phase split F43;
-  non-waivable finding classes F11/F12 in the onto/comet workflow) is larger and
-  design-first.
+  Behavior-identical (same three adapters, same order, same options).
+- **F43 config-load-phases DONE (2026-07-13, `config-load-phases` archived):**
+  the ~200-line `config.Load` monolith is split into explicit ordered phases —
+  `decode` (parse + schema guard) → `migrate` (`[agents]`→`[subagents]` fold) →
+  `normalize` (scope defaulting) → `validate` (all validation) — extracted
+  in-order with no rule change; 74 config tests pass unchanged. The generic
+  per-kind "expand" pipeline is a follow-on. Remaining X3 (F34 interface-type
+  generalization — the `Adapter` contract still binds concrete `config.Config`/
+  `secret.Resolver`/`state.State`; non-waivable finding classes F11/F12 in the
+  onto/comet workflow; the generic expand pipeline) is larger or different-domain.
 - **Problem:** verification scale keys on task/file counts, not risk or changed
   requirements, so a one-file security change can get less scrutiny than a large
   refactor (F11); escape hatches are too broad and the skeptic/reviewer subagents
