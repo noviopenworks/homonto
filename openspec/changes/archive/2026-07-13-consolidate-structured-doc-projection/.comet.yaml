@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-consolidate-structured-
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/consolidate-structured-doc-projection/.comet/handoff/design-context.json
 handoff_hash: 8696469ecab9b795623ba4725c7b5740e1b3b097268e3eee522c25933937c8e4

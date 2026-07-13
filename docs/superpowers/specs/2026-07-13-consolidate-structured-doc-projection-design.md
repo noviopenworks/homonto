@@ -3,6 +3,8 @@ comet_change: consolidate-structured-doc-projection
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-consolidate-structured-doc-projection
+status: final
 ---
 
 # consolidate-structured-doc-projection — Technical Design
