@@ -8,12 +8,19 @@
 // adapter must honor: drift detection + reset (an out-of-band change to a
 // managed file is seen by ObserveHashes and reset by a re-Apply) and
 // malformed-doc safety (a pre-existing malformed tool document never panics
-// Plan or Apply — they error or recover).
+// Plan or Apply — they error or recover). The third slice adds the final two
+// contract properties: secret non-resolution (a ${pass:...}/${ENV} reference is
+// resolved only in memory during Apply — the resolved plaintext never escapes via
+// ObserveHashes or state, only its non-secret hash does, and the unresolved
+// reference is what state records) and foreign-content safety (on-disk content for
+// a managed key that the real state does not own is surfaced through the normal
+// plan as a visible, redacted change — never silently clobbered or adopted).
 package conformance
 
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
@@ -57,6 +64,13 @@ type adapterCase struct {
 	// the adapter reads/writes, before any Plan. The malformed-doc check then runs
 	// Plan+Apply and asserts neither panics. Leave nil to skip (with explanation).
 	malformed func(t *testing.T, home string)
+	// secretConfig declares a managed key whose value is a ${pass:...} secret
+	// reference (an MCP env var), so the secret-non-resolution check can Apply it
+	// with a resolving Resolver and assert the resolved plaintext never escapes via
+	// ObserveHashes or state. secretKey is that value's state key. Leave secretConfig
+	// nil to skip (with explanation) an adapter that projects no secret-bearing key.
+	secretConfig func() *config.Config
+	secretKey    string
 }
 
 // noSecret is a resolver with no secret material; the conformance configs
@@ -97,6 +111,15 @@ func cases() []adapterCase {
 				// A pre-existing, unparseable ~/.claude.json (truncated object).
 				mustWrite(t, filepath.Join(home, ".claude.json"), `{"mcpServers": {`)
 			},
+			// A secret-backed MCP env var; claude projects it into ~/.claude.json.
+			secretConfig: func() *config.Config {
+				return &config.Config{
+					MCPs: map[string]config.MCP{
+						"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "${pass:ai/brave}"}, Targets: []string{"claude"}},
+					},
+				}
+			},
+			secretKey: "mcp.brave",
 		},
 		{
 			name:       "opencode",
@@ -137,6 +160,15 @@ func cases() []adapterCase {
 				// A pre-existing, unparseable opencode.jsonc (dangling value).
 				mustWrite(t, filepath.Join(dir, "opencode.jsonc"), `{"theme": }`)
 			},
+			// A secret-backed MCP env var; opencode projects it into opencode.jsonc.
+			secretConfig: func() *config.Config {
+				return &config.Config{
+					MCPs: map[string]config.MCP{
+						"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "${pass:ai/brave}"}, Targets: []string{"opencode"}},
+					},
+				}
+			},
+			secretKey: "mcp.brave",
 		},
 	}
 }
@@ -385,6 +417,219 @@ func TestAdaptersSurviveMalformedDoc(t *testing.T) {
 			// Plan tolerated the malformed doc; Apply must also not panic. An
 			// error from Apply is acceptable too — only a panic fails the check.
 			_ = a.Apply(cs, noSecret(), st)
+		})
+	}
+}
+
+// secretPlaintext is the fake resolved secret secretResolver hands back. It is
+// deliberately UPPERCASE with a 'z', so it can never appear as a substring of a
+// lowercase-hex sha256 hash — any occurrence in ObserveHashes output or state is
+// therefore an unambiguous plaintext leak, not a hash-collision false positive.
+const secretPlaintext = "PLAINTEXT-SECRET-DO-NOT-LEAK-zzz"
+
+// secretResolver resolves every ${pass:...} token to secretPlaintext, so Apply
+// writes the resolved plaintext to disk (the surface a leak would escape from).
+func secretResolver() *secret.Resolver {
+	return &secret.Resolver{
+		Getenv: os.Getenv,
+		Pass:   func(string) (string, error) { return secretPlaintext, nil },
+	}
+}
+
+// walkContains reports whether any regular file under root contains needle.
+func walkContains(t *testing.T, root, needle string) bool {
+	t.Helper()
+	found := false
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		b, rerr := os.ReadFile(path)
+		if rerr == nil && strings.Contains(string(b), needle) {
+			found = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", root, err)
+	}
+	return found
+}
+
+// TestAdaptersNeverLeakSecretViaObserveOrState runs the secret-non-resolution
+// contract check against every adapter. After Plan+Apply of a config whose managed
+// value is a ${pass:...} reference (with a Resolver that DOES resolve it, so the
+// plaintext lands on disk), the check asserts the invariant the code+specs
+// actually implement:
+//
+//	(a) state records the UNRESOLVED reference (Entry.Desired keeps the ${pass:...}
+//	    token, per state.Entry's doc "Desired holds the unresolved value"), never
+//	    the resolved plaintext;
+//	(b) state's Applied is a non-secret hash of the resolved value (state.Entry:
+//	    "Applied holds a non-secret sha256 ... Neither field ever contains a
+//	    plaintext secret"), never the plaintext itself;
+//	(c) ObserveHashes reports the key clean (hash == Entry.Applied) yet never
+//	    surfaces the plaintext — per the Adapter.ObserveHashes contract "Only hashes
+//	    escape the adapter: raw on-disk values (which may include resolved secrets)
+//	    never leave it";
+//	(d) the resolved plaintext IS present on disk (proving the Resolver really
+//	    resolved, so the non-leak assertions above exercise a real leak surface).
+//
+// The exact recording behavior lives in each adapter's Apply
+// (st.Set(tool, key, c.New /*unresolved*/, secret.Hash(resolved))) and
+// ObserveHashes (secret.Hash of the on-disk value); see internal/state/state.go
+// and internal/adapter/{claude,opencode}.
+func TestAdaptersNeverLeakSecretViaObserveOrState(t *testing.T) {
+	for _, tc := range cases() {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.secretConfig == nil {
+				t.Skipf("adapter %q declares no secret-bearing managed key to exercise", tc.name)
+			}
+			home, content := t.TempDir(), t.TempDir()
+			if tc.seed != nil {
+				tc.seed(t, home)
+			}
+			a := tc.newAdapter(home, content)
+			st, err := state.Load(t.TempDir())
+			if err != nil {
+				t.Fatalf("state.Load: %v", err)
+			}
+
+			cs, err := a.Plan(tc.secretConfig(), st)
+			if err != nil {
+				t.Fatalf("plan secret config: %v", err)
+			}
+			// Apply with a resolver that WOULD resolve the reference to plaintext.
+			if err := a.Apply(cs, secretResolver(), st); err != nil {
+				t.Fatalf("apply secret config: %v", err)
+			}
+
+			// (d) The resolved plaintext really landed on disk — otherwise the
+			// non-leak assertions below would pass vacuously.
+			if !walkContains(t, home, secretPlaintext) {
+				t.Fatalf("precondition: resolved secret plaintext not found on disk under %s; resolver did not resolve, so this test would not exercise a real leak surface", home)
+			}
+
+			// (a) State records the UNRESOLVED reference, never the plaintext.
+			e, ok := st.Get(tc.name, tc.secretKey)
+			if !ok {
+				t.Fatalf("secret key %q not recorded in state after apply", tc.secretKey)
+			}
+			if !strings.Contains(e.Desired, "${pass:") {
+				t.Fatalf("secret reference not preserved unresolved in state.Desired: %q", e.Desired)
+			}
+			if strings.Contains(e.Desired, secretPlaintext) {
+				t.Fatalf("resolved secret plaintext leaked into state.Desired: %q", e.Desired)
+			}
+			// (b) Applied is a hash, never the plaintext.
+			if e.Applied == secretPlaintext || strings.Contains(e.Applied, secretPlaintext) {
+				t.Fatalf("resolved secret plaintext leaked into state.Applied: %q", e.Applied)
+			}
+
+			// (c) ObserveHashes: key present, clean, and plaintext-free — and no
+			// other observed value carries the plaintext either.
+			obs, err := a.ObserveHashes(st)
+			if err != nil {
+				t.Fatalf("observe: %v", err)
+			}
+			h, ok := obs[tc.secretKey]
+			if !ok {
+				t.Fatalf("secret key %q missing from ObserveHashes (should be clean/on-disk)", tc.secretKey)
+			}
+			if h != e.Applied {
+				t.Fatalf("secret key %q not clean: observed %q != Applied %q", tc.secretKey, h, e.Applied)
+			}
+			for k, v := range obs {
+				if strings.Contains(v, secretPlaintext) {
+					t.Fatalf("resolved secret plaintext leaked via ObserveHashes[%q] = %q", k, v)
+				}
+			}
+		})
+	}
+}
+
+// TestAdaptersDoNotSilentlyClobberForeignContent runs the foreign-content-safety
+// contract check against every adapter. It plants, for a managed key, on-disk
+// content written by "something else" (a scratch Apply against a throwaway state
+// that shares the same $HOME, then an out-of-band edit) that the REAL state does
+// not own, and asserts the adapter surfaces it through the normal plan rather than
+// silently overwriting or adopting it:
+//
+//	(a) a re-Plan against the real (empty) state proposes a NON-noop change for the
+//	    foreign key — the overwrite intent is visible before any Apply touches disk;
+//	(b) that change is an "update" (disk value differs from desired and the key is
+//	    unowned), matching the adapters' Plan branch for unowned-differing content;
+//	(c) its Old is redacted to adapter.SecretRedaction — the foreign on-disk value,
+//	    whose provenance is unknown, is never printed (a lost/absent state.json must
+//	    not cause a leak). This mirrors the "unknown provenance" redaction asserted
+//	    in the per-adapter secretsafety/adopt tests.
+//
+// It reuses driftMutate to produce the foreign on-disk value (driftMutate moves the
+// driftKey's on-disk value away from the managed value), and skips for any adapter
+// with no file-backed managed key to make foreign.
+func TestAdaptersDoNotSilentlyClobberForeignContent(t *testing.T) {
+	for _, tc := range cases() {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.driftMutate == nil {
+				t.Skipf("adapter %q declares no driftMutate (no file-backed managed key to make foreign)", tc.name)
+			}
+			home, content := t.TempDir(), t.TempDir()
+			if tc.seed != nil {
+				tc.seed(t, home)
+			}
+			a := tc.newAdapter(home, content)
+
+			// Seed disk == desired via a THROWAWAY scratch state, then push the
+			// driftKey's on-disk value away from desired — so disk now holds a value
+			// written by "something else" that the REAL state below never records.
+			scratch, err := state.Load(t.TempDir())
+			if err != nil {
+				t.Fatalf("state.Load (scratch): %v", err)
+			}
+			csSeed, err := a.Plan(tc.newConfig(), scratch)
+			if err != nil {
+				t.Fatalf("seed plan: %v", err)
+			}
+			if err := a.Apply(csSeed, noSecret(), scratch); err != nil {
+				t.Fatalf("seed apply: %v", err)
+			}
+			tc.driftMutate(t, home) // disk[driftKey] is now foreign (!= desired)
+
+			// Real, EMPTY state: the foreign on-disk value is unowned.
+			st, err := state.Load(t.TempDir())
+			if err != nil {
+				t.Fatalf("state.Load: %v", err)
+			}
+			cs, err := a.Plan(tc.newConfig(), st)
+			if err != nil {
+				t.Fatalf("plan against foreign disk: %v", err)
+			}
+
+			var ch *adapter.Change
+			for i := range cs.Changes {
+				if cs.Changes[i].Key == tc.driftKey {
+					ch = &cs.Changes[i]
+					break
+				}
+			}
+			// (a) The foreign key must be surfaced as a change at all...
+			if ch == nil {
+				t.Fatalf("foreign content for %q not surfaced in plan (silent): %+v", tc.driftKey, cs.Changes)
+			}
+			// ...and (a cont.) it must NOT be a silent noop or a silent adopt.
+			if ch.Action == "noop" {
+				t.Fatalf("foreign content for %q silently accepted as noop: %+v", tc.driftKey, *ch)
+			}
+			// (b) Unowned + differing-from-desired ⇒ update (the visible clobber).
+			if ch.Action != "update" {
+				t.Fatalf("foreign content for %q surfaced as %q, want %q (unowned differing value)", tc.driftKey, ch.Action, "update")
+			}
+			// (c) The foreign (unknown-provenance) on-disk value must be redacted.
+			if ch.Old != adapter.SecretRedaction {
+				t.Fatalf("foreign on-disk value for %q leaked in plan Old (want redaction %q): %q", tc.driftKey, adapter.SecretRedaction, ch.Old)
+			}
 		})
 	}
 }
