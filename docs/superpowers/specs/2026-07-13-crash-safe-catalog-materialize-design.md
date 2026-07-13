@@ -3,6 +3,8 @@ comet_change: crash-safe-catalog-materialize
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-crash-safe-catalog-materialize
+status: final
 ---
 
 # crash-safe-catalog-materialize — Technical Design
