@@ -500,11 +500,9 @@ func containsString(xs []string, want string) bool {
 }
 
 // Load reads and parses a homonto.toml file into a Config.
-func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read config: %w", err)
-	}
+// decode parses the raw TOML and enforces the schema-version forward-safety
+// guard. It is the first config-loading phase.
+func decode(data []byte) (*Config, error) {
 	var c Config
 	if err := toml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
@@ -516,6 +514,11 @@ func Load(path string) (*Config, error) {
 	if c.SchemaVersion > CurrentConfigSchemaVersion {
 		return nil, fmt.Errorf("parse config: unknown config schema version %d (this binary supports up to %d) — upgrade homonto", c.SchemaVersion, CurrentConfigSchemaVersion)
 	}
+	return &c, nil
+}
+
+// migrate folds legacy declaration forms into their current equivalents.
+func migrate(c *Config) {
 	// Option C: the imperative [agents.<name>] model is superseded by the
 	// declarative [subagents.<name>] one. Fold every declared agent into an
 	// equivalent copy-mode subagent (a declared [agents.X] wins over an explicit
@@ -541,6 +544,10 @@ func Load(path string) (*Config, error) {
 		}
 		c.Agents = nil
 	}
+}
+
+// normalize applies defaulting so downstream projection sees concrete values.
+func normalize(c *Config) {
 	// Subagents default to project scope when omitted (skills and commands still
 	// require an explicit scope). Normalize before validation so downstream
 	// projection sees a concrete scope.
@@ -550,27 +557,31 @@ func Load(path string) (*Config, error) {
 			c.Subagents[name] = r
 		}
 	}
+}
+
+// validate rejects a config that would project nothing or corrupt a tool file.
+func validate(c *Config) error {
 	for kind, resources := range map[string]map[string]Resource{
 		"frameworks": c.Frameworks,
 		"skills":     c.Skills,
 		"commands":   c.Commands,
 	} {
 		if err := validateResources(kind, resources); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	// Only builtin frameworks are expanded; a non-builtin framework source would
 	// install nothing, so reject it at load rather than silently no-op (F35).
 	for name, fw := range c.Frameworks {
 		if !strings.HasPrefix(fw.Source, "builtin:") {
-			return nil, fmt.Errorf("parse config: framework %q source %q must be a builtin: source (only builtin frameworks are supported; a local:/remote: framework would expand nothing)", name, fw.Source)
+			return fmt.Errorf("parse config: framework %q source %q must be a builtin: source (only builtin frameworks are supported; a local:/remote: framework would expand nothing)", name, fw.Source)
 		}
 	}
 	if err := validateSubagents(c.Subagents); err != nil {
-		return nil, err
+		return err
 	}
-	if err := validateModels(&c); err != nil {
-		return nil, err
+	if err := validateModels(c); err != nil {
+		return err
 	}
 	// Every other name becomes a key written into a tool's JSON file. sjson
 	// treats index-like segments ("0", "-1") as array positions, silently
@@ -578,18 +589,18 @@ func Load(path string) (*Config, error) {
 	// nothing. Reject both up front with the offending entry named.
 	for name, m := range c.MCPs {
 		if err := validateKey("mcps", name); err != nil {
-			return nil, err
+			return err
 		}
 		// An MCP with no command cannot project — both adapters would skip it,
 		// so a declared server would silently do nothing. Fail fast instead.
 		if len(m.Command) == 0 {
-			return nil, fmt.Errorf("parse config: mcps entry %q has no command; an MCP server needs a command to run", name)
+			return fmt.Errorf("parse config: mcps entry %q has no command; an MCP server needs a command to run", name)
 		}
 		// A target that names no known tool matches no adapter, so the MCP is
 		// projected nowhere — a silent typo. Only claude and opencode exist.
 		for _, target := range m.Targets {
 			if !isMCPTarget(target) {
-				return nil, fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", name, target)
+				return fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", name, target)
 			}
 		}
 	}
@@ -606,21 +617,21 @@ func Load(path string) (*Config, error) {
 		seenSource := map[string]string{} // source -> first decl name
 		for declName, pl := range tool.m {
 			if err := validateKey(tool.name, declName); err != nil {
-				return nil, err
+				return err
 			}
 			// A plugin with no source projects nothing (no enabledPlugins key /
 			// no plugin-array value), so a declared plugin would silently do
 			// nothing. Fail fast naming the plugin.
 			if strings.TrimSpace(pl.Source) == "" {
-				return nil, fmt.Errorf("parse config: %s plugin %q has an empty source", tool.name, declName)
+				return fmt.Errorf("parse config: %s plugin %q has an empty source", tool.name, declName)
 			}
 			// OpenCode plugins are a plain array on disk with no per-plugin
 			// config slot, so a declared config could project nowhere. Reject it.
 			if tool.name == "plugins.opencode" && len(pl.Config) > 0 {
-				return nil, fmt.Errorf("parse config: %s plugin %q declares config, but OpenCode has no per-plugin config on disk (its plugins are a plain array); remove config", tool.name, declName)
+				return fmt.Errorf("parse config: %s plugin %q declares config, but OpenCode has no per-plugin config on disk (its plugins are a plain array); remove config", tool.name, declName)
 			}
 			if prev, dup := seenSource[pl.Source]; dup {
-				return nil, fmt.Errorf("parse config: %s plugins %q and %q share source %q", tool.name, prev, declName, pl.Source)
+				return fmt.Errorf("parse config: %s plugins %q and %q share source %q", tool.name, prev, declName, pl.Source)
 			}
 			seenSource[pl.Source] = declName
 		}
@@ -630,27 +641,27 @@ func Load(path string) (*Config, error) {
 	// locator projects nothing meaningful, so fail fast naming the marketplace.
 	for name, mk := range c.Marketplaces.Claude {
 		if err := validateKey("marketplaces.claude", name); err != nil {
-			return nil, err
+			return err
 		}
 		switch mk.Source {
 		case "github":
 			if mk.Repo == "" {
-				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"github\" is missing required \"repo\"", name)
+				return fmt.Errorf("parse config: marketplaces.claude %q with source \"github\" is missing required \"repo\"", name)
 			}
 		case "url":
 			if mk.URL == "" {
-				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"url\" is missing required \"url\"", name)
+				return fmt.Errorf("parse config: marketplaces.claude %q with source \"url\" is missing required \"url\"", name)
 			}
 		case "git-subdir":
 			if mk.URL == "" || mk.Path == "" {
-				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"git-subdir\" is missing required \"url\" and/or \"path\"", name)
+				return fmt.Errorf("parse config: marketplaces.claude %q with source \"git-subdir\" is missing required \"url\" and/or \"path\"", name)
 			}
 		case "directory":
 			if mk.Path == "" {
-				return nil, fmt.Errorf("parse config: marketplaces.claude %q with source \"directory\" is missing required \"path\"", name)
+				return fmt.Errorf("parse config: marketplaces.claude %q with source \"directory\" is missing required \"path\"", name)
 			}
 		default:
-			return nil, fmt.Errorf("parse config: marketplaces.claude %q has unknown source %q; valid sources are \"github\", \"url\", \"git-subdir\", \"directory\"", name, mk.Source)
+			return fmt.Errorf("parse config: marketplaces.claude %q has unknown source %q; valid sources are \"github\", \"url\", \"git-subdir\", \"directory\"", name, mk.Source)
 		}
 	}
 	// Settings keys that homonto itself manages in the same tool file would
@@ -665,27 +676,27 @@ func Load(path string) (*Config, error) {
 	// re-propose it — a non-idempotent loop. Reject it up front instead.
 	for k := range c.Settings.Claude {
 		if err := validateKey("settings.claude", k); err != nil {
-			return nil, err
+			return err
 		}
 		if k == "enabledPlugins" {
-			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages plugins there); rename it", k)
+			return fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages plugins there); rename it", k)
 		}
 		if k == "mcpServers" {
-			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages MCP servers via [mcps]); declare the server under [mcps] instead", k)
+			return fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages MCP servers via [mcps]); declare the server under [mcps] instead", k)
 		}
 		if k == "pluginConfigs" {
-			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages pluginConfigs via [plugins.claude.<name>.config]); declare per-plugin config there instead", k)
+			return fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages pluginConfigs via [plugins.claude.<name>.config]); declare per-plugin config there instead", k)
 		}
 		if k == "extraKnownMarketplaces" {
-			return nil, fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages marketplaces via [marketplaces.claude.<name>]); declare the marketplace there instead", k)
+			return fmt.Errorf("parse config: settings.claude key %q is reserved (homonto manages marketplaces via [marketplaces.claude.<name>]); declare the marketplace there instead", k)
 		}
 	}
 	for k := range c.Settings.OpenCode {
 		if err := validateKey("settings.opencode", k); err != nil {
-			return nil, err
+			return err
 		}
 		if k == "mcp" || k == "plugin" {
-			return nil, fmt.Errorf("parse config: settings.opencode key %q is reserved (homonto manages %s there); rename it", k, k)
+			return fmt.Errorf("parse config: settings.opencode key %q is reserved (homonto manages %s there); rename it", k, k)
 		}
 	}
 	// [tui.opencode] keys project into a second managed file (tui.json). Reject
@@ -693,10 +704,27 @@ func Load(path string) (*Config, error) {
 	// [settings.opencode].
 	for k := range c.TUI.OpenCode {
 		if err := validateKey("tui.opencode", k); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return &c, nil
+	return nil
+}
+
+func Load(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+	c, err := decode(data)
+	if err != nil {
+		return nil, err
+	}
+	migrate(c)
+	normalize(c)
+	if err := validate(c); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // validateKey rejects names unusable as literal JSON object keys: empty, or
