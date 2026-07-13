@@ -7,17 +7,17 @@
       get/set/delete/canonical and normalizes an empty doc.
 
 ## 2. claude structured-doc migration
-- [ ] Route `setting.*` (settings.json) through structproj.Project/Apply/
+- [x] Route `setting.*` (settings.json) through structproj.Project/Apply/
       Observe; delete the bespoke branch. claude + conformance suites green.
-- [ ] Route `.claude.json` prefixes (mcp/plugin/pluginconfig/marketplace)
+- [x] Route `.claude.json` prefixes (mcp/plugin/pluginconfig/marketplace)
       through structproj; delete those branches. Suites green.
 
 ## 3. opencode structured-doc migration
-- [ ] Route `opencode.json` prefixes (mcp/setting) through structproj; delete
+- [x] Route `opencode.json` prefixes (mcp/setting) through structproj; delete
       the bespoke loop. opencode + conformance suites green.
 
 ## 4. Confirm scope + verify
-- [ ] File-projection paths (skills/commands/subagents symlinks, inactive
+- [x] File-projection paths (skills/commands/subagents symlinks, inactive
       dirs, copy-subagents) untouched in both adapters.
-- [ ] `go test ./... -race`, `go vet`, `go build`, `openspec validate --all`
+- [x] `go test ./... -race`, `go vet`, `go build`, `openspec validate --all`
       green; plan/apply/observe output byte-identical (conformance suite).

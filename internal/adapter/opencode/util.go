@@ -38,10 +38,13 @@ func recordedDst(desired string) (string, bool) {
 	return dst, found
 }
 
-// managedPrefix reports whether a state key is in a namespace this adapter
-// manages — only those are eligible for pruning.
+// managedPrefix reports whether a state key is pruned by the generic delete
+// loop: plugin.* (bespoke array membership) and the file-projection prefixes.
+// The structured-document prefixes (mcp./setting./tui.) are pruned by their
+// structproj.Project calls instead, so they are excluded here to avoid a double
+// delete.
 func managedPrefix(k string) bool {
-	for _, p := range []string{"mcp.", "setting.", "tui.", "plugin.", "skill.", "command.", "subagent."} {
+	for _, p := range []string{"plugin.", "skill.", "command.", "subagent."} {
 		if strings.HasPrefix(k, p) {
 			return true
 		}

@@ -1,7 +1,6 @@
 package claude
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/adapter/jsoncodec"
+	"github.com/noviopenworks/homonto/internal/adapter/structproj"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/copyfile"
@@ -404,6 +405,22 @@ func marketplaceValue(mk config.Marketplace) map[string]any {
 	return out
 }
 
+// Document-path mappings for each structured-document namespace, threaded into
+// structproj.Project/Apply/Observe. Config-supplied names are escaped so a name
+// containing dots/@/|/# addresses the literal key rather than nesting or being
+// dropped (mirroring the prior inline SetJSON/GetJSON escaping).
+func mcpPath(key string) string     { return "mcpServers." + jsonutil.EscapePath(trim(key, "mcp.")) }
+func settingPath(key string) string { return jsonutil.EscapePath(trim(key, "setting.")) }
+func pluginPath(key string) string {
+	return "enabledPlugins." + jsonutil.EscapePath(trim(key, "plugin."))
+}
+func pluginConfigPath(key string) string {
+	return "pluginConfigs." + jsonutil.EscapePath(trim(key, "pluginconfig."))
+}
+func marketplacePath(key string) string {
+	return "extraKnownMarketplaces." + jsonutil.EscapePath(trim(key, "marketplace."))
+}
+
 func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
 	skills, err := c.ExpandedSkillEntriesForTool("claude")
 	if err != nil {
@@ -420,48 +437,27 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		return adapter.ChangeSet{}, err
 	}
 	a.subagents = subagents
-	cur, err := a.current()
+	mj, err := readStandardized(a.claudeJSON())
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	sj, err := readStandardized(a.settingsJSON())
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
 	cs := adapter.ChangeSet{Tool: "claude"}
 	des := a.desired(c)
-	for key, want := range des {
-		disk, hasDisk := cur[key]
-		e, inState := st.Get("claude", key)
-		switch {
-		case !hasDisk:
-			cs.Changes = append(cs.Changes, adapter.Change{Action: "create", Key: key, New: want})
-		case !secret.ContainsRef(want):
-			if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
-				// Disk already matches desired. A true noop requires state to also
-				// already record this exact on-disk value; otherwise adopt it so
-				// pruning and drift can see it and the stale/absent Applied hash is
-				// refreshed (mirrors the secret branch below; secret keys never
-				// reach this branch).
-				if inState && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
-					cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
-				} else {
-					cs.Changes = append(cs.Changes, adapter.Change{Action: "adopt", Key: key, New: want})
-				}
-			} else {
-				old := disk
-				// Never print the on-disk value when it may be a resolved secret:
-				// either the key was previously a secret, or it is not in state at
-				// all (unknown provenance — a lost state.json must not cause leaks).
-				if !inState || secret.ContainsRef(e.Desired) {
-					old = adapter.SecretRedaction
-				}
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: key, Old: old, New: want})
-			}
-		default: // secret-bearing key: never expose the on-disk resolved value
-			if inState && e.Desired == want && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "noop", Key: key})
-			} else {
-				cs.Changes = append(cs.Changes, adapter.Change{Action: "update", Key: key, Old: adapter.SecretRedaction, New: want})
-			}
-		}
-	}
+	codec := jsoncodec.Codec{}
+	// Structured-document namespaces go through the shared projection contract:
+	// mcp.* lives in .claude.json; setting./plugin./pluginconfig./marketplace.*
+	// all live in settings.json. Each Project call sees only its prefix's desired
+	// keys and prunes only its own recorded keys, so the generic delete loop below
+	// no longer touches these prefixes.
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "mcp.", filterDesired(des, "mcp."), mj, st, codec, mcpPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "setting.", filterDesired(des, "setting."), sj, st, codec, settingPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "plugin.", filterDesired(des, "plugin."), sj, st, codec, pluginPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "pluginconfig.", filterDesired(des, "pluginconfig."), sj, st, codec, pluginConfigPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "marketplace.", filterDesired(des, "marketplace."), sj, st, codec, marketplacePath)...)
 	ops, err := link.Plan(a.links(), a.managedRoots()...)
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -606,7 +602,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	// Copy-mode subagents are managed content files (not symlinks): surface their
 	// create/update/prune in the plan and abort on a foreign-file conflict. Apply
 	// reconciles them in a dedicated pass (a.applyCopySubagents); subagentcopy.* is
-	// deliberately outside managedPrefix so the generic delete loop never touches
+	// deliberately outside filePrefix so the generic delete loop never touches
 	// it.
 	copyOps, err := a.planCopyOps(st)
 	if err != nil {
@@ -625,8 +621,11 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "subagentcopy." + name, Old: op.Dst})
 		}
 	}
+	// The generic prune covers only the file-projection prefixes; the structured
+	// prefixes are pruned by their structproj.Project calls above (avoiding a
+	// double delete). subagentcopy.* is pruned by its own reconciler pass.
 	for _, k := range st.Keys("claude") {
-		if declared[k] || !managedPrefix(k) {
+		if declared[k] || !filePrefix(k) {
 			continue
 		}
 		cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
@@ -637,9 +636,11 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	return cs, nil
 }
 
-// current reads existing managed values from disk, keyed like desired().
-func (a *Adapter) current() (map[string]string, error) {
-	out := map[string]string{}
+// ObserveHashes hashes the current on-disk value of every recorded key still
+// present, so an unchanged key reproduces its Entry.Applied (see the plan's
+// noop identity: Applied == secret.Hash(jsonutil.Canonical(disk))). Only hashes
+// escape — raw values (possibly resolved secrets) never leave the adapter.
+func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	mj, err := readStandardized(a.claudeJSON())
 	if err != nil {
 		return nil, err
@@ -648,43 +649,26 @@ func (a *Adapter) current() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range objMembers(mj, "mcpServers") {
-		out["mcp."+k] = v
-	}
-	for k, v := range objMembers(sj, "enabledPlugins") {
-		out["plugin."+k] = v
-	}
-	for k, v := range objMembers(sj, "pluginConfigs") {
-		out["pluginconfig."+k] = v
-	}
-	for k, v := range objMembers(sj, "extraKnownMarketplaces") {
-		out["marketplace."+k] = v
-	}
-	var m map[string]json.RawMessage
-	_ = json.Unmarshal(sj, &m)
-	for k, raw := range m {
-		// pluginConfigs/extraKnownMarketplaces are surfaced above as
-		// pluginconfig.*/marketplace.*; excluding them here (alongside the other
-		// managed top-level objects) keeps them from also leaking as a setting.*
-		// key, which would make every plan non-idempotent.
-		if k == "mcpServers" || k == "enabledPlugins" || k == "pluginConfigs" || k == "extraKnownMarketplaces" {
-			continue
-		}
-		out["setting."+k] = string(raw)
-	}
-	return out, nil
-}
-
-// ObserveHashes hashes the current on-disk value of every recorded key still
-// present, so an unchanged key reproduces its Entry.Applied (see the plan's
-// noop identity: Applied == secret.Hash(jsonutil.Canonical(disk))). Only hashes
-// escape — raw values (possibly resolved secrets) never leave the adapter.
-func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
-	cur, err := a.current()
-	if err != nil {
-		return nil, err
-	}
+	codec := jsoncodec.Codec{}
 	out := map[string]string{}
+	// Structured-document keys (mcp.* in .claude.json; setting./plugin./
+	// pluginconfig./marketplace.* in settings.json) re-hash through the contract.
+	for k, v := range structproj.Observe("claude", "mcp.", mj, st, codec, mcpPath) {
+		out[k] = v
+	}
+	for _, o := range []struct {
+		prefix  string
+		pathFor structproj.PathFor
+	}{
+		{"setting.", settingPath},
+		{"plugin.", pluginPath},
+		{"pluginconfig.", pluginConfigPath},
+		{"marketplace.", marketplacePath},
+	} {
+		for k, v := range structproj.Observe("claude", o.prefix, sj, st, codec, o.pathFor) {
+			out[k] = v
+		}
+	}
 	for _, key := range st.Keys("claude") {
 		if hasPrefix(key, "skill.") {
 			// skill.* lives on disk as a symlink, not a JSON value. Its Applied was
@@ -755,11 +739,7 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 			out[key] = copyfile.Hash(content)
 			continue
 		}
-		// mcp.*, setting.*, plugin.* all live in current() as JSON values.
-		if v, ok := cur[key]; ok {
-			out[key] = secret.Hash(jsonutil.Canonical(v))
-		}
-		// absent from disk → omit
+		// Structured-document keys were re-hashed above via structproj.Observe.
 	}
 	return out, nil
 }
@@ -776,141 +756,72 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	// Write a tool file only when a managed key living in it actually changed.
 	// adopt/noop are state-only and must leave the file byte-for-byte untouched
 	// (comments/formatting preserved); skill.* is symlink work, not JSON.
-	mjChanged, sjChanged := false, false
+	codec := jsoncodec.Codec{}
+	// Structured-document prefixes go through the shared contract: mcp.* lives in
+	// .claude.json; setting./plugin./pluginconfig./marketplace.* all live in
+	// settings.json (threaded through one doc so a change to any of them writes the
+	// file exactly once). Each Apply reports whether its document actually changed.
+	mj, mjChanged, err := structproj.Apply("claude", "mcp.", filterChanges(cs.Changes, "mcp."), mj, codec, res, st, mcpPath)
+	if err != nil {
+		return err
+	}
+	sjChanged := false
+	// Prefixes are applied in lexicographic key order (marketplace < plugin <
+	// pluginconfig < setting) so newly-created keys are appended to settings.json
+	// in the same order the prior single sorted-change loop produced — preserving
+	// byte-for-byte output.
+	for _, p := range []struct {
+		prefix  string
+		pathFor structproj.PathFor
+	}{
+		{"marketplace.", marketplacePath},
+		{"plugin.", pluginPath},
+		{"pluginconfig.", pluginConfigPath},
+		{"setting.", settingPath},
+	} {
+		var ch bool
+		sj, ch, err = structproj.Apply("claude", p.prefix, filterChanges(cs.Changes, p.prefix), sj, codec, res, st, p.pathFor)
+		if err != nil {
+			return err
+		}
+		sjChanged = sjChanged || ch
+	}
+	// File-projection keys (skill./command./subagent.): adopt records state only;
+	// delete removes the managed symlink. Their create/update are handled by the
+	// link.Link pass below; noop and subagentcopy.* are handled elsewhere.
 	for _, c := range cs.Changes {
-		if c.Action == "noop" {
+		if !(hasPrefix(c.Key, "skill.") || hasPrefix(c.Key, "command.") || hasPrefix(c.Key, "subagent.")) {
 			continue
 		}
-		// Copy-mode subagent content files are reconciled by applyCopySubagents
-		// below, not through the generic JSON/link machinery.
-		if hasPrefix(c.Key, "subagentcopy.") {
-			continue
-		}
-		if c.Action == "adopt" {
-			// A skill adoption records a correct-but-unrecorded symlink into state
-			// without touching disk; its value is "dst -> src", not JSON, so it is
-			// recorded exactly like a freshly linked skill (Hash of "dst -> src").
-			if hasPrefix(c.Key, "skill.") {
-				st.Set("claude", c.Key, c.New, secret.Hash(c.New))
-				continue
+		switch c.Action {
+		case "adopt":
+			// A correct-but-unrecorded symlink recorded into state without touching
+			// disk; its value is "dst -> src", recorded like a freshly linked one.
+			st.Set("claude", c.Key, c.New, secret.Hash(c.New))
+		case "delete":
+			// Only a symlink into our content dir is removed; anything else is a
+			// conflict error inside link.Remove. A de-declared resource is no longer
+			// in a.skills/commands/subagents, so recover the on-disk location from the
+			// dst state recorded for it. Fall back to user scope when state is missing.
+			var dst string
+			if e, ok := st.Get("claude", c.Key); ok {
+				dst, _ = recordedDst(e.Desired)
 			}
-			if hasPrefix(c.Key, "command.") {
-				st.Set("claude", c.Key, c.New, secret.Hash(c.New))
-				continue
+			if dst == "" {
+				switch {
+				case hasPrefix(c.Key, "skill."):
+					dst = filepath.Join(a.skillsDir("user"), trim(c.Key, "skill."))
+				case hasPrefix(c.Key, "command."):
+					dst = filepath.Join(a.commandsDir("user"), trim(c.Key, "command.")+".md")
+				case hasPrefix(c.Key, "subagent."):
+					dst = filepath.Join(a.subagentsDir("user"), trim(c.Key, "subagent.")+".md")
+				}
 			}
-			if hasPrefix(c.Key, "subagent.") {
-				st.Set("claude", c.Key, c.New, secret.Hash(c.New))
-				continue
-			}
-			// Adoption records a pre-existing matching key into state without
-			// touching the tool file. The on-disk value already equals want, so
-			// the recorded Applied hash equals the hash of the on-disk value.
-			val, err := res.ResolveJSON(c.New)
-			if err != nil {
-				return err
-			}
-			st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
-			continue
-		}
-		if c.Action == "delete" {
-			switch {
-			case hasPrefix(c.Key, "mcp."):
-				mj, err = jsonutil.DeleteJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
-				mjChanged = true
-			case hasPrefix(c.Key, "setting."):
-				sj, err = jsonutil.DeleteJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")))
-				sjChanged = true
-			case hasPrefix(c.Key, "pluginconfig."):
-				sj, err = jsonutil.DeleteJSON(sj, "pluginConfigs."+jsonutil.EscapePath(trim(c.Key, "pluginconfig.")))
-				sjChanged = true
-			case hasPrefix(c.Key, "marketplace."):
-				sj, err = jsonutil.DeleteJSON(sj, "extraKnownMarketplaces."+jsonutil.EscapePath(trim(c.Key, "marketplace.")))
-				sjChanged = true
-			case hasPrefix(c.Key, "plugin."):
-				sj, err = jsonutil.DeleteJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")))
-				sjChanged = true
-			case hasPrefix(c.Key, "skill."):
-				// Only a symlink into our content dir is removed; anything else
-				// is a conflict error inside link.Remove. A de-declared skill is
-				// no longer in a.skills, so recover the on-disk location from the
-				// dst state recorded for it (per-resource scope: each skill lives
-				// at exactly one place). Fall back to user scope when state is
-				// missing the recorded dst.
-				name := trim(c.Key, "skill.")
-				dst := ""
-				if e, ok := st.Get("claude", c.Key); ok {
-					dst, _ = recordedDst(e.Desired)
-				}
-				if dst == "" {
-					dst = filepath.Join(a.skillsDir("user"), name)
-				}
-				err = link.Remove(dst, a.managedRoots()...)
-			case hasPrefix(c.Key, "command."):
-				name := trim(c.Key, "command.")
-				dst := ""
-				if e, ok := st.Get("claude", c.Key); ok {
-					dst, _ = recordedDst(e.Desired)
-				}
-				if dst == "" {
-					dst = filepath.Join(a.commandsDir("user"), name+".md")
-				}
-				err = link.Remove(dst, a.managedRoots()...)
-			case hasPrefix(c.Key, "subagent."):
-				name := trim(c.Key, "subagent.")
-				dst := ""
-				if e, ok := st.Get("claude", c.Key); ok {
-					dst, _ = recordedDst(e.Desired)
-				}
-				if dst == "" {
-					dst = filepath.Join(a.subagentsDir("user"), name+".md")
-				}
-				err = link.Remove(dst, a.managedRoots()...)
-			}
-			if err != nil {
+			if err := link.Remove(dst, a.managedRoots()...); err != nil {
 				return err
 			}
 			st.Delete("claude", c.Key)
-			continue
 		}
-		// skill.* changes are symlink work, handled below — not JSON keys.
-		if hasPrefix(c.Key, "skill.") {
-			continue
-		}
-		if hasPrefix(c.Key, "command.") {
-			continue
-		}
-		if hasPrefix(c.Key, "subagent.") {
-			continue
-		}
-		val, err := res.ResolveJSON(c.New)
-		if err != nil {
-			return err
-		}
-		// Config-supplied names are escaped so sjson writes the literal key
-		// (matching current()'s literal reads) instead of nesting on dots or
-		// silently dropping the write on @, | or #.
-		switch {
-		case hasPrefix(c.Key, "mcp."):
-			mj, err = jsonutil.SetJSON(mj, "mcpServers."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
-			mjChanged = true
-		case hasPrefix(c.Key, "setting."):
-			sj, err = jsonutil.SetJSON(sj, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
-			sjChanged = true
-		case hasPrefix(c.Key, "pluginconfig."):
-			sj, err = jsonutil.SetJSON(sj, "pluginConfigs."+jsonutil.EscapePath(trim(c.Key, "pluginconfig.")), val)
-			sjChanged = true
-		case hasPrefix(c.Key, "marketplace."):
-			sj, err = jsonutil.SetJSON(sj, "extraKnownMarketplaces."+jsonutil.EscapePath(trim(c.Key, "marketplace.")), val)
-			sjChanged = true
-		case hasPrefix(c.Key, "plugin."):
-			sj, err = jsonutil.SetJSON(sj, "enabledPlugins."+jsonutil.EscapePath(trim(c.Key, "plugin.")), val)
-			sjChanged = true
-		}
-		if err != nil {
-			return err
-		}
-		// Store the unresolved form + a non-secret hash of the resolved value.
-		st.Set("claude", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 	}
 	// Fail fast on link conflicts before writing any file. Both skill and
 	// command conflicts must be detected here, before any JSON write or state

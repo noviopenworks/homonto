@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/adapter/jsoncodec"
+	"github.com/noviopenworks/homonto/internal/adapter/structproj"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/copyfile"
@@ -349,6 +351,30 @@ func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 	return out
 }
 
+// desiredSettings maps each [settings.opencode] key to its setting.* state key.
+func desiredSettings(c *config.Config) map[string]string {
+	out := map[string]string{}
+	for k, v := range c.Settings.OpenCode {
+		out["setting."+k] = mustJSON(v)
+	}
+	return out
+}
+
+// desiredTUI maps each [tui.opencode] key to its tui.* state key (tui.json).
+func desiredTUI(c *config.Config) map[string]string {
+	out := map[string]string{}
+	for k, v := range c.TUI.OpenCode {
+		out["tui."+k] = mustJSON(v)
+	}
+	return out
+}
+
+// Document-path mappings for each structured-document namespace. Config-supplied
+// names are escaped so a name with dots/@/|/# addresses the literal key.
+func mcpDocPath(key string) string     { return "mcp." + jsonutil.EscapePath(trim(key, "mcp.")) }
+func settingDocPath(key string) string { return jsonutil.EscapePath(trim(key, "setting.")) }
+func tuiDocPath(key string) string     { return jsonutil.EscapePath(trim(key, "tui.")) }
+
 func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
 	skills, err := c.ExpandedSkillEntriesForTool("opencode")
 	if err != nil {
@@ -375,27 +401,15 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	}
 	cs := adapter.ChangeSet{Tool: "opencode"}
 
-	// Config-supplied names are escaped so reads (and Apply's writes, which
-	// escape the same way) address the literal key, not gjson path syntax.
+	// Structured-document namespaces go through the shared projection contract:
+	// mcp./setting.* live in opencode.jsonc; tui.* lives in tui.json. Each Project
+	// call prunes only its own recorded keys, so the generic delete loop below no
+	// longer touches these prefixes. plugin.* stays bespoke (array membership).
+	codec := jsoncodec.Codec{}
 	des := a.desiredMCPs(c)
-	for key, want := range des {
-		disk, hasDisk := jsonutil.GetJSON(doc, "mcp."+jsonutil.EscapePath(trim(key, "mcp.")))
-		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
-	}
-	for k, v := range c.Settings.OpenCode {
-		key := "setting." + k
-		want := mustJSON(v)
-		disk, hasDisk := jsonutil.GetJSON(doc, jsonutil.EscapePath(k))
-		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
-	}
-	// [tui.opencode] keys project into the second managed file (tui.json). The
-	// "tui." namespace reuses planKey/state machinery verbatim against tuiDoc.
-	for k, v := range c.TUI.OpenCode {
-		key := "tui." + k
-		want := mustJSON(v)
-		disk, hasDisk := jsonutil.GetJSON(tuiDoc, jsonutil.EscapePath(k))
-		cs.Changes = append(cs.Changes, planKey(st, key, want, disk, hasDisk))
-	}
+	cs.Changes = append(cs.Changes, structproj.Project("opencode", "mcp.", des, doc, st, codec, mcpDocPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("opencode", "setting.", desiredSettings(c), doc, st, codec, settingDocPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("opencode", "tui.", desiredTUI(c), tuiDoc, st, codec, tuiDocPath)...)
 	for _, pl := range c.Plugins.OpenCode {
 		src := pl.Source
 		_, inState := st.Get("opencode", "plugin."+src)
@@ -592,6 +606,9 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 			cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "subagentcopy." + name, Old: op.Dst})
 		}
 	}
+	// The generic prune covers plugin.* (array membership) and the file-projection
+	// prefixes; the structured prefixes (mcp./setting./tui.) are pruned by their
+	// structproj.Project calls above (avoiding a double delete).
 	for _, k := range st.Keys("opencode") {
 		if declared[k] || !managedPrefix(k) {
 			continue
@@ -614,39 +631,16 @@ func (a *Adapter) links() map[string]string {
 	return out
 }
 
-// planKey applies the shared O-3 decision: direct compare for non-secret keys,
-// token+hash compare for secret keys (never exposing the on-disk value).
-func planKey(st *state.State, key, want, disk string, hasDisk bool) adapter.Change {
-	e, inState := st.Get("opencode", key)
-	switch {
-	case !hasDisk:
-		return adapter.Change{Action: "create", Key: key, New: want}
-	case !secret.ContainsRef(want):
-		if jsonutil.Canonical(disk) == jsonutil.Canonical(want) {
-			// Disk already matches desired. A true noop requires state to also
-			// already record this exact on-disk value; otherwise adopt it so
-			// pruning and drift can see it and the stale/absent Applied hash is
-			// refreshed (mirrors the secret branch below; secret keys never reach
-			// this branch).
-			if inState && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
-				return adapter.Change{Action: "noop", Key: key}
-			}
-			return adapter.Change{Action: "adopt", Key: key, New: want}
+// filterChanges returns the subset of changes whose keys are in prefix, so each
+// structproj namespace applies only the changes it owns.
+func filterChanges(changes []adapter.Change, prefix string) []adapter.Change {
+	var out []adapter.Change
+	for _, c := range changes {
+		if strings.HasPrefix(c.Key, prefix) {
+			out = append(out, c)
 		}
-		old := disk
-		// Never print the on-disk value when it may be a resolved secret: either
-		// the key was previously a secret, or it is not in state at all (unknown
-		// provenance — a lost state.json must not cause leaks).
-		if !inState || secret.ContainsRef(e.Desired) {
-			old = adapter.SecretRedaction
-		}
-		return adapter.Change{Action: "update", Key: key, Old: old, New: want}
-	default:
-		if inState && e.Desired == want && e.Applied == secret.Hash(jsonutil.Canonical(disk)) {
-			return adapter.Change{Action: "noop", Key: key}
-		}
-		return adapter.Change{Action: "update", Key: key, Old: adapter.SecretRedaction, New: want}
 	}
+	return out
 }
 
 // ObserveHashes hashes the current on-disk value of every recorded key still
@@ -662,21 +656,21 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	codec := jsoncodec.Codec{}
 	out := map[string]string{}
+	// Structured-document keys (mcp./setting.* in opencode.jsonc; tui.* in
+	// tui.json) re-hash their on-disk value through the shared contract.
+	for k, v := range structproj.Observe("opencode", "mcp.", doc, st, codec, mcpDocPath) {
+		out[k] = v
+	}
+	for k, v := range structproj.Observe("opencode", "setting.", doc, st, codec, settingDocPath) {
+		out[k] = v
+	}
+	for k, v := range structproj.Observe("opencode", "tui.", tuiDoc, st, codec, tuiDocPath) {
+		out[k] = v
+	}
 	for _, key := range st.Keys("opencode") {
 		switch {
-		case hasPrefix(key, "mcp."):
-			if v, ok := jsonutil.GetJSON(doc, "mcp."+jsonutil.EscapePath(trim(key, "mcp."))); ok {
-				out[key] = secret.Hash(jsonutil.Canonical(v))
-			}
-		case hasPrefix(key, "setting."):
-			if v, ok := jsonutil.GetJSON(doc, jsonutil.EscapePath(trim(key, "setting."))); ok {
-				out[key] = secret.Hash(jsonutil.Canonical(v))
-			}
-		case hasPrefix(key, "tui."):
-			if v, ok := jsonutil.GetJSON(tuiDoc, jsonutil.EscapePath(trim(key, "tui."))); ok {
-				out[key] = secret.Hash(jsonutil.Canonical(v))
-			}
 		case hasPrefix(key, "plugin."):
 			// Plugins are array membership with no scalar to re-hash: presence
 			// means unchanged by definition, so return the key's own Applied.
@@ -765,133 +759,94 @@ func (a *Adapter) Apply(cs adapter.ChangeSet, res *secret.Resolver, st *state.St
 	// (JSONC comments preserved); skill.* is symlink work, not JSON. tuiChanged
 	// gates tui.json's write independently, so a change to one file never
 	// rewrites the other.
-	docChanged := false
-	tuiChanged := false
-	for _, c := range cs.Changes {
-		if c.Action == "noop" {
+	codec := jsoncodec.Codec{}
+	// Structured-document prefixes go through the shared contract. Order matters
+	// for byte-identical output: mcp./plugin./setting.* all live in opencode.jsonc,
+	// and the prior single sorted-change loop appended them in mcp < plugin <
+	// setting order — so apply them in that order too. tui.* lives in tui.json.
+	doc, docChanged, err := structproj.Apply("opencode", "mcp.", filterChanges(cs.Changes, "mcp."), doc, codec, res, st, mcpDocPath)
+	if err != nil {
+		return err
+	}
+	// plugin.* is bespoke array membership (structproj's keyed codec cannot model
+	// it): create/update adds the element, delete removes it, adopt records state.
+	for _, c := range filterChanges(cs.Changes, "plugin.") {
+		switch c.Action {
+		case "noop":
 			continue
-		}
-		// Copy-mode subagent content files are reconciled by applyCopySubagents
-		// below, not through the generic JSON/link machinery.
-		if strings.HasPrefix(c.Key, "subagentcopy.") {
-			continue
-		}
-		if c.Action == "adopt" {
-			// A skill adoption records a correct-but-unrecorded symlink into state
-			// without touching disk; its value is "dst -> src", not JSON, so it is
-			// recorded exactly like a freshly linked skill (Hash of "dst -> src").
-			if hasPrefix(c.Key, "skill.") {
-				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
-				continue
-			}
-			if hasPrefix(c.Key, "command.") {
-				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
-				continue
-			}
-			if hasPrefix(c.Key, "subagent.") {
-				st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
-				continue
-			}
-			// Adoption records a pre-existing matching key into state without
-			// touching the tool file. The on-disk value already equals want, so
-			// the recorded Applied hash equals the hash of the on-disk value.
+		case "adopt":
+			// Records a pre-existing membership into state without touching disk.
 			val, err := res.ResolveJSON(c.New)
 			if err != nil {
 				return err
 			}
 			st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
-			continue
-		}
-		if c.Action == "delete" {
-			switch {
-			case hasPrefix(c.Key, "mcp."):
-				doc, err = jsonutil.DeleteJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")))
-				docChanged = true
-			case hasPrefix(c.Key, "setting."):
-				doc, err = jsonutil.DeleteJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")))
-				docChanged = true
-			case hasPrefix(c.Key, "tui."):
-				tuiDoc, err = jsonutil.DeleteJSON(tuiDoc, jsonutil.EscapePath(trim(c.Key, "tui.")))
-				tuiChanged = true
-			case hasPrefix(c.Key, "plugin."):
-				doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
-				docChanged = true
-			case hasPrefix(c.Key, "skill."):
-				// Only a symlink into our content dir is removed; anything else
-				// is a conflict error inside link.Remove. A de-declared skill is
-				// no longer in a.skills, so recover the on-disk location from the
-				// dst state recorded for it (per-resource scope: each skill lives
-				// at exactly one place). Fall back to user scope when state is
-				// missing the recorded dst.
-				name := trim(c.Key, "skill.")
-				dst := ""
-				if e, ok := st.Get("opencode", c.Key); ok {
-					dst, _ = recordedDst(e.Desired)
-				}
-				if dst == "" {
-					dst = filepath.Join(a.skillsDir("user"), name)
-				}
-				err = link.Remove(dst, a.managedRoots()...)
-			case hasPrefix(c.Key, "command."):
-				name := trim(c.Key, "command.")
-				dst := ""
-				if e, ok := st.Get("opencode", c.Key); ok {
-					dst, _ = recordedDst(e.Desired)
-				}
-				if dst == "" {
-					dst = filepath.Join(a.commandsDir("user"), name+".md")
-				}
-				err = link.Remove(dst, a.managedRoots()...)
-			case hasPrefix(c.Key, "subagent."):
-				name := trim(c.Key, "subagent.")
-				dst := ""
-				if e, ok := st.Get("opencode", c.Key); ok {
-					dst, _ = recordedDst(e.Desired)
-				}
-				if dst == "" {
-					dst = filepath.Join(a.subagentsDir("user"), name+".md")
-				}
-				err = link.Remove(dst, a.managedRoots()...)
+		case "delete":
+			if doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin.")); err != nil {
+				return err
 			}
+			docChanged = true
+			st.Delete("opencode", c.Key)
+		default: // create | update
+			val, err := res.ResolveJSON(c.New)
 			if err != nil {
 				return err
 			}
+			if doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin.")); err != nil {
+				return err
+			}
+			docChanged = true
+			st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
+		}
+	}
+	{
+		var ch bool
+		doc, ch, err = structproj.Apply("opencode", "setting.", filterChanges(cs.Changes, "setting."), doc, codec, res, st, settingDocPath)
+		if err != nil {
+			return err
+		}
+		docChanged = docChanged || ch
+	}
+	tuiDoc, tuiChanged, err := structproj.Apply("opencode", "tui.", filterChanges(cs.Changes, "tui."), tuiDoc, codec, res, st, tuiDocPath)
+	if err != nil {
+		return err
+	}
+	// File-projection keys (skill./command./subagent.): adopt records state only;
+	// delete removes the managed symlink. Their create/update are handled by the
+	// link.Link pass below; noop and subagentcopy.* are handled elsewhere.
+	for _, c := range cs.Changes {
+		if !(hasPrefix(c.Key, "skill.") || hasPrefix(c.Key, "command.") || hasPrefix(c.Key, "subagent.")) {
+			continue
+		}
+		switch c.Action {
+		case "adopt":
+			// A correct-but-unrecorded symlink recorded into state without touching
+			// disk; its value is "dst -> src", recorded like a freshly linked one.
+			st.Set("opencode", c.Key, c.New, secret.Hash(c.New))
+		case "delete":
+			// Only a symlink into our content dir is removed; anything else is a
+			// conflict error inside link.Remove. A de-declared resource is no longer
+			// in a.skills/commands/subagents, so recover the on-disk location from the
+			// dst state recorded for it. Fall back to user scope when state is missing.
+			var dst string
+			if e, ok := st.Get("opencode", c.Key); ok {
+				dst, _ = recordedDst(e.Desired)
+			}
+			if dst == "" {
+				switch {
+				case hasPrefix(c.Key, "skill."):
+					dst = filepath.Join(a.skillsDir("user"), trim(c.Key, "skill."))
+				case hasPrefix(c.Key, "command."):
+					dst = filepath.Join(a.commandsDir("user"), trim(c.Key, "command.")+".md")
+				case hasPrefix(c.Key, "subagent."):
+					dst = filepath.Join(a.subagentsDir("user"), trim(c.Key, "subagent.")+".md")
+				}
+			}
+			if err := link.Remove(dst, a.managedRoots()...); err != nil {
+				return err
+			}
 			st.Delete("opencode", c.Key)
-			continue
 		}
-		// skill.* changes are symlink work, handled below — not JSON keys.
-		if hasPrefix(c.Key, "skill.") {
-			continue
-		}
-		if hasPrefix(c.Key, "command.") {
-			continue
-		}
-		if hasPrefix(c.Key, "subagent.") {
-			continue
-		}
-		val, err := res.ResolveJSON(c.New)
-		if err != nil {
-			return err
-		}
-		// Escaped like Plan's reads: the write must land on the literal key.
-		switch {
-		case hasPrefix(c.Key, "mcp."):
-			doc, err = jsonutil.SetJSON(doc, "mcp."+jsonutil.EscapePath(trim(c.Key, "mcp.")), val)
-			docChanged = true
-		case hasPrefix(c.Key, "setting."):
-			doc, err = jsonutil.SetJSON(doc, jsonutil.EscapePath(trim(c.Key, "setting.")), val)
-			docChanged = true
-		case hasPrefix(c.Key, "tui."):
-			tuiDoc, err = jsonutil.SetJSON(tuiDoc, jsonutil.EscapePath(trim(c.Key, "tui.")), val)
-			tuiChanged = true
-		case hasPrefix(c.Key, "plugin."):
-			doc, err = jsonutil.EnsureArrayElem(doc, "plugin", trim(c.Key, "plugin."))
-			docChanged = true
-		}
-		if err != nil {
-			return err
-		}
-		st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 	}
 	// Fail fast on link conflicts before writing any file. Both skill and
 	// command conflicts must be detected here, before any JSON write or state
