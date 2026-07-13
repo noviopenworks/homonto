@@ -1,7 +1,7 @@
 # Tasks — consolidate-copy-projection
 
 ## 1. copyproj core
-- [ ] Add `internal/adapter/copyproj` (Name, Plan, Apply + internal
+- [x] Add `internal/adapter/copyproj` (Name, Plan, Apply + internal
       recordedCopyHashes + keyPrefix "subagentcopy."). Table-driven tests
       (create/update/prune/local-edit/conflict/prune-root-refusal). Green.
 
