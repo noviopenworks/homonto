@@ -6,12 +6,12 @@
   "orchestration": "deterministic",
   "currentStep": "full.archive.confirm",
   "iteration": 6,
-  "pending": null,
+  "pending": "classic-archive:local-frameworks",
   "pendingRef": ".comet/pending-action.json",
   "trajectoryRef": ".comet/trajectory.jsonl",
   "contextRef": ".comet/context.md",
   "artifactsRef": ".comet/artifacts.json",
   "checkpointRef": ".comet/checkpoint.json",
-  "status": "running",
+  "status": "waiting",
   "retries": {}
 }
