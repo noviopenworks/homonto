@@ -15,7 +15,8 @@ ADR log, and user-facing guides — then archive the workspace.
   match the `Result: pass` prefix; the deviations are recorded inside the
   report).
 - **Idempotent re-entry**: close mutates shared files (living specs, the
-  ADR log). If `state.yaml` shows `close.merged: true`, the deltas and
+  ADR log). If `onto state <name> --json` shows `close.merged: true` (read it
+  at entry), the deltas and
   ADRs already landed on a prior, interrupted close — do NOT merge or
   number again (a second ADDED merge duplicates requirements). Resume at
   the guides/gate/archive steps. The merge step sets `close.merged: true`
@@ -45,12 +46,12 @@ one interruption-prone step (mv + archived flag) is a single commit.
   it should have been built before verify. Route back to build, add a task,
   re-verify — closing unverified runtime behavior is exactly the hole the
   deferral rule exists to prevent.
-- Resolve the **guides obligation** (`guides:` in `state.yaml`); archiving
-  with `guides: pending` is prohibited. Either write/update the affected
-  `docs/guides/<topic>.md` (and README if user-visible) → `guides: updated`,
-  **or** record `guides: "waived: <reason>"` (quoted — a bare
-  `waived: <reason>` is invalid YAML; the reason comes from the user or a
-  recorded directive, never invented). Guide prose gets the onto-no-slop
+- Resolve the **guides obligation** (read via `onto state <name> --json`);
+  archiving with `guides: pending` is prohibited. Either write/update the
+  affected `docs/guides/<topic>.md` (and README if user-visible) then `onto
+  set guides <name> updated`, **or** record `onto set guides <name> "waived:
+  <reason>"` (the reason comes from the user or a recorded directive, never
+  invented). Guide prose gets the onto-no-slop
   pass; the specs and ADRs do not yet exist in living form, so they wait
   for step 3.
 - Assemble the **close plan**: each workspace delta → its target
@@ -73,7 +74,7 @@ one interruption-prone step (mv + archived flag) is a single commit.
 
 ### 3. Execute the close (only after confirmation)
 
-1. Set `close.merged: true` in `state.yaml` **before merging**, so an
+1. Run `onto set close-merged <name>` **before merging**, so an
    interruption mid-merge is recognized on re-entry and the merge is not
    re-run (a second ADDED merge would duplicate requirements).
 2. **Merge spec deltas.** For each workspace delta `specs/<capability>.md`,
@@ -115,14 +116,11 @@ one interruption-prone step (mv + archived flag) is a single commit.
 4. Run lint-checklist section 3 (post-merge: no delta-only headings leaked,
    no duplicated requirements, scenario structure intact) and section 4
    (guides resolved, no dangling references). Findings block the archive.
-5. Finalize `metrics`: `phases.close: <today>`, `tasks_total`,
-   `verify_rounds`, `upgraded`. Observational — never block on them.
-6. **Archive atomically**: `git mv docs/changes/<name>
-   docs/changes/archive/YYYY-MM-DD-<name>`, set `archived: true` in the
-   moved `state.yaml`, and **commit both in one commit** — no window where
-   a workspace sits under `archive/` still reading `archived: false`
-   (discovery excludes `archive/`, so such a change would be invisible).
-   `phase` stays `close`; "done" is derived-only, never written. The
+5. **Archive via the binary**: `onto close <name>` — it verifies the change is
+   at `close`, all `deps` are archived, and the worktree is clean, then moves
+   `docs/changes/<name>` to `docs/changes/archive/YYYY-MM-DD-<name>` and sets
+   `archived: true` in one operation. Commit the move (`git add -A && git
+   commit`). `phase` stays `close`; "done" is derived-only, never written. The
    archived workspace is history — never edited after, with one sanctioned
    exception: `ship.md`.
 
@@ -137,18 +135,17 @@ pushes or opens PRs.
 
 - [ ] Final confirmation given **before** any spec/ADR mutation (or a
       directive that explicitly authorized closing/archiving)
-- [ ] `close.merged: true` set before the merge (idempotency guard)
+- [ ] `onto set close-merged` run before the merge (idempotency guard)
 - [ ] Lint checklist fully passed (pre-merge §1–2, post-merge §3 incl. the
       duplicate-requirement check, pre-archive §4 dangling refs)
 - [ ] Every delta spec merged (RENAMED→MODIFIED→REMOVED→ADDED); living
       specs read as current truth with no duplicated requirements
 - [ ] Every ADR draft numbered, accepted, moved to `docs/adr/`; workspace
       references rewritten to the final paths
-- [ ] `guides: updated` or `guides: "waived: <reason>"` — never pending
+- [ ] `onto set guides <name> updated` or `… "waived: <reason>"` — never pending
 - [ ] onto-no-slop pass run over **new** guide/ADR prose only, scores in
       `notes.md`; no requirement wording, `SHALL`/`MUST` line, scenario, or
       machine-read marker was rewritten
-- [ ] Metrics finalized (phase dates, tasks_total, verify_rounds, upgraded)
 - [ ] Archive is one commit: workspace under
       `docs/changes/archive/YYYY-MM-DD-<name>/` **and** `archived: true`,
       committed together, everything tracked
