@@ -1,0 +1,5 @@
+{
+  "openspec_proposal": "openspec/changes/import-backup-before-overwrite/proposal.md",
+  "openspec_tasks": "openspec/changes/import-backup-before-overwrite/tasks.md",
+  "openspec_delta_spec": "openspec/changes/import-backup-before-overwrite/specs/cli-commands/spec.md"
+}
