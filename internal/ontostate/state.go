@@ -37,6 +37,9 @@ var (
 	validVerifyResults = map[string]bool{"pending": true, "pass": true, "fail": true}
 )
 
+// ValidWorkflow reports whether w is a recognized workflow value.
+func ValidWorkflow(w string) bool { return validWorkflows[w] }
+
 // Verify holds the gated verify-phase fields.
 type Verify struct {
 	Scale  string `yaml:"scale,omitempty" json:"scale,omitempty"`   // light | full | ""
