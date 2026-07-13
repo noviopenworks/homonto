@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: 9c87dfda27774c666d82eae9c87314434ebfe2c8
 design_doc: docs/superpowers/specs/2026-07-13-onto-stable-change-id-design.md
 plan: docs/superpowers/plans/2026-07-13-onto-stable-change-id.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-13-onto-stable-change-id-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-13
-verified_at: null
+verified_at: 2026-07-13
 archived: false
 direct_override: null
 handoff_context: openspec/changes/onto-stable-change-id/.comet/handoff/design-context.json
