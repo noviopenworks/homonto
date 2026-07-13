@@ -295,11 +295,18 @@ only after Now.
   graph` also emits capability nodes (`kind: "capability"`) + `implements` edges
   (change → each capability from its `specs/<capability>.md` delta specs). The two
   edges onto can *derive* from what it records (`depends-on`, `implements`) are now
-  delivered. **Remaining typed edges** (`tests`/`released-in`/`supersedes`/
-  `deviates-from`) need data onto does not track (which tests cover a change, which
-  release shipped it, what supersedes what) — a **data-model design decision**, not
-  a mechanical derivation. CI validation + the OpenSpec-divergence question also
-  remain maintainer decisions.
+  delivered.
+- **`supersedes` edge DONE (2026-07-13, `onto-supersedes-edge` archived):** the
+  data-model decision for `supersedes` was made (not deferred) — onto now tracks
+  it explicitly. `State.Supersedes []string` (ungated), `onto set supersedes
+  <change> --change <name>...` (mirrors `deps`), and an `onto graph` `supersedes`
+  edge (change → each change it replaces). Deterministic, ungated, test-covered.
+- **Remaining typed edges** (`tests`/`released-in`/`deviates-from`) need data onto
+  does not track (which tests cover a change, which release shipped it, what a
+  change deviates from). `deviates-from` is the next mechanical mirror of the
+  settable-list pattern; `tests`/`released-in` genuinely need concepts onto lacks
+  (a test registry, a release model) and stay design-gated. CI validation + the
+  OpenSpec-divergence question remain maintainer decisions.
 - **Problem (remaining — the richer graph):** requirements and scenarios are mutable
   headings; verification maps names to tests by hand. The toolkit cannot yet
   answer "which code, tests, decisions, commits, and release prove scenario X."
