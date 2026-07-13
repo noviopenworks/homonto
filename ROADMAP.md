@@ -400,11 +400,17 @@ What turns an opinionated internal toolkit into something others build on.
   The **phase-1 MVP** shipped: `framework.toml` gains `manifest_schema`, rejected
   fail-closed in `catalog.Load` when newer (forward-safety mirroring config/state),
   pure additive — builtins load unchanged.
-- **Remaining E1 (decision/semver-gated):** `[compat].homonto` + dependency
-  version-range checks (need a semver comparator — no lib in `go.mod` yet);
+- **F36 dependency ranges DONE (2026-07-13, `framework-dependency-ranges`
+  archived):** a `[dependencies].frameworks` entry may be `name@<constraint>`
+  (`>=`/`>`/`<=`/`<`/`=`/bare-exact over `x.y.z`), validated fail-loud at
+  `catalog.Load` via a minimal hand-rolled comparator (`internal/catalog/
+  version.go`, no new module dep); the expansion graph still keys on the name.
+  Real consumer: `comet` declares `superpowers@>=0.1.0` + `openspec@>=0.1.0`.
+- **Remaining E1 (decision-gated):** `[compat].homonto` range (reuses the new
+  comparator — next bounded slice if a homonto binary version reference exists);
   capabilities (**D2**); local/custom framework resolution via the trust pipeline
   (**D1**); F38 plugin lifecycle vs honest rename (**D4**). Each is designed and
-  waits on the D1–D5 answers or a semver dependency decision.
+  waits on the D1–D5 answers.
 - **Closes:** F35 (a `local:` framework must fail at load, never silently install
   nothing — verified: `internal/config/config.go:256` skips non-builtin), F36
   (versioned manifests with dependencies, provided/required capabilities,
