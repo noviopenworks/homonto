@@ -4,4 +4,4 @@
       reports drift; re-Apply resets it; a pre-existing malformed tool doc does not
       panic Plan/Apply. Skip explicitly (with comment) any check an adapter can't meet.
 ## 2. Verify
-- [ ] go test ./internal/adapter/... -race, vet, build, openspec validate --all green.
+- [x] go test ./internal/adapter/... -race, vet, build, openspec validate --all green.
