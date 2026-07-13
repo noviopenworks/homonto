@@ -9,7 +9,6 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/adapter/registry"
-	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/state"
@@ -229,7 +228,11 @@ func (e *Engine) materializeCatalog() error {
 	if len(skillSet) == 0 && len(cmdSet) == 0 && len(subSet) == 0 {
 		return nil
 	}
-	cl, err := catalog.New()
+	// Build the catalog including the config's local frameworks so a
+	// local:<path> framework's resources materialize (from their own FS) into
+	// the catalog root exactly like a builtin's. With no local frameworks this
+	// is the embedded singleton, identical to catalog.New().
+	cl, err := e.Cfg.FrameworkCatalog()
 	if err != nil {
 		return err
 	}

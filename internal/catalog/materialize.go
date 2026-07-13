@@ -19,7 +19,7 @@ func (c *Catalog) Materialize(dstRoot string, skillNames []string) error {
 		if !ok {
 			return fmt.Errorf("catalog: unknown skill %q", name)
 		}
-		sub, err := fs.Sub(c.fsys, sp)
+		sub, err := fs.Sub(c.skillFS[name], sp)
 		if err != nil {
 			return fmt.Errorf("catalog: sub %q: %w", sp, err)
 		}
@@ -83,7 +83,7 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 		if !ok {
 			return fmt.Errorf("catalog: unknown command %q", name)
 		}
-		data, err := fs.ReadFile(c.fsys, cp)
+		data, err := fs.ReadFile(c.commandFS[name], cp)
 		if err != nil {
 			return fmt.Errorf("catalog: read %q: %w", cp, err)
 		}
@@ -110,7 +110,7 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
 		if !ok {
 			return fmt.Errorf("catalog: unknown subagent %q", name)
 		}
-		data, err := fs.ReadFile(c.fsys, sp)
+		data, err := fs.ReadFile(c.subagentFS[name], sp)
 		if err != nil {
 			return fmt.Errorf("catalog: read %q: %w", sp, err)
 		}

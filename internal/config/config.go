@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -200,6 +201,13 @@ type Config struct {
 	TUI           TUI                 `toml:"tui"`
 	Marketplaces  Marketplaces        `toml:"marketplaces"`
 	Agents        map[string]Agent    `toml:"agents"`
+
+	// baseDir is the absolute directory of the homonto.toml this config was
+	// loaded from. It resolves a [frameworks.X] source="local:<path>" framework
+	// root relative to the config file, so local paths need not be threaded
+	// through the Expanded* method signatures. Empty for a config not built via
+	// Load (e.g. decode in tests): local frameworks then resolve relative to cwd.
+	baseDir string
 }
 
 func (c *Config) SkillEntriesForTool(tool string) []NamedResource {
@@ -233,6 +241,49 @@ func loadedCatalog() (*cat.Catalog, error) {
 	return catalogInst, catalogErr
 }
 
+// frameworkCatalog returns the catalog used to expand this config's frameworks:
+// the embedded builtin catalog overlaid with each [frameworks.X]
+// source="local:<path>" as a local single-framework root keyed by X (its path
+// resolved relative to the config's baseDir). When the config declares no local
+// frameworks it returns the cached embedded singleton unchanged, so a
+// builtin-only config expands EXACTLY as before (no per-call re-indexing, no
+// behavior change). A local framework's resources index and materialize as
+// builtin:<name>, reusing the whole projection path.
+func (c *Config) FrameworkCatalog() (*cat.Catalog, error) {
+	locals := map[string]fs.FS{}
+	for name, fw := range c.Frameworks {
+		p, ok := strings.CutPrefix(fw.Source, "local:")
+		if !ok {
+			continue
+		}
+		root := p
+		if !filepath.IsAbs(root) {
+			root = filepath.Join(c.baseDir, p)
+		}
+		locals[name] = os.DirFS(root)
+	}
+	if len(locals) == 0 {
+		return loadedCatalog()
+	}
+	return cat.NewWithLocal(locals)
+}
+
+// frameworkCatalogName maps a [frameworks.X] declaration to the catalog
+// framework name to expand, and reports whether it is expandable. A builtin:<n>
+// source expands framework n from the embedded catalog; a local:<path> source
+// expands the framework keyed by the config name X (frameworkCatalog indexed the
+// local root under X). Any other source is not expandable (false); validation
+// already rejected it at load, so this is defensive.
+func frameworkCatalogName(fwName, source string) (string, bool) {
+	if n, ok := strings.CutPrefix(source, "builtin:"); ok && n != "" {
+		return n, true
+	}
+	if strings.HasPrefix(source, "local:") {
+		return fwName, true
+	}
+	return "", false
+}
+
 func sameResource(a, b Resource) bool {
 	return a.Source == b.Source && a.Scope == b.Scope && slices.Equal(a.Targets, b.Targets)
 }
@@ -262,7 +313,8 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
-		if !strings.HasPrefix(fwRes.Source, "builtin:") {
+		catName, ok := frameworkCatalogName(fwName, fwRes.Source)
+		if !ok {
 			continue
 		}
 		if !containsString(fwRes.TargetsOrAll(), tool) {
@@ -270,12 +322,11 @@ func (c *Config) ExpandedSkillEntriesForTool(tool string) ([]NamedResource, erro
 		}
 		if cl == nil {
 			var err error
-			if cl, err = loadedCatalog(); err != nil {
+			if cl, err = c.FrameworkCatalog(); err != nil {
 				return nil, err
 			}
 		}
-		builtin := strings.TrimPrefix(fwRes.Source, "builtin:")
-		expanded, err := cl.Expand([]string{builtin})
+		expanded, err := cl.Expand([]string{catName})
 		if err != nil {
 			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
 		}
@@ -336,7 +387,8 @@ func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, er
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
-		if !strings.HasPrefix(fwRes.Source, "builtin:") {
+		catName, ok := frameworkCatalogName(fwName, fwRes.Source)
+		if !ok {
 			continue
 		}
 		if !containsString(fwRes.TargetsOrAll(), tool) {
@@ -344,12 +396,11 @@ func (c *Config) ExpandedCommandEntriesForTool(tool string) ([]NamedResource, er
 		}
 		if cl == nil {
 			var err error
-			if cl, err = loadedCatalog(); err != nil {
+			if cl, err = c.FrameworkCatalog(); err != nil {
 				return nil, err
 			}
 		}
-		builtin := strings.TrimPrefix(fwRes.Source, "builtin:")
-		expanded, err := cl.ExpandCommands([]string{builtin})
+		expanded, err := cl.ExpandCommands([]string{catName})
 		if err != nil {
 			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
 		}
@@ -409,7 +460,8 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 	var cl *cat.Catalog
 	for _, fwName := range fwNames {
 		fwRes := c.Frameworks[fwName]
-		if !strings.HasPrefix(fwRes.Source, "builtin:") {
+		catName, ok := frameworkCatalogName(fwName, fwRes.Source)
+		if !ok {
 			continue
 		}
 		if !containsString(fwRes.TargetsOrAll(), tool) {
@@ -417,12 +469,11 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 		}
 		if cl == nil {
 			var err error
-			if cl, err = loadedCatalog(); err != nil {
+			if cl, err = c.FrameworkCatalog(); err != nil {
 				return nil, err
 			}
 		}
-		builtin := strings.TrimPrefix(fwRes.Source, "builtin:")
-		expanded, err := cl.ExpandSubagents([]string{builtin})
+		expanded, err := cl.ExpandSubagents([]string{catName})
 		if err != nil {
 			return nil, fmt.Errorf("config: framework %q: %w", fwName, err)
 		}
@@ -459,11 +510,24 @@ func (c *Config) ExpandedSubagentEntriesForTool(tool string) ([]NamedResource, e
 
 func (c *Config) EnabledModelTools() []string {
 	seen := map[string]bool{}
-	for _, resources := range []map[string]Resource{c.Frameworks, c.Commands} {
-		for _, r := range resources {
-			for _, target := range r.TargetsOrAll() {
-				seen[target] = true
-			}
+	// Builtin frameworks enable model routing for their targeted tools (they
+	// expand model-routed commands/agents). A local:<path> framework may
+	// contribute only skills — like a skills-only config, which needs no models
+	// — so it does not by itself force model routes; its expanded resources are
+	// validated on their own where model routing actually applies. This keeps the
+	// builtin path identical while letting a skill-only local framework load
+	// without a [models] block.
+	for _, r := range c.Frameworks {
+		if !strings.HasPrefix(r.Source, "builtin:") {
+			continue
+		}
+		for _, target := range r.TargetsOrAll() {
+			seen[target] = true
+		}
+	}
+	for _, r := range c.Commands {
+		for _, target := range r.TargetsOrAll() {
+			seen[target] = true
 		}
 	}
 	for _, s := range c.Subagents {
@@ -562,20 +626,18 @@ func normalize(c *Config) {
 // validate rejects a config that would project nothing or corrupt a tool file.
 func validate(c *Config) error {
 	for kind, resources := range map[string]map[string]Resource{
-		"frameworks": c.Frameworks,
-		"skills":     c.Skills,
-		"commands":   c.Commands,
+		"skills":   c.Skills,
+		"commands": c.Commands,
 	} {
 		if err := validateResources(kind, resources); err != nil {
 			return err
 		}
 	}
-	// Only builtin frameworks are expanded; a non-builtin framework source would
-	// install nothing, so reject it at load rather than silently no-op (F35).
-	for name, fw := range c.Frameworks {
-		if !strings.HasPrefix(fw.Source, "builtin:") {
-			return fmt.Errorf("parse config: framework %q source %q must be a builtin: source (only builtin frameworks are supported; a local:/remote: framework would expand nothing)", name, fw.Source)
-		}
+	// Frameworks have their own source rule: builtin:<name> (expanded from the
+	// embedded catalog) or local:<path> (a local framework root). Every other
+	// source expands nothing and is rejected loudly (F35).
+	if err := validateFrameworkResources(c.Frameworks); err != nil {
+		return err
 	}
 	if err := validateSubagents(c.Subagents); err != nil {
 		return err
@@ -724,6 +786,11 @@ func Load(path string) (*Config, error) {
 	if err := validate(c); err != nil {
 		return nil, err
 	}
+	if abs, err := filepath.Abs(filepath.Dir(path)); err == nil {
+		c.baseDir = abs
+	} else {
+		c.baseDir = filepath.Dir(path)
+	}
 	return c, nil
 }
 
@@ -760,6 +827,43 @@ func validateResources(kind string, resources map[string]Resource) error {
 		}
 		if err := validateLocalPlainName(label, r.Source); err != nil {
 			return err
+		}
+		for _, target := range r.Targets {
+			if !isResourceTarget(target) {
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
+			}
+		}
+	}
+	return nil
+}
+
+// validateFrameworkResources validates [frameworks.X] entries. A framework
+// source must be builtin:<name> (expanded from the embedded catalog) or
+// local:<path> (a local framework root resolved relative to the config dir).
+// Unlike skills/commands, a local FRAMEWORK source MAY carry path components, so
+// the plain-name guard is deliberately not applied here. Every other source —
+// remote:, a bare name, or a typo — expands nothing and is rejected loudly (F35).
+func validateFrameworkResources(resources map[string]Resource) error {
+	for name, r := range resources {
+		if err := validateResourceName("frameworks", name); err != nil {
+			return err
+		}
+		label := "frameworks." + name
+		switch r.Scope {
+		case "user", "project":
+			// ok
+		case "":
+			return fmt.Errorf("parse config: %s is missing required scope; valid values are \"user\" and \"project\"", label)
+		default:
+			return fmt.Errorf("parse config: %s scope %q is invalid; valid values are \"user\" and \"project\"", label, r.Scope)
+		}
+		if r.Digest != "" {
+			return fmt.Errorf("parse config: %s digest is only valid on a remote: source", label)
+		}
+		builtinOK := strings.HasPrefix(r.Source, "builtin:") && strings.TrimPrefix(r.Source, "builtin:") != ""
+		localOK := strings.HasPrefix(r.Source, "local:") && strings.TrimPrefix(r.Source, "local:") != ""
+		if !builtinOK && !localOK {
+			return fmt.Errorf("parse config: %s source %q must be a builtin:<name> or local:<path> source (only builtin and local frameworks are supported; another source would expand nothing)", label, r.Source)
 		}
 		for _, target := range r.Targets {
 			if !isResourceTarget(target) {
