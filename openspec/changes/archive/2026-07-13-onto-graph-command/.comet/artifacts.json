@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/onto-graph-command/tasks.md",
   "openspec_delta_spec": "openspec/changes/onto-graph-command/specs/onto-binary/spec.md",
   "handoff_context": "openspec/changes/onto-graph-command/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/onto-graph-command/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/onto-graph-command/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-13-onto-graph-command"
 }

@@ -3,6 +3,8 @@ comet_change: onto-graph-command
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-onto-graph-command
+status: final
 ---
 
 # onto-graph-command — Technical Design (X1)
