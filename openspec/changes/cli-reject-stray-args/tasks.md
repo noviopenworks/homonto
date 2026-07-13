@@ -1,6 +1,6 @@
 # Tasks — cli-reject-stray-args
 ## 1. NoArgs on positional-free commands
-- [ ] plan/apply/status/doctor/import set cobra.NoArgs; init keeps MaximumNArgs(1).
-- [ ] Test: `homonto apply extra` (and one other) exits non-zero naming unexpected args.
+- [x] plan/apply/status/doctor/import set cobra.NoArgs; init keeps MaximumNArgs(1).
+- [x] Test: `homonto apply extra` (and one other) exits non-zero naming unexpected args.
 ## 2. Verify
-- [ ] `go test ./internal/cli/... -race`, vet, build, `openspec validate --all` green.
+- [x] `go test ./internal/cli/... -race`, vet, build, `openspec validate --all` green.
