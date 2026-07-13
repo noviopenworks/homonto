@@ -336,12 +336,14 @@ What turns an opinionated internal toolkit into something others build on.
 - **Exit gate:** a fourth framework or a local framework installs through the same
   validated, versioned path; unsupported source/kind combinations fail loudly.
 
-### E2. Machine-readable CLI and a stable automation contract
-- **Partial (2026-07-13):** F49, F45, F51, F48, F52, F46, + F50 slices (`status-json-output`, `doctor --output json`) archived on `main` — `NoArgs` on
-  positional-free commands, and plan/status no longer claim "up to date"/"No drift"
-  (exit 0) after an adapter warning. E2 `--output json` COMPLETE (status, doctor, plan). Remaining E2: only the
-  versioned exit-code taxonomy — shipping opt-in via `--exit-code` (default
-  behavior unchanged) so it never breaks existing automation.
+### E2. Machine-readable CLI and a stable automation contract — DONE (2026-07-13)
+- **DONE (2026-07-13):** F49, F45, F51, F48, F52, F46, F50 all archived on `main`.
+  `--output json` COMPLETE (status, doctor, plan). The opt-in exit-code taxonomy
+  shipped via `--exit-code` (`exit-code-taxonomy`, archived): `plan --exit-code`
+  → 2 when changes/repins pending else 0; `status --exit-code` → 3 drift / 2
+  pending / 0 clean; default behavior (no flag) unchanged so existing automation
+  never breaks. Plumbed through a testable `cli.Execute(args) int` sink; only
+  homonto's `main.go` changed, onto's is untouched. **E2 fully closed.**
 - **Closes:** F45 (never print "up to date" after skipping an adapter), F46
   (catalog upgrades appear in the plan; doctor reports version mismatch), F49
   (`cobra.NoArgs` everywhere; a stray positional never silently ignored — verified
