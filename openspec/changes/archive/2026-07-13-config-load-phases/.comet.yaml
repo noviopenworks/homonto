@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-config-load-phases-veri
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/config-load-phases/.comet/handoff/design-context.json
 handoff_hash: f8e2b72aa3bf2f0c81b61b6701263dae00d11e4dd3621553a574912f18b68f02

@@ -3,6 +3,8 @@ comet_change: config-load-phases
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-config-load-phases
+status: final
 ---
 
 # config-load-phases — Technical Design
