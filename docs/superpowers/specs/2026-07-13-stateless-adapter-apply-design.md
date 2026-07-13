@@ -3,6 +3,8 @@ comet_change: stateless-adapter-apply
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-stateless-adapter-apply
+status: final
 ---
 
 # stateless-adapter-apply — Technical Design

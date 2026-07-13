@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/stateless-adapter-apply/tasks.md",
   "openspec_delta_spec": "openspec/changes/stateless-adapter-apply/specs/apply-pipeline/spec.md",
   "handoff_context": "openspec/changes/stateless-adapter-apply/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/stateless-adapter-apply/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/stateless-adapter-apply/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-13-stateless-adapter-apply"
 }
