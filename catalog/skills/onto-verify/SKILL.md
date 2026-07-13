@@ -21,7 +21,7 @@ what the design and specs say. **Evidence before assertions, always.**
 
 ### 1. Scale check → verification mode
 
-Set `verify.mode` in `state.yaml`:
+Set the verification scale via `onto set verify-scale <name> light|full`:
 
 - **full** — `workflow: full`, any upgraded preset, a diff touching more
   than **5 non-test files** in `base_ref..HEAD` (the same count and
@@ -57,8 +57,7 @@ approve; light mode uses one optional skeptic with skips recorded. Triage
 findings per the protocol: a refuted claim fails its scenario; new defects
 are CRITICAL-fix or gate-decided deviations. No dispatch capability →
 record the skipped pass in the report's Adversarial section
-(protocol-mandated skips live there, no acceptor needed). Increment
-`metrics.verify_rounds` once per round.
+(protocol-mandated skips live there, no acceptor needed).
 
 ### 3. Regression
 
@@ -74,16 +73,19 @@ Write `docs/changes/<name>/verification.md` from the canonical template
 scenario-evidence table, design conformance, adversarial pass, regression,
 deviations). When deviations were accepted, the Result line carries their
 count — `Result: pass (2 accepted deviations)` — so a pass with caveats is
-visibly different from a clean one everywhere the line is read. Mirror the
-result into `state.yaml` `verify.result`.
+visibly different from a clean one everywhere the line is read. Record the
+result via `onto set verify-result <name> pass|fail`.
 
 ### 5. Failure gate
 
 > **GATE (on any fail):** list the failing items and ask the user:
-> **fix** (→ back to build: reset `phase: build`, add tasks for the fixes)
-> or **accept deviation** (record each accepted deviation + its rationale
-> in `verification.md`; the `Result:` line and `verify.result` stay `pass`,
-> with the deviation count on the Result line). Always fresh input —
+> **fix** (→ back to build: add tasks for the fixes in `tasks.md`; the
+> unchecked tasks drive the dispatcher's derivation back to build (files win
+> downward) — no phase field is written) or **accept deviation** (record each
+> accepted deviation + its rationale in `verification.md`; the `Result:` line
+> stays `pass`, run `onto set verify-result <name> pass` (accepted deviations
+> recorded in `verification.md`), with the deviation count on the Result
+> line). Always fresh input —
 > never auto-accept a failure, and never *propose* acceptance as the easy
 > path — the user raises it or it stays a failure. Record each failed
 > round in `notes.md` (date + failing items) — notes, not `metrics`, is
@@ -95,18 +97,16 @@ result into `state.yaml` `verify.result`.
 
 - [ ] `verification.md` exists with a `Result:` line and fresh evidence for
       every checked scenario, regression results included
-- [ ] `verify.result: pass` in both the report and `state.yaml` (accepted
-      deviations, if any, each recorded with rationale in the report)
+- [ ] `verify.result: pass` recorded via `onto set verify-result <name> pass`
+      and in the report (accepted deviations, if any, each recorded with
+      rationale in the report)
 - [ ] Adversarial pass run (or its skip recorded in the report's
-      Adversarial section); `metrics.verify_rounds` incremented **once**
-      for the whole round (this checklist owns the increment — the
-      adversarial protocol does not increment again)
+      Adversarial section)
 - [ ] onto-no-slop pass run over `verification.md`, score recorded in
       `notes.md` (`no-slop: verification <total>/50`; below 35 means
       revise before this gate) — never touch the machine-read `Result:`
       line or the evidence table structure
-- [ ] `state.yaml` phase advanced: `verify → close`;
-      `metrics.phases.verify: <today>` stamped
+- [ ] Phase advanced verify → close via `onto advance <name>`
 - [ ] **Commit the workspace**: `git add docs/changes/<name> && git commit`
       — every phase exits with its workspace committed
 - [ ] Announce the transition and load `onto-close`
