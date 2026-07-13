@@ -52,7 +52,7 @@ The design shows `State{ SchemaVersion; Core; Observed }`. The design explicitly
 
 Note: existing `Change`/`Phase` reads, `st.Phase = next`, `st.Archived = true`, and `State{Change: …, Phase: …}` literals in `new.go` / test helpers all keep compiling because the core stays flat. Do NOT restructure them.
 
-- [ ] **Step 1: Write the failing round-trip + validation tests**
+- [x] **Step 1: Write the failing round-trip + validation tests**
 
 Append to `internal/ontostate/state_test.go`:
 
@@ -138,12 +138,12 @@ func TestValidate_EmptyOptionalEnums_Accepted(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/ontostate/ -run 'RoundTrip|StampsCurrentSchemaVersion|MalformedEnum|EmptyOptionalEnums' -v`
 Expected: compile error / FAIL — `CurrentSchemaVersion`, `Verify`, `Close`, `Observed`, and the new `State` fields do not exist yet.
 
-- [ ] **Step 3: Extend the schema and validation in `state.go`**
+- [x] **Step 3: Extend the schema and validation in `state.go`**
 
 Add near the top of `internal/ontostate/state.go` (after `validPhases`):
 
@@ -258,17 +258,17 @@ func Save(path string, s State) error {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontostate/ -run 'RoundTrip|StampsCurrentSchemaVersion|MalformedEnum|EmptyOptionalEnums' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Run the full ontostate + ontocli suites to confirm no regression**
+- [x] **Step 5: Run the full ontostate + ontocli suites to confirm no regression**
 
 Run: `go test ./internal/ontostate/... ./internal/ontocli/... && go build ./...`
 Expected: PASS / build clean. (The added `schema_version` line in saved files is invisible to the field-based assertions in the existing CLI tests; the flat core keeps every literal compiling.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/ontostate/state.go internal/ontostate/state_test.go
@@ -291,7 +291,7 @@ git commit -m "feat(ontostate): versioned typed schema with core/observed split 
   - `func isLegacy(b []byte) bool` — true when the bytes carry no `schema_version` key (used by Task 3's conflict policy).
   - `Load(path)` now returns migrated state.
 
-- [ ] **Step 1: Write the failing migration tests**
+- [x] **Step 1: Write the failing migration tests**
 
 Create `internal/ontostate/migrate_test.go`:
 
@@ -415,12 +415,12 @@ func TestParseAndMigrate_CurrentVersion_IsNoOp(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/ontostate/ -run 'ParseAndMigrate' -v`
 Expected: compile error — `parseAndMigrate` is undefined.
 
-- [ ] **Step 3: Implement the migration**
+- [x] **Step 3: Implement the migration**
 
 Create `internal/ontostate/migrate.go`:
 
@@ -548,17 +548,17 @@ func Load(path string) (State, error) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontostate/ -run 'ParseAndMigrate' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Run the full ontostate + ontocli suites**
+- [x] **Step 5: Run the full ontostate + ontocli suites**
 
 Run: `go test ./internal/ontostate/... ./internal/ontocli/... && go vet ./internal/ontostate/...`
 Expected: PASS. (`Load`-based callers — advance/close/status/doctor — now transparently migrate legacy inputs; existing fixtures without `schema_version` still load.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/ontostate/migrate.go internal/ontostate/migrate_test.go internal/ontostate/state.go
@@ -579,7 +579,7 @@ git commit -m "feat(ontostate): migrate legacy binary and rich skill state on re
   - `func LoadChange(changeDir string) (State, error)` — resolves `onto-state.yaml` and/or `state.yaml` in `changeDir`. One present → migrate it. Both present and BOTH legacy with disagreeing gated core (phase, workflow, or archived) → malformed error naming the conflict. Otherwise merges Observed (union; the skill file's richer per-field value wins) onto the canonical `onto-state.yaml` state. Neither present → error.
   - `func Classify(changeDir string) (State, string, error)` — returns class `"valid"` / `"malformed"` / `"missing-state"`. Missing both files → `("", "missing-state", nil)`; load or validate error → `("", "malformed", err)`; else `(state, "valid", nil)`.
 
-- [ ] **Step 1: Write the failing LoadChange + Classify tests**
+- [x] **Step 1: Write the failing LoadChange + Classify tests**
 
 Create `internal/ontostate/loadchange_test.go`:
 
@@ -660,12 +660,12 @@ func TestClassify_ValidAndMalformed(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/ontostate/ -run 'LoadChange|Classify' -v`
 Expected: compile error — `LoadChange` and `Classify` are undefined.
 
-- [ ] **Step 3: Implement LoadChange, Classify, and helpers**
+- [x] **Step 3: Implement LoadChange, Classify, and helpers**
 
 Append to `internal/ontostate/migrate.go` (add `"os"` and `"path/filepath"` to its imports):
 
@@ -776,17 +776,17 @@ func fileMissing(path string) bool {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontostate/ -run 'LoadChange|Classify' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Run the full ontostate suite under -race**
+- [x] **Step 5: Run the full ontostate suite under -race**
 
 Run: `go test ./internal/ontostate/... -race`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/ontostate/migrate.go internal/ontostate/loadchange_test.go
@@ -810,7 +810,7 @@ git commit -m "feat(ontostate): directory-aware LoadChange with dual-legacy conf
 
 Each setter is semantic-per-field (its own subcommand owns its allowed set) — NOT a generic `set <key> <value>`.
 
-- [ ] **Step 1: Write the failing enum-setter tests**
+- [x] **Step 1: Write the failing enum-setter tests**
 
 Create `internal/ontocli/set_test.go`. (Reuses `prepWorkspace`, `seedChange`, `writeFile` from the existing package test helpers.)
 
@@ -895,12 +895,12 @@ func TestSetEnumSetters_HappyPaths(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/ontocli/ -run 'TestSet' -v`
 Expected: FAIL — `unknown command "set"`.
 
-- [ ] **Step 3: Implement the set group and enum setters**
+- [x] **Step 3: Implement the set group and enum setters**
 
 Create `internal/ontocli/set.go`:
 
@@ -998,12 +998,12 @@ Register in `internal/ontocli/root.go` — add after `root.AddCommand(doctorCmd(
 	root.AddCommand(setCmd())
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontocli/ -run 'TestSet' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/ontocli/set.go internal/ontocli/root.go internal/ontocli/set_test.go
@@ -1022,7 +1022,7 @@ git commit -m "feat(ontocli): add onto set transition group with enum-gated fiel
 - Consumes: `runTransition`, `setCmd` (Task 4).
 - Produces: `onto set close-merged <change>` (no value arg — sets `close.merged=true`, idempotent) and `onto set directive <change> <text>` (free string, presence-only — any non-empty text accepted, empty rejected).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `internal/ontocli/set_test.go`:
 
@@ -1066,12 +1066,12 @@ func TestSetDirective_EmptyRejected(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/ontocli/ -run 'CloseMerged|Directive' -v`
 Expected: FAIL — `unknown command "close-merged"` / `"directive"`.
 
-- [ ] **Step 3: Implement the two subcommands**
+- [x] **Step 3: Implement the two subcommands**
 
 Add these builders to `internal/ontocli/set.go` and register them in `setCmd()`:
 
@@ -1125,12 +1125,12 @@ In `setCmd()`, add before `return cmd`:
 	cmd.AddCommand(directiveCmd())
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontocli/ -run 'CloseMerged|Directive' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/ontocli/set.go internal/ontocli/set_test.go
@@ -1150,7 +1150,7 @@ git commit -m "feat(ontocli): add onto set close-merged and directive transition
 - Consumes: `validChangeName`, `ontostate.LoadChange`, `ontostate.State`, `(State).DerivePhase`.
 - Produces: `onto state <change> [--json]` — a read-only command (no `gate`, writes nothing) that emits the full validated state plus derived phase. `--json` emits JSON via `encoding/json`; the read must not mutate the tree.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/ontocli/statecmd_test.go`:
 
@@ -1198,12 +1198,12 @@ func TestStateJSON_EmitsFullStateAndDerivedPhase(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/ontocli/ -run 'TestStateJSON' -v`
 Expected: FAIL — `unknown command "state"`.
 
-- [ ] **Step 3: Implement the structured read**
+- [x] **Step 3: Implement the structured read**
 
 Create `internal/ontocli/statecmd.go`:
 
@@ -1275,17 +1275,17 @@ Register in `internal/ontocli/root.go` — add after `root.AddCommand(setCmd())`
 	root.AddCommand(stateCmd())
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `go test ./internal/ontocli/ -run 'TestStateJSON' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Run the ontostate suite (JSON tags added) to confirm no regression**
+- [x] **Step 5: Run the ontostate suite (JSON tags added) to confirm no regression**
 
 Run: `go test ./internal/ontostate/... ./internal/ontocli/...`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/ontocli/statecmd.go internal/ontocli/statecmd_test.go internal/ontocli/root.go internal/ontostate/state.go
@@ -1306,7 +1306,7 @@ git commit -m "feat(ontocli): add onto state --json structured read"
 
 Backward-compat note: the existing `TestStatusCommand_ReportsValidAndInvalidChanges` asserts the malformed line contains `"invalid"`. This task changes the vocabulary to `"malformed"` per the spec; update that assertion in the same task.
 
-- [ ] **Step 1: Update the existing test and add the F14 missing-state case**
+- [x] **Step 1: Update the existing test and add the F14 missing-state case**
 
 In `internal/ontocli/status_test.go`, change the malformed assertion in `TestStatusCommand_ReportsValidAndInvalidChanges` from `"invalid"` to `"malformed"`:
 
@@ -1336,12 +1336,12 @@ func TestStatusCommand_DeletedStateFile_IsMissingStateRow(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `go test ./internal/ontocli/ -run 'TestStatusCommand' -v`
 Expected: FAIL — the current glob-based `runStatus` skips the state-less `gamma` directory entirely and still prints `invalid` for `beta`.
 
-- [ ] **Step 3: Rewrite `runStatus` to enumerate then classify**
+- [x] **Step 3: Rewrite `runStatus` to enumerate then classify**
 
 Replace the body of `runStatus` in `internal/ontocli/status.go`:
 
@@ -1381,12 +1381,12 @@ func runStatus(cmd *cobra.Command, root string) error {
 
 Update `status.go` imports: add `"os"`, keep `"path/filepath"` and the `ontostate` import; the `filepath.Glob` call is gone.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontocli/ -run 'TestStatusCommand' -v`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/ontocli/status.go internal/ontocli/status_test.go
@@ -1405,7 +1405,7 @@ git commit -m "feat(ontocli): onto status enumerates change dirs then classifies
 - Consumes: `ontostate.Classify`, `ontostate.ValidateSkeleton`, `ontostate.DepsResolved`.
 - Produces: `runDoctor`'s active-changes section enumerates change **directories** FIRST, then classifies each; `malformed` and `missing-state` are findings (exit non-zero). `valid` changes still get the phase/artifact, deps, and archived checks. Docs-layout and archive-layout sections unchanged.
 
-- [ ] **Step 1: Write the failing missing-state finding test**
+- [x] **Step 1: Write the failing missing-state finding test**
 
 Append to `internal/ontocli/doctor_test.go` (mirror the file's existing setup style):
 
@@ -1435,12 +1435,12 @@ func TestDoctor_MissingStateDir_IsFinding(t *testing.T) {
 
 (Add `"os"`, `"path/filepath"`, `"strings"` to `doctor_test.go` imports if not already present.)
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/ontocli/ -run 'TestDoctor_MissingStateDir' -v`
 Expected: FAIL — the current glob skips the state-less `gamma` directory, so doctor prints `healthy` and exits 0.
 
-- [ ] **Step 3: Rewrite the active-changes section of `runDoctor`**
+- [x] **Step 3: Rewrite the active-changes section of `runDoctor`**
 
 Replace section 2 (the `active, _ := filepath.Glob(...)` loop) in `internal/ontocli/doctor.go` with directory enumeration + classify:
 
@@ -1481,12 +1481,12 @@ Replace section 2 (the `active, _ := filepath.Glob(...)` loop) in `internal/onto
 
 Ensure `doctor.go` imports include `"os"`, `"fmt"`, `"path/filepath"`, and `ontostate` (all already present).
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `go test ./internal/ontocli/ -run 'TestDoctor' -v`
 Expected: PASS (new case passes; existing doctor tests — healthy workspace, invalid state, deps, archive — still pass because `valid`-path behavior is unchanged and a well-formed change still classifies `valid`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/ontocli/doctor.go internal/ontocli/doctor_test.go
@@ -1505,7 +1505,7 @@ git commit -m "feat(ontocli): onto doctor reports missing-state change dirs as f
 - Consumes: everything from Tasks 1–8.
 - Produces: a passing full gate and a recorded final schema + CLI surface for change B (`onto-skills-shell-out`).
 
-- [ ] **Step 1: Run the full verification gate**
+- [x] **Step 1: Run the full verification gate**
 
 Run:
 ```bash
@@ -1516,18 +1516,18 @@ openspec validate --all
 ```
 Expected: all PASS. If `go vet` flags the embedded-struct field name `ontostate.State` in `statecmd.go`'s anonymous JSON payload, confirm the JSON still marshals (the `State` fields carry `json` tags from Task 6); no vet error is expected.
 
-- [ ] **Step 2: Record the concrete schema + CLI surface for change B**
+- [x] **Step 2: Record the concrete schema + CLI surface for change B**
 
 Confirm the shipped surface, so `onto-skills-shell-out` can be authored against concrete commands (do NOT author change B here — NON-GOAL):
 - State file: `docs/changes/<name>/onto-state.yaml`, `schema_version: 1`, gated core fields + nested `verify:`/`close:`/`observed:` as implemented in Task 1.
 - Commands: `onto set isolation|build-mode|tdd-mode|verify-scale|verify-result <change> <value>`, `onto set close-merged <change>`, `onto set directive <change> <text>`, `onto state <change> --json`.
 - Reads/classification: `onto status`, `onto doctor` classify `valid|malformed|missing-state`.
 
-- [ ] **Step 3: Check the outline boxes in the change's tasks.md**
+- [x] **Step 3: Check the outline boxes in the change's tasks.md**
 
 Tick the completed items in `openspec/changes/onto-binary-authoritative-state/tasks.md` sections 1–5 (and item 6, the change-B surface record), reflecting what shipped.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add openspec/changes/onto-binary-authoritative-state/tasks.md
