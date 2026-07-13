@@ -12,7 +12,10 @@ import (
 )
 
 func planCmd() *cobra.Command {
-	var output string
+	var (
+		output   string
+		exitFlag bool
+	)
 	cmd := &cobra.Command{
 		Use:   "plan",
 		Short: "Show what apply would change",
@@ -37,6 +40,9 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if exitFlag {
+				setExitCode(planExitCode(plan.HasChanges(sets), len(repins)))
+			}
 			if output == "json" {
 				return planJSON(cmd, sets, repins, e.Warnings)
 			}
@@ -58,6 +64,7 @@ func planCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&output, "output", "text", "output format: text or json")
+	cmd.Flags().BoolVar(&exitFlag, "exit-code", false, "exit 2 when changes are pending (opt-in taxonomy)")
 	return cmd
 }
 

@@ -10,7 +10,10 @@ import (
 )
 
 func statusCmd() *cobra.Command {
-	var output string
+	var (
+		output   string
+		exitFlag bool
+	)
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show config drift since last apply",
@@ -28,6 +31,9 @@ func statusCmd() *cobra.Command {
 			drift, pending, err := e.Status()
 			if err != nil {
 				return err
+			}
+			if exitFlag {
+				setExitCode(statusExitCode(len(drift) > 0, pending))
 			}
 			if output == "json" {
 				payload := struct {
@@ -67,6 +73,7 @@ func statusCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&output, "output", "text", "output format: text or json")
+	cmd.Flags().BoolVar(&exitFlag, "exit-code", false, "exit 2 (pending) or 3 (drift) under the opt-in taxonomy")
 	return cmd
 }
 
