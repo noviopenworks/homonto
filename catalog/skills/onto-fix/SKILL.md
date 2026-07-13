@@ -38,13 +38,16 @@ non-negotiable.
 Minimal clarification: reproduction steps, expected vs actual behavior,
 suspected blast radius. Create `docs/changes/<name>/` with:
 
-- `state.yaml` — `workflow: fix`, `phase: build` (no design phase),
-  `created`, `base_ref`, `guides: pending`, and `decisions` defaulted at
-  open-lite since presets enter build directly: `isolation: branch`,
-  `execution: direct`, **`tdd: tdd`** — a fix's whole method is a failing
-  test that reproduces the bug first, so its build runs the TDD branch;
-  never default a fix to `tdd: direct`; rest per
-  `onto/references/state-yaml.md`
+- Create the workspace via `onto new <name> --workflow fix` (`onto new`
+  creates `onto-state.yaml` carrying `workflow: fix`, `phase: open`,
+  `created`, and empty `proposal.md`/`tasks.md`). Then:
+  - `onto set base-ref <name> "$(git rev-parse HEAD)"`
+  - `onto set guides <name> pending`
+  - default the decisions (presets enter build directly): `onto set isolation
+    <name> branch`, `onto set build-mode <name> direct`, **`onto set tdd-mode
+    <name> tdd`** — a fix's whole method is a failing test that reproduces the
+    bug first, so its build runs the TDD branch; never default a fix to
+    `tdd-mode direct`.
 - `proposal.md` — a `Preset: fix` line at column 0 under the title (the
   state rebuild greps `^Preset:`), then the bug (link the issue if any),
   reproduction, expected behavior, fix scope
@@ -54,10 +57,11 @@ No full design and no plan.md required. Branch: `fix/YYYYMMDD/<name>`.
 Templates: reuse the full-workflow references (`onto/references/state-yaml.md`,
 `onto-open/references/{proposal,tasks,notes}.md`) — a `notes.md` checkpoint
 is recommended for any fix that takes more than one sitting. **Commit the
-workspace** before the first task (so `base_ref` and recovery hold). Stamp
-`metrics.phases.<phase>` at the exit of each phase the change actually
-occupies — `build`, `verify`, `close`; a preset never occupies `open`, so
-there is no `phases.open` key to stamp.
+workspace** before the first task (so `base_ref` and recovery hold). `onto
+new` records `phase: open`; the preset skips design, so its working phase
+(build) is **derived** by the dispatcher (`workflow: fix` + workspace →
+build). The binary's `phase` field is not advanced through the skipped phases
+— that reconciliation is out of scope (N2).
 
 > **GATE (open-lite scope):** presets skip design, so the fix-vs-full
 > choice is the one decision that removes a phase. Confirm it: state the
@@ -88,7 +92,7 @@ gate as the full workflow (fix or accept-deviation, fresh user input).
 
 Same obligations as `onto-close` — lint (`onto-close/references/
 lint-checklist.md`), spec deltas merged if any requirement changed, guides
-checked (`updated` or `"waived: <reason>"`), metrics finalized, final
+checked (`updated` or `"waived: <reason>"`), final
 confirmation, archive to `docs/changes/archive/YYYY-MM-DD-<name>/`, ship
 handoff offered.
 
@@ -104,12 +108,12 @@ handoff offered.
 > - the fix introduces a **new public API**
 > - the fix scope exceeds a single function/module
 >
-> On confirmed upgrade: set `workflow: full`, `phase: design`,
-> `metrics.upgraded: true` in `state.yaml`, **and annotate the proposal's
-> first line to `Preset: fix (upgraded to full YYYY-MM-DD)`** — the
-> state-rebuild rules read that marker, so an upgrade must survive state
-> loss. Then route through `/onto` to backfill the design phase. Never
-> keep patching past a trigger "because it's almost done".
+> On confirmed upgrade: **annotate the proposal's first line to `Preset: fix
+> (upgraded to full YYYY-MM-DD)`** — the dispatcher re-derives `workflow: full`
+> from that marker (there is no `onto set workflow`; the marker is the
+> authority the state-rebuild reads). Then run `onto advance <name>` to reach
+> design and route through `/onto` to backfill it. Never keep patching past a
+> trigger "because it's almost done".
 
 ## Exit checklist (per phase, lite)
 
@@ -118,7 +122,8 @@ handoff offered.
 - [ ] Build: failing test seen failing, root cause stated, fix committed,
       test seen passing, tree clean (workspace docs committed)
 - [ ] Verify: `verification.md` with reproduction evidence + regression
-      results; `verify.result` set; workspace committed at exit
+      results; `verify.result` set via `onto set verify-result`; workspace
+      committed at exit
 - [ ] Close: delta coverage checked (lint §0), guides resolved, final gate
       **before** any spec/ADR mutation, archived in one commit
 - [ ] onto-no-slop pass run over each prose artifact (proposal,

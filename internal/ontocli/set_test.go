@@ -3,6 +3,7 @@ package ontocli
 import (
 	"bytes"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -112,5 +113,72 @@ func TestSetDirective_EmptyRejected(t *testing.T) {
 
 	if _, err := runOnto(t, "set", "directive", "c", "", "--dir", root); err == nil {
 		t.Fatal("empty directive accepted, want rejection")
+	}
+}
+
+func TestSetBaseRef_HappyPath_WritesField(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "open")
+
+	if _, err := runOnto(t, "set", "base-ref", "c", "abc123", "--dir", root); err != nil {
+		t.Fatalf("set base-ref: %v", err)
+	}
+	st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+	if st.BaseRef != "abc123" {
+		t.Errorf("BaseRef = %q, want abc123", st.BaseRef)
+	}
+}
+
+func TestSetBaseRef_EmptyRejected(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "open")
+
+	if _, err := runOnto(t, "set", "base-ref", "c", "", "--dir", root); err == nil {
+		t.Fatal("empty base-ref accepted, want rejection")
+	}
+	st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+	if st.BaseRef != "" {
+		t.Errorf("BaseRef = %q, want unchanged empty", st.BaseRef)
+	}
+}
+
+func TestSetDeps_HappyPath_CollectsRepeatedFlag(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "open")
+
+	if _, err := runOnto(t, "set", "deps", "c", "--dep", "dep-a", "--dep", "dep-b", "--dir", root); err != nil {
+		t.Fatalf("set deps: %v", err)
+	}
+	st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+	if !reflect.DeepEqual(st.Deps, []string{"dep-a", "dep-b"}) {
+		t.Errorf("Deps = %v, want [dep-a dep-b]", st.Deps)
+	}
+}
+
+func TestSetGuides_HappyPaths(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "close")
+
+	for _, g := range []string{"pending", "updated", "waived: no user-facing surface"} {
+		if _, err := runOnto(t, "set", "guides", "c", g, "--dir", root); err != nil {
+			t.Fatalf("set guides %q: %v", g, err)
+		}
+		st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+		if st.Guides != g {
+			t.Errorf("Guides = %q, want %q", st.Guides, g)
+		}
+	}
+}
+
+func TestSetGuides_BadValueRejectedNoWrite(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "close")
+
+	if _, err := runOnto(t, "set", "guides", "c", "done", "--dir", root); err == nil {
+		t.Fatal("set guides done accepted, want rejection")
+	}
+	st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+	if st.Guides != "" {
+		t.Errorf("Guides = %q, want unchanged empty", st.Guides)
 	}
 }

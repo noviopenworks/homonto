@@ -144,3 +144,42 @@ func TestNewCommand_GateFailureCreatesNothing(t *testing.T) {
 		t.Errorf("expected docs/changes to not exist, stat err = %v", err)
 	}
 }
+
+func TestNewCommand_WorkflowFlag_SetsWorkflow(t *testing.T) {
+	for _, wf := range []string{"full", "fix", "tweak"} {
+		t.Run(wf, func(t *testing.T) {
+			dir := setUpGatedWorkspace(t)
+			if _, err := runOnto(t, "new", "feature-x", "--workflow", wf, "--dir", dir); err != nil {
+				t.Fatalf("new --workflow %s: %v", wf, err)
+			}
+			st, err := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-x", "onto-state.yaml"))
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if st.Workflow != wf {
+				t.Errorf("Workflow = %q, want %q", st.Workflow, wf)
+			}
+		})
+	}
+}
+
+func TestNewCommand_WorkflowDefaultsFull(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+	if _, err := runOnto(t, "new", "feature-y", "--dir", dir); err != nil {
+		t.Fatalf("new: %v", err)
+	}
+	st, _ := ontostate.Load(filepath.Join(dir, "docs", "changes", "feature-y", "onto-state.yaml"))
+	if st.Workflow != "full" {
+		t.Errorf("Workflow = %q, want full", st.Workflow)
+	}
+}
+
+func TestNewCommand_InvalidWorkflowCreatesNothing(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+	if _, err := runOnto(t, "new", "feature-z", "--workflow", "epic", "--dir", dir); err == nil {
+		t.Fatal("new --workflow epic succeeded, want rejection")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "docs", "changes", "feature-z")); !os.IsNotExist(err) {
+		t.Errorf("expected docs/changes/feature-z to not exist, stat err = %v", err)
+	}
+}

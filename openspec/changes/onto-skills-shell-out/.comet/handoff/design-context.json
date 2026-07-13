@@ -1,0 +1,14 @@
+{
+  "change": "onto-skills-shell-out",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "79620e1354b3453be8bb6b385d35aa84501665e4d9d98fc42a425666ac6cc80b",
+  "files": [
+    { "path": "openspec/changes/onto-skills-shell-out/proposal.md", "sha256": "ad63da037e972a1d3a431673ef823b0320a68a775334b232a275eeb5f9587c6a" },
+    { "path": "openspec/changes/onto-skills-shell-out/design.md", "sha256": "0b33b44d25824d66b0b80c6003bad1c92a6c68227aaa0029eda185ccfe96b352" },
+    { "path": "openspec/changes/onto-skills-shell-out/tasks.md", "sha256": "42b070f71179bb9e094793dd7287c05a2f57c9ceedc19424ad612e71de433bda" },
+    { "path": "openspec/changes/onto-skills-shell-out/specs/onto-binary/spec.md", "sha256": "e67b15c82ea68b19d3b4dab1babb44115bb79cc87864a0f7e21b855029e013ea" }
+  ]
+}

@@ -433,6 +433,7 @@ func fullFixtureState() State {
 		Verify:        Verify{Scale: "full", Result: "pass"},
 		Close:         Close{Merged: true},
 		Directive:     "user said: ship it without asking again",
+		Guides:        "updated",
 		Archived:      false,
 		Observed: Observed{
 			Metrics:         map[string]string{"open": "2026-07-13", "build": "2026-07-13"},
@@ -493,5 +494,36 @@ func TestValidate_EmptyOptionalEnums_Accepted(t *testing.T) {
 	st := State{Change: "c", Phase: "open"}
 	if err := st.Validate(); err != nil {
 		t.Errorf("Validate() rejected empty optionals: %v", err)
+	}
+}
+
+func TestValidate_Guides_AcceptsAllowedShapes(t *testing.T) {
+	for _, g := range []string{"", "pending", "updated", "waived: no user-facing surface"} {
+		st := State{Change: "c", Phase: "close", Guides: g}
+		if err := st.Validate(); err != nil {
+			t.Errorf("Validate() with guides %q = %v, want nil", g, err)
+		}
+	}
+}
+
+func TestValidate_Guides_RejectsUnknown(t *testing.T) {
+	st := State{Change: "c", Phase: "close", Guides: "done"}
+	if err := st.Validate(); err == nil {
+		t.Fatal("Validate() with guides \"done\" = nil, want error")
+	}
+}
+
+func TestValidGuides_Shapes(t *testing.T) {
+	ok := []string{"", "pending", "updated", "waived: deferred to N7", "waived:x"}
+	for _, v := range ok {
+		if !ValidGuides(v) {
+			t.Errorf("ValidGuides(%q) = false, want true", v)
+		}
+	}
+	bad := []string{"done", "waived", "waived:", "waived:   "} // empty/whitespace reason rejected
+	for _, v := range bad {
+		if ValidGuides(v) {
+			t.Errorf("ValidGuides(%q) = true, want false", v)
+		}
 	}
 }

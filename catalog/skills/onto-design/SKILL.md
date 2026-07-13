@@ -108,8 +108,7 @@ revealed different task boundaries.
 - [ ] onto-no-slop pass run over `design.md`, every ADR draft, and
       `notes.md`, scores recorded in `notes.md` (`no-slop: <artifact>
       <total>/50`; below 35 means revise before this gate)
-- [ ] `state.yaml` phase advanced: `design → build`;
-      `metrics.phases.design: <today>` stamped
+- [ ] Phase advanced design → build via `onto advance <name>`
 - [ ] **Commit the workspace**: `git add docs/changes/<name> && git commit`
       — every phase exits with its workspace committed
 - [ ] Announce the transition and load `onto-build`

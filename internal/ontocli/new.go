@@ -40,17 +40,21 @@ func validChangeName(name string) error {
 // scaffolding a new change-workspace skeleton, and performs no writes at
 // all if either check fails or the change directory already exists.
 func newCmd() *cobra.Command {
-	var dir string
+	var (
+		dir      string
+		workflow string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "new <change-name>",
 		Short: "Create a new change-workspace skeleton, if the onto framework is installed",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runNew(cmd, dir, args[0])
+			return runNew(cmd, dir, args[0], workflow)
 		},
 	}
 	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root to create the change in")
+	cmd.Flags().StringVar(&workflow, "workflow", "full", "workflow for the change: full, fix, or tweak")
 	return cmd
 }
 
@@ -58,13 +62,17 @@ func newCmd() *cobra.Command {
 // clobber an existing docs/changes/<name> directory, and only then
 // scaffolds onto-state.yaml plus empty proposal.md and tasks.md (each
 // written only if absent). It reports the created change and its files.
-func runNew(cmd *cobra.Command, root, name string) error {
+func runNew(cmd *cobra.Command, root, name, workflow string) error {
 	if err := gate(root); err != nil {
 		return err
 	}
 
 	if err := validChangeName(name); err != nil {
 		return err
+	}
+
+	if !ontostate.ValidWorkflow(workflow) {
+		return fmt.Errorf("onto new: workflow %q is not one of full|fix|tweak", workflow)
 	}
 
 	changeDir := filepath.Join(root, "docs", "changes", name)
@@ -78,7 +86,7 @@ func runNew(cmd *cobra.Command, root, name string) error {
 
 	st := ontostate.State{
 		Change:   name,
-		Workflow: "full",
+		Workflow: workflow,
 		Phase:    "open",
 		Created:  time.Now().Format("2006-01-02"),
 	}

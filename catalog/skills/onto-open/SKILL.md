@@ -59,18 +59,22 @@ dependencies, and core scenarios.
 Create `docs/changes/<name>/` (name confirmed by the user, kebab-case),
 each artifact from its canonical template:
 
-- `state.yaml` — template: `onto/references/state-yaml.md` (`phase: open`,
-  `base_ref: <git rev-parse HEAD, captured now, before anything is
-  committed — written once, never recomputed>`, `deps` from the
-  proposal's `Depends-on:` line, decisions null, metrics initialized per
-  the template: `phases: {}`, counters 0, `upgraded: false`).
+- Create the workspace via the binary: `onto new <name> --workflow full`
+  (`onto new` creates `onto-state.yaml` carrying `change`, `workflow: full`,
+  `phase: open`, `created`; and empty `proposal.md`/`tasks.md`). Then record
+  the creation fields the same way:
+  - `onto set base-ref <name> "$(git rev-parse HEAD)"` — captured NOW, before
+    anything is committed; written once, never recomputed.
+  - `onto set deps <name> --dep <a> --dep <b>` for each `Depends-on:` entry
+    (omit entirely when there are none).
 - `notes.md` — template: `references/notes.md`. Created NOW, seeded with
   the confirmed clarification summary. From this point, update it before
   ending **any** turn that produced new decisions — this is the
   compaction-recovery checkpoint.
-- `proposal.md` — template: `references/proposal.md`.
-- `tasks.md` — template: `references/tasks.md`. Skeleton sets boundaries;
-  build refines.
+- `proposal.md` — template: `references/proposal.md`; fill the skeleton `onto
+  new` created.
+- `tasks.md` — template: `references/tasks.md`; fill the skeleton. Skeleton
+  sets boundaries; build refines.
 
 Everything in the proposal must trace back to the confirmed clarification
 summary — no invented scope.
@@ -81,7 +85,7 @@ summary — no invented scope.
 
 ## Exit checklist
 
-- [ ] Workspace exists with `state.yaml`, `notes.md`, `proposal.md`,
+- [ ] Workspace exists with `onto-state.yaml`, `notes.md`, `proposal.md`,
       `tasks.md`, all template-conformant and consistent with the
       confirmed summary
 - [ ] `notes.md` Confirmed section reflects every answered gate
@@ -90,10 +94,9 @@ summary — no invented scope.
       blank (the close lint blocks a blank Grounding at archive)
 - [ ] Every gate that fired answered by the user (clarification, split
       when one was proposed, artifact review)
-- [ ] `state.yaml` phase advanced: `open → design` — written **only after**
-      the artifact-review gate is answered, never before (the dispatcher
-      treats a lagging phase as an unanswered gate and will re-present it)
-- [ ] `metrics.phases.open: <today>` stamped
+- [ ] Phase advanced open → design via `onto advance <name>` — run **only
+      after** the artifact-review gate is answered, never before (the
+      dispatcher treats a lagging phase as an unanswered gate and re-presents it)
 - [ ] onto-no-slop pass run over `proposal.md` and `notes.md`, its score
       recorded in `notes.md` (`no-slop: <artifact> <total>/50`; below 35
       means revise before this gate)

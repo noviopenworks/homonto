@@ -83,6 +83,79 @@ func setCmd() *cobra.Command {
 		func(s *ontostate.State, v string) { s.Verify.Result = v }))
 	cmd.AddCommand(closeMergedCmd())
 	cmd.AddCommand(directiveCmd())
+	cmd.AddCommand(baseRefCmd())
+	cmd.AddCommand(depsCmd())
+	cmd.AddCommand(guidesCmd())
+	return cmd
+}
+
+// guidesCmd sets the guides obligation field. It cannot use enumSetterCmd
+// because the "waived:<reason>" form is a prefix, not a fixed enum member.
+func guidesCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "guides <change> <value>",
+		Short: "Set a change's guides obligation: pending, updated, or waived:<reason>",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name, value := args[0], args[1]
+			return runTransition(cmd, dir, name, func(st *ontostate.State) error {
+				if !ontostate.ValidGuides(value) || value == "" {
+					return fmt.Errorf("onto set guides: %q is not one of pending|updated|waived:<reason>", value)
+				}
+				st.Guides = value
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	return cmd
+}
+
+// baseRefCmd records the change's base ref verbatim; presence-only shape
+// (empty rejected — a base ref is a real commit reference, not a clear).
+func baseRefCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "base-ref <change> <ref>",
+		Short: "Record the base git ref a change branched from",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name, ref := args[0], args[1]
+			return runTransition(cmd, dir, name, func(st *ontostate.State) error {
+				if ref == "" {
+					return fmt.Errorf("onto set base-ref: ref must not be empty")
+				}
+				st.BaseRef = ref
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	return cmd
+}
+
+// depsCmd sets the change's dependency list from a repeatable --dep flag.
+// --dep is used (not a comma-split positional) so dependency names carrying
+// edge characters are never ambiguously parsed.
+func depsCmd() *cobra.Command {
+	var (
+		dir  string
+		deps []string
+	)
+	cmd := &cobra.Command{
+		Use:   "deps <change> --dep <name> [--dep <name> ...]",
+		Short: "Set a change's dependency list (repeat --dep per dependency)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTransition(cmd, dir, args[0], func(st *ontostate.State) error {
+				st.Deps = deps
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	cmd.Flags().StringArrayVar(&deps, "dep", nil, "a dependency change name; repeat for several")
 	return cmd
 }
 
