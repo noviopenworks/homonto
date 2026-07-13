@@ -206,7 +206,14 @@ state path can't delete an arbitrary file. 195 tests -race.*
   same plain-name validation subagents already have; a cleaned path escaping the
   provider root is a load error.
 
-### N5. Make remote application transactional and drift-active
+### N5. Make remote application transactional and drift-active — ✅ DONE (2026-07-13)
+*Archived on `main` (`transactional-remote-apply`): F8 — `materializeRemotes`
+restructured to quarantine → stage-verify-ALL → activate (a mid-run failure leaves
+active content + lock untouched); F6 — a digest-only repin shows in `plan` and needs
+confirmation; F27 — git fetch under a deadline with size guards before checkout;
+F30 — doctor verifies materialized digests vs lock, revoked content deactivated;
+F26 — cache-race winner re-hashed. 583 tests -race. **Closes gate B.**
+
 - **Problem:** `materializeRemotes` prunes de-declared content, then fetches and
   materializes each remote in a loop; a later failure leaves earlier content
   changed and the lock stale (verified: `internal/engine/remote.go:62`). Revoked
@@ -378,14 +385,12 @@ caveat the review surfaced.
 
 1. **The strategic fork** — RESOLVED: binary-authoritative + B1 + T-honest-for-onto
    / T-hostile-for-engine. See "The strategic fork — RESOLVED" above.
-2. **`v0.1.0-rc.1`** — RESOLVED: **HOLD the tag.** The release-integrity gates are
-   green (`docs/roadmap.md` item 7), but the RC ships the projector, which is
-   T-hostile, and gate B (N4/N5/N6 — arbitrary deletion, non-transactional remote
-   apply, symlink-following writer, no locking) is not yet closed. We do not
-   publish a tag with live engine-safety holes. N3 (stale specs) is also a hard
-   blocker. Sequence: fix N3, close gate B, then cut the RC. (Considered and
-   rejected: cut now with `remote:` flag-gated experimental — rejected in favour of
-   a clean engine-safety story before any public tag.)
+2. **`v0.1.0-rc.1`** — HOLD conditions **now CLEARED (2026-07-13).** The RC was held
+   on N3 (stale specs) + gate B (engine safety). All are done and archived on `main`:
+   N3 (`fix-stale-canonical-specs`), N4 (`close-deletion-traversal-holes`), N6
+   (`control-plane-fs-safety-locking`), N5 (`transactional-remote-apply`). The tag
+   is now cuttable — remaining step is a **maintainer push + `v0.1.0-rc.1` tag** plus
+   the post-tag smoke (`docs/roadmap.md` item 7); the agent cannot push/tag.
 3. **Product hierarchy** (F21) — RESOLVED: homonto is the product; onto is its
    native, binary-enforced workflow; Comet/OpenSpec/Superpowers are unenforced
    alternatives. We build with Comet and ship onto. The persona/selection doc that
