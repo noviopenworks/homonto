@@ -328,9 +328,9 @@ What turns an opinionated internal toolkit into something others build on.
   validated, versioned path; unsupported source/kind combinations fail loudly.
 
 ### E2. Machine-readable CLI and a stable automation contract
-- **Partial (2026-07-13):** F49, F45, F51, F48 (`import-backup-before-overwrite`) archived on `main` — `NoArgs` on
+- **Partial (2026-07-13):** F49, F45, F51, F48, F52 (`init-augment-existing-gitignore`) archived on `main` — `NoArgs` on
   positional-free commands, and plan/status no longer claim "up to date"/"No drift"
-  (exit 0) after an adapter warning. Remaining E2: F46, F50 (`--output json` + exit-code taxonomy), F52.
+  (exit 0) after an adapter warning. Remaining E2: F46, F50 (`--output json` + exit-code taxonomy).
 - **Closes:** F45 (never print "up to date" after skipping an adapter), F46
   (catalog upgrades appear in the plan; doctor reports version mismatch), F49
   (`cobra.NoArgs` everywhere; a stray positional never silently ignored — verified
