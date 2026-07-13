@@ -2,32 +2,30 @@
 
 ## Purpose
 Defines the user-facing command surface and each command's safety behavior,
-including initialization, import, plan/apply/status, health checks, the
-lifecycle-managed agent command group, and version reporting.
+including initialization, import, plan/apply/status, health checks, and version
+reporting. There is no imperative agent command group; `[agents.<name>]` is a
+deprecated alias folded into a subagent at config load.
 ## Requirements
-
 ### Requirement: Command surface
 
 `homonto` SHALL expose the top-level commands `version`, `init`, `import`,
 `plan`, `apply`, `status`, and `doctor`, with a persistent `--config` flag
-(default `homonto.toml`), plus an `agents` command group whose subcommands manage
-lifecycle-managed `[agents.<name>]` resources: `agents list`, `agents add`,
-`agents update [--all]`, `agents doctor`, and `agents prune`. MCP servers,
-settings, plugins, marketplaces, TUI settings, skills, commands, subagents, and
-frameworks continue to be reconciled declaratively through the `plan`/`apply`
-model by editing `homonto.toml`; the `agents` group is the imperative lifecycle
-surface (install / re-materialize / verify / prune) for `[agents.<name>]`
-resources specifically, because their copy-and-merge lifecycle is not captured by
-the projection plan.
+(default `homonto.toml`). MCP servers, settings, plugins, marketplaces, TUI
+settings, skills, commands, subagents, and frameworks are reconciled
+declaratively through the `plan`/`apply` model by editing `homonto.toml`. The
+deprecated `[agents.<name>]` table is also handled declaratively: it is folded
+into an equivalent copy-mode subagent at config load and projected by `apply`
+like any other subagent. There is no imperative `agents` command group.
 
 #### Scenario: Version prints the build version
 - **WHEN** the user runs `homonto version`
 - **THEN** it prints `homonto <version>`
 
-#### Scenario: Agent subcommands are present
-- **WHEN** the user runs `homonto agents --help`
-- **THEN** it lists the `list`, `add`, `update`, `doctor`, and `prune`
-  subcommands
+#### Scenario: Only declarative commands are registered
+- **WHEN** the user runs `homonto --help`
+- **THEN** it lists exactly `version`, `init`, `import`, `plan`, `apply`,
+  `status`, and `doctor`
+- **AND** no `agents` command group is present
 
 ### Requirement: init scaffolds without overwriting
 

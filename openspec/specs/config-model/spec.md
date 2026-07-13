@@ -323,52 +323,6 @@ SHALL NOT have a `[tui.claude]` table — they are ordinary top-level
 - **WHEN** the config is parsed
 - **THEN** it is rejected naming the key
 
-### Requirement: Agent lifecycle declaration
-
-Lifecycle-managed agents SHALL be declarable as `[agents.<name>]` tables, distinct
-from the v1 `[subagents.<name>]` symlink model. Each agent table SHALL carry:
-
-- `source` (required): the agent source, using the `builtin:<name>` or
-  `local:<name>` scheme (remote schemes are not yet accepted);
-- `version` (optional string): a pinned version; empty means unpinned;
-- `targets` (optional list): target tools ∈ {`claude`, `opencode`}; empty means
-  both;
-- `mode` (optional): `copy` or `link`; empty defaults to `link`.
-
-A `local:` agent follows the general default (empty `mode` → `link`). A
-`builtin:` agent is an exception: a builtin source has no stable on-disk path to
-symlink, so a builtin agent with omitted `mode` SHALL default to `copy`, and a
-builtin agent with an explicit `mode = "link"` SHALL be rejected at load naming
-the agent (the effective-mode resolution in `internal/cli/agents.go:710-717`
-enforces this). `version` and `targets` defaults are unaffected.
-
-The agent name SHALL be validated as a config key. An invalid source scheme, an
-unknown target, or an invalid `mode` SHALL be rejected at load naming the agent.
-
-#### Scenario: Parse an agent declaration
-
-- **GIVEN** `[agents.review]` with `source = "builtin:review-agent"`, `version = "1.2.0"`, `targets = ["claude","opencode"]`, `mode = "copy"`
-- **WHEN** the config is parsed
-- **THEN** it yields an agent `review` with that source, version, targets, and mode
-
-#### Scenario: Defaults for optional fields
-
-- **GIVEN** `[agents.x]` with only `source = "local:x"`
-- **WHEN** the config is parsed
-- **THEN** the agent has empty version (unpinned), both tools as targets, and mode `link`
-
-#### Scenario: Invalid agent source is rejected
-
-- **GIVEN** `[agents.x]` with `source = "https://example.com/x"`
-- **WHEN** the config is parsed
-- **THEN** it is rejected naming the agent and the invalid source
-
-#### Scenario: Invalid agent mode is rejected
-
-- **GIVEN** `[agents.x]` with `source = "builtin:x"` and `mode = "symlink"`
-- **WHEN** the config is parsed
-- **THEN** it is rejected naming the agent and the invalid mode
-
 ### Requirement: Remote source form with required digest
 
 The config model SHALL accept a `remote:` URL source on any resource that
@@ -395,3 +349,40 @@ unchanged.
 - **GIVEN** existing `builtin:`/`local:` resources with no `digest`
 - **WHEN** the config loads
 - **THEN** they load exactly as before
+
+### Requirement: Deprecated agents table folds into subagents
+
+The `[agents.<name>]` table SHALL be a deprecated backward-compatibility alias
+with no separate lifecycle and no command surface: at config load `homonto` SHALL
+fold every declared `[agents.<name>]` into an equivalent subagent and then drop
+the agents table, so it is projected by `apply` like any other subagent. The fold
+SHALL:
+
+- set the subagent `scope` to `user`;
+- carry `source`, `version`, and `targets` through unchanged;
+- default `mode` to `copy` for a `builtin:` source with an omitted `mode` (a
+  builtin source has no linkable on-disk path), and otherwise carry `mode`
+  through unchanged;
+- let a declared `[agents.<name>]` win over an explicit `[subagents.<name>]` of
+  the same name.
+
+After the fold no `agents` table remains on the loaded config.
+
+#### Scenario: An agent declaration folds into a user-scope subagent
+
+- **GIVEN** `[agents.review]` with `source = "local:review"`, `version = "1.2.0"`, `targets = ["claude","opencode"]`
+- **WHEN** the config is loaded
+- **THEN** it yields a subagent `review` with that source, version, and targets, scope `user`
+- **AND** the loaded config has no `agents` table
+
+#### Scenario: A builtin agent with omitted mode folds to copy
+
+- **GIVEN** `[agents.x]` with only `source = "builtin:x"`
+- **WHEN** the config is loaded
+- **THEN** the folded subagent `x` has mode `copy`
+
+#### Scenario: A declared agent wins over a same-named subagent
+
+- **GIVEN** both `[agents.x]` and `[subagents.x]` are declared
+- **WHEN** the config is loaded
+- **THEN** the folded `[agents.x]` definition is the effective subagent `x`

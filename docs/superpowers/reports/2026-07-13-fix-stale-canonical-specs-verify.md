@@ -47,6 +47,18 @@ so the branch that lands carries corrected specs and a green gate. Full `gate.sh
 is green post-archive. This gap is expected for a change that fixes the very specs
 its new check guards.
 
+## Archive-gate amendment (2026-07-13)
+
+The first archive attempt aborted cleanly (no files changed): the `agent-lifecycle`
+delta removed *all* requirements, and OpenSpec cannot rebuild an empty spec
+("Spec must have at least one requirement"). OpenSpec has no delta form for
+deleting a capability. The delta was amended to reduce `agent-lifecycle` to a
+single retirement tombstone requirement ("Imperative agent lifecycle is retired"),
+which is both valid and truthful and carries no `` `homonto agents` `` token (so
+`spec-command-check` still passes). Re-validated: `openspec validate` clean,
+`--all` 16/16. This is a delta-correctness fix discovered at the gate, not a
+behavior change.
+
 ## Out of scope (recorded)
 
 - `config.go:526` silently discarding `[agents]` after the fold — F35-adjacent,
