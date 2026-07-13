@@ -9,7 +9,7 @@ import (
 func TestStateJSON_EmitsFullStateAndDerivedPhase(t *testing.T) {
 	root := t.TempDir() // read command needs no framework install
 	writeFile(t, filepath.Join(root, "docs", "changes", "c", "onto-state.yaml"),
-		"change: c\nworkflow: full\nphase: build\nisolation: worktree\n")
+		"schema_version: 1\nchange: c\nworkflow: full\nphase: build\nisolation: worktree\n")
 
 	before := treeSnapshot(t, root)
 
