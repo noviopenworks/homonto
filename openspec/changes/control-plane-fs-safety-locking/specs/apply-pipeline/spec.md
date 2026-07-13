@@ -6,12 +6,11 @@
 
 `homonto` SHALL write its own control-plane files (state, cache, lockfile, and
 catalog materialization under `.homonto/`) without following a symlink at the
-destination. The writer SHALL refuse to write when the target path is, or resolves
-through, a symlink, and SHALL confine the resolved path under the project's
-`.homonto` root;
-a target escaping that root SHALL be a write error, never followed. Writes to a
-tool's own config files (which may legitimately be user-symlinked) keep the
-existing atomic writer.
+destination. The writer SHALL refuse to write when the destination's final path
+component is a symlink (it never resolves it), so a symlink planted at a
+predictable `.homonto` control-plane path cannot redirect the write outside the
+project. Writes to a tool's own config files (which may legitimately be
+user-symlinked) keep the existing atomic writer.
 
 #### Scenario: a symlinked control-plane target is refused
 

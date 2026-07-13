@@ -1,6 +1,6 @@
 workflow: tweak
 language: en
-phase: open
+phase: build
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -19,3 +19,9 @@ branch_status: pending
 created_at: 2026-07-13
 verified_at: null
 archived: false
+direct_override: null
+handoff_context: null
+handoff_hash: null
+classic_profile: tweak
+classic_migration: 1
+run_id: b3268827-d421-4c8d-a4e6-7b3d34fa5f5f
