@@ -18,7 +18,7 @@ verification_report: docs/superpowers/reports/2026-07-13-adapter-registry-verify
 branch_status: handled
 created_at: 2026-07-13
 verified_at: 2026-07-13
-archived: false
+archived: true
 direct_override: null
 handoff_context: openspec/changes/adapter-registry/.comet/handoff/design-context.json
 handoff_hash: 8a8c3d712abb455f8b03c27cf3f747d27378b2abf9ec520d50b9ab1dd79f86ca

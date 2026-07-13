@@ -4,5 +4,6 @@
   "openspec_tasks": "openspec/changes/adapter-registry/tasks.md",
   "openspec_delta_spec": "openspec/changes/adapter-registry/specs/adapter-contract/spec.md",
   "handoff_context": "openspec/changes/adapter-registry/.comet/handoff/design-context.json",
-  "handoff_markdown": "openspec/changes/adapter-registry/.comet/handoff/design-context.md"
+  "handoff_markdown": "openspec/changes/adapter-registry/.comet/handoff/design-context.md",
+  "archive_directory": "openspec/changes/archive/2026-07-13-adapter-registry"
 }

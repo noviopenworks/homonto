@@ -3,6 +3,8 @@ comet_change: adapter-registry
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-adapter-registry
+status: final
 ---
 
 # adapter-registry — Technical Design
