@@ -24,6 +24,10 @@ type Framework struct {
 	Skills                map[string]string // skill name -> catalog-relative path ("skills/<n>")
 	Commands              map[string]string // command name -> catalog-relative path ("commands/<n>.md")
 	Subagents             map[string]string // subagent name -> catalog-relative path ("subagents/<n>.md")
+	// srcFS is the filesystem this framework was read from (the embedded base or
+	// a local overlay). Resource paths are relative to it; carried so a consumer
+	// can resolve overlay content later. The base's is the common case.
+	srcFS fs.FS
 }
 
 // Catalog is the loaded, indexed catalog.
@@ -59,23 +63,46 @@ type frameworkTOML struct {
 // New loads the production catalog from the embedded filesystem.
 func New() (*Catalog, error) { return Load(embedded.FS) }
 
-// Load parses every frameworks/<name>/framework.toml in fsys, validates that
-// each declared skill path exists and that a framework's name equals its
-// directory, and reads version.txt (trimmed).
-func Load(fsys fs.FS) (*Catalog, error) {
+// Load parses a single catalog source. It is LoadOverlays with no overlays.
+func Load(fsys fs.FS) (*Catalog, error) { return LoadOverlays(fsys) }
+
+// LoadOverlays loads the base catalog source, then merges each overlay source
+// over it. Every source is validated through the same checks (manifest schema,
+// name==directory, resource-path existence). An overlay that redefines a
+// resource name already provided by an earlier source with a different path is a
+// strict conflict (the shared-index guard); an identical mapping collapses.
+// version.txt is read from the base only; dependency-range validation runs once
+// after all sources are indexed so a cross-source dependency is checked.
+func LoadOverlays(base fs.FS, overlays ...fs.FS) (*Catalog, error) {
 	c := &Catalog{
-		fsys:       fsys,
+		fsys:       base,
 		frameworks: map[string]Framework{},
 		skills:     map[string]string{},
 		commands:   map[string]string{},
 		subagents:  map[string]string{},
 	}
-	vb, err := fs.ReadFile(fsys, "version.txt")
+	vb, err := fs.ReadFile(base, "version.txt")
 	if err != nil {
 		return nil, fmt.Errorf("catalog: read version.txt: %w", err)
 	}
 	c.version = strings.TrimSpace(string(vb))
 
+	for _, src := range append([]fs.FS{base}, overlays...) {
+		if err := c.mergeSource(src); err != nil {
+			return nil, err
+		}
+	}
+	if err := c.validateDependencyRanges(); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// mergeSource indexes one catalog source's frameworks and loose resources into
+// c, validating each and enforcing the strict cross-source conflict policy via
+// the shared index. fs operations use src, so resource paths are validated in
+// the source they belong to.
+func (c *Catalog) mergeSource(src fs.FS) error {
 	// Loose (framework-agnostic) subagents: every "<n>.md" file directly under
 	// subagents/ is indexed by base name, independent of any framework
 	// declaring it. Unlike skills/commands, subagents are designed to include
@@ -83,7 +110,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	// directly by an explicit [subagents.X] config entry with no framework
 	// home. The subagents/ directory is optional — fixtures/tests that don't
 	// exercise subagents need not provide one.
-	if entries, err := fs.ReadDir(fsys, "subagents"); err == nil {
+	if entries, err := fs.ReadDir(src, "subagents"); err == nil {
 		for _, e := range entries {
 			if e.IsDir() {
 				continue
@@ -96,9 +123,9 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		}
 	}
 
-	dirs, err := fs.ReadDir(fsys, "frameworks")
+	dirs, err := fs.ReadDir(src, "frameworks")
 	if err != nil {
-		return nil, fmt.Errorf("catalog: read frameworks: %w", err)
+		return fmt.Errorf("catalog: read frameworks: %w", err)
 	}
 	for _, d := range dirs {
 		if !d.IsDir() {
@@ -106,47 +133,47 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		}
 		dir := d.Name()
 		tp := path.Join("frameworks", dir, "framework.toml")
-		b, err := fs.ReadFile(fsys, tp)
+		b, err := fs.ReadFile(src, tp)
 		if err != nil {
-			return nil, fmt.Errorf("catalog: read %s: %w", tp, err)
+			return fmt.Errorf("catalog: read %s: %w", tp, err)
 		}
 		var ft frameworkTOML
 		if err := toml.Unmarshal(b, &ft); err != nil {
-			return nil, fmt.Errorf("catalog: parse %s: %w", tp, err)
+			return fmt.Errorf("catalog: parse %s: %w", tp, err)
 		}
 		// Forward-safety: refuse a manifest from a newer schema before indexing
 		// any of its resources, so an older binary never silently half-reads a
 		// newer framework manifest. Absent/0 is a legacy manifest (current).
 		if ft.ManifestSchema > CurrentManifestSchemaVersion {
-			return nil, fmt.Errorf("catalog: framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto", dir, ft.ManifestSchema, CurrentManifestSchemaVersion)
+			return fmt.Errorf("catalog: framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto", dir, ft.ManifestSchema, CurrentManifestSchemaVersion)
 		}
 		if ft.Name != dir {
-			return nil, fmt.Errorf("catalog: framework %q declares name %q; name must equal directory", dir, ft.Name)
+			return fmt.Errorf("catalog: framework %q declares name %q; name must equal directory", dir, ft.Name)
 		}
 		for skill, sp := range ft.Skills {
-			if _, err := fs.Stat(fsys, sp); err != nil {
-				return nil, fmt.Errorf("catalog: framework %q skill %q path %q missing from catalog", dir, skill, sp)
+			if _, err := fs.Stat(src, sp); err != nil {
+				return fmt.Errorf("catalog: framework %q skill %q path %q missing from catalog", dir, skill, sp)
 			}
 			if prev, ok := c.skills[skill]; ok && prev != sp {
-				return nil, fmt.Errorf("catalog: skill %q mapped to both %q and %q", skill, prev, sp)
+				return fmt.Errorf("catalog: skill %q mapped to both %q and %q", skill, prev, sp)
 			}
 			c.skills[skill] = sp
 		}
 		for command, cp := range ft.Commands {
-			if _, err := fs.Stat(fsys, cp); err != nil {
-				return nil, fmt.Errorf("catalog: framework %q command %q path %q missing from catalog", dir, command, cp)
+			if _, err := fs.Stat(src, cp); err != nil {
+				return fmt.Errorf("catalog: framework %q command %q path %q missing from catalog", dir, command, cp)
 			}
 			if prev, ok := c.commands[command]; ok && prev != cp {
-				return nil, fmt.Errorf("catalog: command %q mapped to both %q and %q", command, prev, cp)
+				return fmt.Errorf("catalog: command %q mapped to both %q and %q", command, prev, cp)
 			}
 			c.commands[command] = cp
 		}
 		for subagent, sap := range ft.Subagents {
-			if _, err := fs.Stat(fsys, sap); err != nil {
-				return nil, fmt.Errorf("catalog: framework %q subagent %q path %q missing from catalog", dir, subagent, sap)
+			if _, err := fs.Stat(src, sap); err != nil {
+				return fmt.Errorf("catalog: framework %q subagent %q path %q missing from catalog", dir, subagent, sap)
 			}
 			if prev, ok := c.subagents[subagent]; ok && prev != sap {
-				return nil, fmt.Errorf("catalog: subagent %q mapped to both %q and %q", subagent, prev, sap)
+				return fmt.Errorf("catalog: subagent %q mapped to both %q and %q", subagent, prev, sap)
 			}
 			c.subagents[subagent] = sap
 		}
@@ -166,6 +193,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			}
 		}
 		c.frameworks[dir] = Framework{
+			srcFS:                 src,
 			Name:                  ft.Name,
 			Version:               ft.Version,
 			Description:           ft.Description,
@@ -176,31 +204,11 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			Subagents:             ft.Subagents,
 		}
 	}
-
-	// Validate dependency version ranges now that every framework is indexed: a
-	// constrained dependency must resolve to a known framework whose version
-	// satisfies the constraint, else fail loud (E1 compatibility gate).
-	for name, fw := range c.frameworks {
-		for dep, constraint := range fw.DependencyConstraints {
-			target, ok := c.frameworks[dep]
-			if !ok {
-				return nil, fmt.Errorf("catalog: framework %q depends on %q@%s, but %q is not a known framework", name, dep, constraint, dep)
-			}
-			ok, err := satisfies(target.Version, constraint)
-			if err != nil {
-				return nil, fmt.Errorf("catalog: framework %q dependency %q: %w", name, dep, err)
-			}
-			if !ok {
-				return nil, fmt.Errorf("catalog: framework %q requires %q@%s, but %q is version %s", name, dep, constraint, dep, target.Version)
-			}
-		}
-	}
-
 	// Loose (framework-agnostic) skills and commands: a skills/<dir> holding a
 	// SKILL.md, or a commands/<n>.md file, not already claimed by a framework is
 	// indexed by name so it installs as builtin:<name> with no framework home
 	// (mirrors loose subagents). Framework declarations take precedence.
-	if entries, err := fs.ReadDir(fsys, "skills"); err == nil {
+	if entries, err := fs.ReadDir(src, "skills"); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {
 				continue
@@ -210,13 +218,13 @@ func Load(fsys fs.FS) (*Catalog, error) {
 				continue // a framework already declares this skill
 			}
 			sp := path.Join("skills", name)
-			if _, err := fs.Stat(fsys, path.Join(sp, "SKILL.md")); err != nil {
+			if _, err := fs.Stat(src, path.Join(sp, "SKILL.md")); err != nil {
 				continue // a skill directory must hold a SKILL.md
 			}
 			c.skills[name] = sp
 		}
 	}
-	if entries, err := fs.ReadDir(fsys, "commands"); err == nil {
+	if entries, err := fs.ReadDir(src, "commands"); err == nil {
 		for _, e := range entries {
 			if e.IsDir() {
 				continue
@@ -231,7 +239,31 @@ func Load(fsys fs.FS) (*Catalog, error) {
 			c.commands[name] = path.Join("commands", e.Name())
 		}
 	}
-	return c, nil
+	return nil
+}
+
+// validateDependencyRanges checks every framework's constrained dependencies
+// against the versions of the indexed frameworks, after all sources are merged.
+func (c *Catalog) validateDependencyRanges() error {
+	// Validate dependency version ranges now that every framework is indexed: a
+	// constrained dependency must resolve to a known framework whose version
+	// satisfies the constraint, else fail loud (E1 compatibility gate).
+	for name, fw := range c.frameworks {
+		for dep, constraint := range fw.DependencyConstraints {
+			target, ok := c.frameworks[dep]
+			if !ok {
+				return fmt.Errorf("catalog: framework %q depends on %q@%s, but %q is not a known framework", name, dep, constraint, dep)
+			}
+			ok, err := satisfies(target.Version, constraint)
+			if err != nil {
+				return fmt.Errorf("catalog: framework %q dependency %q: %w", name, dep, err)
+			}
+			if !ok {
+				return fmt.Errorf("catalog: framework %q requires %q@%s, but %q is version %s", name, dep, constraint, dep, target.Version)
+			}
+		}
+	}
+	return nil
 }
 
 // Version returns the catalog version string from version.txt.
