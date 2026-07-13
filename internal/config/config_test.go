@@ -1176,6 +1176,45 @@ func TestAgentsRejectTraversalLocalSource(t *testing.T) {
 	}
 }
 
+// TestResourcesRejectTraversalLocalSource: a local: source with path components
+// is rejected for skills AND commands (F28) — the same plain-name rule subagents
+// already enforce, so a local:../../x can never join a traversal suffix into a
+// provider path.
+func TestResourcesRejectTraversalLocalSource(t *testing.T) {
+	cases := []struct {
+		name string
+		doc  string
+	}{
+		{"skill", "[skills.x]\nsource = \"local:../../etc/x\"\nscope = \"user\"\n"},
+		{"command", "[commands.y]\nsource = \"local:../y\"\nscope = \"user\"\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := loadDoc(t, tc.doc)
+			if err == nil {
+				t.Fatalf("traversal local %s source accepted; want load error", tc.name)
+			}
+			if !strings.Contains(err.Error(), "plain name") {
+				t.Fatalf("error does not flag the bad source: %v", err)
+			}
+		})
+	}
+}
+
+// TestResourcesAcceptPlainLocalSource: a plain local: name passes for skills and
+// commands (the non-traversal counterpart to the rejection above).
+func TestResourcesAcceptPlainLocalSource(t *testing.T) {
+	docs := []string{
+		"[skills.x]\nsource = \"local:x\"\nscope = \"user\"\n" + validModelsBothTools(),
+		"[commands.y]\nsource = \"local:y\"\nscope = \"user\"\n" + validModelsBothTools(),
+	}
+	for _, doc := range docs {
+		if err := loadDoc(t, doc); err != nil {
+			t.Fatalf("plain local source must load, got %v for:\n%s", err, doc)
+		}
+	}
+}
+
 // TestAgentsRejectInvalidMode: a mode outside copy/link is rejected, naming the
 // agent and the offending mode.
 func TestAgentsRejectInvalidMode(t *testing.T) {
