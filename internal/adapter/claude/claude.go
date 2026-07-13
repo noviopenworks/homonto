@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/adapter/copyproj"
 	"github.com/noviopenworks/homonto/internal/adapter/fileproj"
 	"github.com/noviopenworks/homonto/internal/adapter/jsoncodec"
 	"github.com/noviopenworks/homonto/internal/adapter/structproj"
@@ -275,74 +276,25 @@ func (a *Adapter) copySubagentDesired() (map[string][]byte, error) {
 	return out, nil
 }
 
-// recordedCopyHashes returns dst -> recorded content hash for every
-// subagentcopy.* key in state (Desired holds the dst, Applied the content hash).
-func recordedCopyHashes(st *state.State, tool string) map[string]string {
-	out := map[string]string{}
-	for _, key := range st.Keys(tool) {
-		if !strings.HasPrefix(key, "subagentcopy.") {
-			continue
-		}
-		if e, ok := st.Get(tool, key); ok {
-			out[e.Desired] = e.Applied
-		}
-	}
-	return out
-}
-
-// copySubagentName recovers the subagent name from a managed copy-file dst.
-func copySubagentName(dst string) string {
-	return strings.TrimSuffix(filepath.Base(dst), ".md")
-}
-
-// planCopyOps computes the reconciler ops for copy-mode subagents against state.
+// planCopyOps computes the reconciler ops for copy-mode subagents against state
+// through the shared copyproj core.
 func (a *Adapter) planCopyOps(st *state.State) ([]copyfile.Op, error) {
 	desired, err := a.copySubagentDesired()
 	if err != nil {
 		return nil, err
 	}
-	return copyfile.Plan(desired, recordedCopyHashes(st, "claude"))
+	return copyproj.Plan("claude", desired, st)
 }
 
-// applyCopySubagents reconciles copy-mode subagent content files: it writes
-// created/updated files, prunes de-declared ones, and backs up any local edit to
-// <dst>.bak before overwriting or pruning (never losing a user's edit) — the
-// pre-merge behavior; three-way merge replaces the backup+overwrite later. A
-// destination occupied by a foreign file or a symlink is a conflict and aborts.
+// applyCopySubagents reconciles copy-mode subagent content files through the
+// shared copyproj core (write/update/prune + local-edit .bak backup + state,
+// conflict abort, F7 prune-root guard).
 func (a *Adapter) applyCopySubagents(st *state.State) error {
-	ops, err := a.planCopyOps(st)
+	desired, err := a.copySubagentDesired()
 	if err != nil {
 		return err
 	}
-	for i, op := range ops {
-		switch op.Action {
-		case copyfile.Conflict:
-			return fmt.Errorf("claude: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
-		case copyfile.LocalEdit:
-			if err := fsutil.WriteAtomic(op.Dst+".bak", op.OnDisk); err != nil {
-				return err
-			}
-			if op.Content == nil {
-				ops[i].Action = copyfile.Prune // de-declared + edited: backed up, now remove
-			} else {
-				ops[i].Action = copyfile.Update // declared + edited: backed up, now overwrite
-			}
-		}
-	}
-	rec, pruned, _, err := copyfile.Apply(ops, a.copyPruneRoots())
-	if err != nil {
-		return err
-	}
-	for dst, h := range rec {
-		st.Set("claude", "subagentcopy."+copySubagentName(dst), dst, h)
-	}
-	// Refused prunes (dst outside the managed root — a tampered state entry) are
-	// deliberately NOT in `pruned`, so their ownership record is retained rather
-	// than dropped and the out-of-root file is never deleted.
-	for _, dst := range pruned {
-		st.Delete("claude", "subagentcopy."+copySubagentName(dst))
-	}
-	return nil
+	return copyproj.Apply("claude", desired, st, a.copyPruneRoots())
 }
 
 // copyPruneRoots are the directories a copy-mode subagent file may legitimately
@@ -535,7 +487,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		return adapter.ChangeSet{}, err
 	}
 	for _, op := range copyOps {
-		name := copySubagentName(op.Dst)
+		name := copyproj.Name(op.Dst)
 		switch op.Action {
 		case copyfile.Conflict:
 			return adapter.ChangeSet{}, fmt.Errorf("claude: %s exists and is not a homonto-managed copy-mode subagent; not overwriting", op.Dst)
