@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: verify
+phase: archive
 context_compression: off
 build_mode: executing-plans
 build_pause: null
@@ -13,11 +13,11 @@ auto_transition: true
 base_ref: b9205515caf9b18d2e15b2c41b3ac2b332cd1bc7
 design_doc: docs/superpowers/specs/2026-07-13-adapter-registry-design.md
 plan: docs/superpowers/plans/2026-07-13-adapter-registry.md
-verify_result: pending
+verify_result: pass
 verification_report: docs/superpowers/reports/2026-07-13-adapter-registry-verify.md
-branch_status: pending
+branch_status: handled
 created_at: 2026-07-13
-verified_at: null
+verified_at: 2026-07-13
 archived: false
 direct_override: null
 handoff_context: openspec/changes/adapter-registry/.comet/handoff/design-context.json
