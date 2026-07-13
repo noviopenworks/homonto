@@ -71,6 +71,10 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto advance: loading %s: %w", statePath, err)
 	}
 
+	if st.Abandoned {
+		return fmt.Errorf("onto advance: %q is abandoned (a terminal state); nothing to advance", name)
+	}
+
 	next, ok := ontostate.NextPhase(st.Phase)
 	if !ok {
 		return fmt.Errorf("onto advance: %q is at terminal/unknown phase %q; nothing to advance", name, st.Phase)

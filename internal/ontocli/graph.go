@@ -16,11 +16,12 @@ import (
 // carrying id/phase/archived) or a capability (kind "capability", named in the
 // Change field with id/phase empty).
 type graphNode struct {
-	ID       string `json:"id"`
-	Change   string `json:"change"`
-	Phase    string `json:"phase"`
-	Archived bool   `json:"archived"`
-	Kind     string `json:"kind"`
+	ID        string `json:"id"`
+	Change    string `json:"change"`
+	Phase     string `json:"phase"`
+	Archived  bool   `json:"archived"`
+	Abandoned bool   `json:"abandoned"`
+	Kind      string `json:"kind"`
 }
 
 // graphEdge is a typed relationship between changes. Edge types: "depends-on"
@@ -74,6 +75,9 @@ func graphCmd() *cobra.Command {
 					suffix := ""
 					if n.Archived {
 						suffix = ", archived"
+					}
+					if n.Abandoned {
+						suffix += ", abandoned"
 					}
 					id := n.ID
 					if id == "" {
@@ -213,7 +217,7 @@ func buildGraph(root string) ([]graphNode, []graphEdge, error) {
 		if class != "valid" || name == "" {
 			name = fallbackName
 		}
-		nodes = append(nodes, graphNode{ID: st.ID, Change: name, Phase: st.Phase, Archived: archived || st.Archived, Kind: "change"})
+		nodes = append(nodes, graphNode{ID: st.ID, Change: name, Phase: st.Phase, Archived: archived || st.Archived, Abandoned: st.Abandoned, Kind: "change"})
 		for _, dep := range st.Deps {
 			edges = append(edges, graphEdge{From: name, To: dep, Type: "depends-on"})
 		}

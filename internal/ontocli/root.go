@@ -30,6 +30,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newCmd())
 	root.AddCommand(advanceCmd())
 	root.AddCommand(closeCmd())
+	root.AddCommand(abandonCmd())
 	root.AddCommand(doctorCmd())
 	root.AddCommand(setCmd())
 	root.AddCommand(stateCmd())
