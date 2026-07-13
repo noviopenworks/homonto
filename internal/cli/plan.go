@@ -87,7 +87,7 @@ func planJSON(cmd *cobra.Command, sets []adapter.ChangeSet, repins []engine.Remo
 			if c.Action == "noop" {
 				continue
 			}
-			cs = append(cs, changeJSON{Action: c.Action, Key: c.Key})
+			cs = append(cs, changeJSON{Action: string(c.Action), Key: c.Key})
 		}
 		if len(cs) > 0 {
 			setsOut = append(setsOut, setJSON{Tool: s.Tool, Changes: cs})

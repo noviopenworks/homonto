@@ -1,7 +1,7 @@
 # Tasks — typed-plan-operations
 
 ## 1. Typed action + validation
-- [ ] adapter.Action defined type + constants + Valid(); Change.Action is Action.
+- [x] adapter.Action defined type + constants + Valid(); Change.Action is Action.
       ChangeSet.Validate(knownTools) rejects unknown action/tool. Unit tests.
 
 ## 2. Engine fail-closed wiring

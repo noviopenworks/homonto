@@ -75,7 +75,7 @@ func TestApplyAdoptRecordsStateThroughEngine(t *testing.T) {
 }
 
 // findChange returns the first change across all sets matching action and key.
-func findChange(sets []adapter.ChangeSet, action, key string) *adapter.Change {
+func findChange(sets []adapter.ChangeSet, action adapter.Action, key string) *adapter.Change {
 	for i := range sets {
 		for j := range sets[i].Changes {
 			if sets[i].Changes[j].Action == action && sets[i].Changes[j].Key == key {
