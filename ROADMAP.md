@@ -366,10 +366,19 @@ What turns an opinionated internal toolkit into something others build on.
   core via one shared `internal/adapter/jsoncodec` (Codec over `jsonutil`),
   mirroring Codex — the duplicated diff/write/observe control-flow was removed
   (claude 1037→948, opencode 999→954). Behavior-preserving, pinned by the
-  conformance suite; 645 tests green under -race. Remaining F40: the
-  **file-projection** consolidation (symlinked skills/commands/subagents,
-  copy-subagents) — a separate, higher-risk change needing its own shared
-  contract (opencode's array-based `plugin.*` also stays adapter-owned).
+  conformance suite; 645 tests green under -race. **F40 file-projection slice
+  DONE (2026-07-13, `consolidate-file-projection` archived):** new
+  `internal/adapter/fileproj` (symlink analogue of structproj) now owns both
+  adapters' `skill.*`/`command.*`/`subagent.*` symlink projection via a
+  type-agnostic `[]fileproj.Link`; six near-identical inline blocks removed, Apply
+  fail-fast conflict ordering preserved verbatim, generic delete loop keeps pruning
+  (fileproj plans no deletes). **F40 is now COMPLETE** across both slices: the two
+  adapters dropped claude 1037→762, opencode 999→776, behind the shared
+  `structproj`+`jsoncodec`+`fileproj` cores. Only follow-on left is copy-mode
+  (`subagentcopy.*`) consolidation — a small optional change wrapping the already-
+  shared `internal/copyfile` (opencode's array-based `plugin.*` stays adapter-owned
+  by design). **E3 exit gate met** (conformance suite every adapter passes; the two
+  big adapters reduced to shared cores + thin per-tool builders).
 - **Closes:** F40 (both adapters are ~1000 lines duplicating security-sensitive
   planning/link/prune/copy/adopt/drift logic; the Codex `structproj` design is the
   better direction — migrate the two onto the contract), F55 (a reusable
