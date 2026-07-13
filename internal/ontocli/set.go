@@ -81,5 +81,48 @@ func setCmd() *cobra.Command {
 		func(s *ontostate.State, v string) { s.Verify.Scale = v }))
 	cmd.AddCommand(enumSetterCmd("verify-result", []string{"pending", "pass", "fail"},
 		func(s *ontostate.State, v string) { s.Verify.Result = v }))
+	cmd.AddCommand(closeMergedCmd())
+	cmd.AddCommand(directiveCmd())
+	return cmd
+}
+
+// closeMergedCmd sets close.merged=true. It takes no value and is idempotent.
+func closeMergedCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "close-merged <change>",
+		Short: "Mark a change's close.merged flag true (idempotent)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTransition(cmd, dir, args[0], func(st *ontostate.State) error {
+				st.Close.Merged = true
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	return cmd
+}
+
+// directiveCmd stores a free-string directive verbatim; presence-only shape
+// (empty rejected — a directive is a real pre-authorization, not a clear).
+func directiveCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "directive <change> <text>",
+		Short: "Record a verbatim pre-authorization directive on a change",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name, text := args[0], args[1]
+			return runTransition(cmd, dir, name, func(st *ontostate.State) error {
+				if text == "" {
+					return fmt.Errorf("onto set directive: text must not be empty")
+				}
+				st.Directive = text
+				return nil
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
 	return cmd
 }

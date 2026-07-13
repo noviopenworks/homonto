@@ -76,3 +76,41 @@ func TestSetEnumSetters_HappyPaths(t *testing.T) {
 		}
 	}
 }
+
+func TestSetCloseMerged_SetsTrueIdempotently(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "close")
+
+	for i := 0; i < 2; i++ { // idempotent: running twice is fine
+		if _, err := runOnto(t, "set", "close-merged", "c", "--dir", root); err != nil {
+			t.Fatalf("set close-merged (run %d): %v", i, err)
+		}
+	}
+	st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+	if !st.Close.Merged {
+		t.Errorf("Close.Merged = false, want true")
+	}
+}
+
+func TestSetDirective_StoresVerbatim(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "build")
+
+	const text = "ship without re-asking the isolation gate"
+	if _, err := runOnto(t, "set", "directive", "c", text, "--dir", root); err != nil {
+		t.Fatalf("set directive: %v", err)
+	}
+	st, _ := ontostate.LoadChange(filepath.Join(root, "docs", "changes", "c"))
+	if st.Directive != text {
+		t.Errorf("Directive = %q, want %q", st.Directive, text)
+	}
+}
+
+func TestSetDirective_EmptyRejected(t *testing.T) {
+	root := prepWorkspace(t)
+	seedChange(t, root, "c", "build")
+
+	if _, err := runOnto(t, "set", "directive", "c", "", "--dir", root); err == nil {
+		t.Fatal("empty directive accepted, want rejection")
+	}
+}
