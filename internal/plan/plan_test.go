@@ -90,7 +90,7 @@ func TestHasChangesFalseForAdoptOnly(t *testing.T) {
 }
 
 func TestHasChangesTrueForEachVisibleAction(t *testing.T) {
-	for _, action := range []string{"create", "update", "delete"} {
+	for _, action := range []adapter.Action{"create", "update", "delete"} {
 		sets := []adapter.ChangeSet{{Tool: "claude", Changes: []adapter.Change{
 			{Action: "adopt", Key: "mcp.brave"},
 			{Action: action, Key: "mcp.other"},

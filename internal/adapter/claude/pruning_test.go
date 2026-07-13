@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func findChange(cs adapter.ChangeSet, action, key string) *adapter.Change {
+func findChange(cs adapter.ChangeSet, action adapter.Action, key string) *adapter.Change {
 	for i, c := range cs.Changes {
 		if c.Action == action && c.Key == key {
 			return &cs.Changes[i]

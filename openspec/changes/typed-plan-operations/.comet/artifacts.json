@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/typed-plan-operations/proposal.md",
+  "openspec_design": "openspec/changes/typed-plan-operations/design.md",
+  "openspec_tasks": "openspec/changes/typed-plan-operations/tasks.md",
+  "openspec_delta_spec": "openspec/changes/typed-plan-operations/specs/apply-pipeline/spec.md",
+  "handoff_context": "openspec/changes/typed-plan-operations/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/typed-plan-operations/.comet/handoff/design-context.md"
+}
