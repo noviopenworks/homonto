@@ -1,0 +1,8 @@
+{
+  "openspec_proposal": "openspec/changes/local-frameworks/proposal.md",
+  "openspec_design": "openspec/changes/local-frameworks/design.md",
+  "openspec_tasks": "openspec/changes/local-frameworks/tasks.md",
+  "openspec_delta_spec": "openspec/changes/local-frameworks/specs/framework-expansion/spec.md",
+  "handoff_context": "openspec/changes/local-frameworks/.comet/handoff/design-context.json",
+  "handoff_markdown": "openspec/changes/local-frameworks/.comet/handoff/design-context.md"
+}
