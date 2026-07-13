@@ -3,6 +3,8 @@ comet_change: framework-dependency-ranges
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-framework-dependency-ranges
+status: final
 ---
 
 # framework-dependency-ranges — Technical Design (E1 phase-2)
