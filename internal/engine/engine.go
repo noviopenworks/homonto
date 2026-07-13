@@ -8,9 +8,7 @@ import (
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
-	"github.com/noviopenworks/homonto/internal/adapter/claude"
-	"github.com/noviopenworks/homonto/internal/adapter/codex"
-	"github.com/noviopenworks/homonto/internal/adapter/opencode"
+	"github.com/noviopenworks/homonto/internal/adapter/registry"
 	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/secret"
@@ -72,11 +70,15 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	}
 	return &Engine{
 		Cfg: cfg,
-		Adapters: []adapter.Adapter{
-			claude.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir).WithRemoteSubagentRoot(remoteSubagentDir),
-			opencode.New(home, contentDir).WithProjectRoot(projectRoot).WithCatalogRoot(catalogDir).WithCommandCatalogRoot(commandCatalogDir).WithSubagentCatalogRoot(subagentCatalogDir).WithRemoteSubagentRoot(remoteSubagentDir),
-			codex.New(home),
-		},
+		Adapters: registry.Builtins().Build(registry.Deps{
+			Home:               home,
+			ContentDir:         contentDir,
+			ProjectRoot:        projectRoot,
+			CatalogDir:         catalogDir,
+			CommandCatalogDir:  commandCatalogDir,
+			SubagentCatalogDir: subagentCatalogDir,
+			RemoteSubagentDir:  remoteSubagentDir,
+		}),
 		State:               st,
 		StateDir:            stateDir,
 		ContentDir:          contentDir,
