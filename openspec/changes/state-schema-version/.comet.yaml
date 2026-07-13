@@ -1,6 +1,6 @@
 workflow: tweak
 language: en
-phase: build
+phase: verify
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -14,8 +14,8 @@ base_ref: 41a0b84a9d082dfdcca316a8754ba805c3292463
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: null
-branch_status: pending
+verification_report: docs/superpowers/reports/2026-07-13-state-schema-version-verify.md
+branch_status: handled
 created_at: 2026-07-13
 verified_at: null
 archived: false
