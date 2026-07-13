@@ -1,6 +1,6 @@
 workflow: tweak
 language: en
-phase: build
+phase: verify
 context_compression: off
 build_mode: direct
 build_pause: null
@@ -14,8 +14,8 @@ base_ref: 36f482aa1c0bf84bb4ac107b11400bf816174c89
 design_doc: null
 plan: null
 verify_result: pending
-verification_report: null
-branch_status: pending
+verification_report: docs/superpowers/reports/2026-07-13-onto-abandon-transition-verify.md
+branch_status: handled
 created_at: 2026-07-13
 verified_at: null
 archived: false
