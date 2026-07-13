@@ -58,14 +58,14 @@ func Load(dir string) (*State, error) {
 }
 
 // Save writes the state atomically (temp + fsync + rename), creating dir if
-// needed. fsutil.WriteAtomic creates new files 0600 and preserves existing
-// modes.
+// needed. state.json is one of homonto's own control-plane files, so it is
+// written no-follow (a symlinked target is refused, never followed) at 0600.
 func (s *State) Save(dir string) error {
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return fsutil.WriteAtomic(file(dir), data)
+	return fsutil.WriteControlPlane(file(dir), data, 0o600)
 }
 
 // Set records the unresolved desired value and the applied-value hash for a key.

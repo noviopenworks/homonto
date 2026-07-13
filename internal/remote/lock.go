@@ -96,7 +96,9 @@ func (l Lock) Save(path string) error {
 	if err := enc.Encode(doc); err != nil {
 		return fmt.Errorf("remote: lock: %w", err)
 	}
-	return fsutil.WriteAtomic(path, buf.Bytes())
+	// remote.lock.json is one of homonto's own control-plane files: write it
+	// no-follow (a planted symlink is refused) rather than through a symlink.
+	return fsutil.WriteControlPlane(path, buf.Bytes(), 0o600)
 }
 
 func (l Lock) sorted() []LockEntry {
