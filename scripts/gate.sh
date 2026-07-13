@@ -42,6 +42,9 @@ step "cli smoke (plan on a current-format config)"
 printf '[mcps.demo]\ncommand = ["true"]\n' > /tmp/gate-homonto.toml
 /tmp/gate-homonto --config /tmp/gate-homonto.toml plan >/dev/null
 
+step "spec<->command correspondence"
+./scripts/spec-command-check.sh
+
 step "govulncheck ./..."
 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
