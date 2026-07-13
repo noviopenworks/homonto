@@ -328,10 +328,11 @@ What turns an opinionated internal toolkit into something others build on.
   validated, versioned path; unsupported source/kind combinations fail loudly.
 
 ### E2. Machine-readable CLI and a stable automation contract
-- **Partial (2026-07-13):** F49 done — `cli-reject-stray-args` archived on `main`:
-  `plan/apply/status/doctor/import` set `cobra.NoArgs` so a stray positional errors
-  instead of being silently ignored. Remaining E2: F45, F46, F48, F50 (`--output
-  json` + exit-code taxonomy), F51, F52.
+- **Partial (2026-07-13):** F49 (`cli-reject-stray-args`) + F45
+  (`no-clean-conclusion-on-incomplete-coverage`) archived on `main` — `NoArgs` on
+  positional-free commands, and plan/status no longer claim "up to date"/"No drift"
+  (exit 0) after an adapter warning. Remaining E2: F46, F48, F50 (`--output json` +
+  exit-code taxonomy), F51 (`cache gc`), F52.
 - **Closes:** F45 (never print "up to date" after skipping an adapter), F46
   (catalog upgrades appear in the plan; doctor reports version mismatch), F49
   (`cobra.NoArgs` everywhere; a stray positional never silently ignored — verified
