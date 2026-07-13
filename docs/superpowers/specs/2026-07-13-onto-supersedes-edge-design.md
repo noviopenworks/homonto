@@ -3,6 +3,8 @@ comet_change: onto-supersedes-edge
 role: technical-design
 canonical_spec: openspec
 status: draft
+archived-with: 2026-07-13-onto-supersedes-edge
+status: final
 ---
 
 # onto-supersedes-edge — Technical Design (X1)
