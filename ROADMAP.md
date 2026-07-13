@@ -442,10 +442,18 @@ What turns an opinionated internal toolkit into something others build on.
   resolution runs at engine `Build`, content-addressed cache ⇒ `Plan`/`status`
   reuse it (network only on a first/changed pin). E2E gates: a pinned remote
   framework skill is materialized by apply; a wrong digest aborts. Builtin/local/
-  remote-subagent behavior unchanged (681 tests -race). Remaining E1
-  (`[compat].homonto`, capabilities) now has a real consumer — a *shared* (local/
-  remote) framework — making them meaningful, though `[compat]` still needs
-  `cli.Version` injection + pre-release handling.
+  remote-subagent behavior unchanged (681 tests -race).
+- **CAPABILITIES DONE (2026-07-13, `framework-capabilities` archived, D2):** a
+  `framework.toml` declares `[provides].capabilities` / `[dependencies].
+  capabilities` as `name@major`; `catalog.Load*` resolve every required
+  capability against the providers across all merged frameworks (base + local +
+  remote overlays) fail-loud — depend on an *interface*, not a framework name.
+  Consumer: openspec provides `spec-workflow@1`, comet requires it. Multiple
+  providers allowed; capability-free frameworks unchanged.
+- **Remaining E1:** `[compat].homonto` (needs `cli.Version` injection into the
+  catalog + pre-release handling; now has a consumer via shared frameworks) and
+  F38 (D4: `[plugins]` is enable/disable projection, not an install lifecycle — an
+  honest doc clarification, since renaming the TOML key would break configs).
 - **F34 re-assessment (2026-07-13):** decoupling the `Adapter` contract from the
   concrete `config.Config`/`secret.Resolver`/`state.State` means introducing
   interfaces that each have exactly ONE implementation — textbook premature
