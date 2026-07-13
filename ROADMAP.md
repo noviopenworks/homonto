@@ -429,15 +429,23 @@ What turns an opinionated internal toolkit into something others build on.
   `local:<path>` framework acceptance (lift F35 for `local:`; build the catalog
   with per-config overlays, de-globalizing `loadedCatalog`) and engine
   materialization of overlay content from each framework's `srcFS`.
-- **Remote-framework Plan-time finding (2026-07-13):** remote frameworks would
-  reuse BOTH the shipped `internal/remote` trust pipeline (fetch/verify/digest-pin/
-  revocation) AND the local-framework overlay infra (fetch+verify to a cache dir →
-  it becomes a `LoadWithLocal` overlay). BUT unlike remote *subagents* (whose
-  content `Plan` never needs), a remote *framework's* resources are only known by
-  reading its manifest — remote content — so **`Plan` would have to fetch over the
-  network to expand it**. That is a genuine design decision (network in a dry-run
-  `Plan`, or a separate resolve step + lockfile-cached manifest) and a maintainer
-  call, not a bounded slice. Scoped, not built.
+- **REMOTE FRAMEWORKS DONE (2026-07-13, `remote-frameworks` archived) — the
+  framework-source trinity (builtin/local/remote) is complete.** A
+  `[frameworks.X] source="remote:<url>" digest="sha256:<hex>"` installs through the
+  SAME `internal/remote` trust pipeline as remote subagents (fetch → verify against
+  pin → revocation fail-closed → digest-addressed cache) and then the SAME overlay
+  path as a local framework. Pure wiring — NO new crypto: `engine.
+  resolveRemoteFrameworks` reuses the `materializeRemotes` Resolver/lock/revocation
+  setup, revocation-checks BEFORE `Resolve` (F30), and `resolver.Resolve` verifies
+  content against the pin before returning the cache dir; a mismatched/revoked/
+  missing pin aborts `Build` fail-closed. The Plan-time question was resolved:
+  resolution runs at engine `Build`, content-addressed cache ⇒ `Plan`/`status`
+  reuse it (network only on a first/changed pin). E2E gates: a pinned remote
+  framework skill is materialized by apply; a wrong digest aborts. Builtin/local/
+  remote-subagent behavior unchanged (681 tests -race). Remaining E1
+  (`[compat].homonto`, capabilities) now has a real consumer — a *shared* (local/
+  remote) framework — making them meaningful, though `[compat]` still needs
+  `cli.Version` injection + pre-release handling.
 - **F34 re-assessment (2026-07-13):** decoupling the `Adapter` contract from the
   concrete `config.Config`/`secret.Resolver`/`state.State` means introducing
   interfaces that each have exactly ONE implementation — textbook premature
