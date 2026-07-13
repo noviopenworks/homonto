@@ -2,6 +2,9 @@ package ontostate
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -101,4 +104,109 @@ func parseAndMigrate(b []byte, sourceName string) (State, error) {
 	}
 	st.SchemaVersion = CurrentSchemaVersion
 	return st, nil
+}
+
+// coreAgrees reports an error if the gated core fields that matter for the
+// dual-legacy conflict policy — phase, workflow, archived — disagree.
+func coreAgrees(a, b State) error {
+	var diffs []string
+	if a.Phase != b.Phase {
+		diffs = append(diffs, fmt.Sprintf("phase (%q vs %q)", a.Phase, b.Phase))
+	}
+	if a.Workflow != b.Workflow {
+		diffs = append(diffs, fmt.Sprintf("workflow (%q vs %q)", a.Workflow, b.Workflow))
+	}
+	if a.Archived != b.Archived {
+		diffs = append(diffs, fmt.Sprintf("archived (%v vs %v)", a.Archived, b.Archived))
+	}
+	if len(diffs) > 0 {
+		return fmt.Errorf("disagreeing legacy files: %s", strings.Join(diffs, ", "))
+	}
+	return nil
+}
+
+// mergeObserved unions two Observed groups; the skill file's richer per-field
+// value wins when set.
+func mergeObserved(base, skill Observed) Observed {
+	out := base
+	if len(skill.Metrics) > 0 {
+		if out.Metrics == nil {
+			out.Metrics = map[string]string{}
+		}
+		for k, v := range skill.Metrics {
+			out.Metrics[k] = v
+		}
+	}
+	if skill.TasksTotal != 0 {
+		out.TasksTotal = skill.TasksTotal
+	}
+	if skill.VerifyRounds != 0 {
+		out.VerifyRounds = skill.VerifyRounds
+	}
+	if skill.PresetEscalated {
+		out.PresetEscalated = true
+	}
+	return out
+}
+
+// LoadChange loads a change's state from changeDir, resolving the canonical
+// onto-state.yaml and a co-resident legacy state.yaml. If both are present and
+// both legacy, disagreeing gated core (phase/workflow/archived) is malformed;
+// otherwise Observed is merged onto the canonical state.
+func LoadChange(changeDir string) (State, error) {
+	ontoPath := filepath.Join(changeDir, "onto-state.yaml")
+	skillPath := filepath.Join(changeDir, "state.yaml")
+
+	ontoB, ontoErr := os.ReadFile(ontoPath)
+	skillB, skillErr := os.ReadFile(skillPath)
+
+	switch {
+	case ontoErr == nil && skillErr == nil:
+		ontoState, err := parseAndMigrate(ontoB, ontoPath)
+		if err != nil {
+			return State{}, err
+		}
+		skillState, err := parseAndMigrate(skillB, skillPath)
+		if err != nil {
+			return State{}, err
+		}
+		if isLegacy(ontoB) && isLegacy(skillB) {
+			if err := coreAgrees(ontoState, skillState); err != nil {
+				return State{}, fmt.Errorf("%s: %w", changeDir, err)
+			}
+		}
+		ontoState.Observed = mergeObserved(ontoState.Observed, skillState.Observed)
+		return ontoState, nil
+	case ontoErr == nil:
+		return parseAndMigrate(ontoB, ontoPath)
+	case skillErr == nil:
+		return parseAndMigrate(skillB, skillPath)
+	default:
+		return State{}, fmt.Errorf("onto-state: no state file (onto-state.yaml or state.yaml) in %s", changeDir)
+	}
+}
+
+// Classify loads and validates a change directory, returning one of "valid",
+// "malformed", or "missing-state". A directory with no state file at all is
+// "missing-state" (not an error) so a deleted state file is reported rather
+// than silently skipped (F14).
+func Classify(changeDir string) (State, string, error) {
+	ontoMissing := fileMissing(filepath.Join(changeDir, "onto-state.yaml"))
+	skillMissing := fileMissing(filepath.Join(changeDir, "state.yaml"))
+	if ontoMissing && skillMissing {
+		return State{}, "missing-state", nil
+	}
+	st, err := LoadChange(changeDir)
+	if err != nil {
+		return State{}, "malformed", err
+	}
+	if err := st.Validate(); err != nil {
+		return State{}, "malformed", err
+	}
+	return st, "valid", nil
+}
+
+func fileMissing(path string) bool {
+	_, err := os.Stat(path)
+	return os.IsNotExist(err)
 }
