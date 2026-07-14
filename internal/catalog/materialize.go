@@ -108,9 +108,13 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 // internal/agentfm), it ALSO writes per-tool variants — <name>.claude.md and
 // <name>.opencode.md — rendered from that block into each tool's native fields
 // (Claude's `tools:` allowlist vs OpenCode's `permission:` map), which cannot
-// share one file. Each adapter prefers its own variant; the shared <name>.md
-// remains the version-gate anchor and the fallback for verbatim subagents.
-func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
+// share one file. renderCtx supplies the config-derived values the render needs
+// (the role→model routes) per tool. A render that returns no bytes (a primary
+// agent has no Claude variant) removes any stale variant instead of writing one,
+// so the adapter's "block present + variant absent → skip" rule holds. Each
+// adapter prefers its own variant; the shared <name>.md remains the version-gate
+// anchor and the fallback for verbatim subagents.
+func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx map[string]agentfm.RenderContext) error {
 	for _, name := range names {
 		sp, ok := c.subagents[name]
 		if !ok {
@@ -130,11 +134,17 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
 			continue
 		}
 		for _, tool := range []string{"claude", "opencode"} {
-			rendered, rerr := agentfm.Render(data, tool)
+			rendered, rerr := agentfm.Render(data, tool, renderCtx[tool])
 			if rerr != nil {
 				return fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
 			}
 			variant := filepath.Join(dstRoot, name+"."+tool+".md")
+			if rendered == nil {
+				if err := os.Remove(variant); err != nil && !os.IsNotExist(err) {
+					return err
+				}
+				continue
+			}
 			if err := fsutil.WriteControlPlane(variant, rendered, 0o644); err != nil {
 				return err
 			}

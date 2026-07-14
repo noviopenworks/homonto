@@ -89,40 +89,53 @@ mode: subagent
 # Instructions for the agent…
 ```
 
-## Per-tool frontmatter (read-only in both tools)
+## Per-tool frontmatter (the `homonto:` block)
 
-Claude Code and OpenCode express a subagent's tool access differently, and the
-two forms **cannot share one file** — Claude uses a `tools:` allowlist string
-while OpenCode uses a `permission:` map, and OpenCode rejects a string `tools:`.
-So a builtin subagent that must be enforced-read-only in both tools declares its
-intent once, tool-neutrally, in a `homonto:` frontmatter block:
+Claude Code and OpenCode express an agent's capabilities differently, and the two
+forms **cannot share one file** — Claude uses a `tools:` allowlist string while
+OpenCode uses a `permission:` map and `mode`, and OpenCode rejects a string
+`tools:`. So a builtin subagent declares its intent once, tool-neutrally, in a
+`homonto:` frontmatter block, and `apply` renders each tool's native dialect:
 
 ```markdown
 ---
-name: code-reviewer
+name: onto-implementer
 description: ...
 mode: subagent
 homonto:
-  read_only: true   # deny edits/writes
-  bash: false       # optional; false denies bash too (default: allowed)
-  dialogs: true     # allow the interactive question/dialog tool
+  role: coding        # model tier → stamped from [models.<tool>.coding]
+  read_only: false    # deny edits/writes when true
+  bash: false         # optional; false denies bash (default: allowed)
+  dialogs: true       # allow the interactive question/dialog tool
+  spawn: []           # delegation topology: agents this one may dispatch
+  primary: true       # OpenCode primary agent; the Claude variant is skipped
+  steps: 60           # OpenCode iteration budget
 ---
 <prompt body>
 ```
 
-On `apply`, homonto renders that block into each tool's native fields and links
-each adapter to its own variant (`<name>.claude.md` / `<name>.opencode.md` under
-the materialized catalog):
+Rendering, by explicit parity tier:
 
-| Neutral intent | Claude (`tools:` allowlist) | OpenCode (`permission:` map) |
+| Neutral intent | Claude (`tools:` allowlist) | OpenCode (`permission:` / `mode`) |
 |---|---|---|
-| `read_only: true` | omit `Edit`/`Write` (e.g. `Read, Grep, Glob`) | `edit: deny` |
+| `read_only: true` | omit `Edit`/`Write` | `edit: deny` |
 | `bash: false` | omit `Bash` | `bash: deny` |
 | `dialogs: true` | (AskUserQuestion is built in) | `question: allow` |
+| `role: <tier>` | `model: <claude route>` | `model: <opencode route>` |
+| `spawn: []` | omit `Task` | `task: deny` |
+| `spawn: [a,b]` | `Task` present (advisory) | `task:` globs allowing only `a`,`b` |
+| `primary` / `steps` | *(no concept — Claude variant skipped)* | `mode: primary`, `steps:` |
 
-The prompt body is single-source (never duplicated), and the neutral block and
-its comments are stripped from the rendered files. Subagents without a `homonto:`
-block are projected verbatim (a plain symlink to the shared file), unchanged.
+`role` maps to the tool's model from the user's `[models.<tool>.<role>]` route
+(so the same declaration yields `opus` in Claude and the OpenCode model id); a
+missing route just omits `model:` (the agent inherits the default). The prompt
+body is single-source (never duplicated); the neutral block and its comments are
+stripped from the rendered files. Subagents without a `homonto:` block are
+projected verbatim (a plain symlink to the shared file), unchanged.
+
+The onto framework's three specialists show the division of labor: read-only
+`codebase-explorer` (trivial model) and `code-reviewer` (architectural), and the
+edit-capable `onto-implementer` (coding) — all `spawn: []` (they never nest).
 
 ## Remote subagents are pinned and fail-closed
 

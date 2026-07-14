@@ -2,13 +2,15 @@
 name: code-reviewer
 description: Use to review a diff or set of changes for correctness, security, and clarity before merging; reports findings ranked by severity.
 mode: subagent
-# Neutral access intent — homonto renders it into each tool's native fields:
+# Neutral capability intent — homonto renders it into each tool's native fields:
 # Claude's `tools:` allowlist and OpenCode's `permission:` map (internal/agentfm).
-# A reviewer never edits (read-only) but keeps bash for git inspection, and may
-# ask via an interactive dialog.
+# A reviewer judges (architectural model), never edits (read-only) but keeps bash
+# for git inspection, spawns nothing, and may ask via an interactive dialog.
 homonto:
+  role: architectural
   read_only: true
   dialogs: true
+  spawn: []
 ---
 
 You are a focused code reviewer. Given a change (a diff, a set of files, or a

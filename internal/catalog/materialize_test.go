@@ -108,7 +108,7 @@ func TestMaterializeSubagentsWritesFileVerbatim(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	dst := t.TempDir()
-	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}); err != nil {
+	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}, nil); err != nil {
 		t.Fatalf("materialize: %v", err)
 	}
 	got, err := os.ReadFile(filepath.Join(dst, "code-reviewer.md"))
@@ -135,7 +135,7 @@ func TestMaterializeSubagentsWritesPerToolVariants(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	dst := t.TempDir()
-	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}); err != nil {
+	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}, nil); err != nil {
 		t.Fatalf("materialize: %v", err)
 	}
 	claude, err := os.ReadFile(filepath.Join(dst, "code-reviewer.claude.md"))
@@ -160,7 +160,7 @@ func TestMaterializeSubagentsWritesPerToolVariants(t *testing.T) {
 
 func TestMaterializeSubagentsUnknownErrors(t *testing.T) {
 	c, _ := New()
-	if err := c.MaterializeSubagents(t.TempDir(), []string{"nope"}); err == nil {
+	if err := c.MaterializeSubagents(t.TempDir(), []string{"nope"}, nil); err == nil {
 		t.Fatal("expected error for unknown subagent")
 	}
 }

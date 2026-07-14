@@ -34,3 +34,4 @@ onto-no-slop = "commands/onto-no-slop.md"
 [subagents]
 codebase-explorer = "subagents/codebase-explorer.md"
 code-reviewer = "subagents/code-reviewer.md"
+onto-implementer = "subagents/onto-implementer.md"

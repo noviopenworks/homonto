@@ -254,16 +254,30 @@ including its gates and exit checklist. Never execute phase work here.
 
 ## 7. Delegation, parallelization, and dialogs
 
-The onto framework ships two read-only **specialist subagents** — they install
-with onto and the phases delegate to them. They investigate and report back, and
-run as independent agents, so several can run **in parallel**. Both tools support
-this: **OpenCode** dispatches subagents as child sessions and **Claude Code**
-runs them as parallel Task-tool agents (send multiple Task calls in one turn).
+The onto framework ships three **specialist subagents** — they install with onto
+and the phases delegate to them. They run as independent agents, so several run
+**in parallel**. Both tools support this: **OpenCode** dispatches subagents as
+child sessions and **Claude Code** runs them as parallel Task-tool agents (send
+multiple Task calls in one turn). Each carries an enforced capability profile
+(homonto renders it per tool): the two specialists are read-only; the implementer
+edits but spawns nothing.
 
-| Subagent | Use it to | Delegated from |
-|---|---|---|
-| `codebase-explorer` | answer "how does X work / where does behavior live" by reading across many files, returning conclusions not dumps | open, design, and any phase needing grounding |
-| `code-reviewer` | review a diff for correctness, security, contract, and clarity, ranked by severity | build (per task) and verify |
+| Subagent | Role/model | Capabilities | Use it to |
+|---|---|---|---|
+| `codebase-explorer` | trivial (fast/cheap) | read-only, no shell, no spawn | answer "how does X work / where does behavior live" — conclusions, not dumps |
+| `code-reviewer` | architectural (judgment) | read-only, keeps bash, no spawn | review a diff for correctness, security, contract, clarity — ranked |
+| `onto-implementer` | coding | **edits**, bash, no spawn | execute one bite-sized task from a precise spec, return a diff |
+
+This is a division of labor: the orchestrator (this session) plans, judges scope,
+and reviews; the **implementer** does the mechanical edits from a handed spec; the
+read-only specialists investigate and audit. The orchestrator owns every commit
+and every `onto` binary call.
+
+> **Subagents never prompt the user.** A subagent needing a decision **returns**
+> it as a `Questions:` section; the orchestrator asks the user (via a dialog) and
+> re-dispatches with the answer. This is a hard protocol because a **Claude** Task
+> subagent *cannot* prompt mid-run (AskUserQuestion belongs to the main session);
+> OpenCode subagents can but must not either, so the flow is identical everywhere.
 
 **Delegate, and fan out.** When a phase needs investigation or review, hand it to
 the subagent rather than doing it inline — and when the questions are

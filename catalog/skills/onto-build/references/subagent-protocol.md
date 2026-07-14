@@ -3,6 +3,18 @@
 Coordinator/worker execution for the build phase. **The main session NEVER
 implements** — it plans, dispatches, verifies, and keeps state true.
 
+The framework ships the two agents this protocol uses, each with an enforced
+capability profile (homonto renders it per tool):
+
+- **`onto-implementer`** — the worker. Edits on the coding-tier model, runs
+  build/test, **spawns nothing**. Hand it one task's spec; it returns a diff.
+- **`code-reviewer`** — the reviewer. Read-only on the architectural-tier model.
+
+**A subagent never prompts the user.** If the implementer hits an ambiguous spec
+it **returns** the question (a `Questions:` section), and the coordinator asks the
+user (via a dialog) and re-dispatches — a Claude Task subagent cannot prompt
+mid-run, so this protocol is identical in both tools.
+
 ## When to choose subagent over direct
 
 - Many independent tasks (≳4) or tasks touching disjoint files
@@ -24,8 +36,8 @@ is not "run the tasks at once," and skipping any of its conditions
 reintroduces the race it exists to avoid. Ignore it unless you have
 deliberately chosen it and can meet every condition.
 
-Dispatch ONE fresh-context implementer agent per task, whose prompt
-contains:
+Dispatch ONE `onto-implementer` per task (a fresh context each time), whose
+prompt contains:
 
 1. The task text verbatim (files, do, verify) from `plan.md`
 2. The relevant `design.md` section(s) — pasted, not summarized
@@ -78,12 +90,14 @@ and is not worth the speed.
 ## Reviewer agents
 
 After any task marked `(risk: high)` — and always after the final task —
-dispatch a fresh reviewer agent with the diff range and the design
-section, prompted to **find faults** (correctness, spec conformance,
-missed edge cases), never to approve. CRITICAL findings are fixed via a
-re-dispatched implementer before the next task (the coordinator still
-never implements); accepted non-critical findings are recorded in the
-plan or commit body.
+dispatch `code-reviewer` with the diff range and the design section (it is
+already prompted to **find faults** — correctness, spec conformance, missed edge
+cases — never to approve). CRITICAL findings are fixed via a re-dispatched
+`onto-implementer` before the next task (the coordinator still never implements);
+accepted non-critical findings are recorded in the plan or commit body.
+Apply `receiving-code-review` discipline to the findings: verify each against the
+code before acting, and push back with evidence on a wrong one rather than
+implementing it blindly.
 
 ## Failure of the protocol itself
 

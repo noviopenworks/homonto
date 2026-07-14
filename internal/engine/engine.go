@@ -9,6 +9,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/adapter/registry"
+	"github.com/noviopenworks/homonto/internal/agentfm"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/state"
@@ -234,6 +235,26 @@ func (e *Engine) recordVersions() {
 	}
 }
 
+// subagentRenderContext builds the per-tool agentfm render context from the
+// declared model routes, so a subagent's neutral `homonto: role` stamps the
+// right tool-native model (Claude opus/sonnet/…, OpenCode provider/model). A
+// tool with no routes yields an empty map (agents inherit the default model).
+func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
+	roleModels := func(routes map[string]config.ModelRoute) map[string]string {
+		m := map[string]string{}
+		for role, r := range routes {
+			if r.Model != "" {
+				m[role] = r.Model
+			}
+		}
+		return m
+	}
+	return map[string]agentfm.RenderContext{
+		"claude":   {Model: roleModels(e.Cfg.Models.Claude)},
+		"opencode": {Model: roleModels(e.Cfg.Models.OpenCode)},
+	}
+}
+
 // materializeCatalog extracts the builtin skills, commands, and subagents the
 // config declares into CatalogRoot, CommandCatalogRoot, and
 // SubagentCatalogRoot, version-gated: it is a no-op when the recorded catalog
@@ -313,7 +334,7 @@ func (e *Engine) materializeCatalog() error {
 	if err := cl.MaterializeCommands(e.CommandCatalogRoot, cmdNames); err != nil {
 		return err
 	}
-	if err := cl.MaterializeSubagents(e.SubagentCatalogRoot, subNames); err != nil {
+	if err := cl.MaterializeSubagents(e.SubagentCatalogRoot, subNames, e.subagentRenderContext()); err != nil {
 		return err
 	}
 	e.State.SetCatalogVersion(cl.Version())

@@ -2,13 +2,16 @@
 name: codebase-explorer
 description: Use to answer questions about how a codebase works or to locate where behavior lives, by reading across many files and returning conclusions rather than raw dumps.
 mode: subagent
-# Neutral access intent — homonto renders it into each tool's native fields:
+# Neutral capability intent — homonto renders it into each tool's native fields:
 # Claude's `tools:` allowlist and OpenCode's `permission:` map (internal/agentfm).
-# Exploration is read-only with no shell (bash denied), and may ask via a dialog.
+# Exploration is read-only with no shell (bash denied), spawns nothing, uses the
+# fast/cheap trivial-tier model, and may ask via a dialog.
 homonto:
+  role: trivial
   read_only: true
   bash: false
   dialogs: true
+  spawn: []
 ---
 
 You are a read-only codebase explorer. Given a question about how something

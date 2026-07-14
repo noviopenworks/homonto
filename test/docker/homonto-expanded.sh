@@ -50,11 +50,22 @@ log "apply projects the expanded surface"
 log "builtin catalog materialization"
 is_dir  "$W/.homonto/catalog/skills/onto"
 is_file "$W/.homonto/catalog/commands/onto.md"
-# onto ships two specialist subagents; comet-navigator is the explicit one.
+# onto ships three specialist subagents; comet-navigator is the explicit one.
 is_file "$W/.homonto/catalog/subagents/code-reviewer.md"
 is_file "$W/.homonto/catalog/subagents/codebase-explorer.md"
+is_file "$W/.homonto/catalog/subagents/onto-implementer.md"
 is_file "$W/.homonto/catalog/subagents/comet-navigator.md"
-ok "framework skills, commands, and subagents materialized under .homonto/catalog"
+# Homonto-block subagents materialize per-tool variants; the Claude variant of a
+# read-only spawn:[] agent carries a tools: allowlist WITHOUT Edit/Write/Task, and
+# stamps the role's model (this config maps claude architectural -> opus).
+in_file "$W/.homonto/catalog/subagents/code-reviewer.claude.md" 'tools: Read, Grep, Glob'
+in_file "$W/.homonto/catalog/subagents/code-reviewer.claude.md" 'model: opus'
+if grep -qE 'Edit|Write|Task' "$W/.homonto/catalog/subagents/code-reviewer.claude.md"; then fail "read-only reviewer must not carry Edit/Write/Task in Claude"; fi
+# The implementer edits (coding model) but still spawns nothing (no Task).
+in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'model: sonnet'
+in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'Edit, Write'
+if grep -qE 'Task' "$W/.homonto/catalog/subagents/onto-implementer.claude.md"; then fail "spawn:[] implementer must not carry Task"; fi
+ok "framework skills, commands, and subagents materialized (per-tool render invariants hold)"
 
 # Assert each tool entry is a symlink AND that it actually resolves to real
 # catalog content — a relative target computed against the wrong base dangles,
@@ -65,6 +76,7 @@ log "tool links point at (and resolve to) the materialized catalog"
 is_link "$W/.claude/skills/onto";                 is_dir  "$W/.claude/skills/onto"
 is_link "$W/.claude/agents/code-reviewer.md";     is_file "$W/.claude/agents/code-reviewer.md"
 is_link "$W/.claude/agents/codebase-explorer.md"; is_file "$W/.claude/agents/codebase-explorer.md"
+is_link "$W/.claude/agents/onto-implementer.md";  is_file "$W/.claude/agents/onto-implementer.md"
 is_link "$W/.claude/agents/comet-navigator.md";   is_file "$W/.claude/agents/comet-navigator.md"
 # The onto framework ships a command per phase/preset — the dispatcher plus every
 # onto-* skill — so each phase is directly invocable. Assert the whole set links
@@ -98,6 +110,7 @@ absent "$W/.claude/agents/comet-navigator.md"
 # The framework-provided subagents are NOT de-declared, so they must survive.
 is_file "$W/.claude/agents/code-reviewer.md"
 is_file "$W/.claude/agents/codebase-explorer.md"
+is_file "$W/.claude/agents/onto-implementer.md"
 ok "de-declared subagent link pruned; framework subagents retained"
 
 printf '\nSUITE PASS: %s\n' "$SUITE"
