@@ -25,8 +25,11 @@ variant = "max"
 model = "haiku"
 variant = "max"
 
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+# onto now ships code-reviewer + codebase-explorer as framework subagents, so
+# declaring those explicitly would collide. Use comet-navigator (not shipped by
+# onto) as the standalone explicit subagent that the prune test later removes.
+[subagents.comet-navigator]
+source = "builtin:comet-navigator"
 scope = "project"
 targets = ["claude"]
 
@@ -47,8 +50,11 @@ log "apply projects the expanded surface"
 log "builtin catalog materialization"
 is_dir  "$W/.homonto/catalog/skills/onto"
 is_file "$W/.homonto/catalog/commands/onto.md"
+# onto ships two specialist subagents; comet-navigator is the explicit one.
 is_file "$W/.homonto/catalog/subagents/code-reviewer.md"
-ok "framework skills, command, and subagent materialized under .homonto/catalog"
+is_file "$W/.homonto/catalog/subagents/codebase-explorer.md"
+is_file "$W/.homonto/catalog/subagents/comet-navigator.md"
+ok "framework skills, commands, and subagents materialized under .homonto/catalog"
 
 # Assert each tool entry is a symlink AND that it actually resolves to real
 # catalog content — a relative target computed against the wrong base dangles,
@@ -56,8 +62,10 @@ ok "framework skills, command, and subagent materialized under .homonto/catalog"
 # skill discovery skips it). is_dir/is_file follow the link, so they fail on a
 # dangling target; link_to only string-matched and missed exactly that bug.
 log "tool links point at (and resolve to) the materialized catalog"
-is_link "$W/.claude/skills/onto";             is_dir  "$W/.claude/skills/onto"
-is_link "$W/.claude/agents/code-reviewer.md"; is_file "$W/.claude/agents/code-reviewer.md"
+is_link "$W/.claude/skills/onto";                 is_dir  "$W/.claude/skills/onto"
+is_link "$W/.claude/agents/code-reviewer.md";     is_file "$W/.claude/agents/code-reviewer.md"
+is_link "$W/.claude/agents/codebase-explorer.md"; is_file "$W/.claude/agents/codebase-explorer.md"
+is_link "$W/.claude/agents/comet-navigator.md";   is_file "$W/.claude/agents/comet-navigator.md"
 # The onto framework ships a command per phase/preset — the dispatcher plus every
 # onto-* skill — so each phase is directly invocable. Assert the whole set links
 # and resolves, not just the dispatcher.
@@ -82,11 +90,14 @@ out="$("$HOMONTO" apply --yes 2>&1)"; printf '%s\n' "$out"
 printf '%s' "$out" | grep -q "No changes" || fail "second apply was not idempotent"
 ok "idempotent re-apply"
 
-log "prune on removal: drop the subagent, re-apply removes its link"
-sed '/\[subagents.code-reviewer\]/,/targets = \["claude"\]/d' homonto.toml > homonto.toml.new
+log "prune on removal: drop the explicit subagent, re-apply removes its link"
+sed '/\[subagents.comet-navigator\]/,/targets = \["claude"\]/d' homonto.toml > homonto.toml.new
 mv homonto.toml.new homonto.toml
 "$HOMONTO" apply --yes >/dev/null 2>&1
-absent "$W/.claude/agents/code-reviewer.md"
-ok "de-declared subagent link pruned on apply"
+absent "$W/.claude/agents/comet-navigator.md"
+# The framework-provided subagents are NOT de-declared, so they must survive.
+is_file "$W/.claude/agents/code-reviewer.md"
+is_file "$W/.claude/agents/codebase-explorer.md"
+ok "de-declared subagent link pruned; framework subagents retained"
 
 printf '\nSUITE PASS: %s\n' "$SUITE"

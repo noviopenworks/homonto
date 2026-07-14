@@ -116,6 +116,25 @@ gates the transitions between them.
   delta specs into `docs/specs/`, number and accept ADRs into `docs/adr/`, and
   update the affected guides.
 
+## Specialist subagents
+
+`homonto apply` also installs two read-only **specialist subagents** that the
+onto skills delegate to (they ship with the framework — don't also declare them
+in a top-level `[subagents.*]` table, which collides):
+
+- **`codebase-explorer`** — reads across many files to answer "how does X work /
+  where does behavior live", returning conclusions, not dumps. Used for grounding
+  in open/design.
+- **`code-reviewer`** — reviews a diff for correctness, security, contract, and
+  clarity, ranked by severity. Used per task in build and across the diff in
+  verify.
+
+Both are `mode: subagent` and **read-only** (edits denied), and both enable
+OpenCode's **question dialog** so gate decisions are asked interactively. Because
+each subagent runs in its own child session, the build phase **fans out**
+independent tasks' investigation/review concurrently via the Task tool while the
+orchestrator (your main session) owns every edit and commit.
+
 ## Recommended tooling
 
 The onto skills recommend two tools; when either is missing they warn and

@@ -239,6 +239,45 @@ grows — never talk a change *down* from full to a preset.
 After routing, the dispatcher is done — the sub-skill owns the phase,
 including its gates and exit checklist. Never execute phase work here.
 
+## 7. Delegation, parallelization, and dialogs
+
+The onto framework ships two read-only **specialist subagents** — they install
+with onto and the phases delegate to them. They never edit files (their
+frontmatter denies edits); they investigate and report back, and each runs in
+its own child session, so several can run **in parallel**.
+
+| Subagent | Use it to | Delegated from |
+|---|---|---|
+| `codebase-explorer` | answer "how does X work / where does behavior live" by reading across many files, returning conclusions not dumps | open, design, and any phase needing grounding |
+| `code-reviewer` | review a diff for correctness, security, contract, and clarity, ranked by severity | build (per task) and verify |
+
+**Delegate, and fan out.** When a phase needs investigation or review, hand it to
+the subagent rather than doing it inline — and when the questions are
+**independent**, dispatch them **concurrently** (one subagent invocation per
+question) instead of serially:
+
+- **design / grounding** — split a broad "how does this subsystem work" into
+  several targeted `codebase-explorer` tasks and run them at once; synthesize the
+  returns into the design.
+- **build** — after each task's edits, hand the diff to `code-reviewer`.
+  Independent tasks that touch **non-overlapping** files can be explored/reviewed
+  in parallel; tasks that share files stay serial (one commit each, in order).
+- **verify** — delegate the change-wide diff audit to `code-reviewer` while you
+  check spec scenarios.
+
+The orchestrator (this session) still owns every edit, commit, and the `onto`
+binary calls — the subagents only read and report. Never let a subagent mutate
+workflow state.
+
+**Dialogs — prefer them when available.** In OpenCode the **question** tool
+renders an interactive choice dialog; the shipped subagents allow it. Whenever a
+`> **GATE:**` block or any either/or decision comes up, ask it through the
+question dialog (a clear prompt, a short header, and the concrete choices) rather
+than burying the question in prose — it is faster for the user and records a
+definite answer. Fall back to a plain written question only when the tool is
+unavailable (e.g. Claude). A dialog never *replaces* a gate — it is how the gate
+is asked.
+
 ## Gates are sacred
 
 Every sub-skill contains `> **GATE:**` blocks — blocking user decisions.

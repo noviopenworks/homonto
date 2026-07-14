@@ -96,6 +96,19 @@ the final task. If no real dispatch capability exists, fall back to
    intent. Never batch tasks into one commit; never leave checked-off tasks
    uncommitted.
 
+**Delegate review and parallelize independent tasks.** The reviewer role above
+is the `code-reviewer` subagent shipped with onto — hand it each task's diff (and
+always the final diff), rather than reviewing inline. When `plan.md` marks tasks
+whose file sets **do not overlap**, dispatch their reviews (and any needed
+`codebase-explorer` investigation) **concurrently** — one subagent invocation per
+task — via the Task tool; OpenCode runs each as a child session, so the reviews
+proceed in parallel while you implement the next task. Tasks that share files
+stay serial (one commit each, in order). This is the concrete wiring of the
+dispatcher's "Delegation, parallelization, and dialogs" section: the orchestrator
+(this session) owns every edit and commit; the subagents only read and report.
+Use the question dialog for the plan-ready and scope-change decisions when it is
+available.
+
 ### 4. Failure gate (systematic debugging)
 
 On ANY build/test/unexpected failure: stop. Reproduce it, read the whole

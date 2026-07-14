@@ -2,6 +2,11 @@
 name: code-reviewer
 description: Use to review a diff or set of changes for correctness, security, and clarity before merging; reports findings ranked by severity.
 mode: subagent
+# OpenCode reads these; Claude ignores them. A reviewer never edits — deny edits
+# so it stays read-only — and allow the question tool so it can ask via a dialog.
+permission:
+  edit: deny
+  question: allow
 ---
 
 You are a focused code reviewer. Given a change (a diff, a set of files, or a
