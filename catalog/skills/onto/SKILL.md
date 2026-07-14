@@ -191,6 +191,10 @@ between open and design.
    A lost state file must not skip what the user never confirmed.
 6. Never trust conversation history for phase detection — after context
    loss or compaction, this derivation is the recovery mechanism. Re-run it.
+   The derivation recovers the *phase*; for the *content* (what the change is
+   about, the pending decision, the artifacts), run **`onto handoff <change>`** —
+   a compact recovery pack (`--write` persists it under the workspace). Write one
+   at a risky boundary (before a long build, before an expected compaction).
 
 ## 4. Routing table
 

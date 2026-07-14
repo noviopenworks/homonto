@@ -144,6 +144,9 @@ Gate tokens live in `onto-state.yaml` and are set through `onto set <field>`
   skill renders as a dialog.
 - `onto scale <change> [--set] [--json]` — the verification level derived from the
   measured `base_ref..HEAD` diff (non-test files, changed lines).
+- `onto handoff <change> [--write]` — a compact recovery context pack (identity,
+  phase, pending gate, artifact excerpts + a content hash) for continuing after a
+  context compaction; `--write` persists it under the workspace.
 - `onto doctor [--dir <root>]` — workspace health across layout, state,
   phase/artifact match, dependency resolution, and archive layout; non-zero on
   any finding. It also reports a **version skew** when the `onto` binary and the
