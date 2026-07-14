@@ -4,6 +4,9 @@ User-facing documentation, one topic per file. Guides explain how to *use* the
 system; the OpenSpec capability specs (`openspec/specs/`) define what it *must
 do*.
 
+- [`getting-started.md`](getting-started.md) — hands-on walkthrough of both
+  binaries with real command output, plus a supported / not-supported matrix.
+  **Start here.**
 - [`using-homonto.md`](using-homonto.md) — the `homonto` CLI: config shape,
   projection behavior, status/adoption, and known limitations.
 - [`status-and-adoption.md`](status-and-adoption.md) — state adoption, drift,

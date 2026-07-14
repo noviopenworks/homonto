@@ -36,6 +36,10 @@ homonto plan            # dry run: show the diff, write nothing
 homonto apply           # plan → confirm [y/N] → write (use --yes to skip prompt)
 ```
 
+> **New to homonto?** [`docs/guides/getting-started.md`](docs/guides/getting-started.md)
+> is a hands-on walkthrough of **both** binaries with real command output and a
+> supported / not-supported matrix.
+
 Other commands:
 
 | Command | What it does |
