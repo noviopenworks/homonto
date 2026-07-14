@@ -12,6 +12,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/adapter/fileproj"
 	"github.com/noviopenworks/homonto/internal/adapter/jsoncodec"
 	"github.com/noviopenworks/homonto/internal/adapter/structproj"
+	"github.com/noviopenworks/homonto/internal/agentfm"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/copyfile"
@@ -236,13 +237,30 @@ func fileExists(p string) bool {
 	return err == nil && !fi.IsDir()
 }
 
+// skipsSubagent reports whether a builtin subagent must NOT be projected for
+// OpenCode: it carries a neutral homonto: block but has no <name>.opencode.md
+// variant (agentfm skipped the OpenCode render for it). Symmetric with the
+// Claude adapter; currently only Claude ever skips (a primary agent), but the
+// rule keeps both adapters honest as new tool-specific renders are added.
+func (a *Adapter) skipsSubagent(e config.NamedResource) bool {
+	name, ok := strings.CutPrefix(e.Resource.Source, "builtin:")
+	if !ok {
+		return false
+	}
+	if fileExists(filepath.Join(a.subagentCatalogRoot, name+".opencode.md")) {
+		return false
+	}
+	data, err := os.ReadFile(filepath.Join(a.subagentCatalogRoot, name+".md"))
+	return err == nil && agentfm.NeedsTransform(data)
+}
+
 // subagentFileLinks builds the desired managed subagent symlinks for the
 // fileproj contract. Copy-mode subagents are projected as content files (not
 // links), so they are skipped here and reconciled by applyCopySubagents.
 func (a *Adapter) subagentFileLinks() []fileproj.Link {
 	var out []fileproj.Link
 	for _, e := range a.subagents {
-		if e.Mode == "copy" {
+		if e.Mode == "copy" || a.skipsSubagent(e) {
 			continue
 		}
 		inact := ""
@@ -263,7 +281,7 @@ func (a *Adapter) subagentFileLinks() []fileproj.Link {
 func (a *Adapter) copySubagentDesired() (map[string][]byte, error) {
 	out := map[string][]byte{}
 	for _, entry := range a.subagents {
-		if entry.Mode != "copy" {
+		if entry.Mode != "copy" || a.skipsSubagent(entry) {
 			continue
 		}
 		content, err := os.ReadFile(a.subagentSource(entry))

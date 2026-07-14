@@ -65,6 +65,11 @@ if grep -qE 'Edit|Write|Task' "$W/.homonto/catalog/subagents/code-reviewer.claud
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'model: sonnet'
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'Edit, Write'
 if grep -qE 'Task' "$W/.homonto/catalog/subagents/onto-implementer.claude.md"; then fail "spawn:[] implementer must not carry Task"; fi
+# The onto primary agent is OpenCode-only: agentfm skips its Claude render, so
+# the .claude.md variant is absent while the .opencode.md variant exists.
+is_file "$W/.homonto/catalog/subagents/onto.md"
+is_file "$W/.homonto/catalog/subagents/onto.opencode.md"
+absent  "$W/.homonto/catalog/subagents/onto.claude.md"
 ok "framework skills, commands, and subagents materialized (per-tool render invariants hold)"
 
 # Assert each tool entry is a symlink AND that it actually resolves to real
@@ -78,6 +83,9 @@ is_link "$W/.claude/agents/code-reviewer.md";     is_file "$W/.claude/agents/cod
 is_link "$W/.claude/agents/codebase-explorer.md"; is_file "$W/.claude/agents/codebase-explorer.md"
 is_link "$W/.claude/agents/onto-implementer.md";  is_file "$W/.claude/agents/onto-implementer.md"
 is_link "$W/.claude/agents/comet-navigator.md";   is_file "$W/.claude/agents/comet-navigator.md"
+# The onto primary agent has no Claude variant, so it is NOT projected for Claude
+# (its entry point is the /onto command → onto skill).
+absent "$W/.claude/agents/onto.md"
 # The onto framework ships a command per phase/preset — the dispatcher plus every
 # onto-* skill — so each phase is directly invocable. Assert the whole set links
 # and resolves, not just the dispatcher.

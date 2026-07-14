@@ -32,6 +32,7 @@ onto-no-slop = "commands/onto-no-slop.md"
 # means installing onto connects the whole team; do NOT also declare them in a
 # top-level [subagents.*] table (that collides with the framework declaration).
 [subagents]
+onto = "subagents/onto.md"
 codebase-explorer = "subagents/codebase-explorer.md"
 code-reviewer = "subagents/code-reviewer.md"
 onto-implementer = "subagents/onto-implementer.md"

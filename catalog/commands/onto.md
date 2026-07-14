@@ -2,6 +2,10 @@
 name: onto
 description: Start or resume the onto spec-driven workflow for this repo.
 argument-hint: "What to work on (optional; omit to resume the active change)"
+# OpenCode routes this command into the `onto` primary agent (which carries the
+# orchestrator prompt + delegation topology). Claude has no primary agent and
+# ignores this key, so there the command loads the onto skill (below).
+agent: onto
 ---
 
 # /onto
