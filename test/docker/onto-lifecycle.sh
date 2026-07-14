@@ -59,21 +59,37 @@ ok "advance gated on the missing design.md deliverable"
 
 log "produce deliverables and advance design -> build -> verify -> close"
 printf '# Design\n' > "$CH/design.md"
+# Entering build requires a chosen isolation (branch|worktree); the binary
+# refuses otherwise, so record it before the design -> build advance.
+"$ONTO" set isolation feat-a branch >/dev/null
 "$ONTO" advance feat-a >/dev/null; in_file "$CH/onto-state.yaml" 'phase: build'
 printf '# Plan\n' > "$CH/plan.md"
 printf -- '- [x] done\n' > "$CH/tasks.md"
 "$ONTO" advance feat-a >/dev/null; in_file "$CH/onto-state.yaml" 'phase: verify'
 printf '# Verification\n' > "$CH/verification.md"
+# Leaving verify requires a passing verification; set it before the commit so
+# the worktree is clean when the enter-close gate checks it.
+"$ONTO" set verify-result feat-a pass >/dev/null
 git add -A && git commit -q -m "feat-a artifacts"
 "$ONTO" advance feat-a >/dev/null; in_file "$CH/onto-state.yaml" 'phase: close'
+# close additionally requires the merged flag and resolved guides (full
+# workflow); record them before the commit so the worktree stays clean.
+"$ONTO" set close-merged feat-a >/dev/null
+"$ONTO" set guides feat-a updated >/dev/null
 git add -A && git commit -q -m "feat-a enters close"
 ok "feat-a advanced through every gate to close"
 
 log "dependency-aware close: feat-b depends on the still-active feat-a"
 "$ONTO" new feat-b >/dev/null
+# Shortcut feat-b straight to the close phase (skip the per-phase advances).
 sed 's/^phase: open/phase: close/' "$W/docs/changes/feat-b/onto-state.yaml" > /tmp/fb.yaml
 mv /tmp/fb.yaml "$W/docs/changes/feat-b/onto-state.yaml"
-printf 'deps:\n- feat-a\n' >> "$W/docs/changes/feat-b/onto-state.yaml"
+# Satisfy every close-evidence gate so the ONLY thing blocking close is the
+# unresolved dependency on the still-active feat-a.
+"$ONTO" set deps feat-b --dep feat-a >/dev/null
+"$ONTO" set verify-result feat-b pass >/dev/null
+"$ONTO" set close-merged feat-b >/dev/null
+"$ONTO" set guides feat-b updated >/dev/null
 git add -A && git commit -q -m "feat-b at close depending on feat-a"
 if "$ONTO" close feat-b >/dev/null 2>&1; then fail "close must refuse while dependency feat-a is unresolved"; fi
 is_dir "$W/docs/changes/feat-b"
