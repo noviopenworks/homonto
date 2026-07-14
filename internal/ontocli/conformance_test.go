@@ -69,7 +69,7 @@ func TestConformance_FullLifecycle_HappyPath(t *testing.T) {
 	if _, err := runOnto(t, "new", name, "--workflow", "full", "--dir", root); err != nil {
 		t.Fatalf("onto new: %v", err)
 	}
-	for _, f := range ontostate.RequiredArtifacts("open") {
+	for _, f := range ontostate.RequiredArtifacts("open", "full") {
 		if _, err := os.Stat(filepath.Join(changeDir, f)); err != nil {
 			t.Fatalf("open-phase required artifact %s missing after new: %v", f, err)
 		}

@@ -80,7 +80,7 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto advance: %q is at terminal/unknown phase %q; nothing to advance", name, st.Phase)
 	}
 
-	for _, f := range ontostate.RequiredArtifacts(st.Phase) {
+	for _, f := range ontostate.RequiredArtifacts(st.Phase, st.Workflow) {
 		if _, statErr := os.Stat(filepath.Join(changeDir, f)); statErr != nil {
 			return fmt.Errorf("onto advance: cannot leave %q: missing %s", st.Phase, f)
 		}

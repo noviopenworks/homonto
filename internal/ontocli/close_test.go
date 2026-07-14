@@ -26,7 +26,7 @@ func seedCloseState(t *testing.T, root string, st ontostate.State) {
 	if err := ontostate.Save(filepath.Join(changeDir, "onto-state.yaml"), st); err != nil {
 		t.Fatalf("seedCloseState: saving state: %v", err)
 	}
-	for _, f := range ontostate.RequiredArtifacts("close") {
+	for _, f := range ontostate.RequiredArtifacts("close", st.Workflow) {
 		if f == "onto-state.yaml" {
 			continue
 		}

@@ -43,28 +43,31 @@ log "onto init scaffolds the workspace"
 for d in changes specs adr guides; do is_dir "$W/docs/$d"; done
 ok "docs/{changes,specs,adr,guides} created"
 
-log "onto new creates an open-phase change"
+log "onto new creates an open-phase change (full: proposal only, no tasks yet)"
 "$ONTO" new feat-a >/dev/null
 CH="$W/docs/changes/feat-a"
-is_file "$CH/onto-state.yaml"; is_file "$CH/proposal.md"; is_file "$CH/tasks.md"
+is_file "$CH/onto-state.yaml"; is_file "$CH/proposal.md"
+absent "$CH/tasks.md"   # full derives its task list from the confirmed design
 in_file "$CH/onto-state.yaml" 'phase: open'
-ok "open-phase skeleton created"
+ok "open-phase skeleton created (no tasks.md)"
 
-log "advance open -> design, then a failure gate stops design -> build"
+log "advance open -> design (needs only proposal), then design exit gates on design.md + tasks.md"
 "$ONTO" advance feat-a >/dev/null
 in_file "$CH/onto-state.yaml" 'phase: design'
 if "$ONTO" advance feat-a >/dev/null 2>&1; then fail "advance must refuse to leave design without design.md"; fi
-in_file "$CH/onto-state.yaml" 'phase: design'
-ok "advance gated on the missing design.md deliverable"
-
-log "produce deliverables and advance design -> build -> verify -> close"
 printf '# Design\n' > "$CH/design.md"
+# design.md alone is not enough now: leaving design also needs the derived tasks.md.
+if "$ONTO" advance feat-a >/dev/null 2>&1; then fail "advance must refuse to leave design without tasks.md"; fi
+in_file "$CH/onto-state.yaml" 'phase: design'
+ok "design exit gated on both design.md and the derived tasks.md"
+
+log "derive tasks + produce deliverables, advance design -> build -> verify -> close"
+printf -- '- [x] done\n' > "$CH/tasks.md"   # derived from the confirmed design
 # Entering build requires a chosen isolation (branch|worktree); the binary
 # refuses otherwise, so record it before the design -> build advance.
 "$ONTO" set isolation feat-a branch >/dev/null
 "$ONTO" advance feat-a >/dev/null; in_file "$CH/onto-state.yaml" 'phase: build'
 printf '# Plan\n' > "$CH/plan.md"
-printf -- '- [x] done\n' > "$CH/tasks.md"
 "$ONTO" advance feat-a >/dev/null; in_file "$CH/onto-state.yaml" 'phase: verify'
 printf '# Verification\n' > "$CH/verification.md"
 # Leaving verify requires a passing verification; set it before the commit so
@@ -106,8 +109,30 @@ git add -A && git commit -q -m "archive feat-a"
 [ -n "$(find "$W/docs/changes/archive" -maxdepth 1 -name '*-feat-b' -type d)" ] || fail "feat-b did not archive after its dependency resolved"
 ok "feat-a archived; feat-b closed once its dependency resolved"
 
-log "onto doctor is healthy after clean closes"
+log "preset (fix) advances mechanically open->build->verify->close (N2 regression)"
 git add -A && git commit -q -m "archive feat-b" || true
+"$ONTO" new feat-fix --workflow fix >/dev/null
+FX="$W/docs/changes/feat-fix"
+is_file "$FX/proposal.md"; is_file "$FX/tasks.md"   # presets scaffold tasks at open-lite
+printf -- '- [x] reproduce\n- [x] fix\n' > "$FX/tasks.md"
+"$ONTO" advance feat-fix >/dev/null; in_file "$FX/onto-state.yaml" 'phase: design'
+"$ONTO" set isolation feat-fix branch >/dev/null
+# The former N2 gap: a preset could not leave design because the gate demanded a
+# design.md it never writes. Workflow-aware gates let it pass straight through.
+"$ONTO" advance feat-fix >/dev/null; in_file "$FX/onto-state.yaml" 'phase: build'
+"$ONTO" advance feat-fix >/dev/null; in_file "$FX/onto-state.yaml" 'phase: verify'
+printf '# Verification\n' > "$FX/verification.md"
+"$ONTO" set verify-result feat-fix pass >/dev/null
+git add -A && git commit -q -m "feat-fix artifacts"
+"$ONTO" advance feat-fix >/dev/null; in_file "$FX/onto-state.yaml" 'phase: close'
+"$ONTO" set close-merged feat-fix >/dev/null   # presets need no guides
+git add -A && git commit -q -m "feat-fix enters close"
+"$ONTO" close feat-fix >/dev/null
+[ -n "$(find "$W/docs/changes/archive" -maxdepth 1 -name '*-feat-fix' -type d)" ] || fail "preset did not archive"
+ok "preset advanced through every phase mechanically and archived"
+
+log "onto doctor is healthy after clean closes"
+git add -A && git commit -q -m "archive feat-fix" || true
 "$ONTO" doctor >/dev/null 2>&1 || fail "onto doctor reported problems"
 ok "onto doctor healthy"
 

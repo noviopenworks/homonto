@@ -64,9 +64,31 @@ func TestNewCommand_CreatesSkeleton(t *testing.T) {
 		t.Errorf("state.Created = %q, want match of %q", state.Created, createdDatePattern.String())
 	}
 
+	// full: proposal.md is scaffolded; tasks.md is NOT (the task list is derived
+	// from the confirmed design in the design phase).
+	if _, err := os.Stat(filepath.Join(changeDir, "proposal.md")); err != nil {
+		t.Errorf("expected proposal.md to exist, stat err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(changeDir, "tasks.md")); err == nil {
+		t.Error("full change must NOT scaffold tasks.md at new (derived in design)")
+	}
+}
+
+// A fix/tweak preset skips design and decomposes at open-lite, so `new` DOES
+// scaffold tasks.md for it.
+func TestNewCommand_PresetScaffoldsTasks(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"new", "bug-y", "--workflow", "fix", "--dir", dir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	changeDir := filepath.Join(dir, "docs", "changes", "bug-y")
 	for _, f := range []string{"proposal.md", "tasks.md"} {
 		if _, err := os.Stat(filepath.Join(changeDir, f)); err != nil {
-			t.Errorf("expected %s to exist, stat err = %v", f, err)
+			t.Errorf("preset must scaffold %s, stat err = %v", f, err)
 		}
 	}
 }

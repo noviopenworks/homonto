@@ -236,22 +236,39 @@ func Save(path string, s State) error {
 // is the terminal phase.
 var orderedPhases = []string{"open", "design", "build", "verify", "close"}
 
-// RequiredArtifacts returns the filenames that must exist in a change
-// directory for the given phase. Requirements are cumulative: each phase
-// requires the base skeleton set plus every artifact introduced by earlier
-// phases. Unknown phases fall back to the base skeleton set. The returned
-// slice is a fresh copy on every call.
-func RequiredArtifacts(phase string) []string {
-	base := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+// RequiredArtifacts returns the filenames that must exist to LEAVE phase for a
+// change of the given workflow. Requirements are cumulative and workflow-aware:
+//
+//   - full (and "" / unknown → strictest): the task list is derived from the
+//     confirmed design, so tasks.md gates the DESIGN exit — not the open exit —
+//     and design.md + plan.md are required as before.
+//   - fix / tweak presets: they skip design and plan entirely, so tasks.md is
+//     the open-lite checklist (required from the open exit on) and neither
+//     design.md nor plan.md is ever demanded. This is also what lets a preset
+//     advance mechanically past design/build (the former N2 gap).
+//
+// The returned slice is a fresh copy on every call.
+func RequiredArtifacts(phase, workflow string) []string {
+	base := func(extra ...string) []string {
+		return append([]string{"onto-state.yaml", "proposal.md"}, extra...)
+	}
+	if workflow == "fix" || workflow == "tweak" {
+		switch phase {
+		case "verify", "close":
+			return base("tasks.md", "verification.md")
+		default:
+			return base("tasks.md")
+		}
+	}
 	switch phase {
 	case "design":
-		return append(base, "design.md")
+		return base("tasks.md", "design.md")
 	case "build":
-		return append(base, "design.md", "plan.md")
+		return base("tasks.md", "design.md", "plan.md")
 	case "verify", "close":
-		return append(base, "design.md", "plan.md", "verification.md")
-	default:
-		return base
+		return base("tasks.md", "design.md", "plan.md", "verification.md")
+	default: // open
+		return base()
 	}
 }
 
@@ -330,7 +347,7 @@ func ValidateSkeleton(changeDir string) error {
 	if err != nil {
 		return err
 	}
-	for _, name := range RequiredArtifacts(phase) {
+	for _, name := range RequiredArtifacts(phase, state.Workflow) {
 		if _, err := os.Stat(filepath.Join(changeDir, name)); err != nil {
 			return fmt.Errorf("onto-state: missing required artifact %s in %s: %w", name, changeDir, err)
 		}

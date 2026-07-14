@@ -209,12 +209,19 @@ func TestSave_NonExistentSubdir_CreatesDirAndFileAndCleansUpTemp(t *testing.T) {
 	}
 }
 
-func TestRequiredArtifacts_OpenPhase_ReturnsBaseSet(t *testing.T) {
-	want := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
-
-	got := RequiredArtifacts("open")
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("RequiredArtifacts(\"open\") = %v, want %v", got, want)
+func TestRequiredArtifacts_OpenPhase_WorkflowAware(t *testing.T) {
+	// full: the task list is derived from the confirmed design, so tasks.md does
+	// NOT gate the open exit.
+	if got, want := RequiredArtifacts("open", "full"), []string{"onto-state.yaml", "proposal.md"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("RequiredArtifacts(open, full) = %v, want %v", got, want)
+	}
+	// empty/unknown workflow is treated as full (strictest).
+	if got, want := RequiredArtifacts("open", ""), []string{"onto-state.yaml", "proposal.md"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("RequiredArtifacts(open, \"\") = %v, want %v", got, want)
+	}
+	// presets: tasks.md is the open-lite checklist, required from the open exit.
+	if got, want := RequiredArtifacts("open", "fix"), []string{"onto-state.yaml", "proposal.md", "tasks.md"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("RequiredArtifacts(open, fix) = %v, want %v", got, want)
 	}
 }
 
@@ -238,7 +245,9 @@ func TestValidateSkeleton_AllArtifactsPresent_ReturnsNil(t *testing.T) {
 
 func TestValidateSkeleton_MissingTasksFile_ErrorNamesFile(t *testing.T) {
 	dir := t.TempDir()
-	state := State{Change: "onto-binary-foundation", Phase: "open"}
+	// A fix preset requires tasks.md from the open exit (its open-lite checklist),
+	// so an open preset missing tasks.md is a skeleton error naming the file.
+	state := State{Change: "onto-binary-foundation", Workflow: "fix", Phase: "open"}
 	if err := Save(filepath.Join(dir, "onto-state.yaml"), state); err != nil {
 		t.Fatalf("Save returned unexpected error: %v", err)
 	}
@@ -255,34 +264,43 @@ func TestValidateSkeleton_MissingTasksFile_ErrorNamesFile(t *testing.T) {
 	}
 }
 
-func TestRequiredArtifacts_CumulativePerPhase(t *testing.T) {
-	base := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
+func TestRequiredArtifacts_CumulativePerPhaseAndWorkflow(t *testing.T) {
+	full := []string{"onto-state.yaml", "proposal.md"}
+	preset := []string{"onto-state.yaml", "proposal.md", "tasks.md"}
 	cases := []struct {
-		phase string
-		want  []string
+		phase, workflow string
+		want            []string
 	}{
-		{"open", base},
-		{"design", append(append([]string{}, base...), "design.md")},
-		{"build", append(append([]string{}, base...), "design.md", "plan.md")},
-		{"verify", append(append([]string{}, base...), "design.md", "plan.md", "verification.md")},
-		{"close", append(append([]string{}, base...), "design.md", "plan.md", "verification.md")},
-		{"bogus", base},
+		// full: tasks.md gates the design exit, not open; design.md + plan.md apply.
+		{"open", "full", full},
+		{"design", "full", append(append([]string{}, full...), "tasks.md", "design.md")},
+		{"build", "full", append(append([]string{}, full...), "tasks.md", "design.md", "plan.md")},
+		{"verify", "full", append(append([]string{}, full...), "tasks.md", "design.md", "plan.md", "verification.md")},
+		{"close", "full", append(append([]string{}, full...), "tasks.md", "design.md", "plan.md", "verification.md")},
+		{"bogus", "full", full},
+		{"open", "", full}, // empty → strictest (full)
+		// presets: tasks.md from open on; no design.md/plan.md; verification at verify.
+		{"open", "fix", preset},
+		{"design", "fix", preset},
+		{"build", "tweak", preset},
+		{"verify", "tweak", append(append([]string{}, preset...), "verification.md")},
+		{"close", "fix", append(append([]string{}, preset...), "verification.md")},
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.phase, func(t *testing.T) {
-			got := RequiredArtifacts(tc.phase)
+		t.Run(tc.phase+"/"+tc.workflow, func(t *testing.T) {
+			got := RequiredArtifacts(tc.phase, tc.workflow)
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("RequiredArtifacts(%q) = %v, want %v", tc.phase, got, tc.want)
+				t.Errorf("RequiredArtifacts(%q, %q) = %v, want %v", tc.phase, tc.workflow, got, tc.want)
 			}
 		})
 	}
 }
 
 func TestRequiredArtifacts_ReturnsFreshSliceEachCall(t *testing.T) {
-	got1 := RequiredArtifacts("design")
+	got1 := RequiredArtifacts("design", "full")
 	got1[0] = "mutated"
-	got2 := RequiredArtifacts("design")
+	got2 := RequiredArtifacts("design", "full")
 	if got2[0] == "mutated" {
 		t.Error("RequiredArtifacts returned a shared slice; mutation leaked across calls")
 	}

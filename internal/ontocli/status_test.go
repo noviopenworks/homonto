@@ -207,7 +207,9 @@ func TestStatusCommand_ReportsSkeletonOk(t *testing.T) {
 // and must not abort processing of other changes or change the exit code.
 func TestStatusCommand_ReportsSkeletonMissingArtifact(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "onto-state.yaml"), "change: alpha\nphase: open\n")
+	// A fix preset requires tasks.md from the open exit, so an open preset with
+	// only proposal.md is a reported skeleton gap.
+	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "onto-state.yaml"), "change: alpha\nworkflow: fix\nphase: open\n")
 	writeFile(t, filepath.Join(dir, "docs", "changes", "alpha", "proposal.md"), "proposal")
 
 	cmd := NewRootCmd()

@@ -34,7 +34,9 @@ change. There is no `archive` phase.
 `onto new <name>` creates `docs/changes/<name>/` with:
 
 - `onto-state.yaml` at **phase `open`**, `workflow: full` (the default),
-- `proposal.md` and `tasks.md` skeletons.
+- a `proposal.md` skeleton — plus `tasks.md` **only for the fix/tweak presets**
+  (`--workflow fix|tweak`); a full change's `tasks.md` is derived later, in
+  design.
 
 It requires the onto framework to be installed (`homonto apply`), refuses to
 clobber an existing change, and validates the name is kebab-case with no path
@@ -49,14 +51,22 @@ below passes, in this order:
 1. **Framework installed** (the install gate) and a **valid change name**.
 2. State **loads** and the change is **not abandoned**.
 3. The current phase has a **next phase** (advancing from `close` is an error).
-4. **Required artifacts** for the *current* phase all exist (they accumulate):
+4. **Required artifacts** for the *current* phase all exist — **workflow-aware**
+   (they accumulate). A full change derives its task list *from* the confirmed
+   design, so `tasks.md` gates the **design** exit, not the open exit; the
+   fix/tweak presets skip design and decompose at open-lite, so their `tasks.md`
+   gates the **open** exit and no `design.md`/`plan.md` is ever demanded (this is
+   what lets a preset advance straight through design/build):
 
-   | Leaving phase | Files that must exist |
-   |---|---|
-   | `open`   | `proposal.md`, `tasks.md` |
-   | `design` | + `design.md` |
-   | `build`  | + `plan.md` |
-   | `verify` | + `verification.md` |
+   | Leaving phase | full | fix / tweak |
+   |---|---|---|
+   | `open`   | `proposal.md` | `proposal.md`, `tasks.md` |
+   | `design` | + `design.md`, `tasks.md` | *(pass-through — no `design.md`)* |
+   | `build`  | + `plan.md` (and all tasks checked) | all tasks checked (no `plan.md`) |
+   | `verify` | + `verification.md` | + `verification.md` |
+
+   An empty/unknown workflow is treated as full (strictest). `onto new` scaffolds
+   `tasks.md` only for presets; a full change's `tasks.md` is written in design.
 
 5. **Leaving `build`:** `tasks.md` has **no unchecked items** (`- [ ]`).
 6. **Evidence / entry tokens** (recorded via `onto set`, not inferred from files):

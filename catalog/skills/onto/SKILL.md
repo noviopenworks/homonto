@@ -129,8 +129,15 @@ proceed to `onto-open`.
 | `verification.md` with a `Result: pass` line | close |
 | `tasks.md` contains ≥1 task and all are checked | verify |
 | `design.md` marked `Status: Confirmed`, or a preset workspace | build |
-| `proposal.md` + `tasks.md` exist (full workflow, no confirmed design) | design |
-| workspace exists, artifacts incomplete | open |
+| full workflow: a `tasks.md` (≥1 task, not all checked) or a `design.md` draft present, not yet `Status: Confirmed` | design |
+| full workflow: `proposal.md` present, no `tasks.md`/`design.md` yet | the claimed phase (open **or** design — see the open↔design note in §3) |
+| `proposal.md` missing / workspace incomplete | open |
+
+Note: for a **full** change, `tasks.md` and `design.md` are *design* deliverables
+— open now produces only `proposal.md` (the task list is derived from the
+confirmed design). So the presence of `tasks.md` is design evidence, not open
+evidence, and a full change with only `proposal.md` is not file-distinguishable
+between open and design.
 
 3. **Files win downward; gates win upward.** If the derived phase is
    earlier than the claimed phase, correct `state.yaml` to match the files,
@@ -145,6 +152,12 @@ proceed to `onto-open`.
    is a lagging write. Advance `phase` to `close` and route to `onto-close`
    without re-verifying; the pass already stands in the file. Re-running
    verify here would only discard fresh evidence the report already holds.
+   **The open↔design boundary also has no distinguishing file signal for a full
+   change** — `tasks.md`/`design.md` are design deliverables, so a `phase:
+   design` claim with only `proposal.md` present is a design phase whose work
+   hasn't landed yet, NOT a demote-to-open. Trust the claimed phase across
+   open↔design; demote to open only when `proposal.md` itself is missing (a
+   genuinely incomplete workspace).
 4. **Cross-check `workflow` too, not just phase.** Resolve it in this
    priority order and stop at the first that applies:
    1. The proposal's `Preset:` marker. An upgrade annotation

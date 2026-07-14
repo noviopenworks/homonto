@@ -56,7 +56,7 @@ func seedChange(t *testing.T, root, name, phase string, extraFiles ...string) {
 		t.Fatalf("seedChange: saving state: %v", err)
 	}
 
-	for _, f := range ontostate.RequiredArtifacts(phase) {
+	for _, f := range ontostate.RequiredArtifacts(phase, st.Workflow) {
 		if f == "onto-state.yaml" {
 			continue
 		}

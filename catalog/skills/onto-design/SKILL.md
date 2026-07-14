@@ -84,8 +84,16 @@ template in this skill's `references/`:
   template's rules). Every behavior change needs a scenario; deltas stay
   living documents until close merges them.
 
-Mark the confirmed approach in `notes.md`. Update `tasks.md` if the design
-revealed different task boundaries.
+Mark the confirmed approach in `notes.md`.
+
+**Derive the task list.** Now — with the approach confirmed — write
+`docs/changes/<name>/tasks.md` from the confirmed design (template:
+`onto-open/references/tasks.md`). This is the right time: tasks flow *from* the
+design, not before it. Each task is a bite-sized, independently verifiable unit
+tracing to a design decision or delta scenario; build refines granularity but
+the boundaries come from here. `tasks.md` does not exist until this step (onto
+new no longer scaffolds it for a full change), and leaving design requires it —
+so a design that produced no task list is not done.
 
 ## Exit checklist
 
@@ -100,6 +108,8 @@ revealed different task boundaries.
       `specs/<capability>.md` scenario; the close-phase lint re-checks the
       diff against declared deltas, so a skipped delta surfaces there as a
       blocking finding
+- [ ] `tasks.md` written from the confirmed design — bite-sized tasks, each
+      tracing to a decision or delta scenario (required to leave design)
 - [ ] No implementation code was written
 - [ ] `design.md` `## Grounding` is filled — the graphify/codegraph
       queries and file reads the design rests on, or the recorded fallback;

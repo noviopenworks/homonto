@@ -60,8 +60,9 @@ func newCmd() *cobra.Command {
 
 // runNew enforces gate(root) then validChangeName(name), refuses to
 // clobber an existing docs/changes/<name> directory, and only then
-// scaffolds onto-state.yaml plus empty proposal.md and tasks.md (each
-// written only if absent). It reports the created change and its files.
+// scaffolds onto-state.yaml plus an empty proposal.md (and, for the fix/tweak
+// presets, tasks.md — full derives its task list in design). Each file is
+// written only if absent. It reports the created change and its files.
 func runNew(cmd *cobra.Command, root, name, workflow string) error {
 	if err := gate(root); err != nil {
 		return err
@@ -96,7 +97,14 @@ func runNew(cmd *cobra.Command, root, name, workflow string) error {
 		return fmt.Errorf("onto new: %w", err)
 	}
 
-	files := []string{"proposal.md", "tasks.md"}
+	// Scaffold the open-phase skeleton. A full change writes its task list from
+	// the confirmed design (onto-design creates tasks.md), so `new` only lays down
+	// proposal.md; the fix/tweak presets skip design and decompose at open-lite,
+	// so they also get tasks.md now. This matches RequiredArtifacts(open, …).
+	files := []string{"proposal.md"}
+	if workflow == "fix" || workflow == "tweak" {
+		files = append(files, "tasks.md")
+	}
 	for _, f := range files {
 		path := filepath.Join(changeDir, f)
 		if _, err := os.Stat(path); err == nil {

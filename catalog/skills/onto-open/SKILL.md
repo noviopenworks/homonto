@@ -1,6 +1,6 @@
 ---
 name: onto-open
-description: onto phase 1 — open a change. Use when starting a new change or when the dispatcher routes here (phase open) — clarifies requirements, checks for scope splits, and creates the change workspace with proposal and tasks skeleton.
+description: onto phase 1 — open a change. Use when starting a new change or when the dispatcher routes here (phase open) — clarifies requirements, checks for scope splits, and creates the change workspace with a proposal (the task list is derived later, in design).
 ---
 
 # onto-open — Phase 1: Open
@@ -61,8 +61,9 @@ each artifact from its canonical template:
 
 - Create the workspace via the binary: `onto new <name> --workflow full`
   (`onto new` creates `onto-state.yaml` carrying `change`, `workflow: full`,
-  `phase: open`, `created`; and empty `proposal.md`/`tasks.md`). Then record
-  the creation fields the same way:
+  `phase: open`, `created`; and an empty `proposal.md`. It does **not** scaffold
+  `tasks.md` — a full change's task list is derived from the confirmed design in
+  onto-design, not written here). Then record the creation fields the same way:
   - `onto set base-ref <name> "$(git rev-parse HEAD)"` — captured NOW, before
     anything is committed; written once, never recomputed.
   - `onto set deps <name> --dep <a> --dep <b>` for each `Depends-on:` entry
@@ -72,22 +73,20 @@ each artifact from its canonical template:
   ending **any** turn that produced new decisions — this is the
   compaction-recovery checkpoint.
 - `proposal.md` — template: `references/proposal.md`; fill the skeleton `onto
-  new` created.
-- `tasks.md` — template: `references/tasks.md`; fill the skeleton. Skeleton
-  sets boundaries; build refines.
+  new` created. State the intended scope and acceptance scenarios; the concrete
+  task list is **not** written here — it follows from the design.
 
 Everything in the proposal must trace back to the confirmed clarification
 summary — no invented scope.
 
-> **GATE (artifact review):** summarize proposal + tasks skeleton and ask
-> the user to approve or request adjustments. Iterate until approved.
-> Always fresh input.
+> **GATE (artifact review):** summarize the proposal and ask the user to approve
+> or request adjustments. Iterate until approved. Always fresh input.
 
 ## Exit checklist
 
 - [ ] Workspace exists with `onto-state.yaml`, `notes.md`, `proposal.md`,
-      `tasks.md`, all template-conformant and consistent with the
-      confirmed summary
+      all template-conformant and consistent with the confirmed summary
+      (no `tasks.md` yet — it is derived in design)
 - [ ] `notes.md` Confirmed section reflects every answered gate
 - [ ] `proposal.md` `## Grounding` is filled — the queries run, or the
       recorded fallback if graphify was unavailable/declined; never left
