@@ -46,7 +46,7 @@ log "apply projects the expanded surface"
 
 log "builtin catalog materialization"
 is_dir  "$W/.homonto/catalog/skills/onto"
-is_file "$W/.homonto/catalog/commands/example-command.md"
+is_file "$W/.homonto/catalog/commands/onto.md"
 is_file "$W/.homonto/catalog/subagents/code-reviewer.md"
 ok "framework skills, command, and subagent materialized under .homonto/catalog"
 
@@ -56,9 +56,9 @@ ok "framework skills, command, and subagent materialized under .homonto/catalog"
 # skill discovery skips it). is_dir/is_file follow the link, so they fail on a
 # dangling target; link_to only string-matched and missed exactly that bug.
 log "tool links point at (and resolve to) the materialized catalog"
-is_link "$W/.claude/skills/onto";                 is_dir  "$W/.claude/skills/onto"
-is_link "$W/.claude/commands/example-command.md"; is_file "$W/.claude/commands/example-command.md"
-is_link "$W/.claude/agents/code-reviewer.md";     is_file "$W/.claude/agents/code-reviewer.md"
+is_link "$W/.claude/skills/onto";             is_dir  "$W/.claude/skills/onto"
+is_link "$W/.claude/commands/onto.md";        is_file "$W/.claude/commands/onto.md"
+is_link "$W/.claude/agents/code-reviewer.md"; is_file "$W/.claude/agents/code-reviewer.md"
 ok "skill, command, and subagent links resolve to the catalog"
 
 log "plugin + marketplace projected into claude settings.json"

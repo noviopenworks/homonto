@@ -17,4 +17,4 @@ onto-verify = "skills/onto-verify"
 onto-no-slop = "skills/onto-no-slop"
 
 [commands]
-example-command = "commands/example-command.md"
+onto = "commands/onto.md"
