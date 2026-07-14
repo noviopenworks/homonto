@@ -65,7 +65,9 @@ bigger. Read `notes.md` first if present.
 > for the build→verify boundary consults notes.md, not the losable
 > state file.
 
-Create the isolation before the first task — but check the tree first:
+Create the isolation before the first task (for `isolation: worktree`, follow
+`references/worktree-protocol.md` — creation, env/untracked-file copying, clean
+baseline, and teardown) — but check the tree first:
 run `git status`. The workspace docs should already be committed (each
 phase commits at exit); if they aren't, commit them now. Unrelated
 uncommitted changes either get stashed (say so) or force
@@ -89,7 +91,9 @@ the final task. If no real dispatch capability exists, fall back to
 
 1. **`tdd: tdd`** — write the failing test FIRST, run it, watch it fail for
    the expected reason; then write the minimal implementation; watch it
-   pass. No production code without a failing test.
+   pass. No production code without a failing test. Follow
+   `references/tdd-protocol.md` — the discipline is in its defenses against
+   "just this once", not the one-line rule.
    **`tdd: direct`** — implement, then run the task's stated verification.
 2. After verification passes: check the task off in `tasks.md` **and**
    `plan.md`, then commit — one commit per task, message reflects design
@@ -98,7 +102,10 @@ the final task. If no real dispatch capability exists, fall back to
 
 **Delegate review and parallelize independent tasks.** The reviewer role above
 is the `code-reviewer` subagent shipped with onto — hand it each task's diff (and
-always the final diff), rather than reviewing inline. When `plan.md` marks tasks
+always the final diff), rather than reviewing inline. Its findings are input to
+**evaluate, not execute**: apply `references/receiving-review.md` — verify each
+finding against the code before acting, and push back with evidence on a wrong
+one instead of implementing it. When `plan.md` marks tasks
 whose file sets **do not overlap**, dispatch their reviews (and any needed
 `codebase-explorer` investigation) **concurrently** — one subagent invocation per
 task — via the Task tool (OpenCode runs each as a child session; Claude Code runs
@@ -112,12 +119,13 @@ available.
 
 ### 4. Failure gate (systematic debugging)
 
-On ANY build/test/unexpected failure: stop. Reproduce it, read the whole
-error, check recent changes, trace the data flow, and identify the **root
-cause**. No source fix may be proposed or applied before the root cause is
-identified. If the root cause is a source bug, add a minimal failing test
-that reproduces it, then fix, then watch the test pass. Symptom-patching is
-prohibited.
+On ANY build/test/unexpected failure: stop and follow
+`references/debugging-protocol.md`. No source fix may be proposed or applied
+before the **root cause** is identified (reproduce → read the whole error →
+check recent changes → trace the data flow). If the root cause is a source bug,
+add a minimal failing test that reproduces it, then fix, then watch it pass.
+Symptom-patching is prohibited; after 3 failed hypotheses, escalate a
+fix-vs-rethink decision to the user rather than guessing again.
 
 ### 5. Mid-build scope changes
 

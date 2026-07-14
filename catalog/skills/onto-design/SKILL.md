@@ -30,6 +30,11 @@ the full workflow exists.
 
 ## Steps
 
+Steps 1–3 are the **brainstorm** — follow `references/brainstorm-protocol.md` for
+the discipline behind them: why "too simple to design" is a trap, one question
+per message, real alternatives (not a fait accompli), YAGNI, and the incremental
+`notes.md` checkpoint. The design doc is written only *after* the approach gate.
+
 ### 1. Explore ground truth
 
 Before proposing anything, read the real system: graphify/codegraph queries
