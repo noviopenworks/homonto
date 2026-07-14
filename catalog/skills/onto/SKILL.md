@@ -300,8 +300,15 @@ workflow state.
 **Dialogs — prefer them, in either tool.** Whenever a `> **GATE:**` block or any
 either/or decision comes up, ask it through an **interactive choice dialog** — a
 clear prompt, a short header, and the concrete choices — rather than burying the
-question in prose. It is faster for the user and records a definite answer. Both
-tools have a dialog mechanism, so use it in both:
+question in prose. It is faster for the user and records a definite answer.
+
+For the **recorded evidence gates** (isolation, build/tdd mode, verify result,
+close-merged, guides, integration), the binary owns the schema: run **`onto gate
+<change> --json`** to get the exact pending decision(s) — id, question, header,
+options (with a recommended default), and the `onto set …` command that records
+the answer. Render that as the dialog, then run the returned `onto set`. This
+keeps the same gate asked the same way in both tools and lets you check what is
+pending. Both tools have a dialog mechanism, so use it in both:
 
 - **OpenCode** — the **question** tool (the shipped subagents allow it via
   `permission.question`).
