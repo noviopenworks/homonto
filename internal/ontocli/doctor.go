@@ -3,6 +3,7 @@ package ontocli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,17 +47,27 @@ func normalizeVersion(v string) string {
 // a refusal. It writes nothing and imports none of homonto's projection
 // packages.
 func doctorCmd() *cobra.Command {
-	var dir string
+	var (
+		dir   string
+		quiet bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Report onto workflow/project health (read-only)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if quiet {
+				// Hook-friendly: suppress all output, communicate only via exit code
+				// (non-zero when there are findings). Used by an editor/tool Stop
+				// hook to fail loudly on a workflow-integrity problem.
+				cmd.SetOut(io.Discard)
+			}
 			return runDoctor(cmd, dir)
 		},
 	}
 	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root to inspect")
+	cmd.Flags().BoolVar(&quiet, "quiet", false, "print nothing; signal health via exit code only (for hooks)")
 	return cmd
 }
 

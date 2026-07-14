@@ -277,3 +277,33 @@ func TestDoctor_MissingStateDir_IsFinding(t *testing.T) {
 		t.Errorf("output = %q, want a gamma missing-state finding", out)
 	}
 }
+
+func TestDoctorQuiet_ExitCodeOnly(t *testing.T) {
+	// Healthy → no output, nil error.
+	healthy := t.TempDir()
+	seedDocsLayout(t, healthy)
+	out, err := execDoctorArgs(t, "--dir", healthy, "--quiet")
+	if err != nil || out != "" {
+		t.Fatalf("quiet healthy: out=%q err=%v, want empty+nil", out, err)
+	}
+	// A finding → non-nil error (non-zero exit) and no findings on stdout.
+	broken := t.TempDir()
+	seedDocsLayout(t, broken)
+	writeFile(t, filepath.Join(broken, "docs", "changes", "bad", "onto-state.yaml"), "not: [valid")
+	out, err = execDoctorArgs(t, "--dir", broken, "--quiet")
+	if err == nil {
+		t.Fatal("quiet with a finding must return a non-nil error (non-zero exit)")
+	}
+	if strings.Contains(out, "malformed") {
+		t.Errorf("--quiet must not print findings to stdout: %q", out)
+	}
+}
+
+func execDoctorArgs(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	cmd := NewRootCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetArgs(append([]string{"doctor"}, args...))
+	return buf.String(), cmd.Execute()
+}

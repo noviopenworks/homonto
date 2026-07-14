@@ -1,5 +1,19 @@
 # Development plan — v0.1.8 → v0.2.0
 
+> **Status (2026-07-14):** v0.1.8–v0.1.12 are **shipped in full** (releases
+> v0.1.8–v0.1.14), and v0.2.0's `onto handoff` shipped (v0.1.15). The enforcement
+> layer's feasible parts shipped too — `onto doctor --quiet` + the Claude
+> `settings.json` hooks recipe (works via the existing settings projection) and
+> the OpenCode plugin recipe, in `docs/guides/enforcement.md`. What remains is
+> **environment-gated**, not undone: a dedicated `[hooks]` resource that
+> auto-ships onto's guard to both tools needs an OpenCode **JS plugin** (no
+> declarative hook config exists) whose *execution* can't be tested here, and the
+> full real-tool CI matrix needs GitHub **secrets** for live Claude/OpenCode
+> models. The render invariants that matrix would assert already run on every push
+> in the Docker E2E (`homonto-expanded`). Details per section below.
+
+
+
 Written 2026-07-14 from three analyses: onto-vs-comet gap review, the
 subagent/dialog/tool-parity method, and flow-correctness findings. One release
 per section, ordered so each ships alone and each unblocks the next. The method
