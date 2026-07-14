@@ -57,9 +57,14 @@ ok "framework skills, command, and subagent materialized under .homonto/catalog"
 # dangling target; link_to only string-matched and missed exactly that bug.
 log "tool links point at (and resolve to) the materialized catalog"
 is_link "$W/.claude/skills/onto";             is_dir  "$W/.claude/skills/onto"
-is_link "$W/.claude/commands/onto.md";        is_file "$W/.claude/commands/onto.md"
 is_link "$W/.claude/agents/code-reviewer.md"; is_file "$W/.claude/agents/code-reviewer.md"
-ok "skill, command, and subagent links resolve to the catalog"
+# The onto framework ships a command per phase/preset — the dispatcher plus every
+# onto-* skill — so each phase is directly invocable. Assert the whole set links
+# and resolves, not just the dispatcher.
+for c in onto onto-open onto-design onto-build onto-verify onto-close onto-fix onto-tweak onto-no-slop; do
+	is_link "$W/.claude/commands/$c.md"; is_file "$W/.claude/commands/$c.md"
+done
+ok "skill, full command set, and subagent links resolve to the catalog"
 
 log "plugin + marketplace projected into claude settings.json"
 CSET="$HOME/.claude/settings.json"

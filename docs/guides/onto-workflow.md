@@ -41,6 +41,14 @@ source = "builtin:onto"
 Then `homonto apply`. The read-only commands (`status`, `doctor`, `version`)
 run without any of this — they never read `homonto.toml` and never write.
 
+`homonto apply` also installs the framework's **slash commands** into each tool
+(`/onto` plus one per phase and preset: `/onto-open`, `/onto-design`,
+`/onto-build`, `/onto-verify`, `/onto-close`, `/onto-fix`, `/onto-tweak`,
+`/onto-no-slop`). `/onto` is the dispatcher — it derives the active change's real
+phase and routes automatically; the per-phase commands jump straight into one
+phase. Each command loads the matching `onto-*` skill, and every state change
+still goes through the `onto` binary.
+
 ## The layout
 
 `onto init` scaffolds four directories under the workspace root (idempotently —
