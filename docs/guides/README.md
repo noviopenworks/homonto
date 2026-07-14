@@ -15,6 +15,12 @@ do*.
   workflow (Comet + OpenSpec + Superpowers).
 - [`onto-workflow.md`](onto-workflow.md) — the `onto` binary and its spec-driven
   workflow, shipped as a bundled product framework.
+- [`onto-flow-and-gates.md`](onto-flow-and-gates.md) — precise reference for how a
+  change enters the onto workflow, advances between phases, and exits, with every
+  entry/exit gate the binary enforces.
+- [`subagents.md`](subagents.md) — the `[subagents.*]` resource: sources
+  (builtin/local/remote), link vs copy mode, scope/targets, model routes, remote
+  pinning, and lifecycle.
 
 Living capability specs are in [`../../openspec/specs/`](../../openspec/specs/);
 change history is in
