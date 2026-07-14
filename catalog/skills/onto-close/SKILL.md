@@ -16,11 +16,9 @@ ADR log, and user-facing guides — then archive the workspace.
   report).
 - **Idempotent re-entry**: close mutates shared files (living specs, the
   ADR log). If `onto state <name> --json` shows `close.merged: true` (read it
-  at entry), the deltas and
-  ADRs already landed on a prior, interrupted close — do NOT merge or
-  number again (a second ADDED merge duplicates requirements). Resume at
-  the guides/gate/archive steps. The merge step sets `close.merged: true`
-  before it starts and records what it did, so a re-entry knows to skip it.
+  at entry), the deltas already landed on a prior, interrupted close — `onto
+  merge-deltas` is a safe no-op in that case, but do NOT re-number ADRs by hand.
+  Resume at the guides/gate/archive steps.
 - Read `notes.md` at entry when present — the final gate is pre-authorized
   only by a directive that explicitly names closing/archiving (step 2).
 - Anything else → route back through `/onto`.
@@ -74,30 +72,23 @@ one interruption-prone step (mv + archived flag) is a single commit.
 
 ### 3. Execute the close (only after confirmation)
 
-1. Run `onto set close-merged <name>` **before merging**, so an
-   interruption mid-merge is recognized on re-entry and the merge is not
-   re-run (a second ADDED merge would duplicate requirements).
-2. **Merge spec deltas.** For each workspace delta `specs/<capability>.md`,
-   merge into `docs/specs/<capability>.md` by the semantics below (the same
-   ones `references/specs-readme.md` records for the repo's
-   `docs/specs/README.md`), applying sections **RENAMED first, then
-   MODIFIED, then REMOVED, then ADDED** (so a MODIFIED block targeting a
-   renamed name finds it):
-   - `## RENAMED Requirements` → rename the heading per each FROM/TO pair,
-     preserving the body
-   - `## MODIFIED Requirements` → replace the requirement of the same name
-     (which may be a just-renamed name) — replace it *entirely*, do not
-     append; a MODIFIED that leaves the old block in place is a defect the
-     post-merge lint's duplicate check catches
-   - `## REMOVED Requirements` → delete the named requirement
-   - `## ADDED Requirements` → append the requirement blocks
-   - Delta for a capability with no living spec → create the file (strip
-     the ADDED wrapper; the living spec has plain `## Requirements`)
+1. **Merge spec deltas — via the binary.** Run **`onto merge-deltas <name>`**.
+   It deterministically merges every workspace delta `specs/<capability>.md`
+   into `docs/specs/<capability>.md`, applying sections **RENAMED → MODIFIED →
+   REMOVED → ADDED** in that fixed order (so a MODIFIED targeting a just-renamed
+   name resolves), lints the result (no leaked delta headings, no duplicated
+   requirement), writes nothing unless **every** delta merges and lints clean
+   (transactional), and sets `close.merged`. It is idempotent — a change already
+   `close.merged` is a no-op, so an interrupted close re-runs safely. A capability
+   with no living spec is created with a plain `## Requirements` heading. If it
+   errors (a MODIFIED/REMOVED/RENAMED-FROM name absent, or an ADDED name that
+   already exists), fix the delta and re-run — do not hand-edit the living spec.
 
-   The merged spec reads as "always true, now" — no change-log language.
-   **onto-no-slop applies to genuinely new prose only** — never rewrite a
-   requirement's normative wording, never touch a `SHALL`/`MUST` line, a
-   scenario's GIVEN/WHEN/THEN, or any machine-read marker.
+   The merged spec reads as "always true, now" — no change-log language. **The
+   binary does not rewrite normative prose**: it moves requirement blocks
+   verbatim, so `SHALL`/`MUST` lines, scenarios, and machine-read markers are
+   untouched. Run onto-no-slop only over *genuinely new* guide/ADR prose, never a
+   merged requirement's wording.
 3. **Number and accept ADRs.** For each draft in the workspace `adr/`:
    next free number = highest `NNNN` in `docs/adr/` + 1; `git mv` to
    `docs/adr/NNNN-<slug>.md`; set `Status: Accepted` (and any superseded
@@ -152,7 +143,8 @@ unrelated to this git integration — both happen at close.
 
 - [ ] Final confirmation given **before** any spec/ADR mutation (or a
       directive that explicitly authorized closing/archiving)
-- [ ] `onto set close-merged` run before the merge (idempotency guard)
+- [ ] `onto merge-deltas <name>` run — living specs merged deterministically and
+      lint-clean, `close.merged` set (idempotent; transactional)
 - [ ] Lint checklist fully passed (pre-merge §1–2, post-merge §3 incl. the
       duplicate-requirement check, pre-archive §4 dangling refs)
 - [ ] Every delta spec merged (RENAMED→MODIFIED→REMOVED→ADDED); living

@@ -82,7 +82,13 @@ A failed gate exits non-zero and leaves the recorded phase unchanged.
 
 ## Exiting — `onto close <change>`
 
-`onto close` archives a change that has reached the `close` phase. Gates, in
+Before archiving, the close phase merges the change's spec deltas into the living
+specs with **`onto merge-deltas <change>`** — a deterministic RENAMED → MODIFIED
+→ REMOVED → ADDED application, lint-checked, transactional (writes nothing unless
+every delta merges clean), and idempotent (it sets and honors `close.merged`).
+This replaces the by-hand merge that was the workflow's most destructive step.
+
+`onto close` then archives a change that has reached the `close` phase. Gates, in
 order:
 
 1. Framework installed; valid name; state loads.

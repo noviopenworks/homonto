@@ -45,5 +45,6 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(stateCmd())
 	root.AddCommand(gateCmd())
 	root.AddCommand(scaleCmd())
+	root.AddCommand(mergeDeltasCmd())
 	return root
 }

@@ -1,0 +1,111 @@
+package ontocli
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/noviopenworks/homonto/internal/deltamerge"
+	"github.com/noviopenworks/homonto/internal/fsutil"
+	"github.com/noviopenworks/homonto/internal/ontostate"
+	"github.com/spf13/cobra"
+)
+
+// mergeDeltasCmd builds "onto merge-deltas <change>": deterministically merge the
+// change's delta specs into the living specs (RENAMED → MODIFIED → REMOVED →
+// ADDED), lint the result, and mark close.merged. This replaces the by-hand spec
+// merge that was the riskiest step of onto-close. It is transactional (nothing is
+// written unless every delta merges and lints clean) and idempotent (a change
+// already close.merged is a no-op).
+func mergeDeltasCmd() *cobra.Command {
+	var dir string
+	cmd := &cobra.Command{
+		Use:   "merge-deltas <change>",
+		Short: "Merge a change's delta specs into the living specs (deterministic)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runMergeDeltas(cmd, dir, args[0])
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", ".", "workspace root containing the change")
+	return cmd
+}
+
+func runMergeDeltas(cmd *cobra.Command, root, name string) error {
+	if err := gate(root); err != nil {
+		return err
+	}
+	if err := validChangeName(name); err != nil {
+		return err
+	}
+	changeDir := filepath.Join(root, "docs", "changes", name)
+	statePath := filepath.Join(changeDir, "onto-state.yaml")
+	st, err := ontostate.Load(statePath)
+	if err != nil {
+		return fmt.Errorf("onto merge-deltas: %w", err)
+	}
+	if st.Close.Merged {
+		fmt.Fprintf(cmd.OutOrStdout(), "%s: already merged (close.merged=true)\n", name)
+		return nil
+	}
+
+	deltaDir := filepath.Join(changeDir, "specs")
+	entries, _ := filepath.Glob(filepath.Join(deltaDir, "*.md"))
+	sort.Strings(entries)
+
+	// Compute every merge first; write nothing until all succeed and lint clean.
+	type result struct {
+		capability, target, merged string
+	}
+	var results []result
+	specsDir := filepath.Join(root, "docs", "specs")
+	for _, delta := range entries {
+		capability := strings.TrimSuffix(filepath.Base(delta), ".md")
+		if strings.EqualFold(capability, "README") {
+			continue
+		}
+		deltaBytes, err := os.ReadFile(delta)
+		if err != nil {
+			return fmt.Errorf("onto merge-deltas: reading %s: %w", delta, err)
+		}
+		target := filepath.Join(specsDir, capability+".md")
+		living := ""
+		if b, err := os.ReadFile(target); err == nil {
+			living = string(b)
+		}
+		merged, err := deltamerge.Merge(capability, living, string(deltaBytes))
+		if err != nil {
+			return fmt.Errorf("onto merge-deltas: %w", err)
+		}
+		if findings := deltamerge.Lint(merged); len(findings) > 0 {
+			return fmt.Errorf("onto merge-deltas: %s would produce an invalid living spec: %s", capability, strings.Join(findings, "; "))
+		}
+		results = append(results, result{capability, target, merged})
+	}
+
+	// Commit: write the merged living specs, then record close.merged.
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		return fmt.Errorf("onto merge-deltas: %w", err)
+	}
+	for _, r := range results {
+		if err := fsutil.WriteAtomic(r.target, []byte(r.merged)); err != nil {
+			return fmt.Errorf("onto merge-deltas: writing %s: %w", r.target, err)
+		}
+	}
+	st.Close.Merged = true
+	if err := ontostate.Save(statePath, st); err != nil {
+		return fmt.Errorf("onto merge-deltas: %w", err)
+	}
+
+	if len(results) == 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "%s: no delta specs; marked close.merged\n", name)
+		return nil
+	}
+	for _, r := range results {
+		fmt.Fprintf(cmd.OutOrStdout(), "  merged %s → docs/specs/%s.md\n", r.capability, r.capability)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "%s: %d delta spec(s) merged; marked close.merged\n", name, len(results))
+	return nil
+}
