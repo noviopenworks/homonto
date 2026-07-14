@@ -1,13 +1,44 @@
 package ontocli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/noviopenworks/homonto/internal/buildinfo"
 	"github.com/noviopenworks/homonto/internal/ontostate"
 	"github.com/spf13/cobra"
 )
+
+// homontoAppliedVersion reads only the homontoVersion field from
+// <root>/.homonto/state.json, returning "" for any absence or parse error. It
+// deliberately does NOT import homonto's state package, keeping onto decoupled
+// from the projection side (the doctor reads one opaque JSON field).
+func homontoAppliedVersion(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, ".homonto", "state.json"))
+	if err != nil {
+		return ""
+	}
+	var s struct {
+		HomontoVersion string `json:"homontoVersion"`
+	}
+	if json.Unmarshal(data, &s) != nil {
+		return ""
+	}
+	return s.HomontoVersion
+}
+
+// normalizeVersion strips a leading "v" and any build metadata (from "+") so a
+// dirty local build of both binaries compares equal on its release core.
+func normalizeVersion(v string) string {
+	v = strings.TrimPrefix(v, "v")
+	if i := strings.IndexByte(v, '+'); i >= 0 {
+		v = v[:i]
+	}
+	return v
+}
 
 // doctorCmd builds the "onto doctor" subcommand: a strictly read-only,
 // config-independent workspace-health diagnostic. Unlike init/new/close it is
@@ -95,6 +126,23 @@ func runDoctor(cmd *cobra.Command, root string) error {
 		}
 		if !st.Archived {
 			findings = append(findings, "archive/"+name+": not marked archived: true")
+		}
+	}
+
+	// 4. version skew: the onto binary and the homonto that projected the onto
+	// framework are released together and should match. When they diverge, the
+	// installed skills/commands may not match this binary's behavior — tell the
+	// user to re-sync. Best-effort and boundary-preserving: read only the
+	// homontoVersion field from .homonto/state.json (no import of homonto's
+	// projection packages); a missing file or field is silently skipped, and
+	// build metadata (+dirty, etc.) is ignored so a homogeneous dev build of both
+	// binaries does not report a false skew.
+	if applied := homontoAppliedVersion(root); applied != "" {
+		onto := buildinfo.Resolve(Version, devVersion)
+		if onto != "" && normalizeVersion(onto) != normalizeVersion(applied) {
+			findings = append(findings, fmt.Sprintf(
+				"version skew: onto %s, but the onto framework was last applied by homonto %s — run `homonto update` (or align the two binaries)",
+				onto, applied))
 		}
 	}
 

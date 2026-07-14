@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/noviopenworks/homonto/internal/buildinfo"
 	"github.com/noviopenworks/homonto/internal/ontostate"
 )
 
@@ -58,6 +59,48 @@ func execDoctor(t *testing.T, tmp string) (string, error) {
 	cmd.SetArgs([]string{"doctor", "--dir", tmp})
 	err := cmd.Execute()
 	return buf.String(), err
+}
+
+// writeHomontoState writes a minimal .homonto/state.json carrying only the
+// homontoVersion field, so the doctor's skew check has a value to compare.
+func writeHomontoState(t *testing.T, root, homontoVersion string) {
+	t.Helper()
+	dir := filepath.Join(root, ".homonto")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(dir, "state.json"), `{"homontoVersion":"`+homontoVersion+`"}`)
+}
+
+func TestDoctorReportsVersionSkew(t *testing.T) {
+	// Matching version (this binary's own resolved version) → no skew.
+	match := t.TempDir()
+	seedDocsLayout(t, match)
+	writeHomontoState(t, match, buildinfo.Resolve(Version, devVersion))
+	if out, err := execDoctor(t, match); err != nil || !strings.Contains(out, "healthy") {
+		t.Fatalf("matching versions must be healthy; out=%q err=%v", out, err)
+	}
+
+	// Divergent version → a skew finding and a non-zero exit.
+	skew := t.TempDir()
+	seedDocsLayout(t, skew)
+	writeHomontoState(t, skew, "v99.0.0")
+	out, err := execDoctor(t, skew)
+	if err == nil {
+		t.Fatalf("version skew must be a finding (non-nil error); out=%q", out)
+	}
+	if !strings.Contains(out, "version skew") || !strings.Contains(out, "v99.0.0") {
+		t.Fatalf("skew finding missing; out=%q", out)
+	}
+}
+
+func TestDoctorNoSkewWhenNoHomontoState(t *testing.T) {
+	tmp := t.TempDir()
+	seedDocsLayout(t, tmp)
+	// No .homonto/state.json → skew check is skipped, workspace is healthy.
+	if out, err := execDoctor(t, tmp); err != nil || !strings.Contains(out, "healthy") {
+		t.Fatalf("absent homonto state must skip skew; out=%q err=%v", out, err)
+	}
 }
 
 // 1. healthy workspace → exit 0, "healthy\n".

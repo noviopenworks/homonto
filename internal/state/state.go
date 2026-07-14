@@ -31,6 +31,14 @@ type State struct {
 	SchemaVersion  int                         `json:"schemaVersion,omitempty"`
 	Managed        map[string]map[string]Entry `json:"managed"`
 	CatalogVersion string                      `json:"catalogVersion,omitempty"`
+	// HomontoVersion is the homonto binary version that performed the last apply.
+	// It lets `onto` detect a binary/framework version skew (its own version vs
+	// the homonto that projected the framework) and lets `homonto update` report
+	// the transition. Absent on legacy state files.
+	HomontoVersion string `json:"homontoVersion,omitempty"`
+	// FrameworkVersions records the version of each builtin framework at the last
+	// apply (framework name -> version), so a version history is written down.
+	FrameworkVersions map[string]string `json:"frameworkVersions,omitempty"`
 }
 
 // CurrentStateSchemaVersion is the state.json schema version this binary writes.
@@ -41,6 +49,27 @@ func (s *State) CatalogVersionRecorded() string { return s.CatalogVersion }
 
 // SetCatalogVersion records the catalog version after a successful materialize.
 func (s *State) SetCatalogVersion(v string) { s.CatalogVersion = v }
+
+// HomontoVersionRecorded returns the homonto binary version that last applied,
+// or "" for a legacy/never-applied state.
+func (s *State) HomontoVersionRecorded() string { return s.HomontoVersion }
+
+// SetHomontoVersion records the homonto binary version at apply time. An empty
+// value (unstamped/dev build) is ignored so a dev run never overwrites a real
+// recorded version with a placeholder.
+func (s *State) SetHomontoVersion(v string) {
+	if v != "" {
+		s.HomontoVersion = v
+	}
+}
+
+// SetFrameworkVersion records one framework's version at apply time.
+func (s *State) SetFrameworkVersion(name, version string) {
+	if s.FrameworkVersions == nil {
+		s.FrameworkVersions = map[string]string{}
+	}
+	s.FrameworkVersions[name] = version
+}
 
 func newState() *State { return &State{Managed: map[string]map[string]Entry{}} }
 

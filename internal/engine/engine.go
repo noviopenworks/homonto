@@ -209,7 +209,29 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 			return fmt.Errorf("%s: save state: %w", cs.Tool, err)
 		}
 	}
+	e.recordVersions()
 	return e.State.Save(e.StateDir)
+}
+
+// recordVersions writes down, in state, the binary and framework versions behind
+// this apply — so `homonto update` can report the transition and `onto` can
+// detect a binary/framework skew. Best-effort: a catalog that will not load
+// leaves framework versions untouched rather than failing the completed apply.
+func (e *Engine) recordVersions() {
+	e.State.SetHomontoVersion(e.HomontoVersion)
+	cl, err := e.Cfg.FrameworkCatalog()
+	if err != nil {
+		return
+	}
+	for name, r := range e.Cfg.Frameworks {
+		catName, ok := config.FrameworkCatalogName(name, r.Source)
+		if !ok {
+			continue
+		}
+		if v, ok := cl.FrameworkVersion(catName); ok {
+			e.State.SetFrameworkVersion(name, v)
+		}
+	}
 }
 
 // materializeCatalog extracts the builtin skills, commands, and subagents the

@@ -44,9 +44,15 @@ Other commands:
 
 | Command | What it does |
 |---|---|
+| `homonto update` | Re-materialize this binary's embedded catalog and re-project it — bring installed frameworks/skills/commands/subagents up to the running version, printing the version transition. Does not self-update the binaries. |
 | `homonto status` | Show managed values that would be reset or recreated on apply |
 | `homonto doctor` | Health check: `pass` present? tool dirs present? owned skill content and both tool links present? |
 | `homonto --version` | Print the build version |
+
+After installing a newer `homonto`/`onto` binary, run **`homonto update`** to
+bring the projected content up to that version. State records the versions behind
+each apply (binary, catalog, per-framework), and `onto doctor` warns when the
+`onto` binary and the homonto that installed its framework have drifted apart.
 
 `--config <path>` selects a different config file for plan/apply/status/doctor/import.
 `init` instead takes an optional target directory and always writes

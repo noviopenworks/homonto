@@ -134,6 +134,7 @@ The recorded state stores only a hash of the resolved value, so
 | `homonto init [dir]` | Scaffold a starter repo; never overwrites existing files. |
 | `homonto plan` | Print the diff between desired and on-disk state. Writes nothing, resolves no secrets. |
 | `homonto apply` | Print the plan, confirm (`[y/N]`, or `--yes`), then write atomically. |
+| `homonto update` | Re-materialize the embedded catalog and re-project it so installed content matches this binary; prints the binary/catalog/framework version transition. Shares apply's plan→confirm→apply flow (`--yes` to skip). Does **not** download or replace the binaries. |
 | `homonto status` | Report drift and pending config changes (see below). |
 | `homonto doctor` | Health checks: `pass` on `PATH`, tool config locations, and each owned skill's content + both tool symlinks. |
 | `homonto version` | Print the build version. |

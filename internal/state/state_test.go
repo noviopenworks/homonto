@@ -84,6 +84,27 @@ func TestCatalogVersionOmittedWhenEmpty(t *testing.T) {
 	}
 }
 
+func TestHomontoAndFrameworkVersionsRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := Load(dir)
+	if s.HomontoVersionRecorded() != "" {
+		t.Fatal("fresh state should record no homonto version")
+	}
+	s.SetHomontoVersion("v0.1.5")
+	s.SetHomontoVersion("") // empty must not overwrite a real recorded version
+	s.SetFrameworkVersion("onto", "0.1.0")
+	if err := s.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := Load(dir)
+	if got.HomontoVersionRecorded() != "v0.1.5" {
+		t.Fatalf("reloaded homonto version = %q (empty set must not clobber)", got.HomontoVersionRecorded())
+	}
+	if got.FrameworkVersions["onto"] != "0.1.0" {
+		t.Fatalf("reloaded framework versions = %v", got.FrameworkVersions)
+	}
+}
+
 func TestSaveIsAtomicJSON(t *testing.T) {
 	dir := t.TempDir()
 	s, _ := Load(dir)

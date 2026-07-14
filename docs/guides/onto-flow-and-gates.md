@@ -122,7 +122,9 @@ Gate tokens live in `onto-state.yaml` and are set through `onto set <field>`
   gate rejects).
 - `onto doctor [--dir <root>]` — workspace health across layout, state,
   phase/artifact match, dependency resolution, and archive layout; non-zero on
-  any finding.
+  any finding. It also reports a **version skew** when the `onto` binary and the
+  homonto that installed the onto framework have drifted apart — run
+  `homonto update` (or align the two binaries) to re-sync.
 
 ## Driving it from the tool — slash commands
 

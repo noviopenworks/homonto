@@ -450,6 +450,16 @@ func (c *Catalog) validateDependencyRanges() error {
 // Version returns the catalog version string from version.txt.
 func (c *Catalog) Version() string { return c.version }
 
+// FrameworkVersion returns the declared version of a builtin framework and
+// whether it exists in the catalog.
+func (c *Catalog) FrameworkVersion(name string) (string, bool) {
+	fw, ok := c.frameworks[name]
+	if !ok {
+		return "", false
+	}
+	return fw.Version, true
+}
+
 // Framework returns the indexed framework and whether it exists.
 func (c *Catalog) Framework(name string) (Framework, bool) {
 	f, ok := c.frameworks[name]
