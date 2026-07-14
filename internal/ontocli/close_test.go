@@ -272,6 +272,41 @@ func TestCloseCommand_FullRefusedWithoutMerge(t *testing.T) {
 	assertCloseRefused(t, dir, "close.merged")
 }
 
+// The recorded integration choice (merge|pr) is carried through close and
+// archived with the change — it never changes the close.merged gate (which
+// tracks spec-delta merging, always required).
+func TestCloseCommand_IntegrationChoiceCarriedThroughClose(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedCloseState(t, dir, ontostate.State{
+		Change:      "demo",
+		Workflow:    "full",
+		Phase:       "close",
+		Created:     "2026-07-10",
+		Verify:      ontostate.Verify{Result: "pass"},
+		Integration: "pr",
+		Close:       ontostate.Close{Merged: true},
+		Guides:      "updated",
+	})
+	commitAll(t, dir, "seed change")
+
+	cmd := NewRootCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"close", "demo", "--dir", dir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("close: %v; out=%s", err, out.String())
+	}
+	archiveDir := filepath.Join(dir, "docs", "changes", "archive", time.Now().Format("2006-01-02")+"-demo")
+	st, err := ontostate.Load(filepath.Join(archiveDir, "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("change not archived: %v", err)
+	}
+	if st.Integration != "pr" {
+		t.Errorf("archived state integration = %q, want pr", st.Integration)
+	}
+}
+
 // TestCloseCommand_TweakClosesWithoutGuides verifies the reduced preset gate:
 // a tweak change with verify.result=pass and close.merged=true but no guides
 // set satisfies the close-phase evidence gate and (with no deps and a clean

@@ -73,6 +73,8 @@ func setCmd() *cobra.Command {
 	}
 	cmd.AddCommand(enumSetterCmd("isolation", []string{"branch", "worktree"},
 		func(s *ontostate.State, v string) { s.Isolation = v }))
+	cmd.AddCommand(enumSetterCmd("integration", []string{"merge", "pr"},
+		func(s *ontostate.State, v string) { s.Integration = v }))
 	cmd.AddCommand(enumSetterCmd("build-mode", []string{"direct", "subagent"},
 		func(s *ontostate.State, v string) { s.BuildMode = v }))
 	cmd.AddCommand(enumSetterCmd("tdd-mode", []string{"tdd", "direct"},

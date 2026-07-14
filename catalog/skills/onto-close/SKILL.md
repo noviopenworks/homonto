@@ -124,12 +124,29 @@ one interruption-prone step (mv + archived flag) is a single commit.
    archived workspace is history — never edited after, with one sanctioned
    exception: `ship.md`.
 
-### 4. Ship handoff (offer)
+### 4. Integrate the branch (merge or PR)
 
-Follow `references/ship-handoff.md`: offer the ready PR body assembled
-from the archived change; if accepted, write it to the archive's
-`ship.md` and name the PR skills as the next step. onto itself never
-pushes or opens PRs.
+Integrate the change's git branch into the project, per the recorded
+`integration` choice (`onto state <name> --json` → `integration`). If it is
+unset, **ask via a dialog** which the user wants and record it with `onto set
+integration <name> merge|pr` before acting:
+
+- **`merge`** — merge the change branch into its base ref. Determine the base
+  (`base_ref` in state, else the repo's default branch) and the change branch
+  (the current branch, or the isolation worktree's branch). Run the merge
+  (`git checkout <base>` → `git merge --no-ff <change-branch>`); on a conflict,
+  **stop**, `git merge --abort`, and hand the conflict to the user — never
+  force-resolve. On success, report the merge.
+- **`pr`** — push the branch (`git push -u origin <change-branch>`) and open a
+  pull request with `gh pr create --base <base> --fill` (title/body from the
+  archived change; reuse `references/ship-handoff.md` for the body). Report the
+  PR URL. The branch stays open for review — it is merged on the platform, not
+  locally. If `gh` or a remote is unavailable, WARN and fall back to writing the
+  ready PR body to the archive's `ship.md` for the user to open manually.
+
+Do this **after** the archive commit (step 3.5), so the integrated branch
+includes the archived workspace. `close.merged` tracks spec-delta merging and is
+unrelated to this git integration — both happen at close.
 
 ## Exit checklist
 
@@ -149,5 +166,7 @@ pushes or opens PRs.
 - [ ] Archive is one commit: workspace under
       `docs/changes/archive/YYYY-MM-DD-<name>/` **and** `archived: true`,
       committed together, everything tracked
-- [ ] Ship handoff offered (ship.md written if accepted)
+- [ ] Branch integrated per the `integration` choice — merged into base (clean,
+      no forced conflict resolution) or a PR opened (URL reported); `ship.md`
+      fallback written only if `gh`/remote was unavailable
 - [ ] Announce completion and summarize where the knowledge landed

@@ -31,6 +31,7 @@ const CurrentSchemaVersion = 1
 var (
 	validWorkflows     = map[string]bool{"full": true, "fix": true, "tweak": true}
 	validIsolations    = map[string]bool{"branch": true, "worktree": true}
+	validIntegrations  = map[string]bool{"merge": true, "pr": true}
 	validBuildModes    = map[string]bool{"direct": true, "subagent": true}
 	validTDDModes      = map[string]bool{"tdd": true, "direct": true}
 	validVerifyScales  = map[string]bool{"light": true, "full": true}
@@ -102,13 +103,21 @@ type State struct {
 	// surfaced by `onto graph`. Ungated: never blocks a transition.
 	DeviatesFrom []string `yaml:"deviates_from,omitempty" json:"deviates_from,omitempty"`
 	Isolation    string   `yaml:"isolation,omitempty" json:"isolation,omitempty"`
-	BuildMode    string   `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
-	TDDMode      string   `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
-	Verify       Verify   `yaml:"verify,omitempty" json:"verify,omitempty"`
-	Close        Close    `yaml:"close,omitempty" json:"close,omitempty"`
-	Directive    string   `yaml:"directive,omitempty" json:"directive,omitempty"`
-	Guides       string   `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
-	Archived     bool     `yaml:"archived,omitempty" json:"archived,omitempty"`
+	// Integration is how the change's git branch is integrated at close: "merge"
+	// (the branch is merged into its base ref) or "pr" (a pull request is opened
+	// and the branch stays for review). Empty leaves integration to the user. It
+	// is a recorded choice the onto-close skill acts on (it performs the actual
+	// git work); it is orthogonal to close.merged, which tracks spec-delta merging
+	// and is always required at close. Ungated by the binary: never blocks a
+	// transition on its own.
+	Integration string `yaml:"integration,omitempty" json:"integration,omitempty"`
+	BuildMode   string `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
+	TDDMode     string `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
+	Verify      Verify `yaml:"verify,omitempty" json:"verify,omitempty"`
+	Close       Close  `yaml:"close,omitempty" json:"close,omitempty"`
+	Directive   string `yaml:"directive,omitempty" json:"directive,omitempty"`
+	Guides      string `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
+	Archived    bool   `yaml:"archived,omitempty" json:"archived,omitempty"`
 	// Abandoned marks the unsuccessful terminal state — a change cancelled without
 	// completing, distinct from the successful archived/close terminal. Ungated:
 	// set by `onto abandon`, it never blocks a transition (it makes the change
@@ -164,6 +173,9 @@ func (s State) Validate() error {
 	}
 	if s.Isolation != "" && !validIsolations[s.Isolation] {
 		return fmt.Errorf("onto-state: isolation %q is not one of branch|worktree", s.Isolation)
+	}
+	if s.Integration != "" && !validIntegrations[s.Integration] {
+		return fmt.Errorf("onto-state: integration %q is not one of merge|pr", s.Integration)
 	}
 	if s.BuildMode != "" && !validBuildModes[s.BuildMode] {
 		return fmt.Errorf("onto-state: build_mode %q is not one of direct|subagent", s.BuildMode)

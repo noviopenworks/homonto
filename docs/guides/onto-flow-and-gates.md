@@ -104,6 +104,7 @@ Gate tokens live in `onto-state.yaml` and are set through `onto set <field>`
 | `onto set` field | Gate it satisfies / records |
 |---|---|
 | `isolation <branch\|worktree>` | required to **enter build** |
+| `integration <merge\|pr>` | how the branch is integrated at close — merge into base, or open a PR (the onto-close skill performs the git work) |
 | `verify-result <pass\|fail\|…>` | `pass` required to **leave verify** and to **close** |
 | `close-merged` | sets `close.merged=true`, required to **close** |
 | `guides <updated\|waived:<reason>>` | required to **close** a full workflow |
