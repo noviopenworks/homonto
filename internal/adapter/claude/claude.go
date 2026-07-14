@@ -356,6 +356,14 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	for k, v := range c.Settings.Claude {
 		out["setting."+k] = mustJSON(v)
 	}
+	// Project the architectural model route into Claude's default model setting so
+	// a declared [models.claude.*] block configures the model (previously the
+	// routes were validation-only). An explicit [settings.claude].model wins.
+	if _, explicit := out["setting.model"]; !explicit {
+		if r, ok := c.Models.Claude["architectural"]; ok && r.Model != "" {
+			out["setting.model"] = mustJSON(r.Model)
+		}
+	}
 	for _, pl := range c.Plugins.Claude {
 		// Source-keyed: enabledPlugins[<source>] carries the plugin's enabled
 		// value, so a disabled plugin emits a managed `false` (not absence).

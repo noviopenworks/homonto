@@ -89,7 +89,12 @@ model = "anthropic/claude-opus-4-8"
 **Model routes.** Any config that enables a model-backed tool must declare
 **all three** routes for it — `[models.<tool>.architectural]`,
 `[models.<tool>.coding]`, and `[models.<tool>.trivial]` — a partial set is
-rejected at load.
+rejected at load. The routes are also **projected into each tool's default
+model**, so a declared model actually configures the chat: `architectural` → the
+tool's main model (OpenCode `model`, Claude `settings.model`) and `trivial` →
+OpenCode's `small_model`. An explicit `[settings.<tool>].model` always wins over
+the route-derived value, and agents with no `model:` of their own inherit the
+default.
 
 **Targets.** An MCP with no `targets` applies to both `claude` and `opencode`;
 an explicit list restricts it. Only `claude` and `opencode` are valid — a typo

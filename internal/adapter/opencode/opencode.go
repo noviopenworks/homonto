@@ -339,12 +339,26 @@ func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 	return out
 }
 
-// desiredSettings maps each [settings.opencode] key to its setting.* state key.
+// desiredSettings maps each [settings.opencode] key to its setting.* state key,
+// and projects the declared model routes into OpenCode's default-model keys so a
+// [models.opencode.*] block actually configures the chat (previously the routes
+// were validation-only): architectural → model, trivial → small_model. An
+// explicit [settings.opencode] value always wins over the route-derived one.
 func desiredSettings(c *config.Config) map[string]string {
 	out := map[string]string{}
 	for k, v := range c.Settings.OpenCode {
 		out["setting."+k] = mustJSON(v)
 	}
+	setRoute := func(settingKey, level string) {
+		if _, explicit := out["setting."+settingKey]; explicit {
+			return
+		}
+		if r, ok := c.Models.OpenCode[level]; ok && r.Model != "" {
+			out["setting."+settingKey] = mustJSON(r.Model)
+		}
+	}
+	setRoute("model", "architectural")
+	setRoute("small_model", "trivial")
 	return out
 }
 
