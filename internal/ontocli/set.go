@@ -82,7 +82,22 @@ func setCmd() *cobra.Command {
 	cmd.AddCommand(enumSetterCmd("verify-scale", []string{"light", "full"},
 		func(s *ontostate.State, v string) { s.Verify.Scale = v }))
 	cmd.AddCommand(enumSetterCmd("verify-result", []string{"pending", "pass", "fail"},
-		func(s *ontostate.State, v string) { s.Verify.Result = v }))
+		func(s *ontostate.State, v string) {
+			s.Verify.Result = v
+			// Count each recorded failure so the ≥3-rounds "accept-deviation or
+			// continue" decision becomes a measured fact, not a memory.
+			if v == "fail" {
+				s.Observed.VerifyRounds++
+			}
+		}))
+	cmd.AddCommand(enumSetterCmd("build-pause", []string{"plan-ready", "clear"},
+		func(s *ontostate.State, v string) {
+			if v == "clear" {
+				s.BuildPause = ""
+			} else {
+				s.BuildPause = v
+			}
+		}))
 	cmd.AddCommand(closeMergedCmd())
 	cmd.AddCommand(directiveCmd())
 	cmd.AddCommand(baseRefCmd())

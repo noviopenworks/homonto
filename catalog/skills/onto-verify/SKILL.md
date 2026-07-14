@@ -21,16 +21,20 @@ what the design and specs say. **Evidence before assertions, always.**
 
 ### 1. Scale check → verification mode
 
-Set the verification scale via `onto set verify-scale <name> light|full`:
+**Measure first, then apply the risk override.** Run `onto scale <name>` — it
+measures the `base_ref..HEAD` diff (non-test file count, changed lines) and
+derives `light`/`full` from size (the same >5-non-test-file threshold the preset
+upgrade gates use). That is the *measured* floor. Then **upgrade to full** on any
+risk trigger below regardless of what the measurement said, and record the final
+level with `onto set verify-scale <name> light|full` (or `onto scale <name>
+--set` when size alone decides):
 
-- **full** — `workflow: full`, any upgraded preset, a diff touching more
-  than **5 non-test files** in `base_ref..HEAD` (the same count and
-  test-file exclusion as the preset upgrade triggers — one rule, three
-  citations), a new capability, **or a diff touching a security-sensitive
-  surface** — secret resolution, remote fetch/verify, file deletion/pruning,
-  or permission/ownership — regardless of file count. Scale keys on risk, not
-  just size: a one-file security change is never under-scrutinized. Checks
-  every delta-spec scenario, the full design, and the regression suite.
+- **full** — `workflow: full`, any upgraded preset, the measured size is `full`,
+  a new capability, **or a diff touching a security-sensitive surface** — secret
+  resolution, remote fetch/verify, file deletion/pruning, or permission/ownership
+  — regardless of file count. Scale keys on risk, not just size: a one-file
+  security change is never under-scrutinized. Checks every delta-spec scenario,
+  the full design, and the regression suite.
 - **light** — a preset within its limits (≤5 non-test files, by
   construction under the upgrade gates) **and touching no security-sensitive
   surface** (else full applies). Checks the changed behavior's scenarios plus
@@ -94,11 +98,12 @@ result via `onto set verify-result <name> pass|fail`.
 > recorded in `verification.md`), with the deviation count on the Result
 > line). Always fresh input —
 > never auto-accept a failure, and never *propose* acceptance as the easy
-> path — the user raises it or it stays a failure. Record each failed
-> round in `notes.md` (date + failing items) — notes, not `metrics`, is
-> the durable counter, and `metrics` never gates anything. After three
-> consecutive failed rounds recorded there, stop and make the user choose
-> the path forward.
+> path — the user raises it or it stays a failure. Record the failure with
+> `onto set verify-result <name> fail` — this **increments `observed.verify_rounds`**,
+> the measured round counter that `onto doctor` surfaces at **≥3** ("decide
+> accept-deviation or continue"). Note the date + failing items in `notes.md`
+> too. After three failed rounds, stop and make the user choose the path
+> forward — the counter makes that threshold a fact, not a memory.
 
 ## Exit checklist
 

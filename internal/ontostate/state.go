@@ -112,12 +112,17 @@ type State struct {
 	// transition on its own.
 	Integration string `yaml:"integration,omitempty" json:"integration,omitempty"`
 	BuildMode   string `yaml:"build_mode,omitempty" json:"build_mode,omitempty"`
-	TDDMode     string `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
-	Verify      Verify `yaml:"verify,omitempty" json:"verify,omitempty"`
-	Close       Close  `yaml:"close,omitempty" json:"close,omitempty"`
-	Directive   string `yaml:"directive,omitempty" json:"directive,omitempty"`
-	Guides      string `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
-	Archived    bool   `yaml:"archived,omitempty" json:"archived,omitempty"`
+	// BuildPause records a deliberate pause in the build phase — currently only
+	// "plan-ready" (the plan is written and the user chose to stop before
+	// executing, e.g. to switch models/sessions). The dispatcher resumes from it
+	// instead of re-running the planning step. Empty = not paused. Ungated.
+	BuildPause string `yaml:"build_pause,omitempty" json:"build_pause,omitempty"`
+	TDDMode    string `yaml:"tdd_mode,omitempty" json:"tdd_mode,omitempty"`
+	Verify     Verify `yaml:"verify,omitempty" json:"verify,omitempty"`
+	Close      Close  `yaml:"close,omitempty" json:"close,omitempty"`
+	Directive  string `yaml:"directive,omitempty" json:"directive,omitempty"`
+	Guides     string `yaml:"guides,omitempty" json:"guides,omitempty"` // "" | pending | updated | waived:<reason>
+	Archived   bool   `yaml:"archived,omitempty" json:"archived,omitempty"`
 	// Abandoned marks the unsuccessful terminal state — a change cancelled without
 	// completing, distinct from the successful archived/close terminal. Ungated:
 	// set by `onto abandon`, it never blocks a transition (it makes the change

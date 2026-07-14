@@ -44,5 +44,6 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(setCmd())
 	root.AddCommand(stateCmd())
 	root.AddCommand(gateCmd())
+	root.AddCommand(scaleCmd())
 	return root
 }

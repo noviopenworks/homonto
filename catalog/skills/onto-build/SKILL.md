@@ -16,6 +16,11 @@ one small, verified task at a time.
 - Presets (`fix`/`tweak`) enter build directly after open-lite.
 - Read `notes.md` at entry when present — recorded decisions and
   directives govern how tasks execute.
+- **Resume from a pause**: if `onto state <name> --json` shows
+  `build_pause: plan-ready`, `plan.md` is already written — do NOT re-run the
+  planning step. Tell the user the build is stopped at plan-ready; once they
+  confirm continuing, `onto set build-pause <name> clear`, choose the execution
+  config, and proceed.
 - On resume (fresh session, context loss): run `git status` FIRST. A dirty
   tree is an interrupted task's partial work — reconcile it before
   continuing: reset it, or fold it into the unchecked task explicitly
@@ -46,6 +51,13 @@ bigger. Read `notes.md` first if present.
 >   only when real background dispatch capability exists
 > - `onto set tdd-mode <name> tdd|direct` — tdd for anything with testable
 >   logic; direct for content/docs deliverables
+>
+> **Pausing here is first-class.** If the user wants to stop after the plan
+> (e.g. to review it later or switch models/sessions), run `onto set build-pause
+> <name> plan-ready` and end the invocation — do not choose the execution config
+> or start executing. On the next dispatch the plan-ready pause is recorded state,
+> so a fresh session resumes cleanly (see Entry check) rather than re-planning.
+> Clear it with `onto set build-pause <name> clear` when resuming to execute.
 >
 > This gate MAY be pre-authorized: if the user gave an explicit directive
 > (e.g. "run to completion with defaults"), record it **verbatim** via `onto

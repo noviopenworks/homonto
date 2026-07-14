@@ -106,6 +106,11 @@ func runDoctor(cmd *cobra.Command, root string) error {
 			if st.Archived {
 				findings = append(findings, name+": active change marked archived: true (belongs under docs/changes/archive/)")
 			}
+			// A change that has failed verification 3+ times needs a decision, not
+			// another silent retry (accept the deviation or keep fixing).
+			if st.Observed.VerifyRounds >= 3 {
+				findings = append(findings, fmt.Sprintf("%s: %d failed verify rounds — decide accept-deviation or continue", name, st.Observed.VerifyRounds))
+			}
 		}
 	}
 

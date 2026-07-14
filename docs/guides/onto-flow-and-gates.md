@@ -115,6 +115,8 @@ Gate tokens live in `onto-state.yaml` and are set through `onto set <field>`
 |---|---|
 | `isolation <branch\|worktree>` | required to **enter build** |
 | `integration <merge\|pr>` | how the branch is integrated at close — merge into base, or open a PR (the onto-close skill performs the git work) |
+| `build-pause <plan-ready\|clear>` | record/clear a first-class pause at the plan-ready gate so a fresh session resumes without re-planning |
+| `verify-result fail` | records a failure **and increments `observed.verify_rounds`** (≥3 is an `onto doctor` finding) |
 | `verify-result <pass\|fail\|…>` | `pass` required to **leave verify** and to **close** |
 | `close-merged` | sets `close.merged=true`, required to **close** |
 | `guides <updated\|waived:<reason>>` | required to **close** a full workflow |
@@ -131,6 +133,11 @@ Gate tokens live in `onto-state.yaml` and are set through `onto set <field>`
 - `onto state <change> [--json]` — a change's full state.
 - `onto graph` — the change dependency graph (also detects the cycles the build
   gate rejects).
+- `onto gate <change> [--json]` — the pending evidence gate(s) for the change, as
+  a structured schema (question, header, options, the `onto set` to record it) a
+  skill renders as a dialog.
+- `onto scale <change> [--set] [--json]` — the verification level derived from the
+  measured `base_ref..HEAD` diff (non-test files, changed lines).
 - `onto doctor [--dir <root>]` — workspace health across layout, state,
   phase/artifact match, dependency resolution, and archive layout; non-zero on
   any finding. It also reports a **version skew** when the `onto` binary and the
