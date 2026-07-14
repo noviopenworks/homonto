@@ -102,12 +102,28 @@ OpenCode and Task-omitted in Claude; all invariants in CI, not hand-checked.
 
 ---
 
-## v0.1.10 — Gates as dialogs (binary-anchored)
+## v0.1.10 — Gates as dialogs + discipline depth
 
-**Problem.** Every `> **GATE:**` block is free prose — inconsistently asked,
-silently skippable, answers recorded (if at all) in notes.md prose.
+**Problem A (gates).** Every `> **GATE:**` block is free prose — inconsistently
+asked, silently skippable, answers recorded (if at all) in notes.md prose.
 
-**Design.** The binary owns the gate schema; skills only render it.
+**Problem B (coding disciplines).** Comparing onto against the superpowers skill
+set it absorbed: the absorption is 30–50:1 lossy exactly where discipline holds
+under pressure — TDD (371 lines → ~6: the rationalization defenses are gone),
+systematic debugging (296 → ~8: the phased method and 3-failed-hypotheses
+escalation are gone), **receiving-code-review (213 → nothing — and load-bearing
+since v0.1.3 piped the reviewer subagent's findings back to the orchestrator,
+which now implements them unexamined)**, and worktree mechanics (202 → the
+recorded choice with no how). Onto is *stronger* than superpowers on
+verification (a gated phase), requesting review (an enforced read-only agent),
+and subagent execution (a real protocol reference) — the gap is specifically the
+four above. Structural cause: comet *composes* superpowers (loads the deep skill
+at the moment of need); onto inlined summaries for self-containment.
+
+**Design.** The binary owns the gate schema; skills only render it. For the
+disciplines, use onto's own ADR 0006 reference-file mechanism — **vendor the
+deep protocols as `references/*.md`** loaded on demand (the onto-no-slop /
+subagent-protocol pattern), no dependency on superpowers, self-containment kept.
 
 **Changes.**
 - `onto gate <change> [--json]`: emits the pending gate — id, question, short
@@ -117,12 +133,32 @@ silently skippable, answers recorded (if at all) in notes.md prose.
   `onto set decision <change> <gate-id> <choice>` for confirm-only gates).
 - Skills: gates render through AskUserQuestion (Claude) / question tool
   (OpenCode) from the emitted schema; free-prose gate text shrinks to intent.
-- Ship the **brainstorm protocol** reference (clarify → 2–3 approaches →
-  trade-offs → user pick, checkpointed) that onto-design walks before design.md
-  — comet's "brainstorming cannot be skipped," kept self-contained.
+- Vendored discipline references (prose-only, one catalog bump):
+  - `onto-build/references/receiving-review.md` — verify each reviewer-subagent
+    finding against the code before implementing; evidence-based pushback; no
+    performative agreement. **Highest priority: closes the loop v0.1.3 opened.**
+  - `onto-build/references/tdd-protocol.md` — full red/green discipline,
+    watch-it-fail-for-the-right-reason, never weaken a test, the rationalization
+    table. (`tdd-mode: tdd` is onto-fix's mandatory default; its enforcement
+    prose is currently ~6 lines.)
+  - `onto-build/references/debugging-protocol.md` — phased method (reproduce →
+    whole error → recent changes → data-flow → hypothesis → minimal experiment),
+    shotgun fixes forbidden, escalate after 3 failed hypotheses.
+  - `onto-build/references/worktree-protocol.md` — the mechanics behind
+    `onto set isolation worktree` (creation, env/state copying, cleanup).
+  - Enrich `onto-build/references/plan.md` with the writing-plans method (task
+    granularity, exact paths, per-task verification).
+  - The **brainstorm protocol** reference (clarify → 2–3 approaches →
+    trade-offs → user pick, checkpointed) that onto-design walks before
+    design.md — comet's "brainstorming cannot be skipped," kept self-contained.
+- onto-fix/onto-tweak/onto-build inline sections point at the references instead
+  of paraphrasing them; onto-close gains keep/discard options + worktree cleanup
+  in its integration step (the finishing-a-development-branch remainder).
 
 **Acceptance.** Same gate asks the same question with the same options in both
-tools; every gate answer is inspectable in `onto state --json`.
+tools; every gate answer is inspectable in `onto state --json`; each vendored
+protocol is reachable from the phase skill that needs it, and the inline
+paraphrases are gone (single source per discipline).
 
 ---
 
