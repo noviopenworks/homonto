@@ -60,7 +60,13 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	stateDir := filepath.Join(filepath.Dir(configPath), ".homonto")
+	// Anchor state (and the materialized catalog under it) on the absolute
+	// projectRoot, not filepath.Dir(configPath): with the default relative
+	// --config, the latter is "." and every catalog-skill symlink target would
+	// be stored as ".homonto/catalog/skills/<name>" — relative to the *link's*
+	// directory (e.g. .opencode/skills/), which dangles. contentDir is
+	// absolutized above for the same reason; stateDir must match.
+	stateDir := filepath.Join(projectRoot, ".homonto")
 	catalogDir := filepath.Join(stateDir, "catalog", "skills")
 	commandCatalogDir := filepath.Join(stateDir, "catalog", "commands")
 	subagentCatalogDir := filepath.Join(stateDir, "catalog", "subagents")

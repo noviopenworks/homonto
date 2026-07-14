@@ -50,13 +50,15 @@ is_file "$W/.homonto/catalog/commands/example-command.md"
 is_file "$W/.homonto/catalog/subagents/code-reviewer.md"
 ok "framework skills, command, and subagent materialized under .homonto/catalog"
 
-log "tool links point at the materialized catalog"
-is_link "$W/.claude/skills/onto"
-link_to "$W/.claude/skills/onto" ".homonto/catalog/skills/onto"
-is_link "$W/.claude/commands/example-command.md"
-link_to "$W/.claude/commands/example-command.md" ".homonto/catalog/commands/example-command.md"
-is_link "$W/.claude/agents/code-reviewer.md"
-link_to "$W/.claude/agents/code-reviewer.md" ".homonto/catalog/subagents/code-reviewer.md"
+# Assert each tool entry is a symlink AND that it actually resolves to real
+# catalog content — a relative target computed against the wrong base dangles,
+# and a dangling skill/command link is invisible to the tool (e.g. OpenCode's
+# skill discovery skips it). is_dir/is_file follow the link, so they fail on a
+# dangling target; link_to only string-matched and missed exactly that bug.
+log "tool links point at (and resolve to) the materialized catalog"
+is_link "$W/.claude/skills/onto";                 is_dir  "$W/.claude/skills/onto"
+is_link "$W/.claude/commands/example-command.md"; is_file "$W/.claude/commands/example-command.md"
+is_link "$W/.claude/agents/code-reviewer.md";     is_file "$W/.claude/agents/code-reviewer.md"
 ok "skill, command, and subagent links resolve to the catalog"
 
 log "plugin + marketplace projected into claude settings.json"

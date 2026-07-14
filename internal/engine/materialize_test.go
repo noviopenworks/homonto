@@ -89,6 +89,72 @@ func mustPlan(t *testing.T, e *Engine) []adapter.ChangeSet {
 	return sets
 }
 
+// projectCometTOML installs a builtin framework at PROJECT scope so its skill
+// links land under <projectRoot>/.claude/skills — the layout where a catalog
+// symlink target computed relative to the wrong base dangles.
+const projectCometTOML = `
+[frameworks.comet]
+source = "builtin:comet"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus"
+variant = "max"
+[models.claude.coding]
+model = "sonnet"
+effort = "n"
+[models.claude.trivial]
+model = "haiku"
+effort = "f"
+`
+
+// TestApplyRelativeConfigLinksResolve is the regression guard for the dangling
+// catalog-symlink bug: with the default relative --config ("homonto.toml" from
+// the repo cwd), filepath.Dir(configPath) is ".", so a stateDir built from it
+// was relative and every catalog-skill link target was stored as
+// ".homonto/catalog/skills/<name>" — which resolves against the *link's* dir
+// (.claude/skills/) and dangles, making the skill invisible to the tool. The
+// link target must be absolute and the link must resolve to real content.
+func TestApplyRelativeConfigLinksResolve(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(projectCometTOML), 0o644)
+
+	// cd into the repo and drive Build with RELATIVE paths, exactly as the CLI
+	// does under the default `--config homonto.toml`. (Manual save/restore
+	// rather than t.Chdir, which needs go1.24 while the module targets go1.23.)
+	prevWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repo); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chdir(prevWD) })
+	e, err := Build("homonto.toml", home, "content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	if err := e.Apply(mustPlan(t, e)); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	link := filepath.Join(repo, ".claude", "skills", "comet-open")
+	target, err := os.Readlink(link)
+	if err != nil {
+		t.Fatalf("expected a symlink at %s: %v", link, err)
+	}
+	if !filepath.IsAbs(target) {
+		t.Fatalf("catalog link target must be absolute (dangles otherwise), got %q", target)
+	}
+	// os.Stat follows the link: it fails on a dangling target.
+	if _, err := os.Stat(link); err != nil {
+		t.Fatalf("catalog skill link does not resolve to real content: %v", err)
+	}
+}
+
 func TestApplyMaterializesBuiltinSkills(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
