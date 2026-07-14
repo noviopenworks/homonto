@@ -101,7 +101,8 @@ is the `code-reviewer` subagent shipped with onto — hand it each task's diff (
 always the final diff), rather than reviewing inline. When `plan.md` marks tasks
 whose file sets **do not overlap**, dispatch their reviews (and any needed
 `codebase-explorer` investigation) **concurrently** — one subagent invocation per
-task — via the Task tool; OpenCode runs each as a child session, so the reviews
+task — via the Task tool (OpenCode runs each as a child session; Claude Code runs
+parallel Task agents when you send several calls in one turn), so the reviews
 proceed in parallel while you implement the next task. Tasks that share files
 stay serial (one commit each, in order). This is the concrete wiring of the
 dispatcher's "Delegation, parallelization, and dialogs" section: the orchestrator

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/noviopenworks/homonto/internal/agentfm"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 )
 
@@ -100,10 +101,15 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 // MaterializeSubagents writes each named builtin subagent from the embedded FS
 // to dstRoot/<name>.md (a single file), replacing any existing file
 // byte-for-byte. Like MaterializeCommands, no RemoveAll is needed — a
-// single-file overwrite fully replaces prior content on upgrade. Homonto never
-// rewrites the subagent's frontmatter and never injects a model route, so the
-// written file is identical to the embedded catalog source. It is the caller's
-// job (engine) to gate this on the catalog version.
+// single-file overwrite fully replaces prior content on upgrade. It is the
+// caller's job (engine) to gate this on the catalog version.
+//
+// When a subagent's frontmatter carries a neutral `homonto:` access block (see
+// internal/agentfm), it ALSO writes per-tool variants — <name>.claude.md and
+// <name>.opencode.md — rendered from that block into each tool's native fields
+// (Claude's `tools:` allowlist vs OpenCode's `permission:` map), which cannot
+// share one file. Each adapter prefers its own variant; the shared <name>.md
+// remains the version-gate anchor and the fallback for verbatim subagents.
 func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
 	for _, name := range names {
 		sp, ok := c.subagents[name]
@@ -119,6 +125,19 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string) error {
 		}
 		if err := fsutil.WriteControlPlane(filepath.Join(dstRoot, name+".md"), data, 0o644); err != nil {
 			return err
+		}
+		if !agentfm.NeedsTransform(data) {
+			continue
+		}
+		for _, tool := range []string{"claude", "opencode"} {
+			rendered, rerr := agentfm.Render(data, tool)
+			if rerr != nil {
+				return fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
+			}
+			variant := filepath.Join(dstRoot, name+"."+tool+".md")
+			if err := fsutil.WriteControlPlane(variant, rendered, 0o644); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

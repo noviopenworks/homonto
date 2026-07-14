@@ -216,12 +216,24 @@ func (a *Adapter) inactiveSubagentsDir(scope string) string {
 // (homonto/subagents/<n>.md).
 func (a *Adapter) subagentSource(entry config.NamedResource) string {
 	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
-		return filepath.Join(a.subagentCatalogRoot, strings.TrimPrefix(s, "builtin:")+".md")
+		name := strings.TrimPrefix(s, "builtin:")
+		// Prefer the OpenCode-rendered frontmatter variant when the subagent
+		// declared a neutral homonto: block (materialize wrote <name>.opencode.md);
+		// fall back to the shared verbatim file.
+		if variant := filepath.Join(a.subagentCatalogRoot, name+".opencode.md"); fileExists(variant) {
+			return variant
+		}
+		return filepath.Join(a.subagentCatalogRoot, name+".md")
 	}
 	if strings.HasPrefix(entry.Resource.Source, "remote:") {
 		return filepath.Join(a.remoteSubagentRoot, entry.Name+".md")
 	}
 	return filepath.Join(a.content, "subagents", localSourceName(entry.Resource.Source, entry.Name)+".md")
+}
+
+func fileExists(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
 }
 
 // subagentFileLinks builds the desired managed subagent symlinks for the

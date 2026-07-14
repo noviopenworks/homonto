@@ -125,6 +125,39 @@ func TestMaterializeSubagentsWritesFileVerbatim(t *testing.T) {
 	}
 }
 
+// code-reviewer ships a neutral homonto: access block, so materialize must also
+// emit per-tool frontmatter variants: Claude gets a tools: allowlist, OpenCode a
+// permission: map. The two cannot share one file (OpenCode rejects a string
+// tools:), so each adapter links its own variant.
+func TestMaterializeSubagentsWritesPerToolVariants(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	dst := t.TempDir()
+	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}); err != nil {
+		t.Fatalf("materialize: %v", err)
+	}
+	claude, err := os.ReadFile(filepath.Join(dst, "code-reviewer.claude.md"))
+	if err != nil {
+		t.Fatalf("claude variant not written: %v", err)
+	}
+	if !bytes.Contains(claude, []byte("tools: Read, Grep, Glob")) || bytes.Contains(claude, []byte("permission:")) {
+		t.Errorf("claude variant should carry a tools allowlist and no permission block:\n%s", claude)
+	}
+	oc, err := os.ReadFile(filepath.Join(dst, "code-reviewer.opencode.md"))
+	if err != nil {
+		t.Fatalf("opencode variant not written: %v", err)
+	}
+	if !bytes.Contains(oc, []byte("permission:")) || !bytes.Contains(oc, []byte("edit: deny")) || bytes.Contains(oc, []byte("tools:")) {
+		t.Errorf("opencode variant should carry an edit-deny permission block and no tools string:\n%s", oc)
+	}
+	// The neutral block must not leak into either rendered variant.
+	if bytes.Contains(claude, []byte("homonto:")) || bytes.Contains(oc, []byte("homonto:")) {
+		t.Error("homonto: block leaked into a rendered variant")
+	}
+}
+
 func TestMaterializeSubagentsUnknownErrors(t *testing.T) {
 	c, _ := New()
 	if err := c.MaterializeSubagents(t.TempDir(), []string{"nope"}); err == nil {

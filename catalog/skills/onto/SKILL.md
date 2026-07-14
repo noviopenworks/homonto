@@ -242,9 +242,10 @@ including its gates and exit checklist. Never execute phase work here.
 ## 7. Delegation, parallelization, and dialogs
 
 The onto framework ships two read-only **specialist subagents** — they install
-with onto and the phases delegate to them. They never edit files (their
-frontmatter denies edits); they investigate and report back, and each runs in
-its own child session, so several can run **in parallel**.
+with onto and the phases delegate to them. They investigate and report back, and
+run as independent agents, so several can run **in parallel**. Both tools support
+this: **OpenCode** dispatches subagents as child sessions and **Claude Code**
+runs them as parallel Task-tool agents (send multiple Task calls in one turn).
 
 | Subagent | Use it to | Delegated from |
 |---|---|---|
@@ -269,14 +270,18 @@ The orchestrator (this session) still owns every edit, commit, and the `onto`
 binary calls — the subagents only read and report. Never let a subagent mutate
 workflow state.
 
-**Dialogs — prefer them when available.** In OpenCode the **question** tool
-renders an interactive choice dialog; the shipped subagents allow it. Whenever a
-`> **GATE:**` block or any either/or decision comes up, ask it through the
-question dialog (a clear prompt, a short header, and the concrete choices) rather
-than burying the question in prose — it is faster for the user and records a
-definite answer. Fall back to a plain written question only when the tool is
-unavailable (e.g. Claude). A dialog never *replaces* a gate — it is how the gate
-is asked.
+**Dialogs — prefer them, in either tool.** Whenever a `> **GATE:**` block or any
+either/or decision comes up, ask it through an **interactive choice dialog** — a
+clear prompt, a short header, and the concrete choices — rather than burying the
+question in prose. It is faster for the user and records a definite answer. Both
+tools have a dialog mechanism, so use it in both:
+
+- **OpenCode** — the **question** tool (the shipped subagents allow it via
+  `permission.question`).
+- **Claude Code** — the **AskUserQuestion** tool.
+
+Fall back to a plain written question only when neither is available. A dialog
+never *replaces* a gate — it is how the gate is asked.
 
 ## Gates are sacred
 

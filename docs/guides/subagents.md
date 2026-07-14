@@ -89,6 +89,41 @@ mode: subagent
 # Instructions for the agent…
 ```
 
+## Per-tool frontmatter (read-only in both tools)
+
+Claude Code and OpenCode express a subagent's tool access differently, and the
+two forms **cannot share one file** — Claude uses a `tools:` allowlist string
+while OpenCode uses a `permission:` map, and OpenCode rejects a string `tools:`.
+So a builtin subagent that must be enforced-read-only in both tools declares its
+intent once, tool-neutrally, in a `homonto:` frontmatter block:
+
+```markdown
+---
+name: code-reviewer
+description: ...
+mode: subagent
+homonto:
+  read_only: true   # deny edits/writes
+  bash: false       # optional; false denies bash too (default: allowed)
+  dialogs: true     # allow the interactive question/dialog tool
+---
+<prompt body>
+```
+
+On `apply`, homonto renders that block into each tool's native fields and links
+each adapter to its own variant (`<name>.claude.md` / `<name>.opencode.md` under
+the materialized catalog):
+
+| Neutral intent | Claude (`tools:` allowlist) | OpenCode (`permission:` map) |
+|---|---|---|
+| `read_only: true` | omit `Edit`/`Write` (e.g. `Read, Grep, Glob`) | `edit: deny` |
+| `bash: false` | omit `Bash` | `bash: deny` |
+| `dialogs: true` | (AskUserQuestion is built in) | `question: allow` |
+
+The prompt body is single-source (never duplicated), and the neutral block and
+its comments are stripped from the rendered files. Subagents without a `homonto:`
+block are projected verbatim (a plain symlink to the shared file), unchanged.
+
 ## Remote subagents are pinned and fail-closed
 
 A `remote:` source **requires** `digest = "sha256:<64 hex>"`. On `apply`, homonto

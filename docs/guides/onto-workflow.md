@@ -129,11 +129,15 @@ in a top-level `[subagents.*]` table, which collides):
   clarity, ranked by severity. Used per task in build and across the diff in
   verify.
 
-Both are `mode: subagent` and **read-only** (edits denied), and both enable
-OpenCode's **question dialog** so gate decisions are asked interactively. Because
-each subagent runs in its own child session, the build phase **fans out**
-independent tasks' investigation/review concurrently via the Task tool while the
-orchestrator (your main session) owns every edit and commit.
+Both are **read-only** (edits denied) and **dialog-enabled** in **both tools** —
+homonto renders each one's access from a single neutral `homonto:` frontmatter
+block into the tool's native fields: Claude's `tools:` allowlist and OpenCode's
+`permission:` map (see [`subagents.md`](subagents.md)). Parallelization and
+dialogs work in both too: the build phase **fans out** independent tasks'
+investigation/review concurrently via the Task tool (OpenCode child sessions;
+Claude parallel Task agents), and gate decisions are asked through an interactive
+dialog (OpenCode's question tool; Claude's AskUserQuestion). The orchestrator
+(your main session) still owns every edit and commit.
 
 ## Recommended tooling
 

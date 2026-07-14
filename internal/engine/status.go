@@ -261,6 +261,11 @@ func (e *Engine) doctorCommands(tool string, entries []config.NamedResource) []s
 // doctorSubagents reports, per subagent, whether its content file is present at
 // the right source (builtin: from the materialized subagent root, local: from
 // the content dir) and whether it is linked into the tool's agent directory.
+func fileExists(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
+}
+
 func (e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []string {
 	var out []string
 	for _, entry := range entries {
@@ -268,7 +273,15 @@ func (e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []
 		var p string
 		switch {
 		case strings.HasPrefix(entry.Resource.Source, "builtin:"):
-			p = filepath.Join(e.SubagentDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:")+".md")
+			// Mirror the adapter's per-tool variant preference: a subagent with a
+			// neutral homonto: block is materialized as <name>.<tool>.md and linked
+			// from there; fall back to the shared <name>.md otherwise.
+			base := strings.TrimPrefix(entry.Resource.Source, "builtin:")
+			if variant := filepath.Join(e.SubagentDir(), base+"."+tool+".md"); fileExists(variant) {
+				p = variant
+			} else {
+				p = filepath.Join(e.SubagentDir(), base+".md")
+			}
 		case strings.HasPrefix(entry.Resource.Source, "remote:"):
 			p = filepath.Join(e.remoteSubagentDir(), name+".md")
 		default:
