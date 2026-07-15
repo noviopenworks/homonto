@@ -28,7 +28,7 @@ re-materializes the embedded catalog at the running version and re-projects it.
 homonto that installed its framework have drifted apart.
 
 **I changed a model route but my agents still show the old model.** Fixed in
-v0.1.17. A subagent's `model:` is stamped from `[models.<tool>.<role>]` at
+v0.2.0. A subagent's `model:` is stamped from `[models.<tool>.<role>]` at
 materialization, and materialization used to be gated on the catalog version
 alone — so a route change left the rendered agents frozen while the tool's own
 `setting.model` moved, giving two different answers from one config. Upgrade and

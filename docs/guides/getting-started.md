@@ -23,9 +23,9 @@ Verify:
 
 ```console
 $ homonto version
-homonto v0.1.16
+homonto v0.2.0
 $ onto version
-onto v0.1.16
+onto v0.2.0
 ```
 
 ## 2. homonto in five commands

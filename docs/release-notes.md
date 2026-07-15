@@ -14,7 +14,7 @@ This release ships **two binaries** — `homonto` (config projector) and `onto`
 archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
 `onto` framework first (`[frameworks.onto]` + `homonto apply`).
 
-### Breaking in v0.1.17 — `effort` and `variant` now do something
+### Breaking in v0.2.0 — `effort` and `variant` now do something
 
 They were **required by validation and projected nowhere**: homonto forced you
 to write two fields it then discarded — and never checked, so real configs
@@ -44,7 +44,7 @@ field, and no `source` is needed for an agent a framework installed:
 effort = "max"
 ```
 
-### Breaking in v0.1.17 — onto's subagents are namespaced `onto-*`
+### Breaking in v0.2.0 — onto's subagents are namespaced `onto-*`
 
 Every resource the onto framework ships is now namespaced, so installing onto
 cannot collide with another framework's — or your own — agent of the same
@@ -62,7 +62,7 @@ old agent files are pruned and the new ones projected. (The onto skills, its
 commands, and the `onto` dispatcher itself are unchanged; `onto` is the
 namespace root.)
 
-### Fixed in v0.1.17 — subagents now track their model routes
+### Fixed in v0.2.0 — subagents now track their model routes
 
 Changing a `[models.<tool>.<role>]` route did **not** re-render the subagents
 stamped from it. The projected agents stayed frozen at the model they were first
@@ -80,7 +80,7 @@ finding for an OpenCode-primary agent's by-design absent Claude variant.
 
 ## Known limitations
 
-homonto is a young, deliberately narrow tool. For the v0.1 beta line:
+homonto is a young, deliberately narrow tool. For the v0.2 beta line:
 
 - **OpenCode JSONC comments are not preserved** on any apply that writes
   `opencode.jsonc` (the file is rewritten as normalized JSON). Accepted for beta.
