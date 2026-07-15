@@ -51,7 +51,7 @@ func pinFor(t *testing.T, tarPath string) remote.Digest {
 	return remote.CanonicalDigest(tree)
 }
 
-const remoteModels = "[models.claude.architectural]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.coding]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.trivial]\nmodel=\"o\"\nvariant=\"m\"\n"
+const remoteModels = "[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.trivial]\nmodel=\"haiku\"\n"
 
 func TestRemoteSubagentEndToEnd(t *testing.T) {
 	home := t.TempDir()

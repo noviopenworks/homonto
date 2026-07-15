@@ -238,23 +238,57 @@ func (e *Engine) recordVersions() {
 	}
 }
 
-// subagentRenderContext builds the per-tool agentfm render context from the
-// declared model routes, so a subagent's neutral `homonto: role` stamps the
-// right tool-native model (Claude opus/sonnet/…, OpenCode provider/model). A
-// tool with no routes yields an empty map (agents inherit the default model).
+// subagentRenderContext builds the per-tool agentfm render context: each role's
+// tier default from [models.<tool>.<role>], plus any per-subagent override from
+// [subagents.<name>.<tool>]. A subagent's neutral `homonto: role` then stamps
+// the right tool-native model, variant, and effort. A tool with no routes yields
+// an empty map (agents inherit the tool's default model).
+//
+// Overrides are keyed by the subagent's CATALOG name, not its config key,
+// because materialization writes one rendered file per catalog name — two
+// declarations of the same builtin share that file. Config validation rejects
+// conflicting overrides on one source, so resolving by catalog name here is
+// unambiguous by the time we run.
 func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
-	roleModels := func(routes map[string]config.ModelRoute) map[string]string {
-		m := map[string]string{}
+	roleSpecs := func(routes map[string]config.ModelRoute) map[string]agentfm.ModelSpec {
+		m := map[string]agentfm.ModelSpec{}
 		for role, r := range routes {
-			if r.Model != "" {
-				m[role] = r.Model
+			m[role] = agentfm.ModelSpec{Model: r.Model, Variant: r.Variant, Effort: r.Effort}
+		}
+		return m
+	}
+	overrides := func(pick func(config.Subagent) config.ModelRoute) map[string]agentfm.ModelSpec {
+		m := map[string]agentfm.ModelSpec{}
+		for key, sa := range e.Cfg.Subagents {
+			r := pick(sa)
+			if r.Model == "" && r.Variant == "" && r.Effort == "" {
+				continue
 			}
+			// Resolve to the CATALOG name, which is what materialization renders
+			// per file. A declared entry carries it in its builtin: source; a
+			// tune-only entry names it directly (it retunes a framework's agent,
+			// whose config key IS its catalog name).
+			name := key
+			if !sa.IsTuneOnly() {
+				cat, ok := config.SubagentCatalogName(sa.Source)
+				if !ok {
+					continue // local:/remote: content is not catalog-keyed
+				}
+				name = cat
+			}
+			m[name] = agentfm.ModelSpec{Model: r.Model, Variant: r.Variant, Effort: r.Effort}
 		}
 		return m
 	}
 	return map[string]agentfm.RenderContext{
-		"claude":   {Model: roleModels(e.Cfg.Models.Claude)},
-		"opencode": {Model: roleModels(e.Cfg.Models.OpenCode)},
+		"claude": {
+			Roles:     roleSpecs(e.Cfg.Models.Claude),
+			Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.Claude }),
+		},
+		"opencode": {
+			Roles:     roleSpecs(e.Cfg.Models.OpenCode),
+			Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.OpenCode }),
+		},
 	}
 }
 
@@ -420,27 +454,36 @@ func allCommandFilesExist(root string, names []string) bool {
 	return true
 }
 
-// subagentRenderFingerprint digests the render inputs (the per-tool role→model
-// routes) deterministically, so the materialize gate re-renders exactly when a
-// route the agents are stamped from actually changed. Sorted keys and delimited
-// fields keep it stable across map iteration order and unambiguous across
-// values (a "a"+"bc" / "ab"+"c" collision would silently skip a re-render).
+// subagentRenderFingerprint digests every render input — each tool's role tiers
+// AND per-subagent overrides, model + variant + effort — deterministically, so
+// the materialize gate re-renders exactly when something the agents are stamped
+// from actually changed. Every field the render reads must be digested here: one
+// omitted field is one config edit that silently never reaches the agent.
+//
+// Sorted keys keep it stable across map iteration order; delimited fields keep
+// it unambiguous across values (an "a"+"bc" / "ab"+"c" collision would skip the
+// very re-render this gate exists to trigger).
 func subagentRenderFingerprint(ctx map[string]agentfm.RenderContext) string {
+	h := sha256.New()
+	digestSpecs := func(kind, tool string, specs map[string]agentfm.ModelSpec) {
+		keys := make([]string, 0, len(specs))
+		for k := range specs {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			s := specs[k]
+			fmt.Fprintf(h, "%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00", kind, tool, k, s.Model, s.Variant, s.Effort)
+		}
+	}
 	tools := make([]string, 0, len(ctx))
 	for tool := range ctx {
 		tools = append(tools, tool)
 	}
 	sort.Strings(tools)
-	h := sha256.New()
 	for _, tool := range tools {
-		roles := make([]string, 0, len(ctx[tool].Model))
-		for role := range ctx[tool].Model {
-			roles = append(roles, role)
-		}
-		sort.Strings(roles)
-		for _, role := range roles {
-			fmt.Fprintf(h, "%s\x00%s\x00%s\x00", tool, role, ctx[tool].Model[role])
-		}
+		digestSpecs("role", tool, ctx[tool].Roles)
+		digestSpecs("override", tool, ctx[tool].Overrides)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

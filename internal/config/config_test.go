@@ -55,23 +55,21 @@ model = "anthropic/claude-opus-4-8"
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
+effort = "high"
 
 [models.claude.coding]
 model = "sonnet"
-effort = "normal"
+effort = "medium"
 
 [models.claude.trivial]
 model = "haiku"
-effort = "fast"
+effort = "low"
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
-effort = "high"
 
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
-effort = "medium"
 
 [models.opencode.trivial]
 model = "openai/gpt-5-mini"
@@ -117,8 +115,8 @@ func TestLoad(t *testing.T) {
 	if len(opencodeSkills) != 1 || opencodeSkills[0].Name != "graphify" {
 		t.Fatalf("opencode skill entries = %#v", opencodeSkills)
 	}
-	if got := c.Models.Claude["architectural"].Variant; got != "max" {
-		t.Fatalf("claude architectural variant = %q", got)
+	if got := c.Models.Claude["architectural"].Effort; got != "high" {
+		t.Fatalf("claude architectural effort = %q", got)
 	}
 	// Plugin declaration tables parse into per-tool maps keyed by decl name,
 	// carrying source and (default-true) enabled.
@@ -311,12 +309,19 @@ func TestLoadRejectsTUIIndexLikeName(t *testing.T) {
 
 func loadDoc(t *testing.T, doc string) error {
 	t.Helper()
+	_, err := loadDocCfg(t, doc)
+	return err
+}
+
+// loadDocCfg is loadDoc for callers that need to inspect what parsed, not only
+// whether it did.
+func loadDocCfg(t *testing.T, doc string) (*Config, error) {
+	t.Helper()
 	p := filepath.Join(t.TempDir(), "homonto.toml")
 	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := Load(p)
-	return err
+	return Load(p)
 }
 
 // TestSubagentModeValidation: subagents accept link (default) and copy; an
@@ -357,7 +362,7 @@ func TestAgentSupersededIntoSubagent(t *testing.T) {
 
 	// A builtin agent supersedes to a COPY-mode subagent (builtin was copy-only).
 	c := load("[agents.rev]\nsource=\"builtin:code-reviewer\"\ntargets=[\"claude\"]\n" +
-		"[models.claude.architectural]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.coding]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.trivial]\nmodel=\"o\"\nvariant=\"m\"\n")
+		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
 	if len(c.Agents) != 0 {
 		t.Fatal("the [agents] table must be cleared after supersede")
 	}
@@ -375,7 +380,7 @@ func TestAgentSupersededIntoSubagent(t *testing.T) {
 	// A declared [agents.X] wins over an explicit [subagents.X] of the same name.
 	c2 := load("[agents.dup]\nsource=\"local:dup\"\nmode=\"copy\"\ntargets=[\"claude\"]\n" +
 		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claude\"]\n" +
-		"[models.claude.architectural]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.coding]\nmodel=\"o\"\nvariant=\"m\"\n[models.claude.trivial]\nmodel=\"o\"\nvariant=\"m\"\n")
+		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
 	if got := c2.Subagents["dup"].Source; got != "local:dup" {
 		t.Fatalf("the agent declaration must win the name; subagent source = %q", got)
 	}
@@ -572,11 +577,9 @@ targets = ["opencode"]
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
-effort = "high"
 
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
-effort = "medium"
 `
 	err := loadDoc(t, doc)
 	if err == nil {
@@ -589,7 +592,11 @@ effort = "medium"
 	}
 }
 
-func TestLoadRequiresModelAndEffortOrVariant(t *testing.T) {
+// A route naming only a model is complete. effort/variant were once mandatory
+// while being projected nowhere — homonto forced you to write a field it then
+// discarded, and never checked, so configs filled up with values no tool accepts
+// ("effort = normal", "variant = max"). They are optional and validated now.
+func TestLoadAcceptsModelWithoutEffortOrVariant(t *testing.T) {
 	doc := `
 [commands.review]
 source = "builtin:review"
@@ -598,22 +605,135 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 
 [models.claude.coding]
 model = "sonnet"
 
 [models.claude.trivial]
 model = "haiku"
-effort = "fast"
 `
-	err := loadDoc(t, doc)
-	if err == nil {
-		t.Fatal("model without effort or variant accepted; want load error")
+	if err := loadDoc(t, doc); err != nil {
+		t.Fatalf("a route naming just a model is complete; got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "models.claude.coding") {
-		t.Fatalf("error does not name route: %v", err)
+}
+
+// Each tool is validated against what it can actually express, so a value the
+// tool would silently ignore is a load error naming the offender instead.
+func TestLoadValidatesModelSpecPerTool(t *testing.T) {
+	claudeDoc := func(route string) string {
+		return `
+[commands.review]
+source = "builtin:review"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+` + route + `
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+`
 	}
+	opencodeDoc := func(route string) string {
+		return `
+[commands.review]
+source = "builtin:review"
+scope = "project"
+targets = ["opencode"]
+
+[models.opencode.architectural]
+` + route + `
+[models.opencode.coding]
+model = "anthropic/claude-sonnet-4-5"
+[models.opencode.trivial]
+model = "anthropic/claude-haiku-4-5"
+`
+	}
+
+	for _, tc := range []struct {
+		name, doc, wantErr string
+	}{
+		{
+			name:    "claude rejects an effort outside its enum",
+			doc:     claudeDoc("model = \"opus\"\neffort = \"normal\"\n"),
+			wantErr: "not a Claude effort level",
+		},
+		{
+			name:    "claude rejects a variant on a full model id",
+			doc:     claudeDoc("model = \"claude-opus-4-8\"\nvariant = \"1m\"\n"),
+			wantErr: "needs a model alias",
+		},
+		{
+			name:    "opencode rejects effort, which it has no concept of",
+			doc:     opencodeDoc("model = \"anthropic/claude-opus-4-8\"\neffort = \"high\"\n"),
+			wantErr: "OpenCode has no effort setting",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := loadDoc(t, tc.doc)
+			if err == nil {
+				t.Fatalf("want a load error mentioning %q, got none", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error %v does not explain %q", err, tc.wantErr)
+			}
+		})
+	}
+
+	for _, tc := range []struct{ name, doc string }{
+		{"claude accepts an enum effort", claudeDoc("model = \"opus\"\neffort = \"xhigh\"\n")},
+		{"claude accepts a variant on an alias", claudeDoc("model = \"opus\"\nvariant = \"1m\"\n")},
+		{"opencode accepts a provider-defined variant", opencodeDoc("model = \"anthropic/claude-opus-4-8\"\nvariant = \"thinking\"\n")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := loadDoc(t, tc.doc); err != nil {
+				t.Fatalf("want accepted, got: %v", err)
+			}
+		})
+	}
+}
+
+// A per-subagent [subagents.<name>.<tool>] block overrides its role's tier field
+// by field, and is validated against the same per-tool rules.
+func TestLoadValidatesSubagentModelOverride(t *testing.T) {
+	doc := func(block string) string {
+		return `
+[subagents.onto-skeptic]
+source = "builtin:onto-skeptic"
+scope = "project"
+targets = ["claude"]
+
+` + block + `
+
+[models.claude.architectural]
+model = "opus"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+`
+	}
+
+	t.Run("effort-only override inherits the tier model", func(t *testing.T) {
+		c, err := loadDocCfg(t, doc("[subagents.onto-skeptic.claude]\neffort = \"xhigh\""))
+		if err != nil {
+			t.Fatalf("effort-only override should load: %v", err)
+		}
+		if got := c.Subagents["onto-skeptic"].ModelOverrideFor("claude"); got.Effort != "xhigh" || got.Model != "" {
+			t.Fatalf("override = %#v; want effort xhigh and no model", got)
+		}
+	})
+
+	t.Run("an override is validated too", func(t *testing.T) {
+		err := loadDoc(t, doc("[subagents.onto-skeptic.claude]\neffort = \"turbo\""))
+		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {
+			t.Fatalf("want the override's bad effort rejected, got: %v", err)
+		}
+		if err != nil && !strings.Contains(err.Error(), "subagents.onto-skeptic.claude") {
+			t.Fatalf("error must name the offending override: %v", err)
+		}
+	})
 }
 
 func TestLoadDoesNotRequireModelsForSkillsOnly(t *testing.T) {
@@ -701,13 +821,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `)
 	got, err := c.ExpandedSkillEntriesForTool("claude")
 	if err != nil {
@@ -750,13 +869,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `)
 	got, err := c.ExpandedSkillEntriesForTool("opencode")
 	if err != nil {
@@ -781,13 +899,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `)
 	_, err := c.ExpandedSkillEntriesForTool("claude")
 	if err == nil || !strings.Contains(err.Error(), "comet-open") {
@@ -814,13 +931,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `)
 	_, err := c.ExpandedSkillEntriesForTool("claude")
 	if err == nil {
@@ -849,13 +965,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `)
 	got, err := c.ExpandedSkillEntriesForTool("claude")
 	if err != nil {
@@ -876,19 +991,16 @@ func validModelsBothTools() string {
 	return `
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "normal"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "fast"
+effort = "low"
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
-effort = "high"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
-effort = "medium"
 [models.opencode.trivial]
 model = "openai/gpt-5-mini"
 variant = "cheap"

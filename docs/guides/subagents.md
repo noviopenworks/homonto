@@ -64,6 +64,21 @@ at load, naming the offender. This is validated for every target the subagent
 projects into. See the
 [configuration reference](configuration.md#model-routes--modelstoolroute).
 
+An agent's `role:` picks its tier. To retune **one** agent, add a per-tool block
+under its name — each field wins over the tier field by field, so this keeps the
+tier's model and only thinks harder:
+
+```toml
+[subagents.onto-skeptic.claude]
+effort = "max"
+```
+
+No `source` is needed (or allowed) when the agent comes from a framework: a
+block with no source *tunes* the agent rather than declaring it. `model`,
+`variant`, and `effort` render into each tool's own dialect — Claude brackets a
+variant into the model (`opus[1m]`) and takes `effort:`; OpenCode has a separate
+`variant:` field and no effort at all.
+
 ## The agent file
 
 The projected file is materialized **verbatim**. A subagent's frontmatter uses

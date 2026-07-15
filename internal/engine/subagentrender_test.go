@@ -22,10 +22,8 @@ model = "%s"
 variant = "high"
 [models.opencode.coding]
 model = "some/coding-model"
-effort = "medium"
 [models.opencode.trivial]
 model = "some/trivial-model"
-effort = "medium"
 `
 
 func writeConfig(t *testing.T, repo, model string) {
@@ -119,24 +117,69 @@ scope = "project"
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
+effort = "high"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 
 [models.opencode.architectural]
 model = "some/architectural-model"
 variant = "high"
 [models.opencode.coding]
 model = "some/coding-model"
-effort = "medium"
 [models.opencode.trivial]
 model = "some/trivial-model"
-effort = "medium"
 `
+
+// A framework's subagents may not be re-declared explicitly (that collision is
+// an error), so without a tune-only form there would be NO way to retune the
+// model of an agent installed via [frameworks.*] — the main reason to want an
+// override at all. A per-tool block with no source must therefore tune the
+// framework's agent in place, overriding its tier field by field, and leave
+// every other agent on that same tier untouched.
+func TestTuneOnlyEntryOverridesFrameworkAgentModel(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	doc := ontoFrameworkTOML + `
+[subagents.onto-skeptic.claude]
+effort = "max"
+`
+	if err := os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	e := buildEngine(t, home, repo)
+	if err := e.Apply(mustPlan(t, e)); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	effortOf := func(file string) string {
+		data, err := os.ReadFile(filepath.Join(e.SubagentDir(), file))
+		if err != nil {
+			t.Fatalf("read %s: %v", file, err)
+		}
+		for _, ln := range strings.Split(string(data), "\n") {
+			if v, ok := strings.CutPrefix(ln, "effort: "); ok {
+				return v
+			}
+		}
+		return ""
+	}
+	if got := effortOf("onto-skeptic.claude.md"); got != "max" {
+		t.Errorf("tuned agent effort = %q, want max (the override must beat its tier)", got)
+	}
+	// onto-reviewer shares the architectural tier but was not tuned.
+	if got := effortOf("onto-reviewer.claude.md"); got != "high" {
+		t.Errorf("untuned agent on the same tier: effort = %q, want the tier's high", got)
+	}
+	// The override inherits the tier's model rather than blanking it.
+	data, _ := os.ReadFile(filepath.Join(e.SubagentDir(), "onto-skeptic.claude.md"))
+	if !strings.Contains(string(data), "model: opus") {
+		t.Errorf("an effort-only override must inherit the tier's model:\n%s", data)
+	}
+}
 
 // TestDoctorSilentOnPrimaryAgentClaudeVariant guards against a permanent false
 // positive: `onto` is an OpenCode-primary agent, so agentfm deliberately renders

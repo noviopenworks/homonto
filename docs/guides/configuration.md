@@ -159,15 +159,14 @@ subagent) for a tool must declare **all three** routes for that tool —
 ```toml
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 
 [models.claude.coding]
 model = "sonnet"
-effort = "normal"
+effort = "medium"
 
 [models.claude.trivial]
 model = "haiku"
-effort = "fast"
+effort = "low"
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
@@ -177,13 +176,31 @@ variant = "high"
 
 | Field | Required | Notes |
 |---|---|---|
-| `model` | **yes** | the tool's model identifier (Claude alias or OpenCode `provider/model` id) |
-| `effort` | **one of the two** | effort hint |
-| `variant` | **one of the two** | variant hint |
+| `model` | **yes** | the tool's model identifier |
+| `effort` | no | how hard to think |
+| `variant` | no | which variant of the model |
 
-Every route needs a `model` **and** at least one of `effort` / `variant` — a
-route carrying only a `model` is rejected at load
-(`models.claude.architectural requires effort or variant`).
+A route naming just a `model` is complete; `effort` and `variant` are optional.
+
+### The two tools spell these differently
+
+This is the whole reason the fields are declared neutrally and rendered per
+tool — each tool accepts only its own half:
+
+| | Claude Code | OpenCode |
+|---|---|---|
+| `model` | an alias (`opus`, `sonnet`, `haiku`, `fable`, `opusplan`) or a full id (`claude-opus-4-8`) | `provider/model` |
+| `variant` | **has no field** — it is rendered *into* the model string as `opus[1m]`, and only an **alias** can take one. `1m` is the only documented variant | a **first-class `variant:` field** taking any variant your provider defines |
+| `effort` | a real frontmatter field: `low`, `medium`, `high`, `xhigh`, `max` | **no such concept** — declaring it is a config error |
+
+Each value is validated against the tool that will receive it, so a setting the
+tool would silently ignore is a load error naming the offender instead:
+
+```
+parse config: models.claude.coding effort "normal" is not a Claude effort level (low, medium, high, xhigh, max)
+parse config: models.claude.architectural variant "1m" needs a model alias (…) — Claude takes no variant on the full model id "claude-opus-4-8"
+parse config: models.opencode.coding sets effort "high", but OpenCode has no effort setting — use variant, or drop it
+```
 
 The routes are also **projected into each tool's default model**:
 `architectural` → the tool's main model (Claude `settings.model`, OpenCode
@@ -191,6 +208,33 @@ The routes are also **projected into each tool's default model**:
 `[settings.<tool>].model` always wins over the route-derived value. Subagents
 declare a `role:` that maps to one of these routes (see
 [subagents](subagents.md)).
+
+### Retuning one agent — `[subagents.<name>.<tool>]`
+
+A tier is the default for *every* agent of that role. To retune a single agent,
+declare a per-tool block under its name; each field set there wins over the
+tier, **field by field**, so an effort-only override keeps the tier's model:
+
+```toml
+[models.claude.architectural]
+model = "opus"
+variant = "1m"
+effort = "high"          # the default for every architectural agent
+
+[subagents.onto-skeptic.claude]
+effort = "max"           # …but the skeptic thinks harder
+```
+
+`onto-skeptic` renders as `model: opus[1m]` + `effort: max`; `onto-reviewer`,
+on the same tier, stays at `high`.
+
+Note there is **no `[subagents.onto-skeptic]` declaration** above, and that is
+deliberate: `onto-skeptic` is installed by `[frameworks.onto]`, and a
+framework's subagent may not be re-declared explicitly (that collision is an
+error). A per-tool block with **no `source`** is therefore read as *tune this
+agent*, not *declare it* — it projects nothing and never collides with the
+framework that owns the agent. For a subagent you declare yourself, add the
+block under your own `[subagents.<name>]` entry the same way.
 
 ## Plugins — `[plugins.<tool>.<name>]`
 
@@ -305,21 +349,16 @@ theme = "gruvbox"
 # Required because a framework and a subagent are enabled for both tools:
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-variant = "max"
 [models.claude.trivial]
 model = "haiku"
-variant = "max"
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
 variant = "high"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-5"
-effort = "medium"
 [models.opencode.trivial]
 model = "anthropic/claude-haiku-4-5"
-effort = "medium"
 ```

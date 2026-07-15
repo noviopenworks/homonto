@@ -14,6 +14,36 @@ This release ships **two binaries** — `homonto` (config projector) and `onto`
 archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
 `onto` framework first (`[frameworks.onto]` + `homonto apply`).
 
+### Breaking in v0.1.17 — `effort` and `variant` now do something
+
+They were **required by validation and projected nowhere**: homonto forced you
+to write two fields it then discarded — and never checked, so real configs
+filled up with values no tool accepts (`effort = "normal"`, `variant = "max"`,
+even `effort = "n"`). Now they are **optional, validated, and actually
+projected** into each tool's own dialect:
+
+| | Claude Code | OpenCode |
+|---|---|---|
+| `variant` | rendered *into* the model string (`opus[1m]`); **alias-only**, `1m` is the only documented one | a first-class `variant:` field, any provider-defined value |
+| `effort` | a real field: `low`, `medium`, `high`, `xhigh`, `max` | **no such concept** — declaring it is now an error |
+
+**You may need to edit your config.** A route naming just a `model` is now
+complete, so the simplest fix is to delete values you were only writing to
+satisfy the old rule. Otherwise the loader tells you exactly what is wrong:
+
+```
+parse config: models.claude.coding effort "normal" is not a Claude effort level (low, medium, high, xhigh, max)
+parse config: models.opencode.coding sets effort "high", but OpenCode has no effort setting — use variant, or drop it
+```
+
+**New:** retune one agent without restating its tier — each field wins field by
+field, and no `source` is needed for an agent a framework installed:
+
+```toml
+[subagents.onto-skeptic.claude]
+effort = "max"
+```
+
 ### Breaking in v0.1.17 — onto's subagents are namespaced `onto-*`
 
 Every resource the onto framework ships is now namespaced, so installing onto

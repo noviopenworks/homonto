@@ -16,23 +16,20 @@ scope = "project"
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 
 [models.claude.coding]
 model = "sonnet"
-effort = "normal"
+effort = "medium"
 
 [models.claude.trivial]
 model = "haiku"
-effort = "fast"
+effort = "low"
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
-effort = "high"
 
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
-effort = "medium"
 
 [models.opencode.trivial]
 model = "openai/gpt-5-mini"

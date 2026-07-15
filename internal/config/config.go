@@ -68,6 +68,49 @@ type Subagent struct {
 	// Digest is the sha256 content pin ("sha256:<hex>") required when Source is a
 	// remote: source and unused otherwise.
 	Digest string `toml:"digest"`
+	// Claude and OpenCode are per-tool model overrides for THIS subagent,
+	// declared as [subagents.<name>.<tool>]. Each field set here wins over the
+	// agent's role tier ([models.<tool>.<role>]) field by field, so retuning one
+	// agent's effort does not mean restating its model.
+	Claude   ModelRoute `toml:"claude"`
+	OpenCode ModelRoute `toml:"opencode"`
+}
+
+// ModelOverrideFor returns this subagent's override for tool.
+func (s Subagent) ModelOverrideFor(tool string) ModelRoute {
+	switch tool {
+	case "claude":
+		return s.Claude
+	case "opencode":
+		return s.OpenCode
+	}
+	return ModelRoute{}
+}
+
+// IsTuneOnly reports whether this entry only tunes an agent's models rather than
+// declaring one: no source, but at least one per-tool model block.
+//
+// It exists because a framework's subagents may not be re-declared explicitly
+// (that collision is an error), which would otherwise leave no way at all to
+// retune the model of an agent you installed via [frameworks.*] — the main
+// reason to reach for an override. So
+//
+//	[subagents.onto-skeptic.claude]
+//	effort = "max"
+//
+// with no source is read as "tune onto-skeptic", not "declare it": it projects
+// nothing, and never collides with the framework that owns the agent.
+func (s Subagent) IsTuneOnly() bool {
+	if strings.TrimSpace(s.Source) != "" {
+		return false
+	}
+	return s.Claude != ModelRoute{} || s.OpenCode != ModelRoute{}
+}
+
+// SubagentCatalogName returns the builtin catalog name a source resolves to.
+// Only builtin: sources have one — local:/remote: content is not catalog-keyed.
+func SubagentCatalogName(source string) (string, bool) {
+	return strings.CutPrefix(source, "builtin:")
 }
 
 func (s Subagent) TargetsOrAll() []string {
@@ -238,6 +281,12 @@ func (c *Config) CommandEntriesForTool(tool string) []NamedResource {
 func (c *Config) SubagentEntriesForTool(tool string) []NamedResource {
 	var out []NamedResource
 	for name, s := range c.Subagents {
+		// A tune-only entry declares no agent — it retunes one a framework owns,
+		// so it must not project, and must not count as an explicit declaration
+		// that collides with that framework.
+		if s.IsTuneOnly() {
+			continue
+		}
 		if containsString(s.TargetsOrAll(), tool) {
 			out = append(out, NamedResource{Name: name, Resource: s.asResource(), Mode: s.ModeOrDefault()})
 		}
@@ -875,6 +924,13 @@ func validateSubagents(subagents map[string]Subagent) error {
 			return err
 		}
 		label := "subagents." + name
+		// A tune-only entry ([subagents.<name>.<tool>] with no source) retunes an
+		// agent a framework already declared, so the declaration rules — source,
+		// scope, local-name safety — are not its to satisfy. Its model blocks are
+		// still validated, by validateSubagentOverrides.
+		if s.IsTuneOnly() {
+			continue
+		}
 		switch s.Scope {
 		case "user", "project":
 			// ok (empty was normalized to project at load)
@@ -959,9 +1015,61 @@ func validateSource(label, source, digest string, allowRemote bool) error {
 	return nil
 }
 
-// validateModels ensures every tool enabled by a non-skill resource has all
-// three model levels (architectural, coding, trivial) populated with a model
-// and either an effort or variant.
+// claudeEffortLevels are the values Claude Code's agent `effort:` field accepts.
+var claudeEffortLevels = map[string]bool{
+	"low": true, "medium": true, "high": true, "xhigh": true, "max": true,
+}
+
+// claudeModelAliases are the aliases Claude Code accepts for `model:`. The
+// bracketed variant form (`opus[1m]`) is documented for aliases ONLY, so a
+// variant on a full model id is a config error rather than a silent drop.
+var claudeModelAliases = map[string]bool{
+	"opus": true, "sonnet": true, "haiku": true, "fable": true, "opusplan": true,
+}
+
+// validateModelSpec checks one model/variant/effort triple against what `tool`
+// can actually express, naming label as the offender. `model` is required only
+// of a tier (a per-subagent override may set effort alone and inherit the rest),
+// which requireModel selects.
+//
+// The tools differ, so the rules do:
+//   - Claude renders a variant by bracketing an ALIAS (`opus[1m]`), and takes
+//     `effort:` from a fixed set.
+//   - OpenCode has a first-class `variant` field (any provider-defined string)
+//     and no effort concept at all.
+func validateModelSpec(tool, label string, r ModelRoute, requireModel bool) error {
+	model := strings.TrimSpace(r.Model)
+	variant := strings.TrimSpace(r.Variant)
+	effort := strings.TrimSpace(r.Effort)
+	if requireModel && model == "" {
+		return fmt.Errorf("parse config: %s model is required", label)
+	}
+	switch tool {
+	case "claude":
+		if effort != "" && !claudeEffortLevels[effort] {
+			return fmt.Errorf("parse config: %s effort %q is not a Claude effort level (low, medium, high, xhigh, max)", label, effort)
+		}
+		// Only meaningful against a model we can see; an override that sets a
+		// variant alone is checked against the tier it merges into, below.
+		if variant != "" && model != "" && !claudeModelAliases[model] {
+			return fmt.Errorf("parse config: %s variant %q needs a model alias (opus, sonnet, haiku, fable, opusplan) — Claude takes no variant on the full model id %q", label, variant, model)
+		}
+	case "opencode":
+		if effort != "" {
+			return fmt.Errorf("parse config: %s sets effort %q, but OpenCode has no effort setting — use variant, or drop it", label, effort)
+		}
+	}
+	return nil
+}
+
+// validateModels ensures every tool enabled by a non-skill resource declares all
+// three model tiers with a model, and that every model/variant/effort value —
+// tier or per-subagent override — is one the target tool can actually express.
+//
+// Effort and variant are OPTIONAL: a tier naming just a model is complete. They
+// were once mandatory while being projected nowhere, which meant homonto forced
+// you to write a field it then discarded — and never checked, so configs filled
+// with values no tool accepts.
 func validateModels(c *Config) error {
 	for _, tool := range c.EnabledModelTools() {
 		for _, level := range []string{"architectural", "coding", "trivial"} {
@@ -970,12 +1078,68 @@ func validateModels(c *Config) error {
 			if !ok {
 				return fmt.Errorf("parse config: %s is required for enabled target tool %q", label, tool)
 			}
-			if strings.TrimSpace(route.Model) == "" {
-				return fmt.Errorf("parse config: %s model is required", label)
+			if err := validateModelSpec(tool, label, route, true); err != nil {
+				return err
 			}
-			if strings.TrimSpace(route.Effort) == "" && strings.TrimSpace(route.Variant) == "" {
-				return fmt.Errorf("parse config: %s requires effort or variant", label)
+		}
+	}
+	return validateSubagentOverrides(c)
+}
+
+// validateSubagentOverrides checks each [subagents.<name>.<tool>] block against
+// the tier it merges into, and rejects two declarations of one builtin that
+// disagree — materialization writes a single rendered file per catalog name, so
+// conflicting overrides on the same source have no coherent answer.
+func validateSubagentOverrides(c *Config) error {
+	seen := map[string]map[string]ModelRoute{} // catalog name -> tool -> override
+	names := make([]string, 0, len(c.Subagents))
+	for name := range c.Subagents {
+		names = append(names, name)
+	}
+	sort.Strings(names) // deterministic: the same config must fail on the same offender
+	for _, name := range names {
+		sa := c.Subagents[name]
+		for _, tool := range sa.TargetsOrAll() {
+			if tool != "claude" && tool != "opencode" {
+				continue
 			}
+			ov := sa.ModelOverrideFor(tool)
+			if ov.Model == "" && ov.Variant == "" && ov.Effort == "" {
+				continue
+			}
+			label := "subagents." + name + "." + tool
+			// A variant with no model of its own brackets the TIER's model, so
+			// check the merged result, not the fragment.
+			merged := ov
+			if merged.Model == "" {
+				for _, level := range []string{"architectural", "coding", "trivial"} {
+					if r, ok := modelRouteFor(c.Models, tool, level); ok && r.Model != "" {
+						merged.Model = r.Model
+						break
+					}
+				}
+			}
+			if err := validateModelSpec(tool, label, merged, false); err != nil {
+				return err
+			}
+			// Conflicts are judged per CATALOG name: one builtin renders one file.
+			// A tune-only entry names that catalog agent directly; a declared one
+			// carries it in its builtin: source. local:/remote: content is not
+			// catalog-keyed, so it cannot collide this way.
+			cat := name
+			if !sa.IsTuneOnly() {
+				var ok bool
+				if cat, ok = SubagentCatalogName(sa.Source); !ok {
+					continue
+				}
+			}
+			if seen[cat] == nil {
+				seen[cat] = map[string]ModelRoute{}
+			}
+			if prev, dup := seen[cat][tool]; dup && prev != ov {
+				return fmt.Errorf("parse config: subagents.%s.%s conflicts with another declaration of %q — one builtin renders one file, so its overrides must agree", name, tool, sa.Source)
+			}
+			seen[cat][tool] = ov
 		}
 	}
 	return nil

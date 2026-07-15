@@ -125,13 +125,10 @@ scope = "project"
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-variant = "max"
 [models.claude.trivial]
 model = "haiku"
-variant = "max"
 ```
 
 ```console

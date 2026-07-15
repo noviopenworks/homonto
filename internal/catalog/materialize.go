@@ -135,7 +135,7 @@ func (c *Catalog) SubagentFiles(name string, renderCtx map[string]agentfm.Render
 		return files, nil
 	}
 	for _, tool := range []string{"claude", "opencode"} {
-		rendered, rerr := agentfm.Render(data, tool, renderCtx[tool])
+		rendered, rerr := agentfm.Render(name, data, tool, renderCtx[tool])
 		if rerr != nil {
 			return nil, fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
 		}
@@ -166,7 +166,7 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx
 			continue
 		}
 		for _, tool := range []string{"claude", "opencode"} {
-			rendered, rerr := agentfm.Render(data, tool, renderCtx[tool])
+			rendered, rerr := agentfm.Render(name, data, tool, renderCtx[tool])
 			if rerr != nil {
 				return fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
 			}

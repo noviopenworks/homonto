@@ -399,19 +399,16 @@ targets = ["claude", "opencode"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
-effort = "high"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
-effort = "medium"
 [models.opencode.trivial]
 model = "openai/gpt-5-mini"
 variant = "cheap"

@@ -30,10 +30,8 @@ model = "%MODEL%"
 variant = "high"
 [models.opencode.coding]
 model = "some/coding-model"
-effort = "medium"
 [models.opencode.trivial]
 model = "some/trivial-model"
-effort = "medium"
 `
 
 func writeCatalogConfig(t *testing.T, repo, model string) string {

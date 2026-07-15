@@ -8,7 +8,7 @@ import (
 // A read-only specialist: no edits, no shell, dialogs on, spawns nothing, and a
 // role that stamps a model from the render context.
 const readOnlyReviewer = `---
-name: code-reviewer
+name: onto-reviewer
 description: Use to review a diff; reports findings ranked by severity.
 mode: subagent
 homonto:
@@ -29,20 +29,20 @@ homonto:
   role: architectural
   primary: true
   steps: 60
-  spawn: [onto-implementer, code-reviewer]
+  spawn: [onto-implementer, onto-reviewer]
 ---
 Drive the workflow.
 `
 
 func ctx() RenderContext {
-	return RenderContext{Model: map[string]string{
-		"architectural": "opus", "coding": "sonnet", "trivial": "haiku",
+	return RenderContext{Roles: map[string]ModelSpec{
+		"architectural": {Model: "opus"}, "coding": {Model: "sonnet"}, "trivial": {Model: "haiku"},
 	}}
 }
 
 func mustRender(t *testing.T, content, tool string) string {
 	t.Helper()
-	out, err := Render([]byte(content), tool, ctx())
+	out, err := Render("agent", []byte(content), tool, ctx())
 	if err != nil {
 		t.Fatalf("Render(%s): %v", tool, err)
 	}
@@ -88,7 +88,7 @@ func TestRenderOpenCode_ReadOnlyReviewer(t *testing.T) {
 }
 
 func TestRenderPrimary_ClaudeSkipped_OpenCodeMode(t *testing.T) {
-	out, err := Render([]byte(orchestrator), "claude", ctx())
+	out, err := Render("onto", []byte(orchestrator), "claude", ctx())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestRenderPrimary_ClaudeSkipped_OpenCodeMode(t *testing.T) {
 		t.Errorf("opencode primary must carry mode: primary + steps:\n%s", oc)
 	}
 	// named spawn → task glob allowlist.
-	for _, want := range []string{"  task:", `    "*": deny`, `    "onto-implementer": allow`, `    "code-reviewer": allow`} {
+	for _, want := range []string{"  task:", `    "*": deny`, `    "onto-implementer": allow`, `    "onto-reviewer": allow`} {
 		if !strings.Contains(oc, want) {
 			t.Errorf("opencode spawn topology missing %q:\n%s", want, oc)
 		}
@@ -121,7 +121,7 @@ func TestRender_NoHomontoBlock_Unchanged(t *testing.T) {
 }
 
 func TestRender_UnknownTool(t *testing.T) {
-	if _, err := Render([]byte(readOnlyReviewer), "codex", ctx()); err == nil {
+	if _, err := Render("onto-reviewer", []byte(readOnlyReviewer), "codex", ctx()); err == nil {
 		t.Fatal("unknown tool should error")
 	}
 }
@@ -129,7 +129,7 @@ func TestRender_UnknownTool(t *testing.T) {
 func TestRender_MissingRouteOmitsModel(t *testing.T) {
 	// role set but the render context has no model for it → no model line.
 	out := func() string {
-		b, _ := Render([]byte(readOnlyReviewer), "claude", RenderContext{})
+		b, _ := Render("onto-reviewer", []byte(readOnlyReviewer), "claude", RenderContext{})
 		return string(b)
 	}()
 	if strings.Contains(out, "model:") {

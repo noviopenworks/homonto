@@ -17,19 +17,16 @@ model = "anthropic/claude-opus-4-1"
 effort = "high"
 [models.claude.coding]
 model = "anthropic/claude-sonnet-4-5"
-effort = "normal"
+effort = "medium"
 [models.claude.trivial]
 model = "anthropic/claude-haiku-4-5"
-effort = "fast"
+effort = "low"
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-1"
-effort = "high"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4-5"
-effort = "normal"
 [models.opencode.trivial]
 model = "anthropic/claude-haiku-4-5"
-effort = "fast"
 
 [skills.a]
 source = "local:a"

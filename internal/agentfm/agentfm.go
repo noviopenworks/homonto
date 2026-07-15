@@ -47,11 +47,66 @@ type Homonto struct {
 	Steps    int       `yaml:"steps"`     // OpenCode iteration budget
 }
 
-// RenderContext carries the config-derived values the render needs — currently
-// the role→model map for the tool being rendered (the caller passes the Claude
-// routes for the claude render, the OpenCode routes for the opencode render).
+// ModelSpec is a fully-resolved model choice for one tool: which model, which
+// variant of it, and how hard to think. Each tool spells these differently —
+// see Render — so they are carried neutrally and rendered per tool.
+type ModelSpec struct {
+	Model   string
+	Variant string
+	Effort  string
+}
+
+// merge returns s with every non-empty field of ov overriding it, so a
+// per-subagent block can override just `effort` and inherit the tier's model.
+func (s ModelSpec) merge(ov ModelSpec) ModelSpec {
+	if ov.Model != "" {
+		s.Model = ov.Model
+	}
+	if ov.Variant != "" {
+		s.Variant = ov.Variant
+	}
+	if ov.Effort != "" {
+		s.Effort = ov.Effort
+	}
+	return s
+}
+
+// RenderContext carries the config-derived values the render needs for the tool
+// being rendered (the caller passes the Claude values for the claude render, the
+// OpenCode values for the opencode render).
+//
+// Roles is the role→spec map from [models.<tool>.<role>] — the default for any
+// agent declaring that role. Overrides is keyed by subagent name and wins field
+// by field, so [subagents.<name>.<tool>] can retune one agent without restating
+// its tier.
 type RenderContext struct {
-	Model map[string]string
+	Roles     map[string]ModelSpec
+	Overrides map[string]ModelSpec
+}
+
+// specFor resolves the model spec for an agent: its role's tier default, with
+// any per-subagent override applied field by field.
+func (c RenderContext) specFor(name, role string) ModelSpec {
+	return c.Roles[role].merge(c.Overrides[name])
+}
+
+// claudeAliases are the model aliases Claude Code accepts. The bracketed variant
+// syntax (`opus[1m]`) is documented for aliases ONLY — a full model id such as
+// claude-opus-4-8 takes no variant — so the render must know which it has.
+var claudeAliases = map[string]bool{
+	"opus": true, "sonnet": true, "haiku": true, "fable": true, "opusplan": true,
+}
+
+// claudeModel renders the Claude `model:` value. Claude has no separate variant
+// field: a variant is expressed by bracketing the alias. A variant on a
+// non-alias model is dropped here rather than emitted as a value Claude would
+// reject — config validation rejects that combination up front, so this is the
+// belt to that braces.
+func claudeModel(s ModelSpec) string {
+	if s.Model == "" || s.Variant == "" || !claudeAliases[s.Model] {
+		return s.Model
+	}
+	return s.Model + "[" + s.Variant + "]"
 }
 
 // NeedsTransform reports whether content carries a `homonto:` frontmatter block
@@ -71,7 +126,9 @@ func NeedsTransform(content []byte) bool {
 // here" apart from "should be here and is missing", so a by-design absence is
 // never reported as a fixable finding.
 func ProjectsFor(content []byte, tool string) (bool, error) {
-	rendered, err := Render(content, tool, RenderContext{})
+	// Projection is decided by the neutral block alone (primary vs not), never by
+	// the model spec, so an empty context is the right question to ask here.
+	rendered, err := Render("", content, tool, RenderContext{})
 	if err != nil {
 		return false, err
 	}
@@ -82,7 +139,7 @@ func ProjectsFor(content []byte, tool string) (bool, error) {
 // bytes when the agent must NOT be projected for that tool (a primary agent has
 // no Claude variant). Content with no frontmatter or no `homonto:` block is
 // returned unchanged.
-func Render(content []byte, tool string, ctx RenderContext) ([]byte, error) {
+func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte, error) {
 	fm, body, ok := split(content)
 	if !ok {
 		return content, nil
@@ -91,6 +148,7 @@ func Render(content []byte, tool string, ctx RenderContext) ([]byte, error) {
 	if !has {
 		return content, nil
 	}
+	spec := ctx.specFor(name, h.Role)
 
 	// Preserve every frontmatter line except the homonto block and the mode line
 	// (re-emitted per tool below).
@@ -109,8 +167,13 @@ func Render(content []byte, tool string, ctx RenderContext) ([]byte, error) {
 			return nil, nil // Claude has no primary-agent concept; entry is /onto
 		}
 		extra = append(extra, "mode: subagent", "tools: "+claudeTools(h))
-		if m := ctx.Model[h.Role]; h.Role != "" && m != "" {
+		// Claude carries the variant inside the model string (`opus[1m]`) and
+		// effort as its own frontmatter field.
+		if m := claudeModel(spec); m != "" {
 			extra = append(extra, "model: "+m)
+		}
+		if spec.Effort != "" {
+			extra = append(extra, "effort: "+spec.Effort)
 		}
 	case "opencode":
 		mode := "subagent"
@@ -118,8 +181,14 @@ func Render(content []byte, tool string, ctx RenderContext) ([]byte, error) {
 			mode = "primary"
 		}
 		extra = append(extra, "mode: "+mode)
-		if m := ctx.Model[h.Role]; h.Role != "" && m != "" {
-			extra = append(extra, "model: "+m)
+		// OpenCode is the mirror image: `variant` is its own field, and there is
+		// no effort concept at all — dropping it here is why the config layer
+		// reports the drop once at plan time rather than failing.
+		if spec.Model != "" {
+			extra = append(extra, "model: "+spec.Model)
+		}
+		if spec.Variant != "" {
+			extra = append(extra, "variant: "+spec.Variant)
 		}
 		if h.Steps > 0 {
 			extra = append(extra, fmt.Sprintf("steps: %d", h.Steps))

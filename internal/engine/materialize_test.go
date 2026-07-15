@@ -17,13 +17,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `
 
 const commandTOML = `
@@ -34,13 +33,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `
 
 const subagentTOML = `
@@ -51,13 +49,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `
 
 func buildEngine(t *testing.T, home, repo string) *Engine {
@@ -100,13 +97,12 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
 [models.claude.coding]
 model = "sonnet"
-effort = "n"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-effort = "f"
+effort = "low"
 `
 
 // TestApplyRelativeConfigLinksResolve is the regression guard for the dangling

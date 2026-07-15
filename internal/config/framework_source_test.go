@@ -50,19 +50,16 @@ model = "m"
 effort = "high"
 [models.claude.coding]
 model = "m"
-effort = "normal"
+effort = "medium"
 [models.claude.trivial]
 model = "m"
-effort = "fast"
+effort = "low"
 [models.opencode.architectural]
 model = "m"
-effort = "high"
 [models.opencode.coding]
 model = "m"
-effort = "normal"
 [models.opencode.trivial]
 model = "m"
-effort = "fast"
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -30,6 +30,10 @@ var files = map[string]string{
 # [subagents.architect]
 # source = "builtin:architect"
 # scope = "project"
+# Retune THIS agent without restating its tier: any field set in a per-tool
+# block wins over the role's route, field by field.
+# [subagents.architect.claude]
+# effort = "xhigh"
 
 # [plugins.claude.claude-hud]
 # source = "claude-hud@official"       # name@marketplace
@@ -41,25 +45,30 @@ var files = map[string]string{
 
 # A tool gains its three model routes (architectural/coding/trivial) as soon as a
 # framework, command, or subagent targets it — declare all three for every such
-# tool. The examples above target both tools, so both are shown here.
+# tool. The examples above target both tools, so both are shown here. An agent
+# picks its route by the role it declares; model is required, the rest optional.
+#
+# Claude: model is an alias (opus/sonnet/haiku/fable) or a full id; variant
+# brackets an ALIAS only (opus[1m] — 1m is the only one); effort is one of
+# low|medium|high|xhigh|max.
 # [models.claude.architectural]
 # model = "opus"
-# variant = "max"
+# effort = "high"
 # [models.claude.coding]
 # model = "sonnet"
-# effort = "normal"
+# effort = "medium"
 # [models.claude.trivial]
 # model = "haiku"
-# effort = "fast"
+# effort = "low"
+#
+# OpenCode: the mirror image — variant is its own field taking whatever your
+# provider defines, and there is no effort setting at all.
 # [models.opencode.architectural]
 # model = "anthropic/claude-opus-4-8"
-# variant = "max"
 # [models.opencode.coding]
 # model = "anthropic/claude-sonnet-4-5"
-# effort = "normal"
 # [models.opencode.trivial]
 # model = "anthropic/claude-haiku-4-5"
-# effort = "fast"
 `,
 	".gitignore":   "/.homonto/\n.env\n",
 	".env.example": "# Document non-pass secrets here, then copy to .env (gitignored).\n# BRAVE_API_KEY=\n",
