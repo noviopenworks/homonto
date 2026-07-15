@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/agentfm"
 	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
@@ -277,10 +278,22 @@ func (e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []
 			// neutral homonto: block is materialized as <name>.<tool>.md and linked
 			// from there; fall back to the shared <name>.md otherwise.
 			base := strings.TrimPrefix(entry.Resource.Source, "builtin:")
-			if variant := filepath.Join(e.SubagentDir(), base+"."+tool+".md"); fileExists(variant) {
+			variant := filepath.Join(e.SubagentDir(), base+"."+tool+".md")
+			shared := filepath.Join(e.SubagentDir(), base+".md")
+			if fileExists(variant) {
 				p = variant
 			} else {
-				p = filepath.Join(e.SubagentDir(), base+".md")
+				// No variant. Mirror the adapters' skip rule too: an agent that
+				// renders nothing for this tool (the Claude side of an
+				// OpenCode-primary agent) is deliberately not projected here, so its
+				// absent link is correct — warning about it would be a permanent
+				// finding no apply could ever clear.
+				if data, rerr := os.ReadFile(shared); rerr == nil && agentfm.NeedsTransform(data) {
+					if projects, perr := agentfm.ProjectsFor(data, tool); perr == nil && !projects {
+						continue
+					}
+				}
+				p = shared
 			}
 		case strings.HasPrefix(entry.Resource.Source, "remote:"):
 			p = filepath.Join(e.remoteSubagentDir(), name+".md")

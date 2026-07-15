@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"testing"
 	"testing/fstest"
 
@@ -162,5 +164,63 @@ func TestMaterializeSubagentsUnknownErrors(t *testing.T) {
 	c, _ := New()
 	if err := c.MaterializeSubagents(t.TempDir(), []string{"nope"}, nil); err == nil {
 		t.Fatal("expected error for unknown subagent")
+	}
+}
+
+// TestSubagentFilesMatchesWhatMaterializeWrites keeps the engine's version gate
+// honest: it skips materializing when every file SubagentFiles names is already
+// present, so any drift between the two would either re-materialize forever or
+// (worse) leave a variant the gate never checks unrepaired.
+func TestSubagentFilesMatchesWhatMaterializeWrites(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	for _, name := range []string{"code-reviewer", "onto"} {
+		dst := t.TempDir()
+		if err := c.MaterializeSubagents(dst, []string{name}, nil); err != nil {
+			t.Fatalf("materialize %s: %v", name, err)
+		}
+		want, err := c.SubagentFiles(name, nil)
+		if err != nil {
+			t.Fatalf("SubagentFiles %s: %v", name, err)
+		}
+		entries, err := os.ReadDir(dst)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := make([]string, 0, len(entries))
+		for _, e := range entries {
+			got = append(got, e.Name())
+		}
+		sort.Strings(got)
+		sorted := append([]string(nil), want...)
+		sort.Strings(sorted)
+		if !slices.Equal(got, sorted) {
+			t.Errorf("%s: SubagentFiles = %v, materialize actually wrote %v", name, sorted, got)
+		}
+	}
+}
+
+// TestSubagentFilesOmitsClaudeVariantForPrimaryAgent pins the by-design
+// asymmetry the engine gate and doctor both depend on: agentfm renders no Claude
+// variant for an OpenCode-primary agent, so `onto` must not claim one — else the
+// gate would demand a file materialize never writes and re-render on every apply.
+func TestSubagentFilesOmitsClaudeVariantForPrimaryAgent(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	files, err := c.SubagentFiles("onto", nil)
+	if err != nil {
+		t.Fatalf("SubagentFiles: %v", err)
+	}
+	if slices.Contains(files, "onto.claude.md") {
+		t.Errorf("primary agent must have no Claude variant, got %v", files)
+	}
+	for _, want := range []string{"onto.md", "onto.opencode.md"} {
+		if !slices.Contains(files, want) {
+			t.Errorf("missing %q from %v", want, files)
+		}
 	}
 }

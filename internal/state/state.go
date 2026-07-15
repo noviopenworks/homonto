@@ -39,6 +39,13 @@ type State struct {
 	// FrameworkVersions records the version of each builtin framework at the last
 	// apply (framework name -> version), so a version history is written down.
 	FrameworkVersions map[string]string `json:"frameworkVersions,omitempty"`
+	// SubagentRenderFingerprint digests the config-derived inputs behind the last
+	// subagent materialization (the per-tool model routes). A subagent's rendered
+	// frontmatter depends on config, not only on the catalog, so the catalog
+	// version alone cannot gate materialization: editing a model route leaves the
+	// version untouched and would otherwise freeze the rendered agents at their
+	// old model forever. Absent = force re-render.
+	SubagentRenderFingerprint string `json:"subagentRenderFingerprint,omitempty"`
 }
 
 // CurrentStateSchemaVersion is the state.json schema version this binary writes.
@@ -49,6 +56,14 @@ func (s *State) CatalogVersionRecorded() string { return s.CatalogVersion }
 
 // SetCatalogVersion records the catalog version after a successful materialize.
 func (s *State) SetCatalogVersion(v string) { s.CatalogVersion = v }
+
+// SubagentRenderFingerprintRecorded returns the render fingerprint behind the
+// last subagent materialization, or "" (never materialized / legacy state).
+func (s *State) SubagentRenderFingerprintRecorded() string { return s.SubagentRenderFingerprint }
+
+// SetSubagentRenderFingerprint records the render fingerprint after a successful
+// subagent materialize.
+func (s *State) SetSubagentRenderFingerprint(v string) { s.SubagentRenderFingerprint = v }
 
 // HomontoVersionRecorded returns the homonto binary version that last applied,
 // or "" for a legacy/never-applied state.

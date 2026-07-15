@@ -57,6 +57,18 @@ the versions behind each apply (binary, catalog, per-framework), which is how
 `homonto update` prints its version transition and `onto doctor` detects
 binary/framework skew.
 
+State also records the **catalog version** and a **subagent render
+fingerprint** — a digest of the model routes the projected agents were stamped
+from. Builtin content is only re-materialized when one of those inputs actually
+moved (or a file it would write is missing), so a settled workspace stays a
+true no-op while a changed `[models.<tool>.<role>]` route re-renders the agents
+that read it.
+
+Because a catalog file is reached through a name-based symlink, re-rendering it
+changes no *projected* value and so produces an empty plan. `apply` runs anyway
+in that case and reports `No projection changes; catalog re-materialized.` —
+the same carve-out `remote:` sources get, and for the same reason.
+
 State is generated; the scaffolded `.gitignore` excludes `.homonto/` by
 default.
 

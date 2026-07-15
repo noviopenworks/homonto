@@ -114,6 +114,38 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 // so the adapter's "block present + variant absent → skip" rule holds. Each
 // adapter prefers its own variant; the shared <name>.md remains the version-gate
 // anchor and the fallback for verbatim subagents.
+// SubagentFiles returns the file names MaterializeSubagents writes for name
+// under dstRoot, given renderCtx: the shared <name>.md anchor, plus each
+// per-tool variant that renders to bytes. A primary agent yields no
+// <name>.claude.md (agentfm skips that render), and a verbatim subagent yields
+// the anchor alone. The engine's version gate uses this to check every file a
+// materialize would produce — checking the anchor alone would let a deleted or
+// stale per-tool variant survive as a dangling link forever.
+func (c *Catalog) SubagentFiles(name string, renderCtx map[string]agentfm.RenderContext) ([]string, error) {
+	sp, ok := c.subagents[name]
+	if !ok {
+		return nil, fmt.Errorf("catalog: unknown subagent %q", name)
+	}
+	data, err := fs.ReadFile(c.subagentFS[name], sp)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: read %q: %w", sp, err)
+	}
+	files := []string{name + ".md"}
+	if !agentfm.NeedsTransform(data) {
+		return files, nil
+	}
+	for _, tool := range []string{"claude", "opencode"} {
+		rendered, rerr := agentfm.Render(data, tool, renderCtx[tool])
+		if rerr != nil {
+			return nil, fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
+		}
+		if rendered != nil {
+			files = append(files, name+"."+tool+".md")
+		}
+	}
+	return files, nil
+}
+
 func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx map[string]agentfm.RenderContext) error {
 	for _, name := range names {
 		sp, ok := c.subagents[name]

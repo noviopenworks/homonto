@@ -114,6 +114,18 @@ func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.
 				cmd.Println("No projection changes; remote sources verified.")
 				return skipped()
 			}
+			// A catalog file's symlink target is name-based too, so catalog
+			// content that is stale (a model route moved, so a rendered subagent
+			// must be re-stamped) or missing (a rendered variant deleted) also
+			// leaves the projection plan empty. Run apply so it re-materializes,
+			// rather than stranding content nothing else would ever repair.
+			if e.CatalogNeedsMaterialize() {
+				if err := e.Apply(sets); err != nil {
+					return err
+				}
+				cmd.Println("No projection changes; catalog re-materialized.")
+				return skipped()
+			}
 			cmd.Println("No changes. Everything up to date.")
 			return skipped()
 		}

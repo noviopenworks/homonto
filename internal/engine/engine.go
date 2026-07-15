@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/adapter/registry"
 	"github.com/noviopenworks/homonto/internal/agentfm"
+	"github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/secret"
 	"github.com/noviopenworks/homonto/internal/state"
@@ -256,20 +259,73 @@ func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
 }
 
 // materializeCatalog extracts the builtin skills, commands, and subagents the
-// config declares into CatalogRoot, CommandCatalogRoot, and
-// SubagentCatalogRoot, version-gated: it is a no-op when the recorded catalog
-// version matches the embedded one AND every skill dir, command file, and
-// subagent file already exists. The version is recorded (and state saved)
-// only after skills, commands, AND subagents all materialize, so an
-// interrupted extraction re-materializes on the next apply.
+// config declares into CatalogRoot, CommandCatalogRoot, and SubagentCatalogRoot.
+// It is a no-op only when planCatalog finds every input unchanged: the recorded
+// catalog version matches the embedded one, the subagent render fingerprint
+// matches the config's model routes, and every file a materialize would write
+// already exists. The version and fingerprint are recorded (and state saved)
+// only after skills, commands, AND subagents all materialize, so an interrupted
+// extraction re-materializes on the next apply.
 func (e *Engine) materializeCatalog() error {
+	p, err := e.planCatalog()
+	if err != nil {
+		return err
+	}
+	if p == nil || p.upToDate {
+		return nil
+	}
+	if err := p.cl.Materialize(e.CatalogRoot, p.skills); err != nil {
+		return err
+	}
+	if err := p.cl.MaterializeCommands(e.CommandCatalogRoot, p.commands); err != nil {
+		return err
+	}
+	if err := p.cl.MaterializeSubagents(e.SubagentCatalogRoot, p.subagents, p.renderCtx); err != nil {
+		return err
+	}
+	e.State.SetCatalogVersion(p.cl.Version())
+	e.State.SetSubagentRenderFingerprint(p.fingerprint)
+	// Save immediately so a later adapter failure still records the completed
+	// materialization.
+	return e.State.Save(e.StateDir)
+}
+
+// catalogPlan is what a materialize would extract, and whether it need bother.
+type catalogPlan struct {
+	cl          *catalog.Catalog
+	skills      []string
+	commands    []string
+	subagents   []string
+	renderCtx   map[string]agentfm.RenderContext
+	fingerprint string
+	upToDate    bool
+}
+
+// CatalogNeedsMaterialize reports whether a materialize would do real work. The
+// CLI needs this because a catalog file's symlink target is name-based, so
+// stale, missing, or mis-rendered catalog content leaves the projection plan
+// empty — and an empty plan otherwise skips apply entirely, stranding the
+// content forever. (Same shape as the HasRemoteResources carve-out.) An error
+// resolving the plan counts as "needs work" so apply runs and surfaces it,
+// rather than being silently swallowed here.
+func (e *Engine) CatalogNeedsMaterialize() bool {
+	p, err := e.planCatalog()
+	if err != nil {
+		return true
+	}
+	return p != nil && !p.upToDate
+}
+
+// planCatalog resolves the builtin content the config declares and evaluates the
+// materialize gate. It returns nil when nothing builtin is declared.
+func (e *Engine) planCatalog() (*catalogPlan, error) {
 	skillSet := map[string]bool{}
 	cmdSet := map[string]bool{}
 	subSet := map[string]bool{}
 	for _, tool := range []string{"claude", "opencode"} {
 		sEntries, err := e.Cfg.ExpandedSkillEntriesForTool(tool)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, entry := range sEntries {
 			if strings.HasPrefix(entry.Resource.Source, "builtin:") {
@@ -278,7 +334,7 @@ func (e *Engine) materializeCatalog() error {
 		}
 		cEntries, err := e.Cfg.ExpandedCommandEntriesForTool(tool)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, entry := range cEntries {
 			if strings.HasPrefix(entry.Resource.Source, "builtin:") {
@@ -287,7 +343,7 @@ func (e *Engine) materializeCatalog() error {
 		}
 		saEntries, err := e.Cfg.ExpandedSubagentEntriesForTool(tool)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, entry := range saEntries {
 			if strings.HasPrefix(entry.Resource.Source, "builtin:") {
@@ -296,7 +352,7 @@ func (e *Engine) materializeCatalog() error {
 		}
 	}
 	if len(skillSet) == 0 && len(cmdSet) == 0 && len(subSet) == 0 {
-		return nil
+		return nil, nil
 	}
 	// Build the catalog including the config's local frameworks so a
 	// local:<path> framework's resources materialize (from their own FS) into
@@ -304,7 +360,7 @@ func (e *Engine) materializeCatalog() error {
 	// is the embedded singleton, identical to catalog.New().
 	cl, err := e.Cfg.FrameworkCatalog()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	skillNames := make([]string, 0, len(skillSet))
 	for n := range skillSet {
@@ -322,25 +378,26 @@ func (e *Engine) materializeCatalog() error {
 	}
 	sort.Strings(subNames)
 
-	if e.State.CatalogVersionRecorded() == cl.Version() &&
+	// Gate on the catalog version AND the render fingerprint: a subagent's
+	// rendered frontmatter is derived from config (the model routes), so the
+	// version alone would freeze rendered agents at their old model whenever a
+	// route changes — the catalog is identical, only the config moved.
+	renderCtx := e.subagentRenderContext()
+	fingerprint := subagentRenderFingerprint(renderCtx)
+	upToDate := e.State.CatalogVersionRecorded() == cl.Version() &&
+		e.State.SubagentRenderFingerprintRecorded() == fingerprint &&
 		allSkillDirsExist(e.CatalogRoot, skillNames) &&
 		allCommandFilesExist(e.CommandCatalogRoot, cmdNames) &&
-		allSubagentFilesExist(e.SubagentCatalogRoot, subNames) {
-		return nil
-	}
-	if err := cl.Materialize(e.CatalogRoot, skillNames); err != nil {
-		return err
-	}
-	if err := cl.MaterializeCommands(e.CommandCatalogRoot, cmdNames); err != nil {
-		return err
-	}
-	if err := cl.MaterializeSubagents(e.SubagentCatalogRoot, subNames, e.subagentRenderContext()); err != nil {
-		return err
-	}
-	e.State.SetCatalogVersion(cl.Version())
-	// Save immediately so a later adapter failure still records the completed
-	// materialization.
-	return e.State.Save(e.StateDir)
+		allSubagentFilesExist(e.SubagentCatalogRoot, subNames, cl, renderCtx)
+	return &catalogPlan{
+		cl:          cl,
+		skills:      skillNames,
+		commands:    cmdNames,
+		subagents:   subNames,
+		renderCtx:   renderCtx,
+		fingerprint: fingerprint,
+		upToDate:    upToDate,
+	}, nil
 }
 
 func allSkillDirsExist(root string, names []string) bool {
@@ -363,11 +420,47 @@ func allCommandFilesExist(root string, names []string) bool {
 	return true
 }
 
-func allSubagentFilesExist(root string, names []string) bool {
+// subagentRenderFingerprint digests the render inputs (the per-tool role→model
+// routes) deterministically, so the materialize gate re-renders exactly when a
+// route the agents are stamped from actually changed. Sorted keys and delimited
+// fields keep it stable across map iteration order and unambiguous across
+// values (a "a"+"bc" / "ab"+"c" collision would silently skip a re-render).
+func subagentRenderFingerprint(ctx map[string]agentfm.RenderContext) string {
+	tools := make([]string, 0, len(ctx))
+	for tool := range ctx {
+		tools = append(tools, tool)
+	}
+	sort.Strings(tools)
+	h := sha256.New()
+	for _, tool := range tools {
+		roles := make([]string, 0, len(ctx[tool].Model))
+		for role := range ctx[tool].Model {
+			roles = append(roles, role)
+		}
+		sort.Strings(roles)
+		for _, role := range roles {
+			fmt.Fprintf(h, "%s\x00%s\x00%s\x00", tool, role, ctx[tool].Model[role])
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// allSubagentFilesExist reports whether every file a materialize would write is
+// present — the shared anchor AND each per-tool rendered variant. Checking only
+// the <name>.md anchor would leave a deleted variant unrepaired: the anchor
+// still exists, so the gate short-circuits and the tool keeps a symlink pointing
+// at a file that is never rewritten.
+func allSubagentFilesExist(root string, names []string, cl *catalog.Catalog, renderCtx map[string]agentfm.RenderContext) bool {
 	for _, n := range names {
-		fi, err := os.Stat(filepath.Join(root, n+".md"))
-		if err != nil || fi.IsDir() {
+		files, err := cl.SubagentFiles(n, renderCtx)
+		if err != nil {
 			return false
+		}
+		for _, f := range files {
+			fi, err := os.Stat(filepath.Join(root, f))
+			if err != nil || fi.IsDir() {
+				return false
+			}
 		}
 	}
 	return true

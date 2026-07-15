@@ -65,6 +65,19 @@ func NeedsTransform(content []byte) bool {
 	return has
 }
 
+// ProjectsFor reports whether content is projected for tool at all. It is false
+// only where Render deliberately emits nothing — the Claude variant of an
+// OpenCode-primary agent. Callers use it to tell "deliberately not projected
+// here" apart from "should be here and is missing", so a by-design absence is
+// never reported as a fixable finding.
+func ProjectsFor(content []byte, tool string) (bool, error) {
+	rendered, err := Render(content, tool, RenderContext{})
+	if err != nil {
+		return false, err
+	}
+	return rendered != nil, nil
+}
+
 // Render returns content rewritten for tool ("claude" or "opencode"), or nil
 // bytes when the agent must NOT be projected for that tool (a primary agent has
 // no Claude variant). Content with no frontmatter or no `homonto:` block is

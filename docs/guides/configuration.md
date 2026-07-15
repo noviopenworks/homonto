@@ -171,14 +171,19 @@ effort = "fast"
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
+variant = "high"
 # … coding and trivial likewise
 ```
 
-| Field | Notes |
-|---|---|
-| `model` | the tool's model identifier (Claude alias or OpenCode `provider/model` id) |
-| `effort` | optional effort hint |
-| `variant` | optional variant hint |
+| Field | Required | Notes |
+|---|---|---|
+| `model` | **yes** | the tool's model identifier (Claude alias or OpenCode `provider/model` id) |
+| `effort` | **one of the two** | effort hint |
+| `variant` | **one of the two** | variant hint |
+
+Every route needs a `model` **and** at least one of `effort` / `variant` — a
+route carrying only a `model` is rejected at load
+(`models.claude.architectural requires effort or variant`).
 
 The routes are also **projected into each tool's default model**:
 `architectural` → the tool's main model (Claude `settings.model`, OpenCode
@@ -310,8 +315,11 @@ variant = "max"
 
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
+variant = "high"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-5"
+effort = "medium"
 [models.opencode.trivial]
 model = "anthropic/claude-haiku-4-5"
+effort = "medium"
 ```
