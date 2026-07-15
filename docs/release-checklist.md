@@ -11,35 +11,35 @@ for the archives, and publish a GitHub release.
 
 ## Pre-tag verification
 
-Run the full local gate from a clean worktree before tagging:
+**`./scripts/gate.sh` is the whole gate** — one command, run identically by
+`ci.yml`, by `release.yml` before it builds or publishes anything, and by you
+before tagging. That is what makes a tag unable to publish on a weaker gate than
+a pull request. It ends with `ALL GATE CHECKS PASSED`.
 
 ```sh
-gofmt -l .            # expect no output
-go mod tidy -diff     # expect no output
-go vet ./...
-go build ./...
-go test ./...
-go test -race ./...
-./scripts/docker-test.sh
-go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+./scripts/gate.sh
 ```
 
-Then confirm the repo dogfoods cleanly:
+It covers gofmt, `go mod tidy -diff`, vet, build, test, `-race`, version stamps,
+a CLI smoke, govulncheck, and the dual-binary Docker E2E. That E2E is where the
+old hand-written checks now live, done properly against a disposable `$HOME` so
+the host is never touched:
 
-```sh
-go run . status       # expect: No drift
-go run . doctor       # expect all skills linked (a missing `pass` warning is fine)
-```
+- **`release-packaging`** — builds every target, verifies `SHA256SUMS` over all
+  archives, then extracts the **real** archives and smokes both binaries
+  (`version` reports the stamped tag; `init`/`plan`/`apply`/`status` run clean).
+- **`homonto-core` / `homonto-expanded`** — projection, per-tool agent render,
+  and prune behavior for the builtin catalog.
+- **`onto-lifecycle`** — drives a change through onto's gates.
 
-Before `v0.1.0-rc.1`, also confirm the dual-binary gate from the design doc:
-
-- `homonto` and `onto` both have stamped version output.
-- The release archives contain both binaries for every target platform.
-- `homonto init`/`plan`/`apply --yes`/`status`/`doctor` pass in a disposable home.
-- `onto status` and `onto doctor` pass against a disposable or dogfood `docs/`
-  workflow layout.
-- Framework/catalog projection for `onto`, `comet`, `superpowers`, and
-  `openspec` has passing unit, CLI, and Docker smoke evidence.
+> **Dogfooding is deferred to v1.** This repository is developed with **Comet**
+> (see [`guides/comet-workflow.md`](guides/comet-workflow.md) and
+> [`personas.md`](personas.md)); onto is the workflow we *ship*, not the one we
+> use here yet. So there is deliberately **no "does the repo dogfood cleanly"
+> pre-tag step**, and a stale `.homonto/` in a working copy is not a release
+> blocker. The Docker E2E verifies both binaries in a clean environment instead
+> — stronger evidence than a developer machine whose state has accumulated
+> across versions.
 
 ## Tag and publish
 
