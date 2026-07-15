@@ -112,7 +112,20 @@ the names collide):
 - **`onto-reviewer`** — read-only; reviews a diff for correctness, security,
   contract, and clarity, ranked by severity. Used per task in build and across
   the diff in verify. Runs on the `architectural` route.
-- **`onto-implementer`** — edit-capable executor on the `coding` route.
+- **`onto-implementer`** — edit-capable executor on the `coding` route. It
+  executes one bite-sized task from a precise spec and returns a diff; it does
+  not plan or judge scope.
+- **`onto-skeptic`** — read-only adversarial verifier on the `architectural`
+  route, used in the verify phase. It is dispatched **twice in parallel**, one
+  lens each (`conformance` — refute each scenario's evidence; `robustness` —
+  attack the gaps the scenarios never cover), and is prompted to **refute, never
+  approve** (ADR 0007). It keeps bash so it can re-run the evidence itself, and
+  is read-only so it can never fix what it finds — that independence is the
+  whole point.
+
+Everything else — planning, judging scope, deciding, committing — stays with the
+orchestrator, because those steps are gated on user confirmation and a subagent
+cannot prompt.
 
 All declare their capabilities once in a tool-neutral `homonto:` frontmatter
 block, rendered into Claude's `tools:` allowlist and OpenCode's `permission:`

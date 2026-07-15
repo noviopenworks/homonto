@@ -84,8 +84,8 @@ fix, watch the test pass, run the surrounding tests. One commit per task.
 scenario: demonstrate it no longer occurs, with the literal command +
 output in `docs/changes/<name>/verification.md` (template:
 `onto-verify/references/verification.md`), plus regression-suite results.
-One adversarial skeptic is optional in light mode (protocol:
-`onto-verify/references/adversarial.md`); record a skip. Failure → same
+One adversarial skeptic (`onto-skeptic`, conformance lens) is optional in light
+mode (protocol: `onto-verify/references/adversarial.md`); record a skip. Failure → same
 gate as the full workflow (fix or accept-deviation, fresh user input).
 
 ### 4. Close

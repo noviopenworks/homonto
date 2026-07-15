@@ -58,9 +58,11 @@ Rules of evidence:
 
 After the self-evidence table is drafted, follow
 `references/adversarial.md`: **full mode requires two parallel
-fresh-context skeptics** — conformance (refute each scenario claim) and
-robustness (edge cases, drift/recovery paths) — prompted to refute, never
-approve; light mode uses one optional skeptic with skips recorded. Triage
+fresh-context skeptics** — dispatch the **`onto-skeptic`** subagent twice at
+once, naming one lens per dispatch: conformance (refute each scenario claim)
+and robustness (edge cases, drift/recovery paths). Both are prompted to
+refute, never approve; light mode uses one optional skeptic with skips
+recorded. Triage
 findings per the protocol: a refuted claim fails its scenario; new defects
 are CRITICAL-fix or gate-decided deviations. **Non-waivable classes:** a
 security defect, data loss, or a failed core-acceptance scenario is CRITICAL

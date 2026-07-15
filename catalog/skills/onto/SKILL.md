@@ -258,24 +258,34 @@ including its gates and exit checklist. Never execute phase work here.
 
 ## 7. Delegation, parallelization, and dialogs
 
-The onto framework ships three **specialist subagents** — they install with onto
+The onto framework ships four **specialist subagents** — they install with onto
 and the phases delegate to them. They run as independent agents, so several run
 **in parallel**. Both tools support this: **OpenCode** dispatches subagents as
 child sessions and **Claude Code** runs them as parallel Task-tool agents (send
 multiple Task calls in one turn). Each carries an enforced capability profile
-(homonto renders it per tool): the two specialists are read-only; the implementer
-edits but spawns nothing.
+(homonto renders it per tool): only the implementer may edit.
 
-| Subagent | Role/model | Capabilities | Use it to |
+**Match the task to the agent — this table is the mapping:**
+
+| Task in hand | Dispatch | Role/model | Capabilities |
 |---|---|---|---|
-| `onto-explorer` | trivial (fast/cheap) | read-only, no shell, no spawn | answer "how does X work / where does behavior live" — conclusions, not dumps |
-| `onto-reviewer` | architectural (judgment) | read-only, keeps bash, no spawn | review a diff for correctness, security, contract, clarity — ranked |
-| `onto-implementer` | coding | **edits**, bash, no spawn | execute one bite-sized task from a precise spec, return a diff |
+| Understand something, or locate where behavior lives | `onto-explorer` | trivial (fast/cheap) | read-only, no shell, no spawn |
+| Execute one bite-sized task from a precise spec | `onto-implementer` | coding | **edits**, bash, no spawn |
+| Audit a diff for correctness/security/contract/clarity | `onto-reviewer` | architectural | read-only, keeps bash, no spawn |
+| Refute a verification claim, or hunt what the scenarios miss | `onto-skeptic` **×2, parallel** | architectural | read-only, keeps bash, no spawn |
+| **Plan, judge scope, decide, commit** | **nobody — you do it** | — | — |
 
-This is a division of labor: the orchestrator (this session) plans, judges scope,
-and reviews; the **implementer** does the mechanical edits from a handed spec; the
-read-only specialists investigate and audit. The orchestrator owns every commit
-and every `onto` binary call.
+That last row is the rule the others serve: the orchestrator (this session)
+plans, judges scope, and decides, because those steps are gated on user
+confirmation and a subagent cannot ask. The **implementer** does mechanical edits
+from a handed spec; the read-only specialists investigate, audit, and attack. The
+orchestrator owns every commit and every `onto` binary call.
+
+`onto-skeptic` is dispatched **twice at once**, one per lens — `conformance`
+(refute each scenario's evidence) and `robustness` (attack the gaps the scenarios
+never cover). Name the lens in the dispatch; it attacks only that lens. Both are
+prompted to refute, never approve — see
+[`onto-verify`'s adversarial protocol](../onto-verify/references/adversarial.md).
 
 > **Subagents never prompt the user.** A subagent needing a decision **returns**
 > it as a `Questions:` section; the orchestrator asks the user (via a dialog) and

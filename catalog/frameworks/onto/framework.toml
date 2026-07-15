@@ -1,5 +1,5 @@
 name = "onto"
-version = "0.2.0"
+version = "0.3.0"
 description = "Onto self-contained development workflow"
 
 [dependencies]
@@ -39,3 +39,4 @@ onto = "subagents/onto.md"
 onto-explorer = "subagents/onto-explorer.md"
 onto-reviewer = "subagents/onto-reviewer.md"
 onto-implementer = "subagents/onto-implementer.md"
+onto-skeptic = "subagents/onto-skeptic.md"

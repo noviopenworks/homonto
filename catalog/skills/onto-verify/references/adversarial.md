@@ -18,6 +18,13 @@ defects self-review missed).
 
 ## The two skeptics
 
+Both are the **`onto-skeptic`** subagent that ships with onto — the same
+agent dispatched **twice, concurrently**, with a different **lens** named
+in each dispatch (`conformance` and `robustness`). It is read-only and
+keeps bash on purpose: a skeptic must re-run the evidence itself, and must
+never fix what it finds (that would contaminate the independent context
+that makes it worth dispatching).
+
 Both get: the delta spec(s), `design.md`, repo access, and the drafted
 evidence table. Both are prompted to **REFUTE, never approve** — an
 approving skeptic has failed its job; "I could not refute X because

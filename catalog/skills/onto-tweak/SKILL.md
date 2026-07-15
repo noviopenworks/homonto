@@ -65,7 +65,8 @@ Demonstrate the changed behavior/content with a fresh command + output
 (render the doc, run the config consumer, show the diff taking effect) and
 run the regression suite. Write `docs/changes/<name>/verification.md`
 (template: `onto-verify/references/verification.md`) — brief is fine,
-absent is not. One adversarial skeptic optional (skips recorded).
+absent is not. One adversarial skeptic (`onto-skeptic`, conformance lens) is
+optional (skips recorded).
 `verify.result` set; failures hit the same fix-or-accept gate as the full
 workflow.
 
