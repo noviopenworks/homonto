@@ -1,10 +1,10 @@
-# Subagents — how they work
+# Subagents
 
 A **subagent** is an agent definition (a markdown file with frontmatter) that
 homonto projects into each tool's agent directory. Subagents are declared as
 `[subagents.<name>]` resources and are fully **declarative** — reconciled by
-`plan` / `apply` / `status` / `doctor` exactly like skills and commands. There is
-no separate imperative "agents" command group.
+`plan` / `apply` / `status` / `doctor` exactly like skills and commands. There
+is no separate imperative "agents" command group.
 
 ```toml
 [subagents.code-reviewer]
@@ -18,23 +18,25 @@ targets = ["claude", "opencode"]   # optional; default: both
 
 | `source` | Resolves from | Notes |
 |---|---|---|
-| `builtin:<name>` | the bundled catalog (`.homonto/catalog/subagents/<name>.md`) | ships: `code-reviewer`, `codebase-explorer`, `comet-navigator` |
+| `builtin:<name>` | the bundled catalog (materialized at `.homonto/catalog/subagents/<name>.md`) | ships: `code-reviewer`, `codebase-explorer`, `comet-navigator` |
 | `local:<name>` | `homonto/subagents/<name>.md` (next to `homonto.toml`) | your own agent files |
-| `remote:<url>` | a fetched, verified, cached archive (`.homonto/remote/subagents/<name>.md`) | **requires a `digest` pin** — see below |
+| `remote:<url>` | a fetched, verified, cached archive | **requires a `digest` pin** — see below |
 
 Frameworks can also declare their own subagents; those materialize and project
-the same way (e.g. comet ships `comet-navigator`).
+the same way (e.g. onto ships `onto-implementer` plus the two specialists).
+Don't re-declare a framework's subagent in a top-level `[subagents.*]` table —
+the names collide.
 
-## link vs copy mode
+## link vs. copy mode
 
 - **`mode = "link"` (default)** — the agent file is **symlinked** into each
   tool's agent directory. Editing the catalog/local source is instantly live
   everywhere. `apply` never clobbers a real file or a foreign symlink — it
   reports a conflict instead.
-- **`mode = "copy"`** — the agent is projected as a **real managed file** you can
-  edit in place. `apply` keeps it in sync, detects drift against a recorded
-  content hash, and **backs up a local edit to `<path>.bak` before overwriting**.
-  De-declaring it prunes the file.
+- **`mode = "copy"`** — the agent is projected as a **real managed file** you
+  can edit in place. `apply` keeps it in sync, detects drift against a recorded
+  content hash, and **backs up a local edit to `<path>.bak` before
+  overwriting**. De-declaring it prunes the file.
 
 The legacy `[agents.<name>]` table still parses but folds into a copy-mode
 `[subagents.<name>]` at load.
@@ -49,34 +51,23 @@ The legacy `[agents.<name>]` table still parses but folds into a copy-mode
 | Claude Code | `~/.claude/agents/<name>.md` | `<repo>/.claude/agents/<name>.md` |
 | OpenCode | `~/.config/opencode/agent/<name>.md` | `<repo>/.opencode/agent/<name>.md` |
 
-Subagents project into **Claude Code and OpenCode only**. The Codex pilot adapter
-handles MCP servers only, so listing `codex` in a subagent's `targets` has no
-effect.
+Subagents project into **Claude Code and OpenCode only**. The Codex pilot
+adapter handles MCP servers only, so listing `codex` in a subagent's `targets`
+has no effect.
 
 ## Model routes are required
 
-A tool that gains a subagent (or a framework/command) must declare **all three**
-model routes for that tool — `[models.<tool>.architectural]`,
-`[models.<tool>.coding]`, `[models.<tool>.trivial]`. A partial set is rejected at
-load, naming the offender. This is validated for every target the subagent
-projects into.
-
-```toml
-[models.claude.architectural]
-model = "opus"
-variant = "max"
-[models.claude.coding]
-model = "sonnet"
-effort = "normal"
-[models.claude.trivial]
-model = "haiku"
-effort = "fast"
-```
+A tool that gains a subagent (or a framework/command) must declare **all
+three** model routes for that tool — `[models.<tool>.architectural]`,
+`[models.<tool>.coding]`, `[models.<tool>.trivial]`. A partial set is rejected
+at load, naming the offender. This is validated for every target the subagent
+projects into. See the
+[configuration reference](configuration.md#model-routes--modelstoolroute).
 
 ## The agent file
 
 The projected file is materialized **verbatim**. A subagent's frontmatter uses
-the agent format, e.g.:
+the agent format:
 
 ```markdown
 ---
@@ -91,11 +82,12 @@ mode: subagent
 
 ## Per-tool frontmatter (the `homonto:` block)
 
-Claude Code and OpenCode express an agent's capabilities differently, and the two
-forms **cannot share one file** — Claude uses a `tools:` allowlist string while
-OpenCode uses a `permission:` map and `mode`, and OpenCode rejects a string
-`tools:`. So a builtin subagent declares its intent once, tool-neutrally, in a
-`homonto:` frontmatter block, and `apply` renders each tool's native dialect:
+Claude Code and OpenCode express an agent's capabilities differently, and the
+two forms **cannot share one file** — Claude uses a `tools:` allowlist string
+while OpenCode uses a `permission:` map and `mode`, and OpenCode rejects a
+string `tools:`. So a builtin subagent declares its intent once,
+tool-neutrally, in a `homonto:` frontmatter block, and `apply` renders each
+tool's native dialect:
 
 ```markdown
 ---
@@ -129,20 +121,21 @@ Rendering, by explicit parity tier:
 `role` maps to the tool's model from the user's `[models.<tool>.<role>]` route
 (so the same declaration yields `opus` in Claude and the OpenCode model id); a
 missing route just omits `model:` (the agent inherits the default). The prompt
-body is single-source (never duplicated); the neutral block and its comments are
-stripped from the rendered files. Subagents without a `homonto:` block are
+body is single-source (never duplicated); the neutral block and its comments
+are stripped from the rendered files. Subagents without a `homonto:` block are
 projected verbatim (a plain symlink to the shared file), unchanged.
 
 The onto framework's three specialists show the division of labor: read-only
-`codebase-explorer` (trivial model) and `code-reviewer` (architectural), and the
-edit-capable `onto-implementer` (coding) — all `spawn: []` (they never nest).
+`codebase-explorer` (trivial model) and `code-reviewer` (architectural), and
+the edit-capable `onto-implementer` (coding) — all `spawn: []` (they never
+nest).
 
 ## Remote subagents are pinned and fail-closed
 
-A `remote:` source **requires** `digest = "sha256:<64 hex>"`. On `apply`, homonto
-fetches the archive → validates it (rejecting path traversal, symlinks, and
-decompression bombs) → matches the digest pin → checks revocation → caches it,
-and writes a tool file **only after every check passes**:
+A `remote:` source **requires** `digest = "sha256:<64 hex>"`. On `apply`,
+homonto fetches the archive → validates it (rejecting path traversal, symlinks,
+and decompression bombs) → matches the digest pin → checks revocation → caches
+it, and writes a tool file **only after every check passes**:
 
 ```toml
 [subagents.reviewer]
@@ -153,7 +146,7 @@ scope  = "project"
 
 Pins are recorded in `.homonto/remote.lock.json`; content is cached under
 `.homonto/cache/remote/` for offline, reproducible applies. See
-[`remote-source-trust.md`](remote-source-trust.md).
+[remote source trust](remote-source-trust.md).
 
 ## Lifecycle
 

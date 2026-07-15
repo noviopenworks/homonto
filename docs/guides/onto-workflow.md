@@ -1,14 +1,14 @@
-# The onto Workflow
+# The onto workflow
 
-**onto** is a spec-driven development workflow that Homonto ships as a bundled
+**onto** is a spec-driven development workflow that homonto ships as a bundled
 framework. It has two halves that work together:
 
 - the **`onto` binary** (built from `cmd/onto/`, installed beside `homonto`) —
   the deterministic operator that creates change workspaces, gates phase
-  transitions, and archives completed changes; and
-- the **`onto-*` skills** (materialized from the builtin catalog by `homonto
-  apply`) — the agent-facing process prose that drives the work inside each
-  phase.
+  transitions, merges spec deltas, and archives completed changes; and
+- the **`onto-*` skills** (materialized from the builtin catalog by
+  `homonto apply`) — the agent-facing process prose that drives the work inside
+  each phase.
 
 The binary owns the *state and the gates*; the skills own the *work*. A change
 moves through five phases in a fixed order:
@@ -17,8 +17,13 @@ moves through five phases in a fixed order:
 open → design → build → verify → close
 ```
 
-`close` is terminal. Each change tracks its phase and gate fields in an
-`onto-state.yaml` file inside its workspace directory.
+`close` is terminal (the change is then archived by `onto close`). Each change
+tracks its phase and gate evidence in an `onto-state.yaml` file inside its
+workspace directory — always written through the binary, never by hand.
+
+This guide covers the concepts. The precise command surface and every gate is
+in the [onto reference](onto-reference.md); making the gates non-skippable at
+the tool boundary is in [enforcement](enforcement.md).
 
 ## Install and enable
 
@@ -29,25 +34,27 @@ go install github.com/noviopenworks/homonto/cmd/onto@latest
 onto version            # prints: onto <version>
 ```
 
-The mutating commands (`init`, `new`, `advance`, `close`) require the onto
-framework to be **declared and applied through Homonto first** — this is how
-the skills land in your tools. In `homonto.toml`:
+The mutating commands (`init`, `new`, `set`, `advance`, `close`, `abandon`,
+`merge-deltas`) require the onto framework to be **declared and applied through
+homonto first** — this is how the skills land in your tools:
 
 ```toml
 [frameworks.onto]
 source = "builtin:onto"
+scope = "project"
+# plus all three [models.<tool>.*] routes — see the configuration reference
 ```
 
-Then `homonto apply`. The read-only commands (`status`, `doctor`, `version`)
-run without any of this — they never read `homonto.toml` and never write.
+Then `homonto apply`. The read-only commands (`status`, `state`, `gate`,
+`scale`, `graph`, `handoff`, `doctor`, `version`) run without any of this —
+they never read `homonto.toml` and never write.
 
-`homonto apply` also installs the framework's **slash commands** into each tool
-(`/onto` plus one per phase and preset: `/onto-open`, `/onto-design`,
-`/onto-build`, `/onto-verify`, `/onto-close`, `/onto-fix`, `/onto-tweak`,
-`/onto-no-slop`). `/onto` is the dispatcher — it derives the active change's real
-phase and routes automatically; the per-phase commands jump straight into one
-phase. Each command loads the matching `onto-*` skill, and every state change
-still goes through the `onto` binary.
+`homonto apply` also installs the framework's **slash commands** into each
+tool: `/onto` (the dispatcher — it derives the active change's real phase and
+routes automatically), plus `/onto-open`, `/onto-design`, `/onto-build`,
+`/onto-verify`, `/onto-close`, `/onto-fix`, `/onto-tweak`, and
+`/onto-no-slop`. Each command loads the matching `onto-*` skill; every state
+change still goes through the binary.
 
 ## The layout
 
@@ -64,40 +71,6 @@ docs/
 └── guides/                 # user-facing docs
 ```
 
-## Commands
-
-| Command | Phase gate | What it does |
-|---|---|---|
-| `onto init` | framework-install | Scaffold the `docs/{changes,specs,adr,guides}/` layout. Idempotent; reports created vs. skipped paths. |
-| `onto new <name>` | framework-install | Create `docs/changes/<name>/` with an `onto-state.yaml` (phase `open`), `proposal.md`, and `tasks.md`. Refuses to clobber an existing change; validates the name is kebab-case with no path traversal. |
-| `onto status` | none (read-only) | Report each discovered change's derived phase and skeleton validity. Config-independent; writes nothing. |
-| `onto advance <change>` | framework-install + artifact/tasks gates | Move a change one step along `open→design→build→verify→close`. |
-| `onto close <change>` | framework-install + deps + clean worktree | Archive a completed change to `docs/changes/archive/<date>-<change>/`. |
-| `onto doctor [--dir <root>]` | none (read-only) | Diagnose workspace health across docs layout, active-change state, phase/artifact match, dependency resolution, and archive layout. Exits non-zero on any finding. |
-| `onto version` | none | Print the release-stamped version. |
-
-## The gates
-
-`onto advance` only leaves a phase once that phase's deliverables exist. The
-required artifacts accumulate as a change advances:
-
-| Leaving phase | Requires |
-|---|---|
-| `open` | `proposal.md`, `tasks.md` |
-| `design` | + `design.md` |
-| `build` | + `plan.md` **and every `tasks.md` checkbox checked** (no unchecked `- [ ]`) |
-| `verify` | + `verification.md` |
-
-A missing deliverable makes `advance` exit non-zero and leaves the recorded
-phase unchanged. Advancing a change already at `close` is an error.
-
-**Dirty-worktree handling.** `advance` checks `git status --porcelain`. For a
-normal transition a dirty worktree is a *warning* but still allowed; for the
-release-critical `verify → close` transition it **blocks** the advance. `onto
-close` likewise refuses to archive unless the worktree is clean, the change is
-at phase `close`, and every dependency listed in its `onto-state.yaml` is
-resolved (an archived `docs/changes/archive/*-<dep>` exists).
-
 ## Phase walkthrough
 
 The `onto-*` skills carry the process discipline inside each phase; the binary
@@ -107,49 +80,68 @@ gates the transitions between them.
   several changes, and create the workspace (`onto new`).
 - **design** — ground-truth exploration, 2–3 candidate approaches, user
   confirmation, then `design.md`, ADR drafts (unnumbered, `Status: Proposed`),
-  and delta specs with testable scenarios. No implementation code in this phase.
+  delta specs with testable scenarios, and the task list derived from the
+  confirmed design. No implementation code in this phase.
 - **build** — `plan.md` of bite-sized verified tasks, one commit per task,
-  root-cause-first debugging on any failure.
+  root-cause-first debugging on any failure. Entering build requires an
+  isolation choice (`branch` or `worktree`), so build work is never committed
+  unisolated.
 - **verify** — scale-appropriate check of every delta-spec scenario with fresh
-  command output as evidence, recorded in `verification.md`.
-- **close** — `onto close` archives the workspace once all gates pass; merge
-  delta specs into `docs/specs/`, number and accept ADRs into `docs/adr/`, and
+  command output as evidence, recorded in `verification.md`. `onto scale`
+  derives the appropriate verification level from the measured diff.
+- **close** — `onto merge-deltas` merges the change's delta specs into
+  `docs/specs/` deterministically, then `onto close` archives the workspace
+  once all evidence gates pass; number and accept ADRs into `docs/adr/`, and
   update the affected guides.
+
+Two **presets** run a reduced path for small work: `onto new --workflow fix`
+(an existing-behavior bug) and `--workflow tweak` (copy/config/docs-scale
+change) go `open-lite → build → verify → close`, skipping design — and upgrade
+to the full path when scope grows. `onto abandon` is the unsuccessful terminal
+state for work that is stopped rather than completed.
 
 ## Specialist subagents
 
-`homonto apply` also installs two read-only **specialist subagents** that the
-onto skills delegate to (they ship with the framework — don't also declare them
-in a top-level `[subagents.*]` table, which collides):
+`homonto apply` installs the framework's subagents, which the onto skills
+delegate to (don't also declare them in a top-level `[subagents.*]` table —
+the names collide):
 
-- **`codebase-explorer`** — reads across many files to answer "how does X work /
-  where does behavior live", returning conclusions, not dumps. Used for grounding
-  in open/design.
-- **`code-reviewer`** — reviews a diff for correctness, security, contract, and
-  clarity, ranked by severity. Used per task in build and across the diff in
-  verify.
+- **`codebase-explorer`** — read-only; reads across many files to answer "how
+  does X work / where does behavior live", returning conclusions, not dumps.
+  Used for grounding in open/design. Runs on the `trivial` model route.
+- **`code-reviewer`** — read-only; reviews a diff for correctness, security,
+  contract, and clarity, ranked by severity. Used per task in build and across
+  the diff in verify. Runs on the `architectural` route.
+- **`onto-implementer`** — edit-capable executor on the `coding` route.
 
-Both are **read-only** (edits denied) and **dialog-enabled** in **both tools** —
-homonto renders each one's access from a single neutral `homonto:` frontmatter
-block into the tool's native fields: Claude's `tools:` allowlist and OpenCode's
-`permission:` map (see [`subagents.md`](subagents.md)). Parallelization and
-dialogs work in both too: the build phase **fans out** independent tasks'
-investigation/review concurrently via the Task tool (OpenCode child sessions;
-Claude parallel Task agents), and gate decisions are asked through an interactive
-dialog (OpenCode's question tool; Claude's AskUserQuestion). The orchestrator
-(your main session) still owns every edit and commit.
+All declare their capabilities once in a tool-neutral `homonto:` frontmatter
+block, rendered into Claude's `tools:` allowlist and OpenCode's `permission:`
+map (see [subagents](subagents.md)). Parallelization and dialogs work in both
+tools: the build phase fans out independent tasks' investigation/review
+concurrently, and gate decisions are asked through an interactive dialog
+(`onto gate --json` supplies the structured decision; the skill renders it).
+The orchestrator — your main session — still owns every edit and commit.
+
+## Surviving context loss
+
+Long agent sessions get compacted. `onto handoff <change>` emits a compact
+recovery context pack — identity, phase, pending gate, artifact excerpts plus
+a content hash — and `--write` persists it under the workspace, so a fresh
+session resumes without re-deriving state. `onto set build-pause plan-ready`
+records a first-class pause at the plan-ready gate for the same reason.
 
 ## Recommended tooling
 
 The onto skills recommend two tools; when either is missing they warn and
 proceed — a degraded session still works:
 
-- **rtk** — a token-optimized CLI proxy; workflow shell operations go through it
-  when installed. Missing rtk means higher token cost, never a stop.
+- **rtk** — a token-optimized CLI proxy; workflow shell operations go through
+  it when installed. Missing rtk means higher token cost, never a stop.
 - **graphify** (https://graphify.net) — codebase understanding; the open and
   design phases ground claims in graphify/codegraph queries when available,
   falling back to direct file reading otherwise.
 
-> Homonto's own repository is developed with **Comet**, not onto — see
-> [comet-workflow.md](comet-workflow.md). onto is a shipped product framework;
+> homonto's own repository is developed with **Comet**, not onto — see
+> [comet-workflow.md](comet-workflow.md) and
+> [`docs/personas.md`](../personas.md). onto is a shipped product framework;
 > this guide documents it for projects that adopt it.

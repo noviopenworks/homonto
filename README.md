@@ -1,269 +1,148 @@
 # homonto
 
-Declarative config for your AI coding tools. Describe your MCP servers, skills,
-plugins, and settings once in `homonto.toml`; `homonto apply` projects them into
-**Claude Code** and **OpenCode** through a terraform-style plan/confirm/apply
-pipeline. Secrets are **referenced, never stored** — resolved only at apply time.
-The public v0.1 release gate is dual-binary: `homonto` remains the deterministic
-installer/projector, and `onto` will ship beside it as the spec-driven workflow
-operator.
+**Declarative configuration for your AI coding tools.**
+
+Describe your MCP servers, skills, commands, subagents, plugins, and settings
+once in `homonto.toml`. `homonto apply` projects that desired state into
+**Claude Code** and **OpenCode** (plus a Codex MCP pilot) through a
+Terraform-style **plan → confirm → apply** pipeline:
+
+- **Declarative & reversible** — edit the TOML, `plan` shows the exact diff,
+  `apply` writes it surgically; remove a resource and the next apply prunes it.
+- **Secrets are referenced, never stored** — `${pass:…}` / `${ENV_VAR}` tokens
+  resolve only at apply time; state keeps a hash, never a plaintext value.
+- **Surgical merge** — only managed keys are written; everything you configured
+  by hand in each tool's files is preserved byte-for-byte.
+- **Pinned remote content** — `remote:` sources require a sha256 digest and are
+  verified fail-closed before anything touches your tools.
+
+The repository ships **two binaries**:
+
+| Binary | Role |
+|---|---|
+| `homonto` | The deterministic installer/projector described above. |
+| `onto` | A spec-driven workflow operator: it gates a change through `open → design → build → verify → close` with evidence-based, non-skippable transitions. |
 
 ## Install
 
-Install a tagged release directly:
-
 ```bash
-go install github.com/noviopenworks/homonto@v0.1.0   # a tagged release
+go install github.com/noviopenworks/homonto@latest           # homonto
+go install github.com/noviopenworks/homonto/cmd/onto@latest  # onto (optional)
 ```
 
-Tagged releases also ship prebuilt `homonto` and `onto` binaries for
-Linux/macOS/Windows (amd64 and arm64) with a `SHA256SUMS` file, attached to the
-GitHub release.
+Tagged releases also attach prebuilt `homonto` and `onto` binaries for
+Linux/macOS/Windows (amd64 and arm64) with a `SHA256SUMS` file. From a
+checked-out repo use `go install .` — **not** a bare `go build .`, whose output
+name collides with the `homonto/` content directory (see
+[troubleshooting](docs/guides/troubleshooting.md)).
 
-Or install/run the current source:
+After installing a newer binary, run `homonto update` to bring the projected
+catalog content (frameworks, skills, commands, subagents) up to that version.
 
-```bash
-go install github.com/noviopenworks/homonto@main   # current main branch
-go install .                                        # from a checked-out repo
-```
-
-## Quickstart
+## First steps
 
 ```bash
 homonto init            # scaffold homonto.toml, .gitignore, .env.example, homonto/skills/
 $EDITOR homonto.toml    # declare your MCPs / skills / plugins / settings
-homonto plan            # dry run: show the diff, write nothing
-homonto apply           # plan → confirm [y/N] → write (use --yes to skip prompt)
+homonto plan            # dry run: show the diff, write nothing, resolve no secrets
+homonto apply           # plan → confirm [y/N] → write atomically (--yes to skip)
+homonto status          # afterwards: report drift / pending / clean
 ```
 
-> **New to homonto?** [`docs/guides/getting-started.md`](docs/guides/getting-started.md)
-> is a hands-on walkthrough of **both** binaries with real command output and a
-> supported / not-supported matrix.
-
-Other commands:
-
-| Command | What it does |
-|---|---|
-| `homonto update` | Re-materialize this binary's embedded catalog and re-project it — bring installed frameworks/skills/commands/subagents up to the running version, printing the version transition. Does not self-update the binaries. |
-| `homonto status` | Show managed values that would be reset or recreated on apply |
-| `homonto doctor` | Health check: `pass` present? tool dirs present? owned skill content and both tool links present? |
-| `homonto --version` | Print the build version |
-
-After installing a newer `homonto`/`onto` binary, run **`homonto update`** to
-bring the projected content up to that version. State records the versions behind
-each apply (binary, catalog, per-framework), and `onto doctor` warns when the
-`onto` binary and the homonto that installed its framework have drifted apart.
-
-`--config <path>` selects a different config file for plan/apply/status/doctor/import.
-`init` instead takes an optional target directory and always writes
-`homonto.toml` inside that directory.
-
-Experimental adoption helper: `homonto import` bootstraps Claude global MCP
-servers into `homonto.toml` with best-effort env redaction. It is deliberately
-narrow and is not part of the main quickstart path.
-
-## `homonto.toml`
+A small but realistic config:
 
 ```toml
 [mcps.codegraph]
-command = ["codegraph", "serve", "--mcp"]
-targets = ["claude", "opencode"]          # default: all tools
+command = ["codegraph", "serve", "--mcp"]       # projected into both tools by default
 
 [mcps.brave]
 command = ["npx", "-y", "@modelcontextprotocol/server-brave-search"]
-env = { BRAVE_API_KEY = "${pass:ai/brave}" }
+env = { BRAVE_API_KEY = "${pass:ai/brave}" }    # a reference — never a literal secret
+targets = ["claude"]                            # restrict to Claude Code
 
-[skills.graphify]
-source = "local:graphify"                 # local:<name> → homonto/skills/<name>
-scope = "project"                         # required: user | project (no default)
-
-[marketplaces.claude.official]            # → extraKnownMarketplaces (claude only)
-source = "github"                         # github | url | git-subdir | directory
-repo = "anthropics/claude-plugins"        # locator for the source type
-
-[plugins.claude.claude-hud]
-source = "claude-hud@official"            # name@marketplace (enabledPlugins key)
-# enabled = false                        # optional; omit → enabled
-# config = { compact = true }            # optional; → pluginConfigs.<source>.options (claude only)
-
-[plugins.opencode.opencode-quota]
-source = "@slkiser/opencode-quota"        # npm package (the `plugin` array entry)
+[skills.my-notes]
+source = "local:my-notes"                       # → homonto/skills/my-notes/
+scope = "project"                               # required: user | project
 
 [settings.claude]
 model = "opus"
-theme = "dark"                            # TUI settings are top-level settings.json keys
 
 [settings.opencode]
 model = "anthropic/claude-opus-4-8"
-
-[tui.opencode]                            # → ~/.config/opencode/tui.json (separate file)
-theme = "gruvbox"
-scroll_speed = 3
-
-[models.claude.architectural]             # required for every model-enabled tool
-model = "opus"
-variant = "max"
-
-[subagents.review]                        # an agent definition, projected by apply
-source = "builtin:review-agent"           # builtin:<name> | local:<name> | remote:<url>
-scope = "project"                         # user | project (default project)
-mode = "copy"                             # link (symlink, default) | copy (managed file)
-targets = ["claude", "opencode"]          # optional; default both
-
-[subagents.reviewer]                      # a remote, pinned agent
-source = "remote:https://example.com/reviewer.tar.gz"
-digest = "sha256:<64 hex>"                # REQUIRED content pin; verified before any write
 ```
 
-Agents are just `[subagents.<name>]` resources — declarative, managed by
-`plan`/`apply`/`status`/`doctor` like skills and commands (there is no separate
-imperative `agents` command group). `mode = "link"` (the default) symlinks the
-agent into each tool's agent directory; `mode = "copy"` projects it as a **real
-managed file** you can edit locally — `apply` keeps it in sync, detects drift,
-prunes it when de-declared, and backs up a local edit to `<path>.bak` before
-overwriting. Sources are `local:<name>` (from `homonto/subagents/`),
-`builtin:<name>` (from the bundled catalog), or `remote:<url>` (fetched, pinned,
-and verified). The legacy `[agents.<name>]` table still parses but is folded
-into a copy-mode `[subagents.<name>]` at load.
+`plan` prints a Terraform-style diff (`+` create, `~` update, `-` delete);
+`apply` resolves all secrets up front (aborting before any write if one fails),
+then writes each file atomically, keeping every key it does not manage.
 
-A **`remote:` source is pinned and fail-closed**: it requires a
-`digest = "sha256:…"`, and `apply` fetches → validates the archive (rejecting
-traversal, symlinks, and bombs) → matches the pin → checks revocation → caches,
-never writing a tool file until every check passes. Pins are recorded in
-`.homonto/remote.lock.json`; content is cached under `.homonto/cache/remote/`
-(offline + reproducible). See
-[docs/guides/remote-source-trust.md](docs/guides/remote-source-trust.md).
+**New to homonto?** Start with the
+[getting-started guide](docs/guides/getting-started.md) — a hands-on
+walkthrough of both binaries with real command output and a
+supported / not-supported matrix.
 
-The example is abbreviated — a complete config must also define
-`models.claude.coding` and `models.claude.trivial`, and the same three levels
-apply to every model-enabled target tool.
+## Commands at a glance
 
-## Secrets — referenced, never stored
+| Command | What it does |
+|---|---|
+| `homonto init [dir]` | Scaffold a starter repo (never overwrites existing files). |
+| `homonto plan` | Show what apply would change. Writes nothing. |
+| `homonto apply` | Project the config into the tools, after confirmation. |
+| `homonto status` | Report drift (disk changed outside homonto) vs. pending (unapplied edits). |
+| `homonto doctor` | Health check: `pass` present, tool dirs, skill content and links. |
+| `homonto update` | Re-materialize the embedded catalog at this binary's version and re-project it. |
+| `homonto import` | Bootstrap `homonto.toml` from Claude's global MCP servers (narrow, experimental). |
+| `homonto cache gc` | Reclaim unreferenced remote-cache entries. |
 
-Secret values live outside the repo and are referenced by token:
+Full flags, exit codes, and examples:
+[homonto CLI reference](docs/guides/cli-reference.md) ·
+[onto CLI reference](docs/guides/onto-reference.md).
 
-- `${pass:PATH}` — resolved via [`pass`](https://www.passwordstore.org/).
-- `${ENV_VAR}` — resolved from the environment (zero-dependency fallback).
+## Documentation
 
-Guarantees:
+| Guide | What it covers |
+|---|---|
+| [Getting started](docs/guides/getting-started.md) | First steps with both binaries, with real output. **Start here.** |
+| [Configuration reference](docs/guides/configuration.md) | Every `homonto.toml` table and field, defaults, and validation rules. |
+| [homonto CLI reference](docs/guides/cli-reference.md) | Every command, flag, exit code, and example. |
+| [Secrets](docs/guides/secrets.md) | `${pass:…}` / `${ENV_VAR}` references and the never-stored guarantees. |
+| [Projection & state](docs/guides/projection-and-state.md) | Surgical merge, symlinks, drift vs. pending, adoption, pruning. |
+| [Subagents](docs/guides/subagents.md) | The `[subagents.*]` resource: sources, link vs. copy, the `homonto:` block. |
+| [Remote source trust](docs/guides/remote-source-trust.md) | Pinned, fail-closed remote installs: threat model and lifecycle. |
+| [The onto workflow](docs/guides/onto-workflow.md) | Concepts: phases, skills, specialist subagents. |
+| [onto reference](docs/guides/onto-reference.md) | Every onto command and every gate the binary enforces. |
+| [Enforcement](docs/guides/enforcement.md) | Making onto's gates non-skippable with tool hooks. |
+| [Troubleshooting & caveats](docs/guides/troubleshooting.md) | Known limitations and gotchas, with workarounds. |
 
-- `plan` **never** resolves or prints a secret — it shows the `${...}` token.
-- `apply` resolves secrets only **after** you confirm, **all at once before any
-  file is written**; a missing reference aborts before touching anything.
-- `.homonto/state.json` stores only the unresolved token plus a **sha256 hash**
-  of the applied value — never plaintext — so it is safe to share and a repeat
-  `apply` on a secret-backed value is a no-op (idempotent), while an out-of-band
-  change to that value is still detected as drift.
+## Caveats (the short list)
 
-## Owned content is symlinked
+homonto is a young, deliberately narrow tool. The most important limitations —
+each detailed in [troubleshooting](docs/guides/troubleshooting.md):
 
-Skills you author live under `homonto/skills/` (the local provider root, next
-to `homonto.toml`) and are **symlinked** into each tool, so editing
-`homonto/skills/...` is instantly live everywhere. `apply` ensures the links
-exist and point correctly; it never clobbers a file that isn't its own symlink
-(reported as a conflict instead). A skills-only apply leaves tool JSON files
-byte-for-byte untouched — adapters write a file only when a managed key inside
-it actually changes — so OpenCode JSONC comments survive link-only applies.
-
-### Skill scope — user or project
-
-Each skill resource declares its own `scope` (`scope` is required; there is no
-default). `scope` chooses where that skill is linked (it affects skills only;
-MCP servers and settings always project into your global tool files):
-
-- `scope = "user"` — links into `~/.claude/skills/` and
-  `~/.config/opencode/skills/`.
-- `scope = "project"` — links into the project itself, next to `homonto.toml`:
-  `<repo>/.claude/skills/` and `<repo>/.opencode/skills/`. Use this to keep a
-  project's skills in-repo instead of your global tool config.
-
-Switching a skill's scope is clean: `plan` shows the link relocating from its
-old location to the new one, and `apply` removes the old link as it creates the
-new one, so no orphaned symlink is left behind. `status` and `doctor` report
-against whichever location each skill's scope selects.
-
-## Surgical merge
-
-homonto writes **only the keys it manages** and preserves every unmanaged key in
-each tool's file. Removal is declarative too: keys you remove from
-`homonto.toml` are deleted from the tool files on the next apply (and
-owned-skill links removed) — state tracks what homonto manages. A skills-only
-apply leaves tool JSON files byte-for-byte untouched, since adapters write a file
-only when a managed key inside it actually changes.
-
-## Known limitations
-
-homonto is a young, deliberately narrow tool. For the v0.1.0 beta line:
-
-- **v0.1.0 is the first public tag.** Both binaries ship: `homonto` provides
-  deterministic projection and agent lifecycle management, while `onto` provides
-  `init`, `new`, `status`, `advance`, `close`, and `doctor` with phase,
-  dependency, archive, and dirty-worktree gates. The release pipeline packages
-  both binaries behind the CI gate (gofmt, mod-tidy, vet, build, `-race`,
-  govulncheck, dual-binary Docker E2E).
-- **Framework skill, command, and subagent projection are all implemented.**
-  `[frameworks.X]` resolves through the bundled builtin catalog (`onto`,
-  `comet`, `superpowers`, `openspec`), expands dependencies, and
-  materializes/links skills into Claude Code and OpenCode. `[commands.X]`
-  (builtin or local, single-file materialization to
-  `.homonto/catalog/commands/`) and framework-declared `[commands]` tables
-  project the same way, into Claude Code (`.claude/commands/<name>.md`) and
-  OpenCode (`.opencode/command/<name>.md` project-scoped, or the equivalent
-  user-scope directories). `[subagents.X]` (builtin or local, single-file
-  materialization to `.homonto/catalog/subagents/`) and framework-declared
-  `[subagents]` tables project verbatim the same way, into Claude Code
-  (`.claude/agents/<name>.md`) and OpenCode (`.opencode/agent/<name>.md`
-  project-scoped, or the equivalent user-scope directories), with `doctor`
-  verifying the links. Three real subagents ship in the catalog:
-  `code-reviewer`, `codebase-explorer`, and `comet-navigator`.
-- **OpenCode JSONC comments are not preserved.** Claude's files are plain JSON,
-  but OpenCode's `opencode.jsonc` supports comments. Any apply that *writes*
-  `opencode.jsonc` rewrites it as normalized JSON, so **all comments in that file
-  are removed**. (A skills-only or otherwise no-op apply does not write the file,
-  so comments survive those.) Accepted for beta.
-- **`import` is a narrow Claude MCP bootstrap.** It reads Claude's global MCP
-  servers only, redacts values that *look* like secrets into `${pass:...}`
-  references (best-effort, not exhaustive), and preserves `command`/`args`
-  verbatim. It does not import skills, plugins, settings, or OpenCode config.
-  Treat its output as a starting point to review, not a complete migration.
-- **Two full adapters + a Codex pilot.** Claude Code and OpenCode are the full
-  adapters. **Codex** (OpenAI Codex CLI) is a pilot third adapter built on the
-  shared *adapter contract* (`internal/adapter/structproj` + the `tomlutil` TOML
-  codec): it projects **MCP servers only**, into `~/.codex/config.toml`
-  `[mcp_servers.<name>]` tables, and is **opt-in** — a resource must list `codex`
-  in its `targets` (the default target set stays Claude + OpenCode). The contract
-  lets a new adapter supply just a file path, key mapping, and format codec
-  instead of re-implementing the projection control flow.
-- **Secrets need `pass` or an env var.** `${pass:...}` references require
-  [`pass`](https://www.passwordstore.org/) on `PATH`; `${ENV_VAR}` references
-  require the variable to be set at apply time. `homonto doctor` flags a missing
-  `pass`.
-
----
+- **Adapters:** Claude Code and OpenCode are the full adapters; **Codex** is an
+  opt-in pilot that projects **MCP servers only**.
+- **OpenCode JSONC comments** are dropped by any apply that writes
+  `opencode.jsonc` (a no-op apply leaves the file untouched).
+- **`import`** reads Claude's global MCP servers only — treat its output as a
+  reviewed starting point, not a migration.
+- **Secrets need a backend:** `${pass:…}` requires `pass` on `PATH`;
+  `${ENV_VAR}` requires the variable set at apply time.
+- **Moving/renaming the repo** breaks skill symlinks (absolute targets);
+  delete the stale links and re-apply.
+- **CLI output goes to stderr** — redirect with `2>&1` when scripting.
 
 ## For contributors
 
-Everything below is about developing homonto itself — users don't need it.
+The source of truth for shipped behavior is the code and its tests. Durable
+architecture rationale lives in [`docs/adr/`](docs/adr/); this repository is
+developed with the Comet workflow
+([`docs/guides/comet-workflow.md`](docs/guides/comet-workflow.md)), while onto
+is the workflow we ship ([`docs/personas.md`](docs/personas.md) explains the
+split). Releases follow
+[`docs/release-checklist.md`](docs/release-checklist.md).
 
-### How it works
-
-`homonto.toml` is parsed into one tool-agnostic desired-state model; each tool is
-an adapter (`Read` → `Plan` → `Apply`) wired by the engine. Adding a new tool
-requires a new adapter plus engine/config wiring. Writes are atomic (temp +
-rename); state is persisted after each successful adapter so a later adapter
-failure does not lose earlier records.
-
-### Development workflow
-
-The source of truth for shipped behavior is the **code and its tests**. Prior
-capability specs, change workspaces, and design/verify docs were cleared from
-the tree; that history remains in git (`git log`) if you need it.
-
-- `docs/personas.md` — which workflow to use (homonto vs onto vs Comet/OpenSpec/Superpowers), and why we build with Comet but ship onto
-- `docs/adr/` — accepted / superseded architecture decisions (the durable rationale)
-- `docs/guides/` — user-facing guides
-- `docs/release-checklist.md` — how to cut a release
-
-Read the relevant ADRs and the nearby implementation before changing behavior;
-add or update focused tests for behavior changes and run the narrowest useful
-verification command.
+Architecture in one paragraph: `homonto.toml` is parsed into one tool-agnostic
+desired-state model; each tool is an adapter (`Read` → `Plan` → `Apply`) wired
+by the engine. Writes are atomic (temp + rename); state is persisted after each
+successful adapter, so a later adapter failure never loses earlier records.
+Read the relevant ADRs and nearby implementation before changing behavior; add
+focused tests and run the narrowest useful verification command.
