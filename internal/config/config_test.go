@@ -725,6 +725,31 @@ model = "haiku"
 		}
 	})
 
+	// A tune-only entry projects nothing, so it enables no tool. Counting it
+	// would demand model routes for a tool nothing targets — tuning an agent's
+	// Claude side would start requiring [models.opencode.*].
+	t.Run("tuning one tool does not enable the other", func(t *testing.T) {
+		doc := `
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+targets = ["claude"]
+
+[subagents.onto-skeptic.claude]
+effort = "max"
+
+[models.claude.architectural]
+model = "opus"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+`
+		if err := loadDoc(t, doc); err != nil {
+			t.Fatalf("tuning the claude side must not require opencode routes: %v", err)
+		}
+	})
+
 	t.Run("an override is validated too", func(t *testing.T) {
 		err := loadDoc(t, doc("[subagents.onto-skeptic.claude]\neffort = \"turbo\""))
 		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {

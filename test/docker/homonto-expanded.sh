@@ -17,15 +17,21 @@ targets = ["claude"]
 
 [models.claude.architectural]
 model = "opus"
-variant = "max"
+variant = "1m"
+effort = "high"
 [models.claude.coding]
 model = "sonnet"
-variant = "max"
+effort = "medium"
 [models.claude.trivial]
 model = "haiku"
-variant = "max"
+effort = "low"
 
-# onto now ships code-reviewer + codebase-explorer as framework subagents, so
+# Retune one agent: wins over its tier field by field, and needs no source
+# because the onto framework already declares this agent.
+[subagents.onto-skeptic.claude]
+effort = "max"
+
+# onto now ships onto-reviewer + onto-explorer as framework subagents, so
 # declaring those explicitly would collide. Use comet-navigator (not shipped by
 # onto) as the standalone explicit subagent that the prune test later removes.
 [subagents.comet-navigator]
@@ -50,19 +56,28 @@ log "apply projects the expanded surface"
 log "builtin catalog materialization"
 is_dir  "$W/.homonto/catalog/skills/onto"
 is_file "$W/.homonto/catalog/commands/onto.md"
-# onto ships three specialist subagents; comet-navigator is the explicit one.
-is_file "$W/.homonto/catalog/subagents/code-reviewer.md"
-is_file "$W/.homonto/catalog/subagents/codebase-explorer.md"
+# onto ships four specialist subagents; comet-navigator is the explicit one.
+is_file "$W/.homonto/catalog/subagents/onto-reviewer.md"
+is_file "$W/.homonto/catalog/subagents/onto-explorer.md"
 is_file "$W/.homonto/catalog/subagents/onto-implementer.md"
+is_file "$W/.homonto/catalog/subagents/onto-skeptic.md"
 is_file "$W/.homonto/catalog/subagents/comet-navigator.md"
 # Homonto-block subagents materialize per-tool variants; the Claude variant of a
 # read-only spawn:[] agent carries a tools: allowlist WITHOUT Edit/Write/Task, and
 # stamps the role's model (this config maps claude architectural -> opus).
-in_file "$W/.homonto/catalog/subagents/code-reviewer.claude.md" 'tools: Read, Grep, Glob'
-in_file "$W/.homonto/catalog/subagents/code-reviewer.claude.md" 'model: opus'
-if grep -qE 'Edit|Write|Task' "$W/.homonto/catalog/subagents/code-reviewer.claude.md"; then fail "read-only reviewer must not carry Edit/Write/Task in Claude"; fi
+in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'tools: Read, Grep, Glob'
+if grep -qE 'Edit|Write|Task' "$W/.homonto/catalog/subagents/onto-reviewer.claude.md"; then fail "read-only reviewer must not carry Edit/Write/Task in Claude"; fi
+# Claude has no variant field: a variant brackets the ALIAS into the model, and
+# effort is its own field. Both come from the architectural tier.
+in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'model: opus\[1m\]'
+in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'effort: high'
+# A per-subagent override beats the tier field by field: the skeptic shares the
+# architectural tier but thinks at max, and still inherits that tier's model.
+in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'effort: max'
+in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'model: opus\[1m\]'
 # The implementer edits (coding model) but still spawns nothing (no Task).
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'model: sonnet'
+in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'effort: medium'
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'Edit, Write'
 if grep -qE 'Task' "$W/.homonto/catalog/subagents/onto-implementer.claude.md"; then fail "spawn:[] implementer must not carry Task"; fi
 # The onto primary agent is OpenCode-only: agentfm skips its Claude render, so
@@ -79,8 +94,8 @@ ok "framework skills, commands, and subagents materialized (per-tool render inva
 # dangling target; link_to only string-matched and missed exactly that bug.
 log "tool links point at (and resolve to) the materialized catalog"
 is_link "$W/.claude/skills/onto";                 is_dir  "$W/.claude/skills/onto"
-is_link "$W/.claude/agents/code-reviewer.md";     is_file "$W/.claude/agents/code-reviewer.md"
-is_link "$W/.claude/agents/codebase-explorer.md"; is_file "$W/.claude/agents/codebase-explorer.md"
+is_link "$W/.claude/agents/onto-reviewer.md";     is_file "$W/.claude/agents/onto-reviewer.md"
+is_link "$W/.claude/agents/onto-explorer.md"; is_file "$W/.claude/agents/onto-explorer.md"
 is_link "$W/.claude/agents/onto-implementer.md";  is_file "$W/.claude/agents/onto-implementer.md"
 is_link "$W/.claude/agents/comet-navigator.md";   is_file "$W/.claude/agents/comet-navigator.md"
 # The onto primary agent has no Claude variant, so it is NOT projected for Claude
@@ -116,8 +131,8 @@ mv homonto.toml.new homonto.toml
 "$HOMONTO" apply --yes >/dev/null 2>&1
 absent "$W/.claude/agents/comet-navigator.md"
 # The framework-provided subagents are NOT de-declared, so they must survive.
-is_file "$W/.claude/agents/code-reviewer.md"
-is_file "$W/.claude/agents/codebase-explorer.md"
+is_file "$W/.claude/agents/onto-reviewer.md"
+is_file "$W/.claude/agents/onto-explorer.md"
 is_file "$W/.claude/agents/onto-implementer.md"
 ok "de-declared subagent link pruned; framework subagents retained"
 

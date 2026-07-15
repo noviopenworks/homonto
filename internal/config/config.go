@@ -532,6 +532,13 @@ func (c *Config) EnabledModelTools() []string {
 		}
 	}
 	for _, s := range c.Subagents {
+		// A tune-only entry projects no agent, so it enables no tool: it only
+		// retunes an agent something else already installed. Counting it would
+		// demand model routes for a tool nothing actually targets — e.g. tuning
+		// the Claude side of an agent would start requiring [models.opencode.*].
+		if s.IsTuneOnly() {
+			continue
+		}
 		for _, target := range s.TargetsOrAll() {
 			seen[target] = true
 		}
