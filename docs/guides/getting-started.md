@@ -175,7 +175,7 @@ command and gate: [onto reference](onto-reference.md).
 | Supported | Notes |
 |---|---|
 | MCP servers, settings, skills, plugins, marketplaces, TUI settings | Claude Code + OpenCode, full |
-| Frameworks (`[frameworks.*]`) | **builtin catalog only**: `onto`, `comet`, `superpowers`, `openspec` |
+| Frameworks (`[frameworks.*]`) | **builtin catalog only**: `onto` (`to` is planned) |
 | Commands, subagents (`builtin:` / `local:`) | subagents: `mode = link` (default) or `copy` |
 | Remote **subagent** sources (`remote:…`) | **require `digest = "sha256:…"`**; fetched, verified, pinned, cached |
 | Codex adapter | 🟡 pilot — **MCP only**, opt-in (`codex` in `targets`) → `~/.codex/config.toml` |

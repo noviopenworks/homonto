@@ -9,9 +9,9 @@ import (
 	"github.com/noviopenworks/homonto/internal/secret"
 )
 
-const cometTOML = `
-[frameworks.comet]
-source = "builtin:comet"
+const ontoTOML = `
+[frameworks.onto]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
@@ -86,12 +86,12 @@ func mustPlan(t *testing.T, e *Engine) []adapter.ChangeSet {
 	return sets
 }
 
-// projectCometTOML installs a builtin framework at PROJECT scope so its skill
+// projectOntoTOML installs a builtin framework at PROJECT scope so its skill
 // links land under <projectRoot>/.claude/skills — the layout where a catalog
 // symlink target computed relative to the wrong base dangles.
-const projectCometTOML = `
-[frameworks.comet]
-source = "builtin:comet"
+const projectOntoTOML = `
+[frameworks.onto]
+source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
@@ -115,7 +115,7 @@ effort = "low"
 func TestApplyRelativeConfigLinksResolve(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(projectCometTOML), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(projectOntoTOML), 0o644)
 
 	// cd into the repo and drive Build with RELATIVE paths, exactly as the CLI
 	// does under the default `--config homonto.toml`. (Manual save/restore
@@ -137,7 +137,7 @@ func TestApplyRelativeConfigLinksResolve(t *testing.T) {
 		t.Fatalf("apply: %v", err)
 	}
 
-	link := filepath.Join(repo, ".claude", "skills", "comet-open")
+	link := filepath.Join(repo, ".claude", "skills", "onto-open")
 	target, err := os.Readlink(link)
 	if err != nil {
 		t.Fatalf("expected a symlink at %s: %v", link, err)
@@ -154,7 +154,7 @@ func TestApplyRelativeConfigLinksResolve(t *testing.T) {
 func TestApplyMaterializesBuiltinSkills(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(ontoTOML), 0o644)
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
@@ -162,32 +162,32 @@ func TestApplyMaterializesBuiltinSkills(t *testing.T) {
 		t.Fatalf("apply: %v", err)
 	}
 
-	// A known comet skill materialized under .homonto/catalog/skills/.
-	got := filepath.Join(repo, ".homonto", "catalog", "skills", "comet-open", "SKILL.md")
+	// A known onto skill materialized under .homonto/catalog/skills/.
+	got := filepath.Join(repo, ".homonto", "catalog", "skills", "onto-open", "SKILL.md")
 	if _, err := os.Stat(got); err != nil {
-		t.Fatalf("comet-open not materialized: %v", err)
+		t.Fatalf("onto-open not materialized: %v", err)
 	}
 	// State recorded the catalog version.
 	if e.State.CatalogVersionRecorded() == "" {
 		t.Fatal("catalog version not recorded after materialization")
 	}
-	// A dependency skill (superpowers) also materialized.
-	if _, err := os.Stat(filepath.Join(repo, ".homonto", "catalog", "skills", "brainstorming")); err != nil {
-		t.Fatalf("dependency skill brainstorming not materialized: %v", err)
+	// The rest of the framework's skills materialized too, not just the first.
+	if _, err := os.Stat(filepath.Join(repo, ".homonto", "catalog", "skills", "onto-no-slop")); err != nil {
+		t.Fatalf("sibling framework skill onto-no-slop not materialized: %v", err)
 	}
 }
 
 func TestApplyRematerializesWhenVersionStale(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(ontoTOML), 0o644)
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
 	if err := e.Apply(sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	skillFile := filepath.Join(repo, ".homonto", "catalog", "skills", "comet-open", "SKILL.md")
+	skillFile := filepath.Join(repo, ".homonto", "catalog", "skills", "onto-open", "SKILL.md")
 
 	// Simulate a partial/stale cache: corrupt content + wipe the recorded version.
 	os.WriteFile(skillFile, []byte("STALE"), 0o644)
@@ -209,16 +209,16 @@ func TestApplyRematerializesWhenVersionStale(t *testing.T) {
 func TestApplyRematerializesWhenSkillDirMissing(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(ontoTOML), 0o644)
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
 	if err := e.Apply(sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	skillDir := filepath.Join(e.CatalogDir(), "comet-open")
+	skillDir := filepath.Join(e.CatalogDir(), "onto-open")
 	if _, err := os.Stat(skillDir); err != nil {
-		t.Fatalf("comet-open not materialized after first apply: %v", err)
+		t.Fatalf("onto-open not materialized after first apply: %v", err)
 	}
 
 	// Delete a materialized skill dir while leaving the recorded catalog
@@ -233,21 +233,21 @@ func TestApplyRematerializesWhenSkillDirMissing(t *testing.T) {
 		t.Fatalf("re-apply: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil {
-		t.Fatalf("comet-open not restored after missing dir triggered re-materialization: %v", err)
+		t.Fatalf("onto-open not restored after missing dir triggered re-materialization: %v", err)
 	}
 }
 
 func TestApplySkipsRematerializeWhenVersionMatchesAndDirsIntact(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(ontoTOML), 0o644)
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
 	if err := e.Apply(sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	skillDir := filepath.Join(e.CatalogDir(), "comet-open")
+	skillDir := filepath.Join(e.CatalogDir(), "onto-open")
 	sentinel := filepath.Join(skillDir, "SENTINEL")
 	if err := os.WriteFile(sentinel, []byte("keep-me"), 0o644); err != nil {
 		t.Fatal(err)

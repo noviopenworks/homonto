@@ -31,11 +31,11 @@ effort = "low"
 [subagents.onto-skeptic.claude]
 effort = "max"
 
-# onto now ships onto-reviewer + onto-explorer as framework subagents, so
-# declaring those explicitly would collide. Use comet-navigator (not shipped by
-# onto) as the standalone explicit subagent that the prune test later removes.
-[subagents.comet-navigator]
-source = "builtin:comet-navigator"
+# onto ships all builtin subagents as framework subagents, so declaring one
+# explicitly would collide. Use a local: agent file (homonto/subagents/) as the
+# standalone explicit subagent that the prune test later removes.
+[subagents.nav-agent]
+source = "local:nav-agent"
 scope = "project"
 targets = ["claude"]
 
@@ -50,18 +50,26 @@ source = "claude-hud@official"
 theme = "gruvbox"
 EOF
 
+mkdir -p homonto/subagents
+cat > homonto/subagents/nav-agent.md <<'AGENT'
+---
+description: local standalone test agent
+---
+Route the user to the right change.
+AGENT
+
 log "apply projects the expanded surface"
 "$HOMONTO" apply --yes
 
 log "builtin catalog materialization"
 is_dir  "$W/.homonto/catalog/skills/onto"
 is_file "$W/.homonto/catalog/commands/onto.md"
-# onto ships four specialist subagents; comet-navigator is the explicit one.
+# onto ships four specialist subagents; nav-agent is the explicit local one
+# (local sources link straight from homonto/subagents/, no materialization).
 is_file "$W/.homonto/catalog/subagents/onto-reviewer.md"
 is_file "$W/.homonto/catalog/subagents/onto-explorer.md"
 is_file "$W/.homonto/catalog/subagents/onto-implementer.md"
 is_file "$W/.homonto/catalog/subagents/onto-skeptic.md"
-is_file "$W/.homonto/catalog/subagents/comet-navigator.md"
 # Homonto-block subagents materialize per-tool variants; the Claude variant of a
 # read-only spawn:[] agent carries a tools: allowlist WITHOUT Edit/Write/Task, and
 # stamps the role's model (this config maps claude architectural -> opus).
@@ -97,7 +105,7 @@ is_link "$W/.claude/skills/onto";                 is_dir  "$W/.claude/skills/ont
 is_link "$W/.claude/agents/onto-reviewer.md";     is_file "$W/.claude/agents/onto-reviewer.md"
 is_link "$W/.claude/agents/onto-explorer.md"; is_file "$W/.claude/agents/onto-explorer.md"
 is_link "$W/.claude/agents/onto-implementer.md";  is_file "$W/.claude/agents/onto-implementer.md"
-is_link "$W/.claude/agents/comet-navigator.md";   is_file "$W/.claude/agents/comet-navigator.md"
+is_link "$W/.claude/agents/nav-agent.md";         is_file "$W/.claude/agents/nav-agent.md"
 # The onto primary agent has no Claude variant, so it is NOT projected for Claude
 # (its entry point is the /onto command → onto skill).
 absent "$W/.claude/agents/onto.md"
@@ -126,10 +134,10 @@ printf '%s' "$out" | grep -q "No changes" || fail "second apply was not idempote
 ok "idempotent re-apply"
 
 log "prune on removal: drop the explicit subagent, re-apply removes its link"
-sed '/\[subagents.comet-navigator\]/,/targets = \["claude"\]/d' homonto.toml > homonto.toml.new
+sed '/\[subagents.nav-agent\]/,/targets = \["claude"\]/d' homonto.toml > homonto.toml.new
 mv homonto.toml.new homonto.toml
 "$HOMONTO" apply --yes >/dev/null 2>&1
-absent "$W/.claude/agents/comet-navigator.md"
+absent "$W/.claude/agents/nav-agent.md"
 # The framework-provided subagents are NOT de-declared, so they must survive.
 is_file "$W/.claude/agents/onto-reviewer.md"
 is_file "$W/.claude/agents/onto-explorer.md"

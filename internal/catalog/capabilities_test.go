@@ -70,25 +70,6 @@ func TestLoadOverlays_CrossSourceCapabilityResolves(t *testing.T) {
 	}
 }
 
-// TestNew_RealCatalogCapabilitiesResolve proves the embedded catalog loads with
-// comet requiring spec-workflow@1 and openspec providing it.
-func TestNew_RealCatalogCapabilitiesResolve(t *testing.T) {
-	c, err := New()
-	if err != nil {
-		t.Fatalf("real catalog with capabilities failed to load: %v", err)
-	}
-	prov, _ := c.Framework("openspec")
-	if len(prov.Provides) != 1 || prov.Provides[0] != "spec-workflow@1" {
-		t.Errorf("openspec provides = %v, want [spec-workflow@1]", prov.Provides)
-	}
-	req, _ := c.Framework("comet")
-	found := false
-	for _, r := range req.RequiredCapabilities {
-		if r == "spec-workflow@1" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("comet required capabilities = %v, want to include spec-workflow@1", req.RequiredCapabilities)
-	}
-}
+// No shipped framework declares capabilities anymore (the mechanics stay
+// covered by the fstest fixtures above); the embedded catalog's shipped
+// surface is pinned by TestNew_CatalogShipsOnlyOnto.

@@ -95,8 +95,8 @@ missing `pass`.
   into `~/.codex/config.toml` `[mcp_servers.<name>]`, and is **opt-in** — a
   resource must list `codex` in its `targets`. Listing `codex` on a subagent
   has no effect.
-- **Frameworks resolve via the builtin catalog only** (`onto`, `comet`,
-  `superpowers`, `openspec`) — there are no remote framework sources.
+- **Frameworks resolve via the builtin catalog only** (`onto`; `to` is
+  planned) — there are no remote framework sources.
 - **Remote sources exist for subagents only**, and require a
   `digest = "sha256:…"` pin (see
   [remote source trust](remote-source-trust.md)). homonto never re-resolves a

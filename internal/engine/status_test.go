@@ -354,7 +354,7 @@ func TestStatusSkipsErroredAdapterButReportsOther(t *testing.T) {
 func TestDoctorReportsBuiltinSkillLinked(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(cometTOML), 0o644)
+	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(ontoTOML), 0o644)
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
@@ -364,7 +364,7 @@ func TestDoctorReportsBuiltinSkillLinked(t *testing.T) {
 
 	out := e.Doctor()
 	joined := strings.Join(out, "\n")
-	if !strings.Contains(joined, `skill "comet-open" linked (claude)`) {
+	if !strings.Contains(joined, `skill "onto-open" linked (claude)`) {
 		t.Fatalf("doctor did not report the builtin skill as linked:\n%s", joined)
 	}
 }

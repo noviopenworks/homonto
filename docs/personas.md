@@ -18,10 +18,14 @@ missing artifacts or a malformed state, because the binary refuses. onto has a
 **hard dependency on the compiled binary** (it is *not* markdown-only), and the
 markdown skills invoke the binary rather than editing state by hand.
 
-**Comet, OpenSpec, and Superpowers are unenforced alternative workflows.** They
-drive the same spec-driven shape (propose → design → build → verify → archive)
-through skills and prose, without a binary gate. They are more flexible and
-portable; they do not mechanically prevent you from skipping a step.
+**Comet, OpenSpec, and Superpowers are unenforced alternative workflows** —
+they drive the same spec-driven shape (propose → design → build → verify →
+archive) through skills and prose, without a binary gate: more flexible and
+portable, but nothing mechanically prevents skipping a step. **homonto no
+longer ships them**: the catalog carries onto (and, later, `to`) plus the
+loose framework-agnostic skills, nothing else. This repository still uses
+Comet for its own development — from the maintainers' own setup, not from the
+catalog.
 
 ## What onto enforces (and what it doesn't)
 
@@ -41,7 +45,7 @@ adversary.)
 |---|---|
 | To project one config into Claude Code / OpenCode / Codex | **homonto** (the projector — always) |
 | A spec-driven change lifecycle with mechanical gates you can't skip | **onto** (needs the binary) |
-| A flexible, portable, prose-driven workflow with no binary gate | **Comet** / OpenSpec / Superpowers |
+| A flexible, portable, prose-driven workflow with no binary gate | **Comet** / OpenSpec / Superpowers (external — not shipped by homonto) |
 
 ## Why we build with Comet but ship onto
 

@@ -9,7 +9,7 @@ import (
 func fixtureFS() fstest.MapFS {
 	return fstest.MapFS{
 		"version.txt": {Data: []byte("0.1.0\n")},
-		"frameworks/superpowers/framework.toml": {Data: []byte(`name = "superpowers"
+		"frameworks/basefw/framework.toml": {Data: []byte(`name = "basefw"
 version = "0.1.0"
 description = "sp"
 [skills]
@@ -17,16 +17,16 @@ brainstorming = "skills/brainstorming"
 [commands]
 demo-cmd = "commands/demo-cmd.md"
 `)},
-		"frameworks/comet/framework.toml": {Data: []byte(`name = "comet"
+		"frameworks/depfw/framework.toml": {Data: []byte(`name = "depfw"
 version = "0.1.0"
 description = "cm"
 [dependencies]
-frameworks = ["superpowers"]
+frameworks = ["basefw"]
 [skills]
-comet = "skills/comet"
+depfw = "skills/depfw"
 `)},
 		"skills/brainstorming/SKILL.md": {Data: []byte("b")},
-		"skills/comet/SKILL.md":         {Data: []byte("c")},
+		"skills/depfw/SKILL.md":         {Data: []byte("c")},
 		"commands/demo-cmd.md":          {Data: []byte("d")},
 	}
 }
@@ -39,12 +39,12 @@ func TestLoadIndexesFrameworksAndVersion(t *testing.T) {
 	if c.Version() != "0.1.0" {
 		t.Fatalf("version = %q", c.Version())
 	}
-	cm, ok := c.Framework("comet")
+	cm, ok := c.Framework("depfw")
 	if !ok {
-		t.Fatal("comet not indexed")
+		t.Fatal("depfw not indexed")
 	}
-	if len(cm.Dependencies) != 1 || cm.Dependencies[0] != "superpowers" {
-		t.Fatalf("comet deps = %v", cm.Dependencies)
+	if len(cm.Dependencies) != 1 || cm.Dependencies[0] != "basefw" {
+		t.Fatalf("depfw deps = %v", cm.Dependencies)
 	}
 	if p, ok := c.SkillPath("brainstorming"); !ok || p != "skills/brainstorming" {
 		t.Fatalf("brainstorming path = %q ok=%v", p, ok)
@@ -53,9 +53,9 @@ func TestLoadIndexesFrameworksAndVersion(t *testing.T) {
 
 func TestLoadRejectsMissingSkillPath(t *testing.T) {
 	m := fixtureFS()
-	delete(m, "skills/comet/SKILL.md") // now skills/comet has no entries -> path absent
+	delete(m, "skills/depfw/SKILL.md") // now skills/depfw has no entries -> path absent
 	_, err := Load(m)
-	if err == nil || !strings.Contains(err.Error(), "skills/comet") {
+	if err == nil || !strings.Contains(err.Error(), "skills/depfw") {
 		t.Fatalf("expected missing-skill-path error, got %v", err)
 	}
 }
@@ -65,12 +65,12 @@ func TestLoadIndexesFrameworkCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	sp, ok := c.Framework("superpowers")
+	sp, ok := c.Framework("basefw")
 	if !ok {
-		t.Fatal("superpowers not indexed")
+		t.Fatal("basefw not indexed")
 	}
 	if sp.Commands["demo-cmd"] != "commands/demo-cmd.md" {
-		t.Fatalf("superpowers commands = %v", sp.Commands)
+		t.Fatalf("basefw commands = %v", sp.Commands)
 	}
 	if p, ok := c.CommandPath("demo-cmd"); !ok || p != "commands/demo-cmd.md" {
 		t.Fatalf("demo-cmd path = %q ok=%v", p, ok)
@@ -88,47 +88,47 @@ func TestLoadRejectsMissingCommandPath(t *testing.T) {
 
 func TestLoadIndexesFrameworkSubagents(t *testing.T) {
 	m := fixtureFS()
-	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "comet"
+	m["frameworks/depfw/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "depfw"
 version = "0.1.0"
 description = "cm"
 [dependencies]
-frameworks = ["superpowers"]
+frameworks = ["basefw"]
 [skills]
-comet = "skills/comet"
+depfw = "skills/depfw"
 [subagents]
-comet-navigator = "subagents/comet-navigator.md"
+nav-agent = "subagents/nav-agent.md"
 `)}
-	m["subagents/comet-navigator.md"] = &fstest.MapFile{Data: []byte("n")}
+	m["subagents/nav-agent.md"] = &fstest.MapFile{Data: []byte("n")}
 	c, err := Load(m)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	cm, ok := c.Framework("comet")
+	cm, ok := c.Framework("depfw")
 	if !ok {
-		t.Fatal("comet not indexed")
+		t.Fatal("depfw not indexed")
 	}
-	if cm.Subagents["comet-navigator"] != "subagents/comet-navigator.md" {
-		t.Fatalf("comet subagents = %v", cm.Subagents)
+	if cm.Subagents["nav-agent"] != "subagents/nav-agent.md" {
+		t.Fatalf("depfw subagents = %v", cm.Subagents)
 	}
-	if p, ok := c.SubagentPath("comet-navigator"); !ok || p != "subagents/comet-navigator.md" {
-		t.Fatalf("comet-navigator path = %q ok=%v", p, ok)
+	if p, ok := c.SubagentPath("nav-agent"); !ok || p != "subagents/nav-agent.md" {
+		t.Fatalf("nav-agent path = %q ok=%v", p, ok)
 	}
 }
 
 func TestLoadRejectsMissingSubagentPath(t *testing.T) {
 	m := fixtureFS()
-	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "comet"
+	m["frameworks/depfw/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "depfw"
 version = "0.1.0"
 description = "cm"
 [dependencies]
-frameworks = ["superpowers"]
+frameworks = ["basefw"]
 [skills]
-comet = "skills/comet"
+depfw = "skills/depfw"
 [subagents]
-comet-navigator = "subagents/comet-navigator.md"
+nav-agent = "subagents/nav-agent.md"
 `)}
 	_, err := Load(m)
-	if err == nil || !strings.Contains(err.Error(), "subagents/comet-navigator.md") {
+	if err == nil || !strings.Contains(err.Error(), "subagents/nav-agent.md") {
 		t.Fatalf("expected missing-subagent-path error, got %v", err)
 	}
 }
@@ -157,10 +157,10 @@ func TestSubagentContentReadsBuiltin(t *testing.T) {
 
 func TestLoadRejectsNameDirMismatch(t *testing.T) {
 	m := fixtureFS()
-	m["frameworks/comet/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "wrong"
+	m["frameworks/depfw/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "wrong"
 version = "0.1.0"
 [skills]
-comet = "skills/comet"
+depfw = "skills/depfw"
 `)}
 	_, err := Load(m)
 	if err == nil || !strings.Contains(err.Error(), "name") {

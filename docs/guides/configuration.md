@@ -122,7 +122,7 @@ digest = "sha256:<64 hex>"         # REQUIRED for remote:; verified before any w
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `source` | string | **yes** | `builtin:` ships `onto-reviewer`, `onto-explorer`, `comet-navigator`; `local:` → `homonto/subagents/<name>.md`; `remote:` → pinned archive |
+| `source` | string | **yes** | `builtin:` ships `onto-reviewer`, `onto-explorer`, `onto-implementer`, `onto-skeptic`; `local:` → `homonto/subagents/<name>.md`; `remote:` → pinned archive |
 | `scope` | string | no | `user` \| `project` (default `project`) |
 | `mode` | string | no | `link` (default) or `copy` — see [subagents](subagents.md) |
 | `targets` | array | no | default both; `codex` has no effect (the pilot is MCP-only) |
@@ -137,7 +137,9 @@ in [remote source trust](remote-source-trust.md).
 
 A framework is a bundled set of skills, commands, and subagents that install
 together, with dependency expansion. Frameworks resolve through the **builtin
-catalog only**: `onto`, `comet`, `superpowers`, `openspec`.
+catalog only**: `onto` (a second framework, `to`, is planned). The catalog
+deliberately ships nothing else — workflow frameworks other than onto/to are
+out of scope.
 
 ```toml
 [frameworks.onto]

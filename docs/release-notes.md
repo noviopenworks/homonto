@@ -14,6 +14,18 @@ This release ships **two binaries** — `homonto` (config projector) and `onto`
 archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
 `onto` framework first (`[frameworks.onto]` + `homonto apply`).
 
+### Breaking in v0.3.0 — comet, openspec, and superpowers removed
+
+The catalog now ships **only homonto-native frameworks**: `onto` today, with a
+second framework (`to`) planned — plus the loose framework-agnostic
+skills/commands (`handoff`, `grilling`), which are a separate channel and
+unaffected. A config declaring `[frameworks.comet]`, `[frameworks.openspec]`,
+`[frameworks.superpowers]`, or `builtin:comet-navigator` now fails at load
+with `catalog: unknown framework` / `unknown subagent`; remove the
+declaration (their projected links are pruned on the next apply) or vendor
+the content yourself via a `local:` framework / pinned `remote:` source.
+v0.2.2 is the last release carrying them. Rationale: ADR 0015.
+
 ### New in v0.2.2 — dirty-workspace support
 
 The close gate no longer treats every uncommitted path the same. `onto dirt

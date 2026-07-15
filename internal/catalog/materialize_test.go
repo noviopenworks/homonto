@@ -173,27 +173,36 @@ func TestMaterializeSubagentsUnknownErrors(t *testing.T) {
 // <name>.<tool>.md behind, and the adapters PREFER the variant when it exists,
 // so the stale render silently won forever, invisible to the gate and doctor.
 func TestMaterializeSubagentsRemovesStaleVariantsOnVerbatimTransition(t *testing.T) {
-	c, err := New()
+	// Every shipped subagent carries a homonto: block, so the verbatim path is
+	// pinned with a fixture framework whose agent has none.
+	m := matFS()
+	m["frameworks/sp/framework.toml"] = &fstest.MapFile{Data: []byte(`name = "sp"
+version = "0.1.0"
+[subagents]
+nav = "subagents/nav.md"
+`)}
+	m["subagents/nav.md"] = &fstest.MapFile{Data: []byte("---\ndescription: verbatim agent\n---\nbody\n")}
+	c, err := Load(m)
 	if err != nil {
-		t.Fatalf("New: %v", err)
+		t.Fatalf("load: %v", err)
 	}
 	dst := t.TempDir()
 	// Simulate the previous version's render output for an agent whose new
-	// content is verbatim. comet-navigator ships verbatim (no homonto: block).
-	for _, stale := range []string{"comet-navigator.claude.md", "comet-navigator.opencode.md"} {
+	// content is verbatim (no homonto: block).
+	for _, stale := range []string{"nav.claude.md", "nav.opencode.md"} {
 		if err := os.WriteFile(filepath.Join(dst, stale), []byte("stale render"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := c.MaterializeSubagents(dst, []string{"comet-navigator"}, nil); err != nil {
+	if err := c.MaterializeSubagents(dst, []string{"nav"}, nil); err != nil {
 		t.Fatalf("materialize: %v", err)
 	}
-	for _, stale := range []string{"comet-navigator.claude.md", "comet-navigator.opencode.md"} {
+	for _, stale := range []string{"nav.claude.md", "nav.opencode.md"} {
 		if _, err := os.Stat(filepath.Join(dst, stale)); !os.IsNotExist(err) {
 			t.Errorf("stale per-tool variant survived a verbatim transition: %s", stale)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(dst, "comet-navigator.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(dst, "nav.md")); err != nil {
 		t.Errorf("the verbatim anchor must be written: %v", err)
 	}
 }

@@ -44,13 +44,13 @@ func TestSatisfies(t *testing.T) {
 	}
 }
 
-func rangeFS(cometDeps string) fstest.MapFS {
+func rangeFS(depfwDeps string) fstest.MapFS {
 	return fstest.MapFS{
 		"version.txt":                        {Data: []byte("0.1.0")},
 		"frameworks/sp/framework.toml":       {Data: []byte("name = \"sp\"\nversion = \"0.1.0\"\n[skills]\ns = \"frameworks/sp/skills/s\"\n")},
 		"frameworks/sp/skills/s/SKILL.md":    {Data: []byte("s")},
-		"frameworks/comet/framework.toml":    {Data: []byte("name = \"comet\"\nversion = \"0.1.0\"\n[dependencies]\nframeworks = [" + cometDeps + "]\n[skills]\nc = \"frameworks/comet/skills/c\"\n")},
-		"frameworks/comet/skills/c/SKILL.md": {Data: []byte("c")},
+		"frameworks/depfw/framework.toml":    {Data: []byte("name = \"depfw\"\nversion = \"0.1.0\"\n[dependencies]\nframeworks = [" + depfwDeps + "]\n[skills]\nc = \"frameworks/depfw/skills/c\"\n")},
+		"frameworks/depfw/skills/c/SKILL.md": {Data: []byte("c")},
 	}
 }
 

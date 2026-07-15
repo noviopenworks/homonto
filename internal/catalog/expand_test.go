@@ -43,20 +43,20 @@ func graphFS(deps map[string][]string, skills, commands map[string][]string) fst
 }
 
 func TestExpandTransitiveAndDedup(t *testing.T) {
-	// comet -> superpowers, openspec; superpowers and openspec share "shared".
+	// depfw -> basefw, specfw; basefw and specfw share "shared".
 	c, err := Load(graphFS(
-		map[string][]string{"comet": {"superpowers", "openspec"}},
+		map[string][]string{"depfw": {"basefw", "specfw"}},
 		map[string][]string{
-			"comet":       {"comet-open"},
-			"superpowers": {"brainstorming", "shared"},
-			"openspec":    {"openspec-new", "shared"},
+			"depfw":  {"depfw-open"},
+			"basefw": {"base-skill", "shared"},
+			"specfw": {"specfw-new", "shared"},
 		},
 		nil,
 	))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	got, err := c.Expand([]string{"comet"})
+	got, err := c.Expand([]string{"depfw"})
 	if err != nil {
 		t.Fatalf("expand: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestExpandTransitiveAndDedup(t *testing.T) {
 	for _, e := range got {
 		names = append(names, e.Name)
 	}
-	want := []string{"brainstorming", "comet-open", "openspec-new", "shared"}
+	want := []string{"base-skill", "depfw-open", "shared", "specfw-new"}
 	if strings.Join(names, ",") != strings.Join(want, ",") {
 		t.Fatalf("expanded (sorted, deduped) = %v, want %v", names, want)
 	}
@@ -90,18 +90,18 @@ func TestExpandDetectsCycle(t *testing.T) {
 
 func TestExpandCommandsTransitiveAndDedup(t *testing.T) {
 	c, err := Load(graphFS(
-		map[string][]string{"comet": {"superpowers", "openspec"}},
-		map[string][]string{"comet": {"s"}, "superpowers": {"s"}, "openspec": {"s"}},
+		map[string][]string{"depfw": {"basefw", "specfw"}},
+		map[string][]string{"depfw": {"s"}, "basefw": {"s"}, "specfw": {"s"}},
 		map[string][]string{
-			"comet":       {"comet-cmd"},
-			"superpowers": {"brainstorm-cmd", "shared-cmd"},
-			"openspec":    {"openspec-cmd", "shared-cmd"},
+			"depfw":  {"depfw-cmd"},
+			"basefw": {"brainstorm-cmd", "shared-cmd"},
+			"specfw": {"specfw-cmd", "shared-cmd"},
 		},
 	))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	got, err := c.ExpandCommands([]string{"comet"})
+	got, err := c.ExpandCommands([]string{"depfw"})
 	if err != nil {
 		t.Fatalf("expand commands: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestExpandCommandsTransitiveAndDedup(t *testing.T) {
 	for _, e := range got {
 		names = append(names, e.Name)
 	}
-	want := []string{"brainstorm-cmd", "comet-cmd", "openspec-cmd", "shared-cmd"}
+	want := []string{"brainstorm-cmd", "depfw-cmd", "shared-cmd", "specfw-cmd"}
 	if strings.Join(names, ",") != strings.Join(want, ",") {
 		t.Fatalf("expanded commands = %v, want %v", names, want)
 	}
@@ -134,20 +134,20 @@ func TestExpandSubagentsIncludesFrameworkSubagent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	got, err := c.ExpandSubagents([]string{"comet"})
+	got, err := c.ExpandSubagents([]string{"onto"})
 	if err != nil {
 		t.Fatalf("expand: %v", err)
 	}
 	found := false
 	for _, e := range got {
-		if e.Name == "comet-navigator" {
+		if e.Name == "onto-explorer" {
 			found = true
-			if e.Framework != "comet" {
-				t.Errorf("comet-navigator framework = %q, want comet", e.Framework)
+			if e.Framework != "onto" {
+				t.Errorf("onto-explorer framework = %q, want onto", e.Framework)
 			}
 		}
 	}
 	if !found {
-		t.Fatal("comet-navigator not returned by ExpandSubagents([comet])")
+		t.Fatal("onto-explorer not returned by ExpandSubagents([onto])")
 	}
 }

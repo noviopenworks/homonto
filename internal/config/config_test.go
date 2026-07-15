@@ -26,8 +26,8 @@ scope = "project"
 source = "local:graphify"
 scope = "project"
 
-[skills.comet]
-source = "builtin:comet"
+[skills.demo-skill]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
@@ -108,7 +108,7 @@ func TestLoad(t *testing.T) {
 		t.Fatalf("skill graphify source = %q", got)
 	}
 	claudeSkills := c.SkillEntriesForTool("claude")
-	if len(claudeSkills) != 2 || claudeSkills[0].Name != "comet" || claudeSkills[1].Name != "graphify" {
+	if len(claudeSkills) != 2 || claudeSkills[0].Name != "demo-skill" || claudeSkills[1].Name != "graphify" {
 		t.Fatalf("claude skill entries = %#v", claudeSkills)
 	}
 	opencodeSkills := c.SkillEntriesForTool("opencode")
@@ -1010,8 +1010,8 @@ func loadTOML(t *testing.T, body string) *Config {
 
 func TestExpandedSkillsIncludeFrameworkAndDeps(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet]
-source = "builtin:comet"
+[frameworks.onto]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
@@ -1032,8 +1032,8 @@ effort = "low"
 	for _, e := range got {
 		byName[e.Name] = e
 	}
-	// A comet skill, a superpowers dep skill, and an openspec dep skill.
-	for _, want := range []string{"comet-open", "brainstorming", "openspec-explore"} {
+	// Three of the framework's own skills (onto is self-contained, no deps).
+	for _, want := range []string{"onto-open", "onto-build", "onto-no-slop"} {
 		e, ok := byName[want]
 		if !ok {
 			t.Fatalf("expanded set missing %q; got %v", want, keysOf(byName))
@@ -1058,8 +1058,8 @@ func keysOf(m map[string]NamedResource) []string {
 
 func TestExpandedSkillsTargetFiltering(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet]
-source = "builtin:comet"
+[frameworks.onto]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
@@ -1077,19 +1077,19 @@ effort = "low"
 		t.Fatalf("expand: %v", err)
 	}
 	if len(got) != 0 {
-		t.Fatalf("comet targets claude only; opencode should get no skills, got %v", got)
+		t.Fatalf("onto targets claude only; opencode should get no skills, got %v", got)
 	}
 }
 
 func TestExpandedSkillsCollisionWithExplicit(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet]
-source = "builtin:comet"
+[frameworks.onto]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
-[skills.comet-open]
-source = "builtin:comet-open"
+[skills.onto-open]
+source = "builtin:onto-open"
 scope = "user"
 targets = ["claude"]
 
@@ -1103,25 +1103,25 @@ model = "haiku"
 effort = "low"
 `)
 	_, err := c.ExpandedSkillEntriesForTool("claude")
-	if err == nil || !strings.Contains(err.Error(), "comet-open") {
-		t.Fatalf("expected collision error naming comet-open, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "onto-open") {
+		t.Fatalf("expected collision error naming onto-open, got %v", err)
 	}
 }
 
 // TestExpandedSkillsFrameworkVsFrameworkConflict reproduces the reviewer's
 // framework-vs-framework collision path: two frameworks both expand
-// "comet-open" (and the rest of the comet catalog) via the REAL embedded
+// "onto-open" (and the rest of the onto catalog) via the REAL embedded
 // catalog, but with different scope, so the second framework's declaration
 // conflicts with the first's. ExpandedSkillEntriesForTool must error.
 func TestExpandedSkillsFrameworkVsFrameworkConflict(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet_a]
-source = "builtin:comet"
+[frameworks.onto_a]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
-[frameworks.comet_b]
-source = "builtin:comet"
+[frameworks.onto_b]
+source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
@@ -1138,24 +1138,24 @@ effort = "low"
 	if err == nil {
 		t.Fatal("expected conflict error for two frameworks expanding the same skill with different scope, got nil")
 	}
-	if !strings.Contains(err.Error(), "comet-open") && !strings.Contains(err.Error(), "comet_b") {
+	if !strings.Contains(err.Error(), "onto-open") && !strings.Contains(err.Error(), "onto_b") {
 		t.Fatalf("error does not name the conflicting skill or framework: %v", err)
 	}
 }
 
 // TestExpandedSkillsSameFrameworkDeclDedup reproduces the reviewer's
 // same-skill-same-declaration dedup path: two frameworks both expand
-// "comet-open" via the REAL embedded catalog, with IDENTICAL scope and
+// "onto-open" via the REAL embedded catalog, with IDENTICAL scope and
 // targets, so they should collapse into one entry with no error.
 func TestExpandedSkillsSameFrameworkDeclDedup(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet_a]
-source = "builtin:comet"
+[frameworks.onto_a]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
-[frameworks.comet_b]
-source = "builtin:comet"
+[frameworks.onto_b]
+source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
@@ -1174,12 +1174,12 @@ effort = "low"
 	}
 	count := 0
 	for _, e := range got {
-		if e.Name == "comet-open" {
+		if e.Name == "onto-open" {
 			count++
 		}
 	}
 	if count != 1 {
-		t.Fatalf("comet-open should appear exactly once (deduped), got %d occurrences in %v", count, got)
+		t.Fatalf("onto-open should appear exactly once (deduped), got %d occurrences in %v", count, got)
 	}
 }
 
@@ -1261,12 +1261,25 @@ targets = ["claude"]
 	}
 }
 
-// The framework loop must not crash or invent commands when the real framework
-// declares no [commands] table: only explicit commands survive.
+// The framework loop must not crash or invent commands when a framework
+// declares no [commands] table: only explicit commands survive. No builtin
+// framework is commandless (onto ships commands), so this uses a local:
+// skills-only framework root.
 func TestExpandedCommandsFrameworkWithoutCommandsNoOps(t *testing.T) {
-	c := loadTOML(t, `
-[frameworks.comet]
-source = "builtin:comet"
+	dir := t.TempDir()
+	fwRoot := filepath.Join(dir, "skillsonly")
+	if err := os.MkdirAll(filepath.Join(fwRoot, "skills", "sk"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fwRoot, "framework.toml"), []byte("name = \"skillsonly\"\nversion = \"0.1.0\"\n[skills]\nsk = \"skills/sk\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fwRoot, "skills", "sk", "SKILL.md"), []byte("sk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body := `
+[frameworks.skillsonly]
+source = "local:skillsonly"
 scope = "user"
 targets = ["claude"]
 
@@ -1274,7 +1287,14 @@ targets = ["claude"]
 source = "builtin:example-command"
 scope = "user"
 targets = ["claude"]
-`+validModelsBothTools())
+` + validModelsBothTools()
+	if err := os.WriteFile(filepath.Join(dir, "homonto.toml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(filepath.Join(dir, "homonto.toml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
 
 	got, err := c.ExpandedCommandEntriesForTool("claude")
 	if err != nil {
@@ -1311,8 +1331,8 @@ targets = ["claude"]
 
 func TestExpandedSubagentsFrameworkInheritsScopeTargets(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet]
-source = "builtin:comet"
+[frameworks.onto]
+source = "builtin:onto"
 scope = "project"
 targets = ["claude", "opencode"]
 `+validModelsBothTools())
@@ -1323,31 +1343,31 @@ targets = ["claude", "opencode"]
 	}
 	var nav *NamedResource
 	for i := range got {
-		if got[i].Name == "comet-navigator" {
+		if got[i].Name == "onto-explorer" {
 			nav = &got[i]
 		}
 	}
 	if nav == nil {
-		t.Fatal("comet-navigator not expanded for claude")
+		t.Fatal("onto-explorer not expanded for claude")
 	}
-	if nav.Resource.Scope != "project" || nav.Resource.Source != "builtin:comet-navigator" {
-		t.Fatalf("comet-navigator inherited wrong scope/source: %+v", nav.Resource)
+	if nav.Resource.Scope != "project" || nav.Resource.Source != "builtin:onto-explorer" {
+		t.Fatalf("onto-explorer inherited wrong scope/source: %+v", nav.Resource)
 	}
 }
 
 func TestExpandedSubagentsExplicitVsFrameworkCollision(t *testing.T) {
 	c := loadTOML(t, `
-[frameworks.comet]
-source = "builtin:comet"
+[frameworks.onto]
+source = "builtin:onto"
 scope = "project"
 
-[subagents.comet-navigator]
-source = "builtin:comet-navigator"
+[subagents.onto-explorer]
+source = "builtin:onto-explorer"
 scope = "user"
 `+validModelsBothTools())
 
 	if _, err := c.ExpandedSubagentEntriesForTool("claude"); err == nil {
-		t.Fatal("expected collision error: comet-navigator declared explicitly and by framework")
+		t.Fatal("expected collision error: onto-explorer declared explicitly and by framework")
 	}
 }
 

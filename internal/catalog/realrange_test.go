@@ -1,23 +1,34 @@
 package catalog
 
-import "testing"
+import (
+	"io/fs"
+	"testing"
 
-// TestNew_RealCatalogWithRangedDepsLoads proves the embedded production catalog
-// (where comet declares superpowers@>=0.1.0, openspec@>=0.1.0) loads clean.
-func TestNew_RealCatalogWithRangedDepsLoads(t *testing.T) {
-	c, err := New()
+	embedded "github.com/noviopenworks/homonto/catalog"
+)
+
+// TestNew_CatalogShipsOnlyOnto pins the shipped-framework surface: the
+// embedded catalog carries exactly the onto framework (plus loose,
+// framework-agnostic skills/commands indexed separately). comet, openspec,
+// and superpowers were removed deliberately — a framework reappearing here
+// is a packaging regression, not a feature. (Ranged-dep and capability
+// mechanics keep their fstest coverage in version_test.go and
+// capabilities_test.go; no shipped framework exercises them anymore.)
+func TestNew_CatalogShipsOnlyOnto(t *testing.T) {
+	if _, err := New(); err != nil {
+		t.Fatalf("embedded catalog failed to load: %v", err)
+	}
+	entries, err := fs.ReadDir(embedded.FS, "frameworks")
 	if err != nil {
-		t.Fatalf("real catalog with ranged deps failed to load: %v", err)
+		t.Fatalf("reading embedded frameworks dir: %v", err)
 	}
-	fw, ok := c.Framework("comet")
-	if !ok {
-		t.Fatal("comet framework missing")
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
 	}
-	// Dependencies key on name (constraint stripped) for the graph.
-	if len(fw.Dependencies) != 2 {
-		t.Errorf("comet deps = %v, want [superpowers openspec] names", fw.Dependencies)
-	}
-	if fw.DependencyConstraints["superpowers"] != ">=0.1.0" {
-		t.Errorf("comet superpowers constraint = %q, want >=0.1.0", fw.DependencyConstraints["superpowers"])
+	if len(names) != 1 || names[0] != "onto" {
+		t.Errorf("shipped frameworks = %v, want exactly [onto]", names)
 	}
 }
