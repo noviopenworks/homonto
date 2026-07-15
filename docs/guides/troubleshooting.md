@@ -116,7 +116,7 @@ committing. It refuses to overwrite an existing config without `--force`.
 **`onto new`/`advance`/`close` refuse to run.** The mutating commands require
 the onto framework to be installed *by homonto* (`[frameworks.onto]` +
 `homonto apply`). The read-only commands (`status`, `state`, `gate`, `scale`,
-`graph`, `handoff`, `doctor`, `version`) always work.
+`graph`, `handoff`, `dirt`, `doctor`, `version`) always work.
 
 **`advance` fails.** The error names the gate: a missing artifact for the
 current phase, an unset evidence token (e.g. `isolation` before build), an
@@ -128,6 +128,13 @@ Run `onto gate <change>` to see the pending decision(s) and the exact
 `verify.result == pass`; `close.merged == true` (run `onto merge-deltas`);
 guides resolved (full workflow); every `deps` entry archived; worktree clean;
 archive target not already present.
+
+**"dirty worktree blocks close."** The error already lists the first few
+offending paths; `onto dirt <change>` shows all of them, classified. Paths
+under *another* change's `docs/changes/<other>/` never block (they are that
+change's obligation) — what blocks is this change's own uncommitted artifacts
+and any uncommitted source path. Commit what belongs to the change, stash or
+attribute what doesn't, and retry.
 
 **Repeated verify failures.** `onto set verify-result fail` increments a
 counter; at ≥3 rounds `onto doctor` reports it — the workflow expects a human

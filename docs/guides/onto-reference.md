@@ -81,9 +81,13 @@ below passes, in this order:
      `worktree`), so planning/build work is never committed unisolated — **and**
      the change is **not in a dependency cycle** (no valid build order exists).
    - **Leaving `verify`** (verify→close): `verify.result == pass`.
-7. **Worktree cleanliness:** entering `close` is **blocked** by a dirty
-   worktree *and* blocked if cleanliness can't even be determined (no git).
-   Every other transition only **warns** on a dirty worktree and proceeds.
+7. **Worktree cleanliness:** entering `close` is **blocked** by uncommitted
+   paths — except paths under *another* change's `docs/changes/<other>/`,
+   which are that change's own close gate's obligation (parallel changes must
+   not deadlock each other) — *and* blocked if cleanliness can't even be
+   determined (no git). The refusal lists the offending paths; `onto dirt
+   <change>` shows the full classified list. Every other transition only
+   **warns** on a dirty worktree and proceeds.
 
 A failed gate exits non-zero and leaves the recorded phase unchanged.
 
@@ -150,6 +154,7 @@ hand):
 | `onto gate <change> [--json]` | the pending evidence gate(s), as a structured schema (question, header, options, the `onto set` that records the answer) a skill renders as a dialog |
 | `onto scale <change> [--json] [--set]` | the verification level derived from the measured `base_ref..HEAD` diff (non-test files, changed lines); `--set` records it via `verify-scale` |
 | `onto graph [--json] [--check]` | the change dependency graph (`{nodes, edges, cycles}`); `--check` exits non-zero on a cycle — the same cycles the build gate rejects |
+| `onto dirt [change] [--json]` | every uncommitted path in the worktree, classified against the change: `own` (the change's own `docs/changes/<name>/` artifacts), `change` (another change's docs — tolerated by the close gate), `source` (everything else — blocks close). The deterministic half of the dirty-workspace protocol: the binary owns what-is-dirty and what-blocks-close; attribution of `source` dirt stays with the agent |
 | `onto handoff <change> [--write]` | a compact recovery context pack (identity, phase, pending gate, artifact excerpts + a content hash) for continuing after a context compaction; `--write` persists it under `docs/changes/<name>/.onto/handoff/` |
 | `onto doctor [--quiet]` | workspace health across layout, state, phase/artifact match, dependency resolution, and archive layout; non-zero on any finding. Also reports **version skew** between the `onto` binary and the homonto that installed the framework (fix with `homonto update`), and ≥3 failed verify rounds. `--quiet` prints nothing and signals via exit code only — the hook primitive (see [enforcement](enforcement.md)) |
 | `onto version` | the release-stamped version |

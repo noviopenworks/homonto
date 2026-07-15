@@ -108,7 +108,11 @@ one interruption-prone step (mv + archived flag) is a single commit.
    no duplicated requirements, scenario structure intact) and section 4
    (guides resolved, no dangling references). Findings block the archive.
 5. **Archive via the binary**: `onto close <name>` — it verifies the change is
-   at `close`, all `deps` are archived, and the worktree is clean, then moves
+   at `close`, all `deps` are archived, and the worktree is clean (other
+   active changes' uncommitted `docs/changes/<other>/` files are tolerated —
+   they gate their own close; if it refuses, `onto dirt <name>` lists what
+   blocks and the dispatcher's `dirty-workspace.md` says how to attribute
+   it — never launder unrelated dirt into the archive commit), then moves
    `docs/changes/<name>` to `docs/changes/archive/YYYY-MM-DD-<name>` and sets
    `archived: true` in one operation. Commit the move (`git add -A && git
    commit`). `phase` stays `close`; "done" is derived-only, never written. The

@@ -68,6 +68,12 @@ finish the interrupted archive (the moved workspace still needs its
 If a change carries an `abandoned:` reason it is retired — never list it
 as active.
 
+While discovering, also check the git tree: if `onto dirt <active-change>
+--json` reports anything, follow `references/dirty-workspace.md` **before**
+executing the routed phase — the binary classifies (`own`/`change`/`source`,
+and what blocks close); you attribute `source` dirt to an owner. Never build
+on top of, revert, or commit-around uncommitted work you haven't attributed.
+
 | Active changes | User input | Behavior |
 |---|---|---|
 | None | description given | Route to `onto-open` with the description |

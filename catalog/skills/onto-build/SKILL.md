@@ -21,13 +21,16 @@ one small, verified task at a time.
   planning step. Tell the user the build is stopped at plan-ready; once they
   confirm continuing, `onto set build-pause <name> clear`, choose the execution
   config, and proceed.
-- On resume (fresh session, context loss): run `git status` FIRST. A dirty
-  tree is an interrupted task's partial work — reconcile it before
-  continuing: reset it, or fold it into the unchecked task explicitly
-  (state which in the task's commit). Never build on top of partial edits
-  unknowingly — the same rule the subagent protocol enforces for fresh
-  agents. Then find the first unchecked task in `tasks.md`/`plan.md` and
-  continue from there; never redo committed tasks.
+- On resume (fresh session, context loss): run `onto dirt <name> --json`
+  FIRST (falling back to `git status` on an old binary). Dirt classified
+  `source` or `own` is usually an interrupted task's partial work —
+  reconcile it before continuing per the dispatcher's
+  `onto/references/dirty-workspace.md`: reset it, or fold it into the
+  unchecked task explicitly (state which in the task's commit); dirt
+  classified `change` belongs to another change — leave it. Never build on
+  top of partial edits unknowingly — the same rule the subagent protocol
+  enforces for fresh agents. Then find the first unchecked task in
+  `tasks.md`/`plan.md` and continue from there; never redo committed tasks.
 
 ## Steps
 

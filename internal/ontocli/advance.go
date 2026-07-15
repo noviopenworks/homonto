@@ -3,26 +3,12 @@ package ontocli
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/ontostate"
 	"github.com/spf13/cobra"
 )
-
-// worktreeDirty reports whether the git worktree rooted at root has any
-// uncommitted changes (dirty), and whether that could be determined at all
-// (determinable). determinable is false when git is unavailable or root is
-// not inside a git repository; callers must treat that as "unknown," not as
-// clean.
-func worktreeDirty(root string) (dirty bool, determinable bool) {
-	out, err := exec.Command("git", "-C", root, "status", "--porcelain").Output()
-	if err != nil {
-		return false, false
-	}
-	return strings.TrimSpace(string(out)) != "", true
-}
 
 // advanceCmd builds the "onto advance <change>" subcommand: it enforces
 // gate(dir), validates the change name, and only then attempts a single
@@ -128,16 +114,19 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 		}
 	}
 
-	dirty, determinable := worktreeDirty(root)
+	dirt, determinable := worktreeDirt(root, name)
 	if next == "close" {
-		if dirty {
-			return fmt.Errorf("onto advance: dirty worktree blocks close")
-		}
 		if !determinable {
 			return fmt.Errorf("onto advance: cannot verify worktree is clean; refusing close")
 		}
-	} else if dirty {
-		fmt.Fprintln(cmd.ErrOrStderr(), "warning: worktree has uncommitted changes")
+		// Only this change's own artifacts and source paths block; another
+		// active change's uncommitted docs are its own close gate's problem —
+		// parallel changes must not deadlock each other (see worktreeDirt).
+		if blocking := blockingDirt(dirt); len(blocking) > 0 {
+			return fmt.Errorf("onto advance: dirty worktree blocks close: %s", dirtGateError(blocking, len(dirt), name))
+		}
+	} else if len(dirt) > 0 {
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: worktree has %d uncommitted path(s) (run `onto dirt %s` to classify)\n", len(dirt), name)
 	}
 
 	old := st.Phase

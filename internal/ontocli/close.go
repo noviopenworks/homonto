@@ -112,12 +112,14 @@ func runClose(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto close: unresolved dependencies: %v", unresolved)
 	}
 
-	dirty, determinable := worktreeDirty(root)
-	if dirty {
-		return fmt.Errorf("onto close: dirty worktree blocks close")
-	}
+	dirt, determinable := worktreeDirt(root, name)
 	if !determinable {
 		return fmt.Errorf("onto close: cannot verify worktree is clean; refusing close")
+	}
+	// Same carve-out as advance-to-close: another change's uncommitted docs
+	// are gated by that change's own close, not this one's.
+	if blocking := blockingDirt(dirt); len(blocking) > 0 {
+		return fmt.Errorf("onto close: dirty worktree blocks close: %s", dirtGateError(blocking, len(dirt), name))
 	}
 
 	archiveDir := filepath.Join(root, "docs", "changes", "archive", time.Now().Format("2006-01-02")+"-"+name)

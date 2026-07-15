@@ -14,6 +14,18 @@ This release ships **two binaries** — `homonto` (config projector) and `onto`
 archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
 `onto` framework first (`[frameworks.onto]` + `homonto apply`).
 
+### New in v0.2.2 — dirty-workspace support
+
+The close gate no longer treats every uncommitted path the same. `onto dirt
+[change] [--json]` classifies each dirty path — `own` (the change's own
+`docs/changes/<name>/` evidence), `change` (another change's docs), `source`
+(everything else) — and `onto advance`/`onto close` now tolerate `change`
+dirt: one change's in-flight artifacts no longer deadlock another change's
+close. What does block (`own` + `source`) is listed right in the refusal
+instead of a bare "dirty worktree blocks close". The onto skills gained a
+dirty-workspace protocol (attribution stays with the agent; the binary owns
+classification).
+
 ### Fixed in v0.2.1 — deep-review findings
 
 **onto's terminal states are now actually terminal.** An abandoned change could
