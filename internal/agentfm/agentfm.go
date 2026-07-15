@@ -7,7 +7,7 @@
 // block, and Render() emits each tool's native dialect:
 //
 //	---
-//	name: code-reviewer
+//	name: onto-reviewer
 //	description: ...
 //	mode: subagent
 //	homonto:

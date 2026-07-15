@@ -110,7 +110,7 @@ like every other resource; there is no imperative "agents" command group.
 
 ```toml
 [subagents.review]
-source = "builtin:code-reviewer"   # builtin:<name> | local:<name> | remote:<url>
+source = "builtin:onto-reviewer"   # builtin:<name> | local:<name> | remote:<url>
 scope  = "project"                 # user | project (default: project)
 mode   = "copy"                    # link (symlink, default) | copy (managed file)
 targets = ["claude", "opencode"]   # optional; default both
@@ -122,7 +122,7 @@ digest = "sha256:<64 hex>"         # REQUIRED for remote:; verified before any w
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `source` | string | **yes** | `builtin:` ships `code-reviewer`, `codebase-explorer`, `comet-navigator`; `local:` → `homonto/subagents/<name>.md`; `remote:` → pinned archive |
+| `source` | string | **yes** | `builtin:` ships `onto-reviewer`, `onto-explorer`, `comet-navigator`; `local:` → `homonto/subagents/<name>.md`; `remote:` → pinned archive |
 | `scope` | string | no | `user` \| `project` (default `project`) |
 | `mode` | string | no | `link` (default) or `copy` — see [subagents](subagents.md) |
 | `targets` | array | no | default both; `codex` has no effect (the pilot is MCP-only) |
@@ -279,7 +279,7 @@ source = "builtin:onto"
 scope = "project"
 
 [subagents.review]
-source = "builtin:code-reviewer"
+source = "builtin:onto-reviewer"
 scope = "project"
 mode = "copy"
 

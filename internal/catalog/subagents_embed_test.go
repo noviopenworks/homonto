@@ -8,7 +8,7 @@ import (
 )
 
 func TestSubagentsEmbedded(t *testing.T) {
-	for _, name := range []string{"code-reviewer", "codebase-explorer", "comet-navigator"} {
+	for _, name := range []string{"onto-reviewer", "onto-explorer", "comet-navigator"} {
 		p := "subagents/" + name + ".md"
 		if _, err := fs.Stat(embedded.FS, p); err != nil {
 			t.Errorf("%s not embedded: %v", p, err)

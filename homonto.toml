@@ -6,12 +6,12 @@ scope = "project"
 source = "builtin:example-command"
 scope = "project"
 
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 
-[subagents.codebase-explorer]
-source = "builtin:codebase-explorer"
+[subagents.onto-explorer]
+source = "builtin:onto-explorer"
 scope = "project"
 
 [models.claude.architectural]

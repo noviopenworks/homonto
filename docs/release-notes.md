@@ -14,6 +14,24 @@ This release ships **two binaries** — `homonto` (config projector) and `onto`
 archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
 `onto` framework first (`[frameworks.onto]` + `homonto apply`).
 
+### Breaking in v0.1.17 — onto's subagents are namespaced `onto-*`
+
+Every resource the onto framework ships is now namespaced, so installing onto
+cannot collide with another framework's — or your own — agent of the same
+generic name. Two builtin subagents were renamed:
+
+| Old | New |
+|---|---|
+| `builtin:code-reviewer` | `builtin:onto-reviewer` |
+| `builtin:codebase-explorer` | `builtin:onto-explorer` |
+
+If you declare either **standalone** in a `[subagents.*]` table, update its
+`source` — an old name now fails at load with `catalog: unknown subagent`. If
+you install them via `[frameworks.onto]`, apply handles the rename for you: the
+old agent files are pruned and the new ones projected. (The onto skills, its
+commands, and the `onto` dispatcher itself are unchanged; `onto` is the
+namespace root.)
+
 ### Fixed in v0.1.17 — subagents now track their model routes
 
 Changing a `[models.<tool>.<role>]` route did **not** re-render the subagents

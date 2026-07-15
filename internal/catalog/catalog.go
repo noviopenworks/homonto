@@ -187,7 +187,7 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 	// Loose (framework-agnostic) subagents: every "<n>.md" file directly under
 	// subagents/ is indexed by base name, independent of any framework
 	// declaring it. Unlike skills/commands, subagents are designed to include
-	// standalone builtins (e.g. code-reviewer, codebase-explorer) referenced
+	// standalone builtins (e.g. onto-reviewer, onto-explorer) referenced
 	// directly by an explicit [subagents.X] config entry with no framework
 	// home. The subagents/ directory is optional — fixtures/tests that don't
 	// exercise subagents need not provide one.

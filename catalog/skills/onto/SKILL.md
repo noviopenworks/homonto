@@ -268,8 +268,8 @@ edits but spawns nothing.
 
 | Subagent | Role/model | Capabilities | Use it to |
 |---|---|---|---|
-| `codebase-explorer` | trivial (fast/cheap) | read-only, no shell, no spawn | answer "how does X work / where does behavior live" — conclusions, not dumps |
-| `code-reviewer` | architectural (judgment) | read-only, keeps bash, no spawn | review a diff for correctness, security, contract, clarity — ranked |
+| `onto-explorer` | trivial (fast/cheap) | read-only, no shell, no spawn | answer "how does X work / where does behavior live" — conclusions, not dumps |
+| `onto-reviewer` | architectural (judgment) | read-only, keeps bash, no spawn | review a diff for correctness, security, contract, clarity — ranked |
 | `onto-implementer` | coding | **edits**, bash, no spawn | execute one bite-sized task from a precise spec, return a diff |
 
 This is a division of labor: the orchestrator (this session) plans, judges scope,
@@ -289,12 +289,12 @@ the subagent rather than doing it inline — and when the questions are
 question) instead of serially:
 
 - **design / grounding** — split a broad "how does this subsystem work" into
-  several targeted `codebase-explorer` tasks and run them at once; synthesize the
+  several targeted `onto-explorer` tasks and run them at once; synthesize the
   returns into the design.
-- **build** — after each task's edits, hand the diff to `code-reviewer`.
+- **build** — after each task's edits, hand the diff to `onto-reviewer`.
   Independent tasks that touch **non-overlapping** files can be explored/reviewed
   in parallel; tasks that share files stay serial (one commit each, in order).
-- **verify** — delegate the change-wide diff audit to `code-reviewer` while you
+- **verify** — delegate the change-wide diff audit to `onto-reviewer` while you
   check spec scenarios.
 
 The orchestrator (this session) still owns every edit, commit, and the `onto`

@@ -1,5 +1,5 @@
 ---
-name: codebase-explorer
+name: onto-explorer
 description: Use to answer questions about how a codebase works or to locate where behavior lives, by reading across many files and returning conclusions rather than raw dumps.
 mode: subagent
 # Neutral capability intent — homonto renders it into each tool's native fields:

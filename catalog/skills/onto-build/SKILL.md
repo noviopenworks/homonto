@@ -113,13 +113,13 @@ the final task. If no real dispatch capability exists, fall back to
    uncommitted.
 
 **Delegate review and parallelize independent tasks.** The reviewer role above
-is the `code-reviewer` subagent shipped with onto — hand it each task's diff (and
+is the `onto-reviewer` subagent shipped with onto — hand it each task's diff (and
 always the final diff), rather than reviewing inline. Its findings are input to
 **evaluate, not execute**: apply `references/receiving-review.md` — verify each
 finding against the code before acting, and push back with evidence on a wrong
 one instead of implementing it. When `plan.md` marks tasks
 whose file sets **do not overlap**, dispatch their reviews (and any needed
-`codebase-explorer` investigation) **concurrently** — one subagent invocation per
+`onto-explorer` investigation) **concurrently** — one subagent invocation per
 task — via the Task tool (OpenCode runs each as a child session; Claude Code runs
 parallel Task agents when you send several calls in one turn), so the reviews
 proceed in parallel while you implement the next task. Tasks that share files

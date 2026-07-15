@@ -106,10 +106,10 @@ state for work that is stopped rather than completed.
 delegate to (don't also declare them in a top-level `[subagents.*]` table —
 the names collide):
 
-- **`codebase-explorer`** — read-only; reads across many files to answer "how
+- **`onto-explorer`** — read-only; reads across many files to answer "how
   does X work / where does behavior live", returning conclusions, not dumps.
   Used for grounding in open/design. Runs on the `trivial` model route.
-- **`code-reviewer`** — read-only; reviews a diff for correctness, security,
+- **`onto-reviewer`** — read-only; reviews a diff for correctness, security,
   contract, and clarity, ranked by severity. Used per task in build and across
   the diff in verify. Runs on the `architectural` route.
 - **`onto-implementer`** — edit-capable executor on the `coding` route.

@@ -9,11 +9,11 @@ import (
 
 // opencodeSubagentTOML installs a builtin subagent for OpenCode, whose rendered
 // frontmatter is stamped with the [models.opencode.*] routes. %s is the
-// architectural model — the route the code-reviewer's `role: architectural`
+// architectural model — the route the onto-reviewer's `role: architectural`
 // resolves through.
 const opencodeSubagentTOML = `
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["opencode"]
 
@@ -66,7 +66,7 @@ func TestApplyRerendersSubagentsWhenModelRouteChanges(t *testing.T) {
 	if err := e.Apply(mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
-	if got := renderedModel(t, e, "code-reviewer.opencode.md"); got != "first/model-a" {
+	if got := renderedModel(t, e, "onto-reviewer.opencode.md"); got != "first/model-a" {
 		t.Fatalf("after first apply: rendered model = %q, want %q", got, "first/model-a")
 	}
 
@@ -76,7 +76,7 @@ func TestApplyRerendersSubagentsWhenModelRouteChanges(t *testing.T) {
 	if err := e2.Apply(mustPlan(t, e2)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
-	if got := renderedModel(t, e2, "code-reviewer.opencode.md"); got != "second/model-b" {
+	if got := renderedModel(t, e2, "onto-reviewer.opencode.md"); got != "second/model-b" {
 		t.Fatalf("after route change: rendered model = %q, want %q (agent frozen at the old route)", got, "second/model-b")
 	}
 }
@@ -96,7 +96,7 @@ func TestApplyRestoresDeletedRenderedVariant(t *testing.T) {
 	if err := e.Apply(mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
-	variant := filepath.Join(e.SubagentDir(), "code-reviewer.opencode.md")
+	variant := filepath.Join(e.SubagentDir(), "onto-reviewer.opencode.md")
 	if err := os.Remove(variant); err != nil {
 		t.Fatal(err)
 	}

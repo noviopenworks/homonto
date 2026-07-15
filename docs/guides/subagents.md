@@ -7,8 +7,8 @@ homonto projects into each tool's agent directory. Subagents are declared as
 is no separate imperative "agents" command group.
 
 ```toml
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"   # builtin | local | remote
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"   # builtin | local | remote
 scope  = "project"                 # user | project (default: project)
 mode   = "link"                    # link (default) | copy
 targets = ["claude", "opencode"]   # optional; default: both
@@ -18,7 +18,7 @@ targets = ["claude", "opencode"]   # optional; default: both
 
 | `source` | Resolves from | Notes |
 |---|---|---|
-| `builtin:<name>` | the bundled catalog (materialized at `.homonto/catalog/subagents/<name>.md`) | ships: `code-reviewer`, `codebase-explorer`, `comet-navigator` |
+| `builtin:<name>` | the bundled catalog (materialized at `.homonto/catalog/subagents/<name>.md`) | ships: `onto-reviewer`, `onto-explorer`, `comet-navigator` |
 | `local:<name>` | `homonto/subagents/<name>.md` (next to `homonto.toml`) | your own agent files |
 | `remote:<url>` | a fetched, verified, cached archive | **requires a `digest` pin** — see below |
 
@@ -71,7 +71,7 @@ the agent format:
 
 ```markdown
 ---
-name: code-reviewer
+name: onto-reviewer
 description: Use to review a diff or set of changes for correctness, security,
   and clarity before merging; reports findings ranked by severity.
 mode: subagent
@@ -126,7 +126,7 @@ are stripped from the rendered files. Subagents without a `homonto:` block are
 projected verbatim (a plain symlink to the shared file), unchanged.
 
 The onto framework's three specialists show the division of labor: read-only
-`codebase-explorer` (trivial model) and `code-reviewer` (architectural), and
+`onto-explorer` (trivial model) and `onto-reviewer` (architectural), and
 the edit-capable `onto-implementer` (coding) — all `spawn: []` (they never
 nest).
 

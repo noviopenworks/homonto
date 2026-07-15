@@ -1,5 +1,5 @@
 ---
-name: code-reviewer
+name: onto-reviewer
 description: Use to review a diff or set of changes for correctness, security, and clarity before merging; reports findings ranked by severity.
 mode: subagent
 # Neutral capability intent — homonto renders it into each tool's native fields:

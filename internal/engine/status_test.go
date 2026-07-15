@@ -392,8 +392,8 @@ func TestDoctorReportsLinkedCommand(t *testing.T) {
 }
 
 const subagentBothToolsTOML = `
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude", "opencode"]
 
@@ -429,11 +429,11 @@ func TestDoctorReportsLinkedSubagent(t *testing.T) {
 	}
 
 	joined := strings.Join(e.Doctor(), "\n")
-	if !strings.Contains(joined, `ok: subagent "code-reviewer" linked (claude)`) {
-		t.Fatalf("doctor did not report code-reviewer linked for claude; got %s", joined)
+	if !strings.Contains(joined, `ok: subagent "onto-reviewer" linked (claude)`) {
+		t.Fatalf("doctor did not report onto-reviewer linked for claude; got %s", joined)
 	}
-	if !strings.Contains(joined, `ok: subagent "code-reviewer" linked (opencode)`) {
-		t.Fatalf("doctor did not report code-reviewer linked for opencode; got %s", joined)
+	if !strings.Contains(joined, `ok: subagent "onto-reviewer" linked (opencode)`) {
+		t.Fatalf("doctor did not report onto-reviewer linked for opencode; got %s", joined)
 	}
 }
 

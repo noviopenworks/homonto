@@ -110,14 +110,14 @@ func TestMaterializeSubagentsWritesFileVerbatim(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	dst := t.TempDir()
-	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}, nil); err != nil {
+	if err := c.MaterializeSubagents(dst, []string{"onto-reviewer"}, nil); err != nil {
 		t.Fatalf("materialize: %v", err)
 	}
-	got, err := os.ReadFile(filepath.Join(dst, "code-reviewer.md"))
+	got, err := os.ReadFile(filepath.Join(dst, "onto-reviewer.md"))
 	if err != nil {
 		t.Fatalf("read materialized: %v", err)
 	}
-	sp, _ := c.SubagentPath("code-reviewer")
+	sp, _ := c.SubagentPath("onto-reviewer")
 	want, err := fs.ReadFile(embedded.FS, sp)
 	if err != nil {
 		t.Fatalf("read source: %v", err)
@@ -127,7 +127,7 @@ func TestMaterializeSubagentsWritesFileVerbatim(t *testing.T) {
 	}
 }
 
-// code-reviewer ships a neutral homonto: access block, so materialize must also
+// onto-reviewer ships a neutral homonto: access block, so materialize must also
 // emit per-tool frontmatter variants: Claude gets a tools: allowlist, OpenCode a
 // permission: map. The two cannot share one file (OpenCode rejects a string
 // tools:), so each adapter links its own variant.
@@ -137,17 +137,17 @@ func TestMaterializeSubagentsWritesPerToolVariants(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	dst := t.TempDir()
-	if err := c.MaterializeSubagents(dst, []string{"code-reviewer"}, nil); err != nil {
+	if err := c.MaterializeSubagents(dst, []string{"onto-reviewer"}, nil); err != nil {
 		t.Fatalf("materialize: %v", err)
 	}
-	claude, err := os.ReadFile(filepath.Join(dst, "code-reviewer.claude.md"))
+	claude, err := os.ReadFile(filepath.Join(dst, "onto-reviewer.claude.md"))
 	if err != nil {
 		t.Fatalf("claude variant not written: %v", err)
 	}
 	if !bytes.Contains(claude, []byte("tools: Read, Grep, Glob")) || bytes.Contains(claude, []byte("permission:")) {
 		t.Errorf("claude variant should carry a tools allowlist and no permission block:\n%s", claude)
 	}
-	oc, err := os.ReadFile(filepath.Join(dst, "code-reviewer.opencode.md"))
+	oc, err := os.ReadFile(filepath.Join(dst, "onto-reviewer.opencode.md"))
 	if err != nil {
 		t.Fatalf("opencode variant not written: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestSubagentFilesMatchesWhatMaterializeWrites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	for _, name := range []string{"code-reviewer", "onto"} {
+	for _, name := range []string{"onto-reviewer", "onto"} {
 		dst := t.TempDir()
 		if err := c.MaterializeSubagents(dst, []string{name}, nil); err != nil {
 			t.Fatalf("materialize %s: %v", name, err)

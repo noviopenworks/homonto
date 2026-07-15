@@ -8,7 +8,7 @@ capability profile (homonto renders it per tool):
 
 - **`onto-implementer`** — the worker. Edits on the coding-tier model, runs
   build/test, **spawns nothing**. Hand it one task's spec; it returns a diff.
-- **`code-reviewer`** — the reviewer. Read-only on the architectural-tier model.
+- **`onto-reviewer`** — the reviewer. Read-only on the architectural-tier model.
 
 **A subagent never prompts the user.** If the implementer hits an ambiguous spec
 it **returns** the question (a `Questions:` section), and the coordinator asks the
@@ -90,7 +90,7 @@ and is not worth the speed.
 ## Reviewer agents
 
 After any task marked `(risk: high)` — and always after the final task —
-dispatch `code-reviewer` with the diff range and the design section (it is
+dispatch `onto-reviewer` with the diff range and the design section (it is
 already prompted to **find faults** — correctness, spec conformance, missed edge
 cases — never to approve). CRITICAL findings are fixed via a re-dispatched
 `onto-implementer` before the next task (the coordinator still never implements);

@@ -44,8 +44,8 @@ effort = "f"
 `
 
 const subagentTOML = `
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude"]
 
@@ -320,7 +320,7 @@ func TestApplyMaterializesBuiltinSubagent(t *testing.T) {
 	if err := e.Apply(mustPlan(t, e)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	p := filepath.Join(e.SubagentDir(), "code-reviewer.md")
+	p := filepath.Join(e.SubagentDir(), "onto-reviewer.md")
 	if _, err := os.Stat(p); err != nil {
 		t.Fatalf("subagent not materialized: %v", err)
 	}
@@ -331,7 +331,7 @@ func TestApplyRematerializesWhenSubagentFileMissing(t *testing.T) {
 	if err := e.Apply(mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
-	p := filepath.Join(e.SubagentDir(), "code-reviewer.md")
+	p := filepath.Join(e.SubagentDir(), "onto-reviewer.md")
 	if err := os.Remove(p); err != nil {
 		t.Fatalf("remove: %v", err)
 	}

@@ -1,6 +1,6 @@
 # Receiving review — verify before you implement
 
-When the `code-reviewer` subagent (or a human, or a PR reviewer) returns
+When the `onto-reviewer` subagent (or a human, or a PR reviewer) returns
 findings, they are **input to evaluate, not instructions to execute**. A review
 loop that implements every finding blindly ships the reviewer's mistakes too —
 and since v0.1.3 wired the reviewer into build, this discipline is load-bearing.

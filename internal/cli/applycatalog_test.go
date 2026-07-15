@@ -9,7 +9,7 @@ import (
 
 // catalogSubagentTOML installs a builtin subagent whose rendered frontmatter is
 // stamped from the [models.opencode.*] routes. %MODEL% is the architectural
-// route that `code-reviewer`'s `role: architectural` resolves through.
+// route that `onto-reviewer`'s `role: architectural` resolves through.
 //
 // [settings.opencode].model is pinned explicitly, which wins over the
 // route-derived default — so changing the architectural route re-stamps the
@@ -17,8 +17,8 @@ import (
 // exists for: the projection plan comes out empty, and an empty plan is exactly
 // what the CLI used to treat as "nothing to do".
 const catalogSubagentTOML = `
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["opencode"]
 
@@ -48,7 +48,7 @@ func writeCatalogConfig(t *testing.T, repo, model string) string {
 
 func renderedVariant(t *testing.T, repo string) string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(repo, ".homonto", "catalog", "subagents", "code-reviewer.opencode.md"))
+	data, err := os.ReadFile(filepath.Join(repo, ".homonto", "catalog", "subagents", "onto-reviewer.opencode.md"))
 	if err != nil {
 		t.Fatalf("read rendered variant: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestApplyRematerializesCatalogWhenProjectionPlanIsEmpty(t *testing.T) {
 		if out, err := runCmd(t, home, "", "apply", "--yes", "--config", cfg); err != nil {
 			t.Fatalf("first apply: %v\n%s", err, out)
 		}
-		variant := filepath.Join(repo, ".homonto", "catalog", "subagents", "code-reviewer.opencode.md")
+		variant := filepath.Join(repo, ".homonto", "catalog", "subagents", "onto-reviewer.opencode.md")
 		if err := os.Remove(variant); err != nil {
 			t.Fatal(err)
 		}
