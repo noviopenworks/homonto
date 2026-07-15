@@ -90,23 +90,34 @@ func (c RenderContext) specFor(name, role string) ModelSpec {
 	return c.Roles[role].merge(c.Overrides[name])
 }
 
-// claudeAliases are the model aliases Claude Code accepts. The bracketed variant
-// syntax (`opus[1m]`) is documented for aliases ONLY — a full model id such as
-// claude-opus-4-8 takes no variant — so the render must know which it has.
-var claudeAliases = map[string]bool{
+// ClaudeAliases are the model aliases Claude Code accepts. The bracketed
+// variant syntax (`opus[1m]`) is documented for aliases ONLY — a full model id
+// such as claude-opus-4-8 takes no variant. This is the single source of truth;
+// config validation references it rather than keeping a copy that could drift.
+var ClaudeAliases = map[string]bool{
 	"opus": true, "sonnet": true, "haiku": true, "fable": true, "opusplan": true,
+}
+
+// ClaudeEffortLevels are the values Claude Code's agent `effort:` field
+// accepts. Single source of truth, same as ClaudeAliases.
+var ClaudeEffortLevels = map[string]bool{
+	"low": true, "medium": true, "high": true, "xhigh": true, "max": true,
 }
 
 // claudeModel renders the Claude `model:` value. Claude has no separate variant
 // field: a variant is expressed by bracketing the alias. A variant on a
-// non-alias model is dropped here rather than emitted as a value Claude would
-// reject — config validation rejects that combination up front, so this is the
-// belt to that braces.
-func claudeModel(s ModelSpec) string {
-	if s.Model == "" || s.Variant == "" || !claudeAliases[s.Model] {
-		return s.Model
+// non-alias model has no Claude spelling at all — that is an ERROR here, never
+// a silent drop: the merged (tier + override) model isn't known until render,
+// so load-time validation cannot always catch the combination, and silently
+// dropping the variant would ship an agent quietly weaker than declared.
+func claudeModel(s ModelSpec) (string, error) {
+	if s.Model == "" || s.Variant == "" {
+		return s.Model, nil
 	}
-	return s.Model + "[" + s.Variant + "]"
+	if !ClaudeAliases[s.Model] {
+		return "", fmt.Errorf("variant %q needs a model alias (opus, sonnet, haiku, fable, opusplan) — Claude takes no variant on the full model id %q", s.Variant, s.Model)
+	}
+	return s.Model + "[" + s.Variant + "]", nil
 }
 
 // NeedsTransform reports whether content carries a `homonto:` frontmatter block
@@ -169,7 +180,11 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 		extra = append(extra, "mode: subagent", "tools: "+claudeTools(h))
 		// Claude carries the variant inside the model string (`opus[1m]`) and
 		// effort as its own frontmatter field.
-		if m := claudeModel(spec); m != "" {
+		m, merr := claudeModel(spec)
+		if merr != nil {
+			return nil, fmt.Errorf("agentfm: agent %q: %w", name, merr)
+		}
+		if m != "" {
 			extra = append(extra, "model: "+m)
 		}
 		if spec.Effort != "" {

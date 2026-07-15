@@ -167,6 +167,37 @@ func TestMaterializeSubagentsUnknownErrors(t *testing.T) {
 	}
 }
 
+// A catalog upgrade can turn a rendered agent verbatim (homonto: block
+// removed). Materialize used to remove stale per-tool variants only in the
+// primary-agent (render-nil) branch — a verbatim transition left the old
+// <name>.<tool>.md behind, and the adapters PREFER the variant when it exists,
+// so the stale render silently won forever, invisible to the gate and doctor.
+func TestMaterializeSubagentsRemovesStaleVariantsOnVerbatimTransition(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	dst := t.TempDir()
+	// Simulate the previous version's render output for an agent whose new
+	// content is verbatim. comet-navigator ships verbatim (no homonto: block).
+	for _, stale := range []string{"comet-navigator.claude.md", "comet-navigator.opencode.md"} {
+		if err := os.WriteFile(filepath.Join(dst, stale), []byte("stale render"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := c.MaterializeSubagents(dst, []string{"comet-navigator"}, nil); err != nil {
+		t.Fatalf("materialize: %v", err)
+	}
+	for _, stale := range []string{"comet-navigator.claude.md", "comet-navigator.opencode.md"} {
+		if _, err := os.Stat(filepath.Join(dst, stale)); !os.IsNotExist(err) {
+			t.Errorf("stale per-tool variant survived a verbatim transition: %s", stale)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dst, "comet-navigator.md")); err != nil {
+		t.Errorf("the verbatim anchor must be written: %v", err)
+	}
+}
+
 // TestSubagentFilesMatchesWhatMaterializeWrites keeps the engine's version gate
 // honest: it skips materializing when every file SubagentFiles names is already
 // present, so any drift between the two would either re-materialize forever or

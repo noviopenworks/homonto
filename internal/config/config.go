@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/noviopenworks/homonto/internal/agentfm"
 	cat "github.com/noviopenworks/homonto/internal/catalog"
 	"github.com/noviopenworks/homonto/internal/remote"
 	toml "github.com/pelletier/go-toml/v2"
@@ -605,12 +606,18 @@ func migrate(c *Config) {
 			if mode == "" && strings.HasPrefix(ag.Source, "builtin:") {
 				mode = "copy" // builtin agents had no linkable path — copy-only
 			}
+			// [agents.X] wins the DECLARATION, but a same-named [subagents.X]'s
+			// per-tool model blocks are tuning, which [agents.X] has no syntax
+			// for — carry them over instead of silently deleting them.
+			prev := c.Subagents[name]
 			c.Subagents[name] = Subagent{
-				Source:  ag.Source,
-				Scope:   "user", // agents installed at user scope
-				Mode:    mode,
-				Version: ag.Version,
-				Targets: ag.Targets,
+				Source:   ag.Source,
+				Scope:    "user", // agents installed at user scope
+				Mode:     mode,
+				Version:  ag.Version,
+				Targets:  ag.Targets,
+				Claude:   prev.Claude,
+				OpenCode: prev.OpenCode,
 			}
 		}
 		c.Agents = nil
@@ -621,11 +628,28 @@ func migrate(c *Config) {
 func normalize(c *Config) {
 	// Subagents default to project scope when omitted (skills and commands still
 	// require an explicit scope). Normalize before validation so downstream
-	// projection sees a concrete scope.
+	// projection sees a concrete scope. Model-route values are whitespace-trimmed
+	// here too: validation used to trim while the render did not, so
+	// `model = "opus "` passed the alias check and then missed the alias map at
+	// render, silently dropping its variant.
+	trimRoute := func(r ModelRoute) ModelRoute {
+		return ModelRoute{
+			Model:   strings.TrimSpace(r.Model),
+			Effort:  strings.TrimSpace(r.Effort),
+			Variant: strings.TrimSpace(r.Variant),
+		}
+	}
 	for name, r := range c.Subagents {
 		if r.Scope == "" {
 			r.Scope = "project"
-			c.Subagents[name] = r
+		}
+		r.Claude = trimRoute(r.Claude)
+		r.OpenCode = trimRoute(r.OpenCode)
+		c.Subagents[name] = r
+	}
+	for _, routes := range []map[string]ModelRoute{c.Models.Claude, c.Models.OpenCode} {
+		for level, r := range routes {
+			routes[level] = trimRoute(r)
 		}
 	}
 }
@@ -837,7 +861,7 @@ func validateResources(kind string, resources map[string]Resource) error {
 		}
 		for _, target := range r.Targets {
 			if !isResourceTarget(target) {
-				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
 			}
 		}
 	}
@@ -883,7 +907,7 @@ func validateFrameworkResources(resources map[string]Resource) error {
 			}
 			for _, target := range r.Targets {
 				if !isResourceTarget(target) {
-					return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
+					return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
 				}
 			}
 			continue
@@ -898,7 +922,7 @@ func validateFrameworkResources(resources map[string]Resource) error {
 		}
 		for _, target := range r.Targets {
 			if !isResourceTarget(target) {
-				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
 			}
 		}
 	}
@@ -954,7 +978,7 @@ func validateSubagents(subagents map[string]Subagent) error {
 		}
 		for _, target := range s.Targets {
 			if !isResourceTarget(target) {
-				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", label, target)
+				return fmt.Errorf("parse config: %s targets unknown tool %q; valid targets are \"claude\" and \"opencode\"", label, target)
 			}
 		}
 		switch s.Mode {
@@ -1022,17 +1046,13 @@ func validateSource(label, source, digest string, allowRemote bool) error {
 	return nil
 }
 
-// claudeEffortLevels are the values Claude Code's agent `effort:` field accepts.
-var claudeEffortLevels = map[string]bool{
-	"low": true, "medium": true, "high": true, "xhigh": true, "max": true,
-}
-
-// claudeModelAliases are the aliases Claude Code accepts for `model:`. The
-// bracketed variant form (`opus[1m]`) is documented for aliases ONLY, so a
-// variant on a full model id is a config error rather than a silent drop.
-var claudeModelAliases = map[string]bool{
-	"opus": true, "sonnet": true, "haiku": true, "fable": true, "opusplan": true,
-}
+// The Claude effort/alias sets live in agentfm (the render is what actually
+// speaks Claude's dialect); validation references the same maps so the two
+// can never drift apart.
+var (
+	claudeEffortLevels = agentfm.ClaudeEffortLevels
+	claudeModelAliases = agentfm.ClaudeAliases
+)
 
 // validateModelSpec checks one model/variant/effort triple against what `tool`
 // can actually express, naming label as the offender. `model` is required only
@@ -1093,60 +1113,108 @@ func validateModels(c *Config) error {
 	return validateSubagentOverrides(c)
 }
 
-// validateSubagentOverrides checks each [subagents.<name>.<tool>] block against
-// the tier it merges into, and rejects two declarations of one builtin that
-// disagree — materialization writes a single rendered file per catalog name, so
-// conflicting overrides on the same source have no coherent answer.
+// validateSubagentOverrides checks every [subagents.<name>.<tool>] block —
+// deliberately IGNORING the entry's targets, because the engine applies
+// overrides unconditionally when it renders both tools' variants. The previous
+// version iterated TargetsOrAll(), which let an untargeted tool's block skip
+// validation entirely and stamp any value straight into a live agent file.
+//
+// It also rejects the two silent-no-op classes the review found: an override on
+// a local:/remote: source (that content is never rendered, so the override can
+// never apply), and a tune-only entry naming an agent that is not installed (a
+// typo'd name would otherwise validate, plan, and apply clean while retuning
+// nothing).
 func validateSubagentOverrides(c *Config) error {
-	seen := map[string]map[string]ModelRoute{} // catalog name -> tool -> override
 	names := make([]string, 0, len(c.Subagents))
 	for name := range c.Subagents {
 		names = append(names, name)
 	}
 	sort.Strings(names) // deterministic: the same config must fail on the same offender
+
+	// The installed builtin agents, by catalog name — what a tune-only entry
+	// must resolve against. Computed lazily: only configs that carry overrides
+	// pay for the framework expansion.
+	var installed map[string]bool
+	installedBuiltins := func() (map[string]bool, error) {
+		if installed != nil {
+			return installed, nil
+		}
+		installed = map[string]bool{}
+		for _, tool := range []string{"claude", "opencode"} {
+			entries, err := c.ExpandedSubagentEntriesForTool(tool)
+			if err != nil {
+				return nil, err
+			}
+			for _, e := range entries {
+				if cat, ok := SubagentCatalogName(e.Resource.Source); ok {
+					installed[cat] = true
+				}
+			}
+		}
+		return installed, nil
+	}
+
+	seen := map[string]map[string]struct {
+		entry string
+		ov    ModelRoute
+	}{} // catalog name -> tool -> first override seen
 	for _, name := range names {
 		sa := c.Subagents[name]
-		for _, tool := range sa.TargetsOrAll() {
-			if tool != "claude" && tool != "opencode" {
-				continue
+		hasOverride := sa.Claude != (ModelRoute{}) || sa.OpenCode != (ModelRoute{})
+		if !hasOverride {
+			continue
+		}
+
+		// Resolve the catalog name the override applies to. Overrides only make
+		// sense for builtin (catalog-rendered) agents: local:/remote: content is
+		// projected verbatim, so an override there would be accepted and then
+		// silently discarded — reject it instead.
+		cat := name
+		if !sa.IsTuneOnly() {
+			var ok bool
+			if cat, ok = SubagentCatalogName(sa.Source); !ok {
+				return fmt.Errorf("parse config: subagents.%s declares a model override, but its source %q is not builtin: — local:/remote: agents are projected verbatim and never rendered, so the override could never apply", name, sa.Source)
 			}
+		} else {
+			known, err := installedBuiltins()
+			if err != nil {
+				return err
+			}
+			if !known[cat] {
+				return fmt.Errorf("parse config: subagents.%s tunes an agent that is not installed — no framework or [subagents.*] declaration provides builtin:%s (typo?)", name, cat)
+			}
+		}
+
+		for _, tool := range []string{"claude", "opencode"} {
 			ov := sa.ModelOverrideFor(tool)
-			if ov.Model == "" && ov.Variant == "" && ov.Effort == "" {
+			if ov == (ModelRoute{}) {
 				continue
 			}
 			label := "subagents." + name + "." + tool
-			// A variant with no model of its own brackets the TIER's model, so
-			// check the merged result, not the fragment.
-			merged := ov
-			if merged.Model == "" {
-				for _, level := range []string{"architectural", "coding", "trivial"} {
-					if r, ok := modelRouteFor(c.Models, tool, level); ok && r.Model != "" {
-						merged.Model = r.Model
-						break
-					}
-				}
-			}
-			if err := validateModelSpec(tool, label, merged, false); err != nil {
+			// Validate the fragment itself. A variant whose model comes from the
+			// tier cannot be judged here — which tier depends on the agent's
+			// frontmatter role, known only at render — so agentfm.Render errors
+			// loudly on an unrenderable merged combination instead.
+			if err := validateModelSpec(tool, label, ov, false); err != nil {
 				return err
 			}
-			// Conflicts are judged per CATALOG name: one builtin renders one file.
-			// A tune-only entry names that catalog agent directly; a declared one
-			// carries it in its builtin: source. local:/remote: content is not
-			// catalog-keyed, so it cannot collide this way.
-			cat := name
-			if !sa.IsTuneOnly() {
-				var ok bool
-				if cat, ok = SubagentCatalogName(sa.Source); !ok {
-					continue
-				}
-			}
+			// Conflicts are judged per CATALOG name: one builtin renders one
+			// file, so two entries' overrides for it must agree or the winner
+			// would be map-iteration luck (a different render — and a different
+			// materialize fingerprint — every run).
 			if seen[cat] == nil {
-				seen[cat] = map[string]ModelRoute{}
+				seen[cat] = map[string]struct {
+					entry string
+					ov    ModelRoute
+				}{}
 			}
-			if prev, dup := seen[cat][tool]; dup && prev != ov {
-				return fmt.Errorf("parse config: subagents.%s.%s conflicts with another declaration of %q — one builtin renders one file, so its overrides must agree", name, tool, sa.Source)
+			if prev, dup := seen[cat][tool]; dup && prev.ov != ov {
+				return fmt.Errorf("parse config: subagents.%s.%s conflicts with subagents.%s.%s — one builtin (%s) renders one file, so its overrides must agree", name, tool, prev.entry, tool, cat)
 			}
-			seen[cat][tool] = ov
+			seen[cat][tool] = struct {
+				entry string
+				ov    ModelRoute
+			}{name, ov}
 		}
 	}
 	return nil

@@ -317,11 +317,69 @@ func (e *Engine) materializeCatalog() error {
 	if err := p.cl.MaterializeSubagents(e.SubagentCatalogRoot, p.subagents, p.renderCtx); err != nil {
 		return err
 	}
+	// GC: the Materialize* calls only ever WRITE declared names, so a renamed or
+	// de-declared resource left its old files in the catalog roots forever. That
+	// litter was live ammunition, not just clutter — the adapters prefer a
+	// <name>.<tool>.md variant when one exists, so a years-old render could win
+	// over a future same-named verbatim agent.
+	if err := gcCatalogRoots(e.CatalogRoot, e.CommandCatalogRoot, e.SubagentCatalogRoot, p); err != nil {
+		return err
+	}
 	e.State.SetCatalogVersion(p.cl.Version())
 	e.State.SetSubagentRenderFingerprint(p.fingerprint)
 	// Save immediately so a later adapter failure still records the completed
 	// materialization.
 	return e.State.Save(e.StateDir)
+}
+
+// gcCatalogRoots removes entries in the materialized catalog roots that no
+// declared resource owns: skill directories outside p.skills, command files
+// outside p.commands, and subagent files (anchor or per-tool variant) whose
+// base name is outside p.subagents. The roots are control-plane directories
+// under .homonto — generated content, never user-authored — so pruning the
+// undeclared is safe by construction.
+func gcCatalogRoots(skillRoot, cmdRoot, subRoot string, p *catalogPlan) error {
+	inSet := func(names []string) map[string]bool {
+		m := make(map[string]bool, len(names))
+		for _, n := range names {
+			m[n] = true
+		}
+		return m
+	}
+	skills, cmds, subs := inSet(p.skills), inSet(p.commands), inSet(p.subagents)
+
+	if entries, err := os.ReadDir(skillRoot); err == nil {
+		for _, e := range entries {
+			if !skills[e.Name()] {
+				if err := os.RemoveAll(filepath.Join(skillRoot, e.Name())); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	if entries, err := os.ReadDir(cmdRoot); err == nil {
+		for _, e := range entries {
+			name := strings.TrimSuffix(e.Name(), ".md")
+			if !cmds[name] {
+				if err := os.RemoveAll(filepath.Join(cmdRoot, e.Name())); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	if entries, err := os.ReadDir(subRoot); err == nil {
+		for _, e := range entries {
+			// Owner name: strip .md, then an optional per-tool variant suffix.
+			name := strings.TrimSuffix(e.Name(), ".md")
+			name = strings.TrimSuffix(strings.TrimSuffix(name, ".claude"), ".opencode")
+			if !subs[name] {
+				if err := os.RemoveAll(filepath.Join(subRoot, e.Name())); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // catalogPlan is what a materialize would extract, and whether it need bother.
@@ -412,12 +470,23 @@ func (e *Engine) planCatalog() (*catalogPlan, error) {
 	}
 	sort.Strings(subNames)
 
-	// Gate on the catalog version AND the render fingerprint: a subagent's
-	// rendered frontmatter is derived from config (the model routes), so the
-	// version alone would freeze rendered agents at their old model whenever a
-	// route changes — the catalog is identical, only the config moved.
+	// Gate on every input the materialized bytes are derived from:
+	//   - the base catalog version (an embedded-catalog upgrade),
+	//   - the render fingerprint (model routes + per-subagent overrides — a
+	//     route change would otherwise freeze rendered agents at their old
+	//     model while the catalog stayed identical),
+	//   - the CONTENT fingerprint (the source bytes of every declared resource
+	//     — a local: framework's edited skill or a remote: framework's repinned
+	//     digest changes overlay content while the version stays put; a
+	//     version-only gate served the stale bytes forever, and repinning is
+	//     how a patched resource ships),
+	//   - and the presence of every file a materialize would write.
 	renderCtx := e.subagentRenderContext()
-	fingerprint := subagentRenderFingerprint(renderCtx)
+	contentFP, err := cl.ContentFingerprint(skillNames, cmdNames, subNames)
+	if err != nil {
+		return nil, err
+	}
+	fingerprint := subagentRenderFingerprint(renderCtx) + ":" + contentFP
 	upToDate := e.State.CatalogVersionRecorded() == cl.Version() &&
 		e.State.SubagentRenderFingerprintRecorded() == fingerprint &&
 		allSkillDirsExist(e.CatalogRoot, skillNames) &&

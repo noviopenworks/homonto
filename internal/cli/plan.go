@@ -41,8 +41,14 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// So is stale catalog content: a catalog file's symlink target is
+			// name-based, so a re-render (model route changed) or re-extract
+			// (framework content changed, rendered file deleted) moves no
+			// projected value. Apply acts on it — plan must say so, or
+			// automation gating apply on plan's exit code never repairs it.
+			catalogStale := e.CatalogNeedsMaterialize()
 			if exitFlag {
-				setExitCode(planExitCode(plan.HasChanges(sets), len(repins)))
+				setExitCode(planExitCode(plan.HasChanges(sets), len(repins), catalogStale))
 			}
 			if output == "json" {
 				return planJSON(cmd, sets, repins, e.Warnings)
@@ -53,6 +59,10 @@ func planCmd() *cobra.Command {
 			if !plan.HasChanges(sets) && len(repins) == 0 {
 				if err := coverageComplete(e.Warnings); err != nil {
 					return err
+				}
+				if catalogStale {
+					cmd.Println("No projection changes; catalog re-materialization pending (run `homonto apply`).")
+					return nil
 				}
 				cmd.Println("No changes. Everything up to date.")
 				return nil

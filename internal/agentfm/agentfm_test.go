@@ -126,6 +126,25 @@ func TestRender_UnknownTool(t *testing.T) {
 	}
 }
 
+// A variant on a non-alias model has no Claude spelling. The render used to
+// silently drop the variant — shipping an agent quietly weaker than declared —
+// on the assumption that config validation had rejected the combination, which
+// it cannot always do: the merged model (tier + override) is only known here.
+func TestRenderClaude_VariantOnFullModelIDErrors(t *testing.T) {
+	ctx := RenderContext{Roles: map[string]ModelSpec{
+		"architectural": {Model: "claude-opus-4-8", Variant: "1m"},
+	}}
+	_, err := Render("onto-reviewer", []byte(readOnlyReviewer), "claude", ctx)
+	if err == nil || !strings.Contains(err.Error(), "alias") {
+		t.Fatalf("a variant on a full model id must error loudly, got: %v", err)
+	}
+	// The same spec renders fine for OpenCode, where variant is a real field.
+	oc, err := Render("onto-reviewer", []byte(readOnlyReviewer), "opencode", ctx)
+	if err != nil || !strings.Contains(string(oc), "variant: 1m") {
+		t.Fatalf("opencode must carry the variant as its own field, got err=%v:\n%s", err, oc)
+	}
+}
+
 func TestRender_MissingRouteOmitsModel(t *testing.T) {
 	// role set but the render context has no model for it → no model line.
 	out := func() string {

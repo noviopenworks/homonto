@@ -1,6 +1,7 @@
 package opencode
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -445,9 +446,15 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 		_, inState := st.Get("opencode", "plugin."+src)
 		if !pl.IsEnabled() {
 			// Disabled: ensure absent, but only ever remove a homonto-managed
-			// entry (recorded in state). A present-but-unmanaged source, or one
-			// already absent, is left untouched — no change emitted.
-			if arrayHas(doc, "plugin", src) && inState {
+			// entry (recorded in state). A present-but-unmanaged source is left
+			// untouched. The delete is emitted for ANY recorded entry, present on
+			// disk or not: an entry removed out of band used to emit nothing,
+			// leaving the state record orphaned — the declared loop then shielded
+			// it from the generic prune, so `status` reported "missing (deleted
+			// out of band)" forever and no apply could clear it. (Apply's delete
+			// is idempotent on an absent array element and only rewrites the doc
+			// when its bytes actually change.)
+			if inState {
 				cs.Changes = append(cs.Changes, adapter.Change{Action: "delete", Key: "plugin." + src, Old: adapter.SecretRedaction})
 			}
 			continue
@@ -684,10 +691,18 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 			}
 			st.Set("opencode", c.Key, c.New, secret.Hash(jsonutil.Canonical(mustJSON(val))))
 		case "delete":
-			if doc, err = jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin.")); err != nil {
-				return err
+			next, rerr := jsonutil.RemoveArrayElem(doc, "plugin", trim(c.Key, "plugin."))
+			if rerr != nil {
+				return rerr
 			}
-			docChanged = true
+			// Only count a real removal as a doc change: a delete that merely
+			// drops an orphaned state record (element already absent on disk)
+			// must not rewrite opencode.jsonc — a rewrite normalizes the JSONC
+			// and destroys the user's comments for nothing.
+			if !bytes.Equal(next, doc) {
+				doc = next
+				docChanged = true
+			}
 			st.Delete("opencode", c.Key)
 		default: // create | update
 			val, err := res.ResolveJSON(c.New)

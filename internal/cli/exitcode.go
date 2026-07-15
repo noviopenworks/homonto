@@ -28,8 +28,8 @@ func Execute(args []string) int {
 
 // planExitCode maps plan state to the opt-in taxonomy: 2 when there are pending
 // changes or remote repins, else 0.
-func planExitCode(hasChanges bool, repins int) int {
-	if hasChanges || repins > 0 {
+func planExitCode(hasChanges bool, repins int, catalogStale bool) int {
+	if hasChanges || repins > 0 || catalogStale {
 		return 2
 	}
 	return 0

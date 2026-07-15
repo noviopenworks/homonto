@@ -1,10 +1,13 @@
 package catalog
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/noviopenworks/homonto/internal/agentfm"
 	"github.com/noviopenworks/homonto/internal/fsutil"
@@ -114,6 +117,74 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 // so the adapter's "block present + variant absent → skip" rule holds. Each
 // adapter prefers its own variant; the shared <name>.md remains the version-gate
 // anchor and the fallback for verbatim subagents.
+// ContentFingerprint digests the SOURCE content of the named skills, commands,
+// and subagents — every byte a materialize would extract — deterministically
+// (sorted names, path+content per file, NUL-delimited).
+//
+// The engine's materialize gate needs this because the embedded catalog's
+// version.txt only identifies the BASE catalog: a `local:` framework's edited
+// skill or a `remote:` framework's repinned digest changes overlay content
+// while the version stays put, so a version-only gate served the stale bytes
+// forever ("No changes. Everything up to date.") — repinning is how a patched
+// resource ships, which made the staleness security-relevant.
+func (c *Catalog) ContentFingerprint(skills, commands, subagents []string) (string, error) {
+	h := sha256.New()
+	hashFile := func(kind string, src fs.FS, p string) error {
+		data, err := fs.ReadFile(src, p)
+		if err != nil {
+			return fmt.Errorf("catalog: fingerprint %s %q: %w", kind, p, err)
+		}
+		fmt.Fprintf(h, "%s\x00%s\x00%d\x00", kind, p, len(data))
+		h.Write(data)
+		return nil
+	}
+	for _, name := range sortedCopy(skills) {
+		sp, ok := c.skills[name]
+		if !ok {
+			return "", fmt.Errorf("catalog: unknown skill %q", name)
+		}
+		sub, err := fs.Sub(c.skillFS[name], sp)
+		if err != nil {
+			return "", fmt.Errorf("catalog: sub %q: %w", sp, err)
+		}
+		// WalkDir visits lexically, so the traversal is already deterministic.
+		err = fs.WalkDir(sub, ".", func(p string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil || d.IsDir() {
+				return walkErr
+			}
+			return hashFile("skill:"+name, sub, p)
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+	for _, name := range sortedCopy(commands) {
+		cp, ok := c.commands[name]
+		if !ok {
+			return "", fmt.Errorf("catalog: unknown command %q", name)
+		}
+		if err := hashFile("command:"+name, c.commandFS[name], cp); err != nil {
+			return "", err
+		}
+	}
+	for _, name := range sortedCopy(subagents) {
+		sp, ok := c.subagents[name]
+		if !ok {
+			return "", fmt.Errorf("catalog: unknown subagent %q", name)
+		}
+		if err := hashFile("subagent:"+name, c.subagentFS[name], sp); err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func sortedCopy(names []string) []string {
+	out := append([]string(nil), names...)
+	sort.Strings(out)
+	return out
+}
+
 // SubagentFiles returns the file names MaterializeSubagents writes for name
 // under dstRoot, given renderCtx: the shared <name>.md anchor, plus each
 // per-tool variant that renders to bytes. A primary agent yields no
@@ -163,6 +234,18 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx
 			return err
 		}
 		if !agentfm.NeedsTransform(data) {
+			// A catalog upgrade can turn a rendered agent verbatim (its homonto:
+			// block removed). Remove any stale per-tool variants: the adapters
+			// PREFER a <name>.<tool>.md when it exists, so a leftover render
+			// from the previous version would silently win over the new content
+			// forever — invisible to the gate (SubagentFiles no longer claims
+			// the variant) and to doctor (which mirrors the same preference).
+			for _, tool := range []string{"claude", "opencode"} {
+				stale := filepath.Join(dstRoot, name+"."+tool+".md")
+				if err := os.Remove(stale); err != nil && !os.IsNotExist(err) {
+					return err
+				}
+			}
 			continue
 		}
 		for _, tool := range []string{"claude", "opencode"} {

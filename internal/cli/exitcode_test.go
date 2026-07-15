@@ -7,14 +7,17 @@ import (
 )
 
 func TestPlanExitCode_Helper(t *testing.T) {
-	if got := planExitCode(true, 0); got != 2 {
+	if got := planExitCode(true, 0, false); got != 2 {
 		t.Errorf("planExitCode(pending) = %d, want 2", got)
 	}
-	if got := planExitCode(false, 0); got != 0 {
+	if got := planExitCode(false, 0, false); got != 0 {
 		t.Errorf("planExitCode(clean) = %d, want 0", got)
 	}
-	if got := planExitCode(false, 1); got != 2 {
+	if got := planExitCode(false, 1, false); got != 2 {
 		t.Errorf("planExitCode(repins) = %d, want 2", got)
+	}
+	if got := planExitCode(false, 0, true); got != 2 {
+		t.Errorf("planExitCode(stale catalog) = %d, want 2", got)
 	}
 }
 

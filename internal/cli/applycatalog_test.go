@@ -130,3 +130,38 @@ func TestApplyRematerializesCatalogWhenProjectionPlanIsEmpty(t *testing.T) {
 		}
 	})
 }
+
+// plan used to be blind to the empty-plan carve-outs apply acts on: after a
+// route change that moves no projected value, plan said "No changes. Everything
+// up to date." with exit 0 while apply re-materialized — automation gating
+// apply on plan's exit code never repaired the stale catalog.
+func TestPlanSurfacesPendingCatalogRematerialization(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	cfg := writeCatalogConfig(t, repo, "first/model-a")
+	if out, err := runCmd(t, home, "", "apply", "--yes", "--config", cfg); err != nil {
+		t.Fatalf("first apply: %v\n%s", err, out)
+	}
+
+	// Change ONLY the model route (settings.opencode.model is pinned, so no
+	// projected value moves — the plan is empty).
+	writeCatalogConfig(t, repo, "second/model-b")
+	out, err := runCmd(t, home, "", "plan", "--config", cfg)
+	if err != nil {
+		t.Fatalf("plan: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "catalog re-materialization pending") {
+		t.Fatalf("plan must surface the pending re-materialization, got:\n%s", out)
+	}
+	if code := Execute([]string{"plan", "--exit-code", "--config", cfg}); code != 2 {
+		t.Fatalf("plan --exit-code with a stale catalog = %d, want 2", code)
+	}
+
+	// After apply the catalog settles; plan must be quiet again.
+	if out, err := runCmd(t, home, "", "apply", "--yes", "--config", cfg); err != nil {
+		t.Fatalf("apply: %v\n%s", err, out)
+	}
+	if code := Execute([]string{"plan", "--exit-code", "--config", cfg}); code != 0 {
+		t.Fatalf("plan --exit-code after settling = %d, want 0", code)
+	}
+}

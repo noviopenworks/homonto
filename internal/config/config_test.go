@@ -755,10 +755,181 @@ model = "haiku"
 		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {
 			t.Fatalf("want the override's bad effort rejected, got: %v", err)
 		}
-		if err != nil && !strings.Contains(err.Error(), "subagents.onto-skeptic.claude") {
+		if !strings.Contains(err.Error(), "subagents.onto-skeptic.claude") {
 			t.Fatalf("error must name the offending override: %v", err)
 		}
 	})
+
+	// The engine applies overrides unconditionally when rendering both tools'
+	// variants, so validation must not be filtered by the entry's targets. This
+	// exact shape used to load clean and stamp `effort: banana` into the live
+	// Claude agent file.
+	t.Run("an untargeted tool's override is still validated", func(t *testing.T) {
+		err := loadDoc(t, `
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+
+[subagents.onto-skeptic]
+targets = ["opencode"]
+[subagents.onto-skeptic.claude]
+effort = "banana"
+
+[models.claude.architectural]
+model = "opus"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+[models.opencode.architectural]
+model = "a/b"
+[models.opencode.coding]
+model = "a/b"
+[models.opencode.trivial]
+model = "a/b"
+`)
+		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {
+			t.Fatalf("an override for a tool outside the entry's targets must still be validated, got: %v", err)
+		}
+	})
+
+	// A tune-only entry naming an agent nothing installs was a total silent
+	// no-op: it loaded, planned, and applied clean while retuning nothing.
+	t.Run("a tune-only typo is a load error", func(t *testing.T) {
+		err := loadDoc(t, doc("[subagents.onto-skepic.claude]\neffort = \"max\""))
+		if err == nil || !strings.Contains(err.Error(), "not installed") {
+			t.Fatalf("a tune-only entry for an unknown agent must fail naming the typo, got: %v", err)
+		}
+	})
+
+	// Overrides on local:/remote: sources were validated as if meaningful, then
+	// silently discarded — local/remote content is projected verbatim and never
+	// rendered, so the override could never apply.
+	t.Run("an override on a non-builtin source is a load error", func(t *testing.T) {
+		err := loadDoc(t, `[subagents.mine]
+source = "local:mine"
+scope = "project"
+targets = ["claude"]
+[subagents.mine.claude]
+effort = "max"
+
+[models.claude.architectural]
+model = "opus"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+`)
+		if err == nil || !strings.Contains(err.Error(), "never apply") {
+			t.Fatalf("an override on a local: source must be rejected, got: %v", err)
+		}
+	})
+}
+
+// Two entries resolving to the same builtin with conflicting overrides used to
+// be caught only when their targets overlapped; with disjoint targets the
+// winner was Go map-iteration luck — a different render (and a different
+// materialize fingerprint) every run, so apply re-materialized forever.
+func TestConflictingOverridesRejectedAcrossTargets(t *testing.T) {
+	doc := `
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+
+[subagents.a]
+source = "builtin:onto-skeptic"
+scope = "project"
+targets = ["opencode"]
+[subagents.a.claude]
+effort = "max"
+
+[subagents.b]
+source = "builtin:onto-skeptic"
+scope = "project"
+targets = ["claude"]
+[subagents.b.claude]
+effort = "low"
+
+[models.claude.architectural]
+model = "opus"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+[models.opencode.architectural]
+model = "a/b"
+[models.opencode.coding]
+model = "a/b"
+[models.opencode.trivial]
+model = "a/b"
+`
+	err := loadDoc(t, doc)
+	if err == nil || !strings.Contains(err.Error(), "must agree") {
+		t.Fatalf("conflicting overrides for one builtin must be a deterministic load error, got: %v", err)
+	}
+}
+
+// Legacy [agents.X] wins the declaration over a same-named [subagents.X], but
+// used to overwrite the whole struct — silently deleting the subagents entry's
+// per-tool tune blocks, which [agents.X] has no syntax to express.
+func TestLegacyAgentsFoldPreservesTuneBlocks(t *testing.T) {
+	c, err := loadDocCfg(t, `
+[agents.foo]
+source = "builtin:onto-skeptic"
+
+[subagents.foo.claude]
+effort = "max"
+
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+
+[models.claude.architectural]
+model = "opus"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+[models.opencode.architectural]
+model = "a/b"
+[models.opencode.coding]
+model = "a/b"
+[models.opencode.trivial]
+model = "a/b"
+`)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got := c.Subagents["foo"].Claude.Effort; got != "max" {
+		t.Fatalf("the tune block must survive the [agents.X] fold, got effort %q", got)
+	}
+}
+
+// Validation used to trim whitespace while the render did not: `model = "opus "`
+// passed the alias check, then missed the alias map at render and silently
+// dropped its variant. Values are now trimmed once, at load.
+func TestModelRouteValuesTrimmedAtLoad(t *testing.T) {
+	c, err := loadDocCfg(t, `
+[commands.review]
+source = "builtin:review"
+scope = "project"
+targets = ["claude"]
+
+[models.claude.architectural]
+model = "opus "
+variant = " 1m"
+[models.claude.coding]
+model = "sonnet"
+[models.claude.trivial]
+model = "haiku"
+`)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	r := c.Models.Claude["architectural"]
+	if r.Model != "opus" || r.Variant != "1m" {
+		t.Fatalf("route values must be trimmed at load, got model=%q variant=%q", r.Model, r.Variant)
+	}
 }
 
 func TestLoadDoesNotRequireModelsForSkillsOnly(t *testing.T) {

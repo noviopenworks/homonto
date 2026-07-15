@@ -14,6 +14,30 @@ This release ships **two binaries** — `homonto` (config projector) and `onto`
 archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
 `onto` framework first (`[frameworks.onto]` + `homonto apply`).
 
+### Fixed in v0.2.1 — deep-review findings
+
+**onto's terminal states are now actually terminal.** An abandoned change could
+archive as a success, have its evidence tokens forged via `onto set`, and merge
+its never-accepted deltas into the living specs; all three paths now refuse.
+`merge-deltas` recovers from a crash between its per-file writes instead of
+wedging the change forever; `onto scale` errors without a recorded base ref
+instead of silently measuring an empty diff as "light"; dependency resolution
+is an exact name match (dep `auth` is no longer satisfied by an archive named
+`…-refactor-auth`); a close crash can no longer leave `archived: true` at the
+original path; `doctor` skips abandoned changes and `--quiet` is now fully
+quiet.
+
+**homonto re-materializes when framework CONTENT changes.** Editing a `local:`
+framework's resources — or repinning a `remote:` framework's digest, which is
+how a patched resource ships — used to be ignored forever ("No changes"). The
+materialize gate now digests source content. Related: `plan` surfaces a pending
+re-materialization (text + `--exit-code` 2) instead of disagreeing with apply;
+renamed/de-declared resources are GC'd from `.homonto/catalog/` instead of
+lingering where the adapters' variant-preference could resurrect them; and a
+per-subagent model override is validated no matter what the entry's `targets`
+say (an unvalidated value could previously reach a live agent file), with
+conflicting overrides for one builtin now a deterministic load error.
+
 ### Breaking in v0.2.0 — `effort` and `variant` now do something
 
 They were **required by validation and projected nowhere**: homonto forced you
