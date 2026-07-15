@@ -23,6 +23,24 @@ The repository ships **two binaries**:
 | `homonto` | The deterministic installer/projector described above. |
 | `onto` | A spec-driven workflow operator: it gates a change through `open → design → build → verify → close` with evidence-based, non-skippable transitions. |
 
+## What the bundled catalog ships
+
+homonto can install content it bundles (`builtin:`), content from your repo
+(`local:`), or pinned remote archives (`remote:`). The **bundled** catalog is
+deliberately narrow — homonto ships only what it authors:
+
+- **`onto`** — the native, binary-enforced workflow framework (skills, slash
+  commands, and four specialist subagents). A second native framework, `to`,
+  is planned.
+- **Loose skills and commands** — framework-agnostic and installed
+  individually (e.g. `handoff`, `grilling`); they belong to no framework.
+
+Third-party workflow stacks are **not** bundled: as of v0.3.0 the `comet`,
+`openspec`, and `superpowers` frameworks are removed
+([ADR 0015](docs/adr/0015-ship-only-onto-frameworks.md)). Install content
+homonto doesn't author through a `local:` framework or a digest-pinned
+`remote:` source.
+
 ## Install
 
 ```bash

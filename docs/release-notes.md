@@ -128,13 +128,16 @@ finding for an OpenCode-primary agent's by-design absent Claude variant.
 
 ## Known limitations
 
-homonto is a young, deliberately narrow tool. For the v0.2 beta line:
+homonto is a young, deliberately narrow tool. For the v0.3 beta line:
 
 - **OpenCode JSONC comments are not preserved** on any apply that writes
   `opencode.jsonc` (the file is rewritten as normalized JSON). Accepted for beta.
 - **`import` is a narrow Claude MCP bootstrap** — Claude global MCP servers only,
   best-effort secret redaction, no skills/plugins/settings/OpenCode import.
-- **Frameworks resolve from the bundled catalog only.** Remote sources exist for
+- **The bundled catalog ships only homonto-native content**: the `onto`
+  framework (a second, `to`, is planned) plus the loose framework-agnostic
+  skills/commands. Frameworks resolve from the bundled catalog or a `local:`
+  path only — there are no remote *framework* sources. Remote sources exist for
   **subagents** only, and require a `digest = "sha256:…"` pin; homonto never
   re-resolves a pin to newer content on its own.
 - **Two full adapters:** Claude Code and OpenCode. **Codex** is an opt-in pilot

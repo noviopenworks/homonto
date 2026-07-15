@@ -23,9 +23,9 @@ Verify:
 
 ```console
 $ homonto version
-homonto v0.2.0
+homonto v0.3.0
 $ onto version
-onto v0.2.0
+onto v0.3.0
 ```
 
 ## 2. homonto in five commands
@@ -152,8 +152,10 @@ below is the `full` workflow — the `fix`/`tweak` presets run a reduced path):
 | `build` | + `plan.md` **and every `tasks.md` box checked** |
 | `verify` | + `verification.md`, `verify-result = pass` |
 
-`verify → close` also blocks on a dirty worktree. Close has its own evidence
-gates:
+`verify → close` also blocks on uncommitted work — this change's own artifacts
+or any source path, but *not* another change's in-flight docs (`onto dirt
+<change>` classifies each path and the refusal names what blocks). Close has
+its own evidence gates:
 
 ```console
 $ onto close add-search          # error: change not merged (close.merged=false)
@@ -165,7 +167,7 @@ $ onto close add-search          # archived to docs/changes/archive/2026-07-14-a
 `close` also refuses while any dependency is unresolved (see `onto graph`).
 Terminal states: archived via `onto close` (success) and `onto abandon`
 (failure). Read-only inspectors: `onto status`, `doctor`, `state --json`,
-`gate --json`, `scale`, `graph`, `handoff`.
+`gate --json`, `scale`, `graph`, `handoff`, `dirt`.
 
 Concepts and the skills side: [the onto workflow](onto-workflow.md). Every
 command and gate: [onto reference](onto-reference.md).

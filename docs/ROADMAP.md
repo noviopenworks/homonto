@@ -1,16 +1,35 @@
-# Development plan — v0.1.8 → v0.2.0
+# Development plan — v0.1.8 → v0.2.0 (delivered)
 
-> **Status (2026-07-14):** v0.1.8–v0.1.12 are **shipped in full** (releases
-> v0.1.8–v0.1.14), and v0.2.0's `onto handoff` shipped (v0.1.15). The enforcement
-> layer's feasible parts shipped too — `onto doctor --quiet` + the Claude
-> `settings.json` hooks recipe (works via the existing settings projection) and
-> the OpenCode plugin recipe, in `docs/guides/enforcement.md`. What remains is
-> **environment-gated**, not undone: a dedicated `[hooks]` resource that
-> auto-ships onto's guard to both tools needs an OpenCode **JS plugin** (no
-> declarative hook config exists) whose *execution* can't be tested here, and the
-> full real-tool CI matrix needs GitHub **secrets** for live Claude/OpenCode
-> models. The render invariants that matrix would assert already run on every push
-> in the Docker E2E (`homonto-expanded`). Details per section below.
+> **This plan is history.** Everything below shipped across releases v0.1.8 →
+> v0.2.2; it is kept for the rationale behind each decision, not as a list of
+> pending work. For where things stand now, read the next section first.
+
+## Status after v0.3.0 (2026-07-15)
+
+**Delivered.** The whole v0.1.8 → v0.2.0 plan below (releases v0.1.8–v0.1.15
+and v0.2.0), plus: v0.2.1's deep-review fixes (onto's terminal states, the
+content-fingerprint materialize gate, override validation), v0.2.2's
+dirty-workspace support (`onto dirt`, classified dirt, the close carve-out for
+other changes' in-flight docs), and v0.3.0's catalog narrowing — the bundled
+catalog now ships only homonto-native content
+([ADR 0015](adr/0015-ship-only-onto-frameworks.md)).
+
+**Known open — not scheduled, each needs a maintainer decision:**
+
+- **The `to` framework.** A second native framework is planned; its scope and
+  content are unspecified. Nothing is built.
+- **A dedicated `[hooks]` resource** (v0.2.0 item 1's remainder). The feasible
+  parts shipped — `onto doctor --quiet` plus the Claude `settings.json` and
+  OpenCode plugin recipes in [enforcement](guides/enforcement.md). Auto-shipping
+  onto's guard to both tools needs an OpenCode **JS plugin** (no declarative
+  hook config exists) whose *execution* cannot be tested in this environment.
+  Environment-gated, not undone.
+- **Real-tool E2E in CI** (v0.2.0 item 2). `test/e2e/` drives actual Claude
+  Code + OpenCode locally; wiring it into CI needs GitHub **secrets** for live
+  models. The render invariants it asserts already run on every push through
+  the Docker E2E (`homonto-expanded`).
+- **Dogfooding onto in this repository.** Deferred to v1 by decision; this repo
+  is developed with Comet (see [personas](personas.md)).
 
 
 

@@ -135,6 +135,30 @@ concurrently, and gate decisions are asked through an interactive dialog
 (`onto gate --json` supplies the structured decision; the skill renders it).
 The orchestrator — your main session — still owns every edit and commit.
 
+## Working in a dirty tree
+
+Uncommitted work is normal — an interrupted task, a parallel change, your own
+edits — so onto classifies it rather than treating "dirty" as one condition.
+`onto dirt [change] [--json]` reports every uncommitted path in three classes:
+
+| Class | What it is | Blocks this change's close? |
+|---|---|---|
+| `own` | the change's own `docs/changes/<name>/` artifacts | **yes** — its evidence must be committed |
+| `change` | another change's docs, or the archive | no — that change's own close gate owns it |
+| `source` | any other path in the repo | **yes** — until it is attributed and committed |
+
+That split is what lets two changes be in flight at once: one change's
+half-written proposal no longer blocks another change's close. When close *is*
+blocked, the refusal names the offending paths instead of just saying "dirty
+worktree".
+
+The division of labor is deliberate: the **binary** owns what-is-dirty and
+what-blocks-close (structure, not judgment); the **agent** owns attribution —
+deciding whether a `source` diff belongs to the current change, belongs
+elsewhere, or is unclear enough to stop and ask. The skills follow a shared
+dirty-workspace protocol for that, and never revert or commit around
+uncommitted work they haven't attributed.
+
 ## Surviving context loss
 
 Long agent sessions get compacted. `onto handoff <change>` emits a compact

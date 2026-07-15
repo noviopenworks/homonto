@@ -46,7 +46,9 @@ User-facing documentation, one topic per file.
 ## Developing homonto itself
 
 - [`comet-workflow.md`](comet-workflow.md) — this repository's development
-  workflow (Comet + OpenSpec + Superpowers). See also
+  workflow (Comet + OpenSpec + Superpowers). These are **external** tools the
+  maintainers use; homonto does not bundle them (see
+  [ADR 0015](../adr/0015-ship-only-onto-frameworks.md)). See also
   [`../personas.md`](../personas.md) for why we build with Comet but ship onto,
   [`../adr/`](../adr/) for durable architecture decisions, and
   [`../release-checklist.md`](../release-checklist.md) for the release gate.
