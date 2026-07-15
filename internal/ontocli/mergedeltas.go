@@ -46,6 +46,11 @@ func runMergeDeltas(cmd *cobra.Command, root, name string) error {
 	if err != nil {
 		return fmt.Errorf("onto merge-deltas: %w", err)
 	}
+	// An abandoned change is the unsuccessful terminal state: its deltas were
+	// never accepted, so they must never mutate the living specs.
+	if st.Abandoned {
+		return fmt.Errorf("onto merge-deltas: change %q is abandoned; an abandoned change's deltas are never merged into the living specs", name)
+	}
 	if st.Close.Merged {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s: already merged (close.merged=true)\n", name)
 		return nil
@@ -77,6 +82,14 @@ func runMergeDeltas(cmd *cobra.Command, root, name string) error {
 		}
 		merged, err := deltamerge.Merge(capability, living, string(deltaBytes))
 		if err != nil {
+			// Crash recovery: writes below are one atomic file at a time, so a
+			// prior run that died mid-commit leaves each spec either untouched
+			// (Merge still applies) or fully merged (its post-state holds). A
+			// fully-merged spec is skipped rather than poisoning every re-run;
+			// anything else (a typo'd name, a hand-edited spec) still fails.
+			if deltamerge.Applied(capability, living, string(deltaBytes)) {
+				continue
+			}
 			return fmt.Errorf("onto merge-deltas: %w", err)
 		}
 		if findings := deltamerge.Lint(merged); len(findings) > 0 {

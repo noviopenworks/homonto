@@ -20,17 +20,20 @@ const (
 	scaleThresholdLines = 200
 )
 
-// diffScale measures the change's diff against its base ref (or the working tree
-// when no base is recorded) and returns the non-test file count, total changed
-// lines, and the derived level. It shells out to git; a non-repo/parse failure
-// is surfaced by the caller.
+// diffScale measures the change's diff against its base ref and returns the
+// non-test file count, total changed lines, and the derived level. It shells
+// out to git; a non-repo/parse failure is surfaced by the caller.
+//
+// A missing base ref is an ERROR, not a fallback. The old fallback measured
+// the worktree against HEAD — but the workflow commits per task, so at verify
+// time the tree is clean and a 1000-line change scored {files:0, lines:0} →
+// "light", silently selecting the weakest verification gate on the default
+// path (nothing else requires base-ref to be recorded).
 func diffScale(root, baseRef string) (files, lines int, level string, err error) {
-	args := []string{"-C", root, "diff", "--numstat"}
-	if strings.TrimSpace(baseRef) != "" {
-		args = append(args, baseRef+"..HEAD")
-	} else {
-		args = append(args, "HEAD")
+	if strings.TrimSpace(baseRef) == "" {
+		return 0, 0, "", fmt.Errorf("onto scale: no base ref recorded for this change — the committed diff cannot be measured without one; run `onto set base-ref <change> <ref>` first")
 	}
+	args := []string{"-C", root, "diff", "--numstat", baseRef + "..HEAD"}
 	out, err := exec.Command("git", args...).Output()
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("onto scale: git diff failed (is %s a git repo, and is %q a valid ref?): %w", root, baseRef, err)

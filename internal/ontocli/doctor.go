@@ -2,6 +2,7 @@ package ontocli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -41,6 +42,12 @@ func normalizeVersion(v string) string {
 	return v
 }
 
+// ErrQuietFindings is what `onto doctor --quiet` returns when there are
+// findings: the caller (cmd/onto/main.go) must exit non-zero WITHOUT printing —
+// quiet mode's whole contract is "exit code only", and hooks that capture
+// stderr were getting a leaked error line.
+var ErrQuietFindings = errors.New("onto doctor: findings (quiet)")
+
 // doctorCmd builds the "onto doctor" subcommand: a strictly read-only,
 // config-independent workspace-health diagnostic. Unlike init/new/close it is
 // NOT gated on the framework install — a missing docs layout is a finding, not
@@ -58,10 +65,20 @@ func doctorCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if quiet {
-				// Hook-friendly: suppress all output, communicate only via exit code
-				// (non-zero when there are findings). Used by an editor/tool Stop
-				// hook to fail loudly on a workflow-integrity problem.
+				// Hook-friendly: suppress ALL output, communicate only via exit
+				// code (non-zero when there are findings). Used by an editor/tool
+				// Stop hook to fail loudly on a workflow-integrity problem.
+				// SilenceErrors/SilenceUsage stop cobra's own printing; main.go
+				// additionally recognizes the quiet sentinel so its error line is
+				// suppressed too — --quiet previously still leaked
+				// "error: onto doctor: N problem(s) found" to stderr.
 				cmd.SetOut(io.Discard)
+				cmd.SilenceErrors = true
+				cmd.SilenceUsage = true
+				if err := runDoctor(cmd, dir); err != nil {
+					return ErrQuietFindings
+				}
+				return nil
 			}
 			return runDoctor(cmd, dir)
 		},
@@ -105,6 +122,13 @@ func runDoctor(cmd *cobra.Command, root string) error {
 				continue
 			case "malformed":
 				findings = append(findings, fmt.Sprintf("%s: malformed state: %v", name, classErr))
+				continue
+			}
+			// An abandoned change is a parked terminal state, not a health
+			// problem: its missing artifacts, unresolved deps, and verify-round
+			// count are exactly why it was abandoned. Counting them made a
+			// `doctor --quiet` Stop hook fail forever with no clearing action.
+			if st.Abandoned {
 				continue
 			}
 			phase := st.Phase

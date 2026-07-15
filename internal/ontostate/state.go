@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -51,10 +52,14 @@ func GuidesResolved(v string) bool {
 
 // ValidGuides reports whether v is a recognized guides value: empty (unset),
 // "pending", "updated", or any "waived:<reason>". The waived form is a prefix,
-// not a fixed member, so guides cannot use the enum-setter machinery.
+// not a fixed member, so guides cannot use the enum-setter machinery. The
+// literal placeholder "<reason>" is rejected: it is the gate schema's template
+// text, and accepting it verbatim would record a meaningless waiver that then
+// counts as a discharged obligation.
 func ValidGuides(v string) bool {
 	if r, ok := strings.CutPrefix(v, "waived:"); ok {
-		return strings.TrimSpace(r) != "" // a waiver must carry a reason
+		r = strings.TrimSpace(r)
+		return r != "" && r != "<reason>"
 	}
 	return v == "" || v == "pending" || v == "updated"
 }
@@ -321,18 +326,33 @@ func TasksAllChecked(tasksPath string) (bool, error) {
 	return sawCheckbox, nil
 }
 
-// DepsResolved reports which of deps are not yet archived under root. A dep
-// is resolved iff filepath.Glob(filepath.Join(root,"docs","changes","archive","*-"+dep))
-// finds at least one match — i.e. the dep was archived under a date-prefixed
-// directory such as docs/changes/archive/2026-07-10-<dep>/. The returned
-// slice contains the unresolved subset of deps, in input order. A nil or
-// empty deps returns an empty (len 0) slice.
+// archiveDatePrefix matches the dated archive-directory prefix
+// ("YYYY-MM-DD-") that onto close puts in front of the change name.
+var archiveDatePrefix = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-`)
+
+// DepsResolved reports which of deps are not yet archived under root. A dep is
+// resolved iff docs/changes/archive/ contains a directory named exactly
+// <YYYY-MM-DD>-<dep>. The comparison is an exact string match on the name after
+// the date prefix — NOT a glob. The previous `*-<dep>` glob had two holes: any
+// archive whose name merely ENDED with "-<dep>" resolved it (dep "auth"
+// satisfied by "2026-07-10-refactor-auth"), and glob metacharacters in a dep
+// name matched anything. The returned slice contains the unresolved subset of
+// deps, in input order. A nil or empty deps returns an empty (len 0) slice.
 func DepsResolved(root string, deps []string) []string {
+	archived := map[string]bool{}
+	if entries, err := os.ReadDir(filepath.Join(root, "docs", "changes", "archive")); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if p := archiveDatePrefix.FindString(e.Name()); p != "" {
+				archived[e.Name()[len(p):]] = true
+			}
+		}
+	}
 	unresolved := make([]string, 0, len(deps))
 	for _, dep := range deps {
-		pattern := filepath.Join(root, "docs", "changes", "archive", "*-"+dep)
-		matches, _ := filepath.Glob(pattern)
-		if len(matches) == 0 {
+		if !archived[dep] {
 			unresolved = append(unresolved, dep)
 		}
 	}

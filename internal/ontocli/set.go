@@ -24,6 +24,15 @@ func runTransition(cmd *cobra.Command, root, name string, apply func(*ontostate.
 	if err != nil {
 		return fmt.Errorf("onto set: loading %s: %w", changeDir, err)
 	}
+	// Both terminal states are immutable: an abandoned change stays abandoned
+	// (mutating it was the hole that let its evidence tokens be forged and its
+	// deltas merged), and an archived one is history.
+	if st.Abandoned {
+		return fmt.Errorf("onto set: change %q is abandoned (terminal); its state is immutable", name)
+	}
+	if st.Archived {
+		return fmt.Errorf("onto set: change %q is archived (terminal); its state is immutable", name)
+	}
 	if err := apply(&st); err != nil {
 		return err
 	}
@@ -168,6 +177,15 @@ func depsCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTransition(cmd, dir, args[0], func(st *ontostate.State) error {
+				// A dep is a change name and is matched literally against archive
+				// directory names at close — validate it like one, so a typo'd or
+				// metacharacter-carrying dep fails here instead of silently never
+				// (or, with the old glob matching, always) resolving.
+				for _, dep := range deps {
+					if err := validChangeName(dep); err != nil {
+						return fmt.Errorf("onto set deps: --dep %q: %w", dep, err)
+					}
+				}
 				st.Deps = deps
 				return nil
 			})
@@ -227,14 +245,21 @@ func deviatesFromCmd() *cobra.Command {
 	return cmd
 }
 
-// closeMergedCmd sets close.merged=true. It takes no value and is idempotent.
+// closeMergedCmd sets close.merged=true. It is idempotent and needs no value,
+// but tolerates an optional trailing "yes": the `onto gate --json` schema gives
+// every gate option a value that skills append to the SetCommand mechanically,
+// and this gate's option value is "yes" — rejecting it broke exactly the
+// callers the schema exists for.
 func closeMergedCmd() *cobra.Command {
 	var dir string
 	cmd := &cobra.Command{
-		Use:   "close-merged <change>",
+		Use:   "close-merged <change> [yes]",
 		Short: "Mark a change's close.merged flag true (idempotent)",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 2 && args[1] != "yes" {
+				return fmt.Errorf("onto set close-merged: %q is not a value; this setter takes no value (an optional literal \"yes\" is tolerated)", args[1])
+			}
 			return runTransition(cmd, dir, args[0], func(st *ontostate.State) error {
 				st.Close.Merged = true
 				return nil

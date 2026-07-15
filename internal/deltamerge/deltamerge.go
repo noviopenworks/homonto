@@ -32,7 +32,10 @@ type requirement struct {
 // Merge applies delta onto living (the current living spec for capability, or ""
 // when none exists) and returns the merged living spec. It errors when a
 // MODIFIED/REMOVED name or a RENAMED FROM is absent, or an ADDED name already
-// exists — the delta references reality that isn't there.
+// exists — the delta references reality that isn't there. Strictness is the
+// point: a typo'd name fails loudly instead of silently merging around it. For
+// crash recovery, callers pair Merge with Applied — a delta that no longer
+// merges may already be fully applied.
 func Merge(capability, living, delta string) (string, error) {
 	renamed, modified, removed, added, err := parseDelta(delta)
 	if err != nil {
@@ -83,6 +86,58 @@ func Merge(capability, living, delta string) (string, error) {
 	}
 
 	return assemble(preamble, reqs), nil
+}
+
+// Applied reports whether living is already in delta's POST-state: every
+// RENAMED's FROM is gone and its TO present, every MODIFIED and ADDED name is
+// present with byte-identical content, and every REMOVED name is absent.
+//
+// This is the crash-recovery half of Merge's strictness. The caller (onto
+// merge-deltas) writes one living spec at a time, each write atomic — so a
+// crash between writes leaves each spec either untouched (Merge still applies)
+// or fully merged (Applied is true). Without this predicate a partial run
+// poisoned the merged specs against every re-run ("ADDED %q already exists",
+// forever), and the only escape was hand-asserting close.merged — the exact
+// flag the command exists to make trustworthy. A delta that neither merges nor
+// is applied (a typo'd name, a hand-edited spec) still fails loudly.
+func Applied(capability, living, delta string) bool {
+	renamed, modified, removed, added, err := parseDelta(delta)
+	if err != nil {
+		return false
+	}
+	_, reqs := splitLiving(capability, living)
+	byName := make(map[string]requirement, len(reqs))
+	for _, r := range reqs {
+		byName[r.name] = r
+	}
+	same := func(want requirement) bool {
+		got, ok := byName[want.name]
+		return ok && strings.Join(got.block, "\n") == strings.Join(want.block, "\n")
+	}
+	for _, ft := range renamed {
+		if _, fromPresent := byName[ft[0]]; fromPresent {
+			return false
+		}
+		if _, toPresent := byName[ft[1]]; !toPresent {
+			return false
+		}
+	}
+	for _, m := range modified {
+		if !same(m) {
+			return false
+		}
+	}
+	for _, rm := range removed {
+		if _, present := byName[rm.name]; present {
+			return false
+		}
+	}
+	for _, a := range added {
+		if !same(a) {
+			return false
+		}
+	}
+	return true
 }
 
 // Lint checks a merged living spec for the two failure modes the merge must

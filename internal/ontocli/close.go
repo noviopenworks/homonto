@@ -90,6 +90,15 @@ func runClose(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto close: loading %s: %w", statePath, err)
 	}
 
+	// Abandoned is the UNSUCCESSFUL terminal state; archiving is the successful
+	// one. Without this guard a change abandoned at phase close still passed
+	// every evidence gate below and archived as a success — a contradictory
+	// terminal (archived+abandoned) that then falsely resolved other changes'
+	// dependencies.
+	if st.Abandoned {
+		return fmt.Errorf("onto close: change %q is abandoned (the unsuccessful terminal state); an abandoned change is never archived as a success", name)
+	}
+
 	if st.Phase != "close" {
 		return fmt.Errorf("onto close: change %q is at phase %q; run `onto advance` until it reaches close", name, st.Phase)
 	}
@@ -116,25 +125,29 @@ func runClose(cmd *cobra.Command, root, name string) error {
 		return fmt.Errorf("onto close: archive target already exists: %s", archiveDir)
 	}
 
-	st.Archived = true
-	if err := ontostate.Save(statePath, st); err != nil {
-		return fmt.Errorf("onto close: %w", err)
-	}
-
-	// If the archive move fails after archived:true was written, roll the flag
-	// back and re-save the in-place state, so a failed close leaves the change
-	// fully un-archived (never marked archived while still at its original path).
-	rollback := func() {
-		st.Archived = false
-		_ = ontostate.Save(statePath, st)
-	}
+	// Move FIRST, then record archived:true inside the moved directory. The old
+	// order (flag, then move) had a crash window that left `archived: true` at
+	// the ORIGINAL path — the exact state doctor flags as corrupt — and the
+	// rollback could not run across a crash; recovery was then blocked by this
+	// command's own dirty-worktree check. With move-first, a crash between the
+	// two steps leaves the change correctly archived with a stale flag, which is
+	// benign: presence under archive/ is what dependency resolution keys on.
 	if err := os.MkdirAll(filepath.Join(root, "docs", "changes", "archive"), 0o755); err != nil {
-		rollback()
 		return fmt.Errorf("onto close: creating archive directory: %w", err)
 	}
 	if err := os.Rename(changeDir, archiveDir); err != nil {
-		rollback()
 		return fmt.Errorf("onto close: moving %s to %s: %w", changeDir, archiveDir, err)
+	}
+	st.Archived = true
+	if err := ontostate.Save(filepath.Join(archiveDir, "onto-state.yaml"), st); err != nil {
+		// Roll the move back so a failed close leaves the change fully
+		// un-archived rather than archived-with-a-false-flag. If even the
+		// roll-back rename fails, say so explicitly instead of silently keeping
+		// half a close.
+		if rbErr := os.Rename(archiveDir, changeDir); rbErr != nil {
+			return fmt.Errorf("onto close: recording archived flag failed (%v) AND rolling the move back failed (%v); the change is at %s with archived:false — move it back to %s by hand", err, rbErr, archiveDir, changeDir)
+		}
+		return fmt.Errorf("onto close: %w", err)
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "%s: archived to %s\n", name, archiveDir)
