@@ -397,6 +397,37 @@ func TestAdvanceCommand_EnteringBuildAllowedWithIsolation(t *testing.T) {
 	}
 }
 
+// TestAdvanceCommand_EnteringBuildRefusesInvalidIsolationValue verifies that a
+// hand-edited state carrying an unknown isolation value (e.g. "vm") cannot
+// satisfy the build-entry gate. The current check is only `isolation == ""`, so
+// any non-empty value passes; validation must reject the malformed value. F9.
+func TestAdvanceCommand_EnteringBuildRefusesInvalidIsolationValue(t *testing.T) {
+	dir := prepWorkspace(t)
+	changeDir := filepath.Join(dir, "docs", "changes", "feature-x")
+	seedChange(t, dir, "feature-x", "design")
+	// Hand-edit the state with an invalid isolation value (not branch/worktree).
+	st, err := ontostate.Load(filepath.Join(changeDir, "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	st.Isolation = "vm"
+	if err := ontostate.Save(filepath.Join(changeDir, "onto-state.yaml"), st); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	commitAll(t, dir, "seed change")
+
+	if _, err := runOnto(t, "advance", "feature-x", "--dir", dir); err == nil {
+		t.Fatalf("advance must reject an unknown isolation value")
+	}
+	got, err := ontostate.Load(filepath.Join(changeDir, "onto-state.yaml"))
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if got.Phase != "design" {
+		t.Errorf("phase advanced to %q on a malformed state; want design", got.Phase)
+	}
+}
+
 // TestAdvanceCommand_VerifyToCloseBlockedByDirtyWorktree verifies that
 // entering "close" is refused when the worktree is dirty, even though every
 // required artifact is present and verify.result=pass, and leaves the phase

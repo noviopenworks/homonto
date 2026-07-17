@@ -10,7 +10,7 @@ what the design and specs say. **Evidence before assertions, always.**
 
 ## Entry check
 
-- `state.yaml` has `phase: verify` and every `tasks.md` item is checked
+- `onto-state.yaml` has `phase: verify` and every `tasks.md` item is checked
   (items explicitly marked deferred-to-close are allowed).
 - Read `notes.md` at entry when present — accepted decisions and recorded
   directives inform what to verify against.

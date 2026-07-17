@@ -42,9 +42,20 @@ title, then what + why — plus short `tasks.md`. Create the workspace via
 rev-parse HEAD)"`, `onto set guides <name> pending`, and the default decisions:
 `onto set isolation <name> branch`, `onto set build-mode <name> direct`, `onto
 set tdd-mode <name> direct`. Branch: `tweak/YYYYMMDD/<name>`. **Commit the
-workspace** before the first task. `onto new` records `phase: open`; the
-preset's working phase (build) is derived by the dispatcher — the binary's
-`phase` field is not advanced through the skipped phases (N2, out of scope).
+workspace** before the first task. `onto new` records `phase: open`. The preset
+skips design, but the binary still walks the fixed phase sequence
+`open → design → build → verify → close`: advance mechanically through the
+skipped phases. The gates are workflow-aware (`RequiredArtifacts(phase,
+"tweak")` needs only `proposal.md` + `tasks.md`), so a tweak can leave `open`
+and `design` without writing a `design.md`. Run the advances up front, right
+after `onto new` and the decision defaults:
+
+```
+onto advance <name>    # open  → design (no design.md needed for tweak)
+onto advance <name>    # design → build
+```
+
+Then execute the build. After verify, advance once more into close.
 
 > **GATE (open-lite scope):** confirm this fits a tweak (small, local, no
 > new capability, no existing-spec requirement change) before building —
@@ -97,13 +108,17 @@ offered.
 ## Exit checklist (per phase, lite)
 
 - [ ] Open-lite: workspace exists, scope gate acknowledged, workspace
-      committed
+      committed; advanced open → design → build via `onto advance <name>`
+      (mechanical, no design.md needed for a tweak)
 - [ ] Build: tasks checked + committed one by one, tree clean (workspace
       docs committed)
 - [ ] Verify: `verification.md` with fresh evidence + regression results;
-      workspace committed at exit
-- [ ] Close: delta coverage checked (lint §0), guides resolved, final gate
-      **before** any spec/ADR mutation, archived in one commit
+      `verify.result` set via `onto set verify-result`; advanced verify →
+      close via `onto advance <name>`; workspace committed at exit
+- [ ] Close: delta coverage checked (lint §0), guides resolved (tweak
+      preset needs no guides), `onto merge-deltas` run, `close.merged` set,
+      final gate **before** any spec/ADR mutation, close prep committed,
+      archived in its own commit
 - [ ] onto-no-slop pass run over each prose artifact (proposal,
       verification, new guide prose), score noted in `notes.md`; never a
       machine-read marker or a requirement's normative wording

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,6 +42,11 @@ var (
 
 // ValidWorkflow reports whether w is a recognized workflow value.
 func ValidWorkflow(w string) bool { return validWorkflows[w] }
+
+// ValidPhase reports whether p is a recognized workflow phase. It is exported so
+// commands that bake a phase into a path or decision (e.g. handoff --write) can
+// reject a malformed or traversal-carrying value before using it.
+func ValidPhase(p string) bool { return validPhases[p] }
 
 // GuidesResolved reports whether the guides obligation is discharged: either
 // "updated" or a "waived:<reason>". Empty and "pending" are unresolved. It
@@ -218,9 +224,15 @@ func Marshal(s State) ([]byte, error) {
 	return yaml.Marshal(s)
 }
 
-// Save writes s to path as YAML, creating parent directories as needed. It
-// writes to a temp file next to path and renames it into place, removing
-// the temp file if any step fails.
+// Save writes s to path as YAML, creating parent directories as needed. It is
+// written through fsutil.WriteControlPlane: a symlink planted at the
+// destination is refused (never followed), a unique temp file in the target
+// directory is fsynced and renamed into place, and an existing file's mode is
+// preserved. This matches the durability and no-follow guarantees homonto's
+// other control-plane files (state.json, remote.lock.json) already enjoy, so a
+// malicious or untrusted workspace cannot redirect an onto state write outside
+// the project, and two concurrent writers cannot collide on a shared temp name
+// (F8).
 func Save(path string, s State) error {
 	s.SchemaVersion = CurrentSchemaVersion
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -230,14 +242,8 @@ func Save(path string, s State) error {
 	if err != nil {
 		return fmt.Errorf("onto-state: failed to marshal %s: %w", path, err)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
-		os.Remove(tmp)
-		return fmt.Errorf("onto-state: failed to write %s: %w", tmp, err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		os.Remove(tmp)
-		return fmt.Errorf("onto-state: failed to rename %s to %s: %w", tmp, path, err)
+	if err := fsutil.WriteControlPlane(path, b, 0o644); err != nil {
+		return fmt.Errorf("onto-state: failed to write %s: %w", path, err)
 	}
 	return nil
 }
@@ -350,11 +356,26 @@ func DepsResolved(root string, deps []string) []string {
 			}
 		}
 	}
+	// An active workspace with the dep's name overrides any archive hit: a
+	// reused name in flight is not archived. This matches the dispatcher's
+	// documented dependency contract (see onto/SKILL.md §2). Without it, a
+	// new change reusing an old name would falsely resolve a dep that is
+	// actually still being worked on (F10).
+	active := map[string]bool{}
+	if entries, err := os.ReadDir(filepath.Join(root, "docs", "changes")); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() || e.Name() == "archive" {
+				continue
+			}
+			active[e.Name()] = true
+		}
+	}
 	unresolved := make([]string, 0, len(deps))
 	for _, dep := range deps {
-		if !archived[dep] {
-			unresolved = append(unresolved, dep)
+		if archived[dep] && !active[dep] {
+			continue
 		}
+		unresolved = append(unresolved, dep)
 	}
 	return unresolved
 }

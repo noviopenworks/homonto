@@ -57,15 +57,15 @@ the user what they are missing and how to fix it.
 
 Scan `docs/changes/*/` excluding `archive/`. A change is active iff its
 directory sits directly under `docs/changes/` **and holds a `proposal.md`
-or a `state.yaml`**, with `state.yaml` (when present) reading
+or an `onto-state.yaml`**, with `onto-state.yaml` (when present) reading
 `archived: false`. A directory with neither artifact is not a change —
 skip it (a `templates/`, a scratch dir, an editor folder is not a phantom
-active change; never rebuild a state.yaml into it). Also sweep
-`docs/changes/archive/*/state.yaml` for `archived: false`: that is a
+active change; never rebuild an onto-state.yaml into it). Also sweep
+`docs/changes/archive/*/onto-state.yaml` for `archived: false`: that is a
 close interrupted between the `git mv` and the flag — surface it and
 finish the interrupted archive (the moved workspace still needs its
 `archived: true` flag the halted `onto close` never wrote).
-If a change carries an `abandoned:` reason it is retired — never list it
+If a change carries an `abandoned: true` flag it is retired — never list it
 as active.
 
 While discovering, also check the git tree: if `onto dirt <active-change>
@@ -82,7 +82,7 @@ on top of, revert, or commit-around uncommitted work you haven't attributed.
 | Exactly one | new description | ASK: continue the active change or open a new one |
 | Two or more | anything | LIST them (name, workflow, claimed phase, deps status) and ASK which to resume before doing anything else |
 
-**Dependencies**: each change's `state.yaml` may name `deps:` — changes
+**Dependencies**: each change's `onto-state.yaml` may name `deps:` — changes
 that must archive before this one builds. A dep counts as **archived iff
 a directory `docs/changes/archive/????-??-??-<dep>/` exists** — the
 date-anchored exact-name match (`YYYY-MM-DD-` prefix per the archive
@@ -113,10 +113,11 @@ proceed to `onto-open`.
 
 ## 3. Phase derivation and cross-check
 
-`state.yaml` is a **cache of truth, not truth**. On every dispatch:
+`onto-state.yaml` is the binary's record of the workflow state. On every
+dispatch:
 
-1. Read `state.yaml`. Its canonical schema, template, and per-field rebuild
-   rules live in `references/state-yaml.md` in this skill's directory —
+1. Read `onto-state.yaml`. Its canonical schema, template, and per-field
+   meaning live in `references/state-yaml.md` in this skill's directory —
    **the single source**. `docs/changes/README.md`, when the repo has one,
    points here rather than copying, so the two never drift. If a skill's
    `references/` directory is genuinely missing, say so, fall back to
@@ -146,24 +147,29 @@ evidence, and a full change with only `proposal.md` is not file-distinguishable
 between open and design.
 
 3. **Files win downward; gates win upward.** If the derived phase is
-   earlier than the claimed phase, correct `state.yaml` to match the files,
-   tell the user what was corrected and why, and continue from the derived
-   phase. If the derived phase is later than the claimed phase, do not
-   silently promote — the phase field advances only when a phase's exit
-   gate is answered, so a lagging claim means an unanswered gate: resume at
-   the claimed phase's gate (artifacts already prepared) and let it advance
-   normally. **One exception: the verify→close boundary has no gate** (the
+   earlier than the claimed phase, route at the derived phase and surface
+   the mismatch to the user — **never hand-edit `onto-state.yaml` to
+   demote it**. The binary owns that file; a backward phase move is not a
+   binary operation (the workflow has no `onto reopen`). Record the
+   discrepancy in `notes.md` and let the user decide: redo the work and
+   re-advance, or `onto abandon` if the change is dead. If the derived
+   phase is later than the claimed phase, do not silently promote — the
+   phase field advances only when a phase's exit gate is answered, so a
+   lagging claim means an unanswered gate: resume at the claimed phase's
+   gate (artifacts already prepared) and let it advance normally.
+   **One exception: the verify→close boundary has no gate** (the
    failure gate fires only on a fail). So a `phase: verify` claim beside a
    `verification.md` reading `Result: pass` is not an unanswered gate — it
-   is a lagging write. Advance `phase` to `close` and route to `onto-close`
-   without re-verifying; the pass already stands in the file. Re-running
-   verify here would only discard fresh evidence the report already holds.
-   **The open↔design boundary also has no distinguishing file signal for a full
-   change** — `tasks.md`/`design.md` are design deliverables, so a `phase:
-   design` claim with only `proposal.md` present is a design phase whose work
-   hasn't landed yet, NOT a demote-to-open. Trust the claimed phase across
-   open↔design; demote to open only when `proposal.md` itself is missing (a
-   genuinely incomplete workspace).
+   is a lagging write. Advance `phase` to `close` via `onto advance` and
+   route to `onto-close` without re-verifying; the pass already stands in
+   the file. Re-running verify here would only discard fresh evidence the
+   report already holds. **The open↔design boundary also has no
+   distinguishing file signal for a full change** — `tasks.md`/`design.md`
+   are design deliverables, so a `phase: design` claim with only
+   `proposal.md` present is a design phase whose work hasn't landed yet,
+   NOT a demote-to-open. Trust the claimed phase across open↔design;
+   demote to open only when `proposal.md` itself is missing (a genuinely
+   incomplete workspace).
 4. **Cross-check `workflow` too, not just phase.** Resolve it in this
    priority order and stop at the first that applies:
    1. The proposal's `Preset:` marker. An upgrade annotation
@@ -177,24 +183,22 @@ between open and design.
    4. Otherwise **full** (a detached HEAD or non-prefixed branch is no
       signal).
 
-   On mismatch the file sources win — correct, announce, reroute — with
-   one hard asymmetry: **a correction may upgrade (preset→full) silently,
-   but a downgrade (full→preset) never happens without fresh user
-   confirmation.** Never talk a change down.
-5. A missing or malformed `state.yaml` is never an error: rebuild it per
-   the per-field table in `references/state-yaml.md` (`workflow` from the
-   proposal's `Preset:` marker incl. upgrade annotation, else the branch
-   prefix, else `full`; `base_ref` = parent of the oldest commit touching
-   the workspace; `decisions` reset to null so gates are re-asked;
-   `verify.result` from verification.md's `Result:` line; `deps` from the
-   proposal's `Depends-on:` line; `metrics` best-effort, never blocking),
-   announce the rebuild, continue. **Rebuild never crosses a gate**: cap
-   the derived phase per the boundary table in
-   `references/state-yaml.md` — open→design and design→build need their
-   notes.md Confirmed records, build→verify needs the plan-ready record,
-   verify→close is decidable from verification.md's `Result: pass` alone;
-   demote one boundary at a time, floor `open` (full) / `build` (presets).
-   A lost state file must not skip what the user never confirmed.
+   On mismatch the file sources win — surface the mismatch, reroute —
+   with one hard asymmetry: **an upgrade (preset→full) may be recorded
+   silently, but a downgrade (full→preset) never happens without fresh
+   user confirmation.** Never talk a change down. To record an upgrade,
+   annotate the proposal's `Preset:` line (the dispatcher re-derives
+   `workflow: full` from it); there is no `onto set workflow` command.
+5. A missing or malformed `onto-state.yaml` is a recovery situation, never
+   a silent rewrite: surface it to the user, reconstruct the *routing*
+   from the file-evidence table above, and record the recovery in
+   `notes.md`. **Do not hand-write a replacement `onto-state.yaml`** — the
+   binary is its sole authority. If the file is genuinely lost, the
+   honest path is `onto abandon <name>` followed by a fresh `onto new`
+   that re-creates the canonical state, with the recovered routing
+   deciding where work resumes. Cap the resumed phase per the boundary
+   table in `references/state-yaml.md` so a lost state file does not skip
+   what the user never confirmed.
 6. Never trust conversation history for phase detection — after context
    loss or compaction, this derivation is the recovery mechanism. Re-run it.
    The derivation recovers the *phase*; for the *content* (what the change is
@@ -229,20 +233,22 @@ grows — never talk a change *down* from full to a preset.
   verify-result <name> pending`; flip `verification.md`'s `Result:` line to
   `Result: superseded (reopened <date>)`. The unchecked tasks plus the
   invalidated result drive the dispatcher's derivation back to build — no
-  phase field is written. A defect in an *archived* change is new work — open
-  a fresh `fix` change whose proposal references the archived one; archives
-  are never edited.
-- **Abandon** — the user drops a change: there is no `onto abandon` command
-  (deferred to N2), so this is the single sanctioned direct state note. Add
-  `abandoned: "<reason>"` (the user's words) to `onto-state.yaml`, then `onto
-  close <name>` to move the workspace to `docs/changes/archive/YYYY-MM-DD-<name>/`
-  and set `archived: true`, in one commit. It leaves the active list and never
-  routes anywhere again. No spec merge, no ADR numbering.
-
-  (`onto close` requires `phase: close`; an abandoned change may be at any
-  phase. If `onto close` refuses, fall back to the manual `git mv` +
-  `archived: true` note — record which was used. This residual is the flagged
-  N2 gap.)
+  phase field is written (the binary has no reopen/backward-phase command;
+  resume at build and re-advance when the fix lands). A defect in an
+  *archived* change is new work — open a fresh `fix` change whose proposal
+  references the archived one; archives are never edited.
+- **Abandon** — the user drops a change. Run **`onto abandon <name>`**: it
+  marks the change `abandoned: true` (the unsuccessful terminal state) and
+  saves `onto-state.yaml` in place. The workspace stays under
+  `docs/changes/<name>/` — abandon is a state flag, not a move. Discovery
+  skips abandoned changes (they leave the active list and never route
+  again). No spec merge, no ADR numbering — an abandoned change's deltas
+  are never merged into the living specs, and `onto close` refuses to
+  archive it as a success. The binary owns the `abandoned` flag; never
+  hand-edit `onto-state.yaml` to set it. If you later want the workspace
+  out of the active tree entirely, `git mv` it under `archive/` by hand
+  and record the move — but the `abandoned: true` flag (not the location)
+  is what retires it.
 
 ## 5. GitHub entry points (contract)
 

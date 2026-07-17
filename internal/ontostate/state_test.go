@@ -436,6 +436,26 @@ func TestDepsResolved_PrefixCollision_DoesNotResolveShorterDep(t *testing.T) {
 	}
 }
 
+// An active workspace with the dep's name overrides any archive hit: a reused
+// name in flight is not archived. This is the documented contract
+// (onto/SKILL.md §2 Dependencies) that was not enforced. See F10.
+func TestDepsResolved_ActiveWorkspaceOverridesArchiveHit(t *testing.T) {
+	root := t.TempDir()
+	// Archived copy under archive/<date>-x
+	if err := os.MkdirAll(filepath.Join(root, "docs", "changes", "archive", "2026-07-10-x"), 0o755); err != nil {
+		t.Fatalf("mkdir archive: %v", err)
+	}
+	// An ACTIVE workspace with the same name exists — the dep is NOT resolved.
+	if err := os.MkdirAll(filepath.Join(root, "docs", "changes", "x"), 0o755); err != nil {
+		t.Fatalf("mkdir active: %v", err)
+	}
+	got := DepsResolved(root, []string{"x"})
+	want := []string{"x"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("DepsResolved must NOT resolve when an active workspace of the same name exists; got %v, want %v", got, want)
+	}
+}
+
 func fullFixtureState() State {
 	return State{
 		SchemaVersion: CurrentSchemaVersion,
@@ -543,5 +563,44 @@ func TestValidGuides_Shapes(t *testing.T) {
 		if ValidGuides(v) {
 			t.Errorf("ValidGuides(%q) = true, want false", v)
 		}
+	}
+}
+
+// Save must not follow a symlink planted at the destination, and must not leave
+// a predictable .tmp name behind. See F8.
+func TestSave_RefusesSymlinkTarget(t *testing.T) {
+	dir := t.TempDir()
+	// A victim file outside the state directory the attacker wants overwritten.
+	victim := filepath.Join(t.TempDir(), "victim.txt")
+	if err := os.WriteFile(victim, []byte("precious"), 0o600); err != nil {
+		t.Fatalf("write victim: %v", err)
+	}
+	statePath := filepath.Join(dir, "onto-state.yaml")
+	// Plant a symlink at the destination pointing at the victim.
+	if err := os.Symlink(victim, statePath); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	if err := Save(statePath, State{Change: "c", Phase: "open"}); err == nil {
+		t.Fatalf("Save must refuse to write through a planted symlink")
+	}
+	got, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatalf("read victim: %v", err)
+	}
+	if string(got) != "precious" {
+		t.Errorf("victim was overwritten through the symlink: %q", string(got))
+	}
+}
+
+// Save must not use a predictable temp filename that two writers could collide on.
+// A leftover .homonto-* name is fine; a fixed onto-state.yaml.tmp is not.
+func TestSave_LeavesNoPredictableTempName(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "onto-state.yaml")
+	if err := Save(path, State{Change: "c", Phase: "open"}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
+		t.Errorf("predictable temp %s.tmp must not be used; stat err = %v", path, err)
 	}
 }

@@ -11,7 +11,7 @@ the full workflow exists.
 
 ## Entry check
 
-- `state.yaml` has `phase: design` and `workflow: full`; `proposal.md`
+- `onto-state.yaml` has `phase: design` and `workflow: full`; `proposal.md`
   exists and was approved in open.
 - Read `notes.md` first (create it from `onto-open/references/notes.md` if
   missing) — resume from Pending; never re-ask Confirmed. After
@@ -100,6 +100,24 @@ the boundaries come from here. `tasks.md` does not exist until this step (onto
 new no longer scaffolds it for a full change), and leaving design requires it —
 so a design that produced no task list is not done.
 
+## Isolation gate (before leaving design)
+
+> **GATE (isolation):** the binary refuses to advance design → build unless an
+> isolation is chosen, so build work is never committed unisolated. Ask now,
+> before `onto advance`:
+>
+> - `onto set isolation <name> branch|worktree` — branch for a simple change
+>   off the base ref; worktree for parallel changes or a dirty current branch
+>
+> This gate MAY be pre-authorized: if the user gave an explicit directive
+> covering isolation (e.g. "run to completion with defaults"), record it
+> **verbatim** via `onto set directive <name> "<text>"` and proceed with
+> `branch` as the default. When in doubt, ask.
+>
+> `build-mode` and `tdd-mode` are NOT asked here — they are build-phase
+> decisions tied to the plan-ready gate (see `onto-build`). Only isolation
+> gates the advance.
+
 ## Exit checklist
 
 - [ ] `design.md` exists, marked `Status: Confirmed` with date, and matches
@@ -123,6 +141,8 @@ so a design that produced no task list is not done.
 - [ ] onto-no-slop pass run over `design.md`, every ADR draft, and
       `notes.md`, scores recorded in `notes.md` (`no-slop: <artifact>
       <total>/50`; below 35 means revise before this gate)
+- [ ] Isolation chosen via `onto set isolation <name> branch|worktree` — the
+      binary refuses design → build without it
 - [ ] Phase advanced design → build via `onto advance <name>`
 - [ ] **Commit the workspace**: `git add docs/changes/<name> && git commit`
       — every phase exits with its workspace committed

@@ -57,11 +57,23 @@ No full design and no plan.md required. Branch: `fix/YYYYMMDD/<name>`.
 Templates: reuse the full-workflow references (`onto/references/state-yaml.md`,
 `onto-open/references/{proposal,tasks,notes}.md`) — a `notes.md` checkpoint
 is recommended for any fix that takes more than one sitting. **Commit the
-workspace** before the first task (so `base_ref` and recovery hold). `onto
-new` records `phase: open`; the preset skips design, so its working phase
-(build) is **derived** by the dispatcher (`workflow: fix` + workspace →
-build). The binary's `phase` field is not advanced through the skipped phases
-— that reconciliation is out of scope (N2).
+workspace** before the first task (so `base_ref` and recovery hold). `onto new`
+records `phase: open`. The preset skips design, but the binary still walks the
+fixed phase sequence `open → design → build → verify → close`: advance
+mechanically through the skipped phases. The gates are workflow-aware
+(`RequiredArtifacts(phase, "fix")` needs only `proposal.md` + `tasks.md`), so
+a fix can leave `open` and `design` without writing a `design.md`. The
+dispatcher still derives the *working* phase (build) from the workspace, but
+the canonical `phase` field must reach `close` before `onto close` will
+archive. Run the advances up front, right after `onto new`:
+
+```
+onto set isolation <name> branch    # required before entering build
+onto advance <name>                 # open  → design (no design.md needed for fix)
+onto advance <name>                 # design → build
+```
+
+Then execute the build. After verify, advance once more into close.
 
 > **GATE (open-lite scope):** presets skip design, so the fix-vs-full
 > choice is the one decision that removes a phase. Confirm it: state the
@@ -118,14 +130,19 @@ handoff offered.
 ## Exit checklist (per phase, lite)
 
 - [ ] Open-lite: workspace + reproduction confirmed by the user, scope
-      gate acknowledged (bug fix, no new design), workspace committed
+      gate acknowledged (bug fix, no new design), workspace committed;
+      `onto set isolation <name> branch` recorded; advanced open → design
+      → build via `onto advance <name>` (mechanical, no design.md needed
+      for a fix)
 - [ ] Build: failing test seen failing, root cause stated, fix committed,
       test seen passing, tree clean (workspace docs committed)
 - [ ] Verify: `verification.md` with reproduction evidence + regression
-      results; `verify.result` set via `onto set verify-result`; workspace
-      committed at exit
-- [ ] Close: delta coverage checked (lint §0), guides resolved, final gate
-      **before** any spec/ADR mutation, archived in one commit
+      results; `verify.result` set via `onto set verify-result`; advanced
+      verify → close via `onto advance <name>`; workspace committed at exit
+- [ ] Close: delta coverage checked (lint §0), guides resolved (fix preset
+      needs no guides), `onto merge-deltas` run, `close.merged` set, final
+      gate **before** any spec/ADR mutation, close prep committed, archived
+      in its own commit
 - [ ] onto-no-slop pass run over each prose artifact (proposal,
       verification, new guide prose), score noted in `notes.md`; never a
       machine-read marker or a requirement's normative wording

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/ontostate"
 	"github.com/spf13/cobra"
 )
@@ -36,16 +37,24 @@ func handoffCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// The phase feeds the output filename; a malformed or traversal-
+			// carrying value must never reach filepath.Join. Reject any value
+			// outside the recognized phase set BEFORE --write builds a path from
+			// it (F6). LoadChange does not Validate, so this is the gate.
+			if !ontostate.ValidPhase(st.Phase) {
+				return fmt.Errorf("onto handoff: %q has an unknown phase %q; refusing to build a handoff path from it", name, st.Phase)
+			}
 			pack, err := buildHandoff(name, changeDir, st)
 			if err != nil {
 				return err
 			}
 			if doWrite {
 				out := filepath.Join(changeDir, ".onto", "handoff", st.Phase+"-context.md")
-				if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-					return err
-				}
-				if err := os.WriteFile(out, []byte(pack), 0o644); err != nil {
+				// WriteControlPlane refuses a symlink at the destination and uses a
+				// unique temp name, so a planted link cannot redirect the write
+				// outside the workspace (F6). A regular existing file is replaced
+				// atomically as before.
+				if err := fsutil.WriteControlPlane(out, []byte(pack), 0o644); err != nil {
 					return err
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", out)

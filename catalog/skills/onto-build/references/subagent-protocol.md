@@ -102,4 +102,5 @@ implementing it blindly.
 ## Failure of the protocol itself
 
 No real dispatch capability available → record the fact, fall back to
-`execution: direct` in `state.yaml`, announce, continue.
+`build_mode: direct` in `onto-state.yaml` (via `onto set build-mode <name>
+direct`), announce, continue.

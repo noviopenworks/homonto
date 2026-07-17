@@ -56,6 +56,14 @@ func runAdvance(cmd *cobra.Command, root, name string) error {
 	if err != nil {
 		return fmt.Errorf("onto advance: loading %s: %w", statePath, err)
 	}
+	// Validate before any gate consults a state field: an unknown workflow,
+	// isolation, or guides value must not bypass a downstream evidence gate
+	// (close reads workflow to decide whether guides are required; the
+	// build-entry check reads isolation). Load migrates but does not validate
+	// (F9).
+	if err := st.Validate(); err != nil {
+		return fmt.Errorf("onto advance: %w", err)
+	}
 
 	if st.Abandoned {
 		return fmt.Errorf("onto advance: %q is abandoned (a terminal state); nothing to advance", name)

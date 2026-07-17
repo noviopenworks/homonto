@@ -46,10 +46,22 @@ func runMergeDeltas(cmd *cobra.Command, root, name string) error {
 	if err != nil {
 		return fmt.Errorf("onto merge-deltas: %w", err)
 	}
+	// Validate before consulting Abandoned/Close.Merged: a malformed state must
+	// not reach the merge logic. Load migrates but does not validate (F9).
+	if err := st.Validate(); err != nil {
+		return fmt.Errorf("onto merge-deltas: %w", err)
+	}
 	// An abandoned change is the unsuccessful terminal state: its deltas were
 	// never accepted, so they must never mutate the living specs.
 	if st.Abandoned {
 		return fmt.Errorf("onto merge-deltas: change %q is abandoned; an abandoned change's deltas are never merged into the living specs", name)
+	}
+	// Spec deltas are accepted only at close — an open/design/build/verify change
+	// has not yet been verified, so its deltas must not mutate the living specs
+	// (F7). Idempotent re-runs at close are covered by the Close.Merged check
+	// below.
+	if st.Phase != "close" {
+		return fmt.Errorf("onto merge-deltas: change %q is at phase %q; merge-deltas runs only at close", name, st.Phase)
 	}
 	if st.Close.Merged {
 		fmt.Fprintf(cmd.OutOrStdout(), "%s: already merged (close.merged=true)\n", name)

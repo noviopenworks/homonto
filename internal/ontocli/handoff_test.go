@@ -35,3 +35,37 @@ func TestHandoff_ContentAndWrite(t *testing.T) {
 		t.Errorf("handoff --write did not persist the pack: %v", err)
 	}
 }
+
+// handoff --write must never escape the workspace via a malformed phase, nor
+// follow a planted symlink at the destination. See F6.
+func TestHandoff_RejectsTraversalPhase(t *testing.T) {
+	root := prepWorkspace(t)
+	changeDir := filepath.Join(root, "docs", "changes", "c")
+	// A malicious state whose phase is a path-escape attempt.
+	writeFile(t, filepath.Join(changeDir, "onto-state.yaml"),
+		"change: c\nphase: ../../escape\nworkflow: full\n")
+	writeFile(t, filepath.Join(changeDir, "proposal.md"), "# Proposal\n")
+
+	target := filepath.Join(root, "escape-context.md")
+
+	if _, err := runOnto(t, "handoff", "c", "--dir", root, "--write"); err == nil {
+		t.Fatalf("handoff --write must refuse a traversal phase")
+	}
+	if _, err := os.Stat(target); err == nil {
+		t.Fatalf("handoff --write escaped the workspace via a traversal phase: %s exists", target)
+	}
+}
+
+// An unknown phase value must also be rejected rather than baked into a path,
+// since the phase is the only unvalidated field feeding the output filename.
+func TestHandoff_RejectsUnknownPhase(t *testing.T) {
+	root := prepWorkspace(t)
+	changeDir := filepath.Join(root, "docs", "changes", "c")
+	writeFile(t, filepath.Join(changeDir, "onto-state.yaml"),
+		"change: c\nphase: bogus-phase\nworkflow: full\nschema_version: 1\n")
+	writeFile(t, filepath.Join(changeDir, "proposal.md"), "# Proposal\n")
+
+	if _, err := runOnto(t, "handoff", "c", "--dir", root, "--write"); err == nil {
+		t.Fatalf("handoff --write must refuse an unknown phase")
+	}
+}

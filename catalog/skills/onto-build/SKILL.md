@@ -10,7 +10,7 @@ one small, verified task at a time.
 
 ## Entry check
 
-- `state.yaml` has `phase: build`.
+- `onto-state.yaml` has `phase: build`.
 - `workflow: full` → a `design.md` marked `Status: Confirmed` must exist; if
   it doesn't, the design phase isn't done — route back through `/onto`.
 - Presets (`fix`/`tweak`) enter build directly after open-lite.
@@ -48,12 +48,16 @@ bigger. Read `notes.md` first if present.
 > **GATE (plan-ready + execution config):** pause. The user reviews the plan
 > and chooses the execution configuration, recorded through the binary:
 >
-> - `onto set isolation <name> branch|worktree` — branch for simple changes;
->   worktree for parallel work or a dirty current branch
 > - `onto set build-mode <name> direct|subagent` — direct in-session; subagent
 >   only when real background dispatch capability exists
 > - `onto set tdd-mode <name> tdd|direct` — tdd for anything with testable
 >   logic; direct for content/docs deliverables
+>
+> Isolation is NOT asked here — it was chosen at the design → build gate (see
+> `onto-design`), and the binary already refused the advance without it. If
+> isolation is somehow unset at this point (e.g. an older change created before
+> the gate moved), ask it now via `onto set isolation <name> branch|worktree`
+> before proceeding — build work must never run unisolated.
 >
 > **Pausing here is first-class.** If the user wants to stop after the plan
 > (e.g. to review it later or switch models/sessions), run `onto set build-pause

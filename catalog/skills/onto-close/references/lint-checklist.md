@@ -39,8 +39,8 @@ obligation: fix them or stop.
 
 ## 2. Workspace state
 
-- [ ] `state.yaml` parses as YAML; enum fields hold allowed values and
-      typed fields hold their types (`deps` a list, `metrics.phases` a
+- [ ] `onto-state.yaml` parses as YAML; enum fields hold allowed values and
+      typed fields hold their types (`deps` a list, `observed.metrics` a
       map, counters numeric — schema: `onto/references/state-yaml.md`)
 - [ ] `verification.md` has a current `Result:` line
 - [ ] Every ADR draft has `**Status:**`, `**Date:**`, `**Change:**` fields

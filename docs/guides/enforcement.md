@@ -50,17 +50,24 @@ import type { Plugin } from "@opencode-ai/plugin"
 
 // Runs `onto doctor --quiet` when a session goes idle; a non-zero exit means the
 // onto workspace has an integrity finding. Read-only — it never mutates state.
+// The exit code is surfaced to the session log so a violated gate cannot end a
+// session silently.
 export const OntoGuard: Plugin = async ({ $, directory }) => ({
   event: async ({ event }) => {
     if (event.type === "session.idle") {
-      await $`onto doctor --quiet`.cwd(directory).nothrow()
+      const result = await $`onto doctor --quiet`.cwd(directory).nothrow()
+      if (result.exitCode !== 0) {
+        console.error(`onto doctor failed (exit ${result.exitCode}): onto workspace integrity finding`)
+      }
     }
   },
 })
 ```
 
-Adjust the event (`session.idle`, `session.completed`) to taste. Because the
-OpenCode side is a code artifact rather than declarative config, install and
+Adjust the event (`session.idle`, `session.completed`) to taste. The guard
+above logs the failure through `console.error`; if you would rather have it
+abort the event handler, drop `.nothrow()` and let the non-zero throw. Because
+the OpenCode side is a code artifact rather than declarative config, install and
 review it yourself — homonto does not project or test the plugin's execution.
 
 ## What this buys you

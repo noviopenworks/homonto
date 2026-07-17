@@ -10,7 +10,7 @@ with an unambiguous proposal. Nothing is designed and nothing is built here.
 
 ## Entry check
 
-- No workspace exists yet for this work, **or** the workspace's `state.yaml`
+- No workspace exists yet for this work, **or** the workspace's `onto-state.yaml`
   says `phase: open` with `workflow: full`.
 - Bug fixes and small tweaks belong to `onto-fix` / `onto-tweak` — if the
   request fits a preset, hand over to it instead.

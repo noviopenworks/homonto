@@ -152,3 +152,74 @@ func TestLint_CatchesLeakAndDuplicate(t *testing.T) {
 		t.Errorf("lint should catch the duplicate AND the leaked heading, got %v", f)
 	}
 }
+
+// A living spec may carry trailing level-2 sections after its requirements
+// (Rationale, Notes, Examples, etc.). The merge must preserve them verbatim —
+// silently dropping prose is data loss. See F5.
+func TestMerge_PreservesTrailingSections(t *testing.T) {
+	const livingWithTrailer = `# Auth
+
+Living spec.
+
+## Requirements
+
+### Requirement: Login
+
+The system SHALL authenticate a user with a valid password.
+
+## Rationale
+
+Security review notes live here.
+
+## References
+
+- [OAuth 2.0](https://example.org)
+`
+	delta := `## ADDED Requirements
+
+### Requirement: Reset Password
+
+The system SHALL let a user reset a forgotten password.
+`
+	out := mustMerge(t, "auth", livingWithTrailer, delta)
+	if !strings.Contains(out, "## Rationale") {
+		t.Errorf("trailing Rationale section dropped:\n%s", out)
+	}
+	if !strings.Contains(out, "Security review notes live here.") {
+		t.Errorf("trailing Rationale body dropped:\n%s", out)
+	}
+	if !strings.Contains(out, "## References") {
+		t.Errorf("trailing References section dropped:\n%s", out)
+	}
+	if !strings.Contains(out, "[OAuth 2.0]") {
+		t.Errorf("trailing References body dropped:\n%s", out)
+	}
+	if !strings.Contains(out, "### Requirement: Reset Password") {
+		t.Errorf("ADDED requirement missing:\n%s", out)
+	}
+}
+
+// Applied must also recognize a POST-state that still carries trailing prose,
+// so crash recovery does not flag a legitimately-merged spec as needing re-merge.
+func TestApplied_TrailingSectionsPreserved(t *testing.T) {
+	const livingWithTrailer = `# Auth
+
+## Requirements
+
+### Requirement: Login
+
+SHALL authenticate.
+
+### Requirement: Reset
+
+SHALL reset.
+
+## Notes
+
+Background prose.
+`
+	delta := "## ADDED Requirements\n\n### Requirement: Reset\n\nSHALL reset.\n"
+	if !Applied("auth", livingWithTrailer, delta) {
+		t.Errorf("Applied must hold when trailing sections survive the merge:\n%s", livingWithTrailer)
+	}
+}

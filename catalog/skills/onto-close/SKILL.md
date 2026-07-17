@@ -10,7 +10,7 @@ ADR log, and user-facing guides — then archive the workspace.
 
 ## Entry check
 
-- `state.yaml` has `phase: close`; `verification.md` exists with a
+- `onto-state.yaml` has `phase: close`; `verification.md` exists with a
   `Result: pass` line (a trailing `(N accepted deviations)` still counts —
   match the `Result: pass` prefix; the deviations are recorded inside the
   report).
@@ -107,7 +107,22 @@ one interruption-prone step (mv + archived flag) is a single commit.
 4. Run lint-checklist section 3 (post-merge: no delta-only headings leaked,
    no duplicated requirements, scenario structure intact) and section 4
    (guides resolved, no dangling references). Findings block the archive.
-5. **Archive via the binary**: `onto close <name>` — it verifies the change is
+5. **Commit the close preparation.** Steps 1, 3, and the step-1 guides
+   resolution dirtied shared files (`docs/specs/`, `docs/adr/`,
+   `docs/guides/`) plus the workspace's own `onto-state.yaml` (merge-deltas
+   set `close.merged`) and its `design.md`/`notes.md` references. `onto close`
+   refuses to archive a dirty worktree, so this preparation MUST be committed
+   before invoking it:
+
+   ```
+   git add -A && git commit -m "close <name>: merge specs, accept ADRs, resolve guides"
+   ```
+
+   This commit is the "prepare" half of the close; the archive move below is
+   the second commit. The advertised "one archive commit" covers the workspace
+   move only — the shared-spec/ADR/guide landings are a separate, named commit
+   because they describe global mutations, not the workspace's archival.
+6. **Archive via the binary**: `onto close <name>` — it verifies the change is
    at `close`, all `deps` are archived, and the worktree is clean (other
    active changes' uncommitted `docs/changes/<other>/` files are tolerated —
    they gate their own close; if it refuses, `onto dirt <name>` lists what
@@ -139,7 +154,7 @@ integration <name> merge|pr` before acting:
   locally. If `gh` or a remote is unavailable, WARN and fall back to writing the
   ready PR body to the archive's `ship.md` for the user to open manually.
 
-Do this **after** the archive commit (step 3.5), so the integrated branch
+Do this **after** the archive commit (step 3.6), so the integrated branch
 includes the archived workspace. `close.merged` tracks spec-delta merging and is
 unrelated to this git integration — both happen at close.
 
@@ -159,7 +174,9 @@ unrelated to this git integration — both happen at close.
 - [ ] onto-no-slop pass run over **new** guide/ADR prose only, scores in
       `notes.md`; no requirement wording, `SHALL`/`MUST` line, scenario, or
       machine-read marker was rewritten
-- [ ] Archive is one commit: workspace under
+- [ ] Close preparation committed (specs, ADRs, guides, workspace references,
+      `onto-state.yaml`) — the worktree is clean before `onto close`
+- [ ] Archive is its own commit: workspace under
       `docs/changes/archive/YYYY-MM-DD-<name>/` **and** `archived: true`,
       committed together, everything tracked
 - [ ] Branch integrated per the `integration` choice — merged into base (clean,

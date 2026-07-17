@@ -41,7 +41,7 @@ func Merge(capability, living, delta string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	preamble, reqs := splitLiving(capability, living)
+	preamble, reqs, trailer := splitLiving(capability, living)
 
 	find := func(name string) int {
 		for i, r := range reqs {
@@ -85,7 +85,7 @@ func Merge(capability, living, delta string) (string, error) {
 		reqs = append(reqs, a)
 	}
 
-	return assemble(preamble, reqs), nil
+	return assemble(preamble, reqs, trailer), nil
 }
 
 // Applied reports whether living is already in delta's POST-state: every
@@ -105,7 +105,7 @@ func Applied(capability, living, delta string) bool {
 	if err != nil {
 		return false
 	}
-	_, reqs := splitLiving(capability, living)
+	_, reqs, _ := splitLiving(capability, living)
 	byName := make(map[string]requirement, len(reqs))
 	for _, r := range reqs {
 		byName[r.name] = r
@@ -161,11 +161,14 @@ func Lint(merged string) []string {
 }
 
 // splitLiving separates the living spec into its preamble (title/prose through
-// the `## Requirements` heading) and its requirement blocks. For an empty living
+// the `## Requirements` heading), its requirement blocks, and any trailing
+// level-2+ sections after the requirements (Rationale, Notes, References, …).
+// Trailing sections are preserved verbatim through a merge so prose that lives
+// after the requirements is never silently dropped (F5). For an empty living
 // spec it synthesizes a minimal preamble titled from the capability.
-func splitLiving(capability, living string) (preamble []string, reqs []requirement) {
+func splitLiving(capability, living string) (preamble []string, reqs []requirement, trailer []string) {
 	if strings.TrimSpace(living) == "" {
-		return []string{"# " + capability, "", "## Requirements"}, nil
+		return []string{"# " + capability, "", "## Requirements"}, nil, nil
 	}
 	lines := strings.Split(strings.ReplaceAll(living, "\r\n", "\n"), "\n")
 	i := 0
@@ -183,10 +186,13 @@ func splitLiving(capability, living string) (preamble []string, reqs []requireme
 			}
 			reqs = append(reqs, requirement{name: m[1], block: trimBlock(block)})
 		} else {
-			i++ // a trailing top-level section after requirements — dropped (rare)
+			// A level-2+ section after the requirements: capture the rest of the
+			// document verbatim as the trailer and stop scanning for requirements.
+			trailer = append(trailer, lines[i:]...)
+			break
 		}
 	}
-	return preamble, reqs
+	return preamble, reqs, trailer
 }
 
 // parseDelta reads the four delta sections. ADDED/MODIFIED yield requirement
@@ -251,8 +257,10 @@ func trimBlock(block []string) []string {
 }
 
 // assemble reconstitutes the living spec: the preamble, then each requirement
-// block, separated by a single blank line, ending with one newline.
-func assemble(preamble []string, reqs []requirement) string {
+// block, then any trailing sections, separated by a single blank line, ending
+// with one newline. The trailer is emitted verbatim after the requirements so
+// Rationale/Notes/References prose survives the merge (F5).
+func assemble(preamble []string, reqs []requirement, trailer []string) string {
 	var b strings.Builder
 	pre := strings.TrimRight(strings.Join(preamble, "\n"), "\n")
 	b.WriteString(pre)
@@ -261,6 +269,18 @@ func assemble(preamble []string, reqs []requirement) string {
 		b.WriteString("\n")
 		b.WriteString(strings.Join(r.block, "\n"))
 		b.WriteString("\n")
+	}
+	if len(trailer) > 0 {
+		// Trim a leading blank line so the trailer's own H2 heading gets the same
+		// single-blank-line separator the requirements use; preserve its body and
+		// final newline as written.
+		t := strings.TrimPrefix(strings.Join(trailer, "\n"), "\n")
+		t = strings.TrimPrefix(t, "\n")
+		b.WriteString("\n")
+		b.WriteString(t)
+		if !strings.HasSuffix(t, "\n") {
+			b.WriteString("\n")
+		}
 	}
 	return b.String()
 }

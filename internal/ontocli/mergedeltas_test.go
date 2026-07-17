@@ -62,3 +62,22 @@ func TestMergeDeltasCommand_InvalidDeltaWritesNothing(t *testing.T) {
 		t.Error("a failed merge must not set close.merged")
 	}
 }
+
+// merge-deltas must refuse to mutate living specs before the change reaches the
+// close phase. An open/build/verify change whose deltas are not yet accepted
+// must not touch the living specs. See F7.
+func TestMergeDeltasCommand_RefusesOutsideClosePhase(t *testing.T) {
+	for _, phase := range []string{"open", "design", "build", "verify"} {
+		t.Run(phase, func(t *testing.T) {
+			root := prepWorkspace(t)
+			changeDir := filepath.Join(root, "docs", "changes", "c")
+			ontostate.Save(filepath.Join(changeDir, "onto-state.yaml"), ontostate.State{Change: "c", Workflow: "full", Phase: phase})
+			writeFile(t, filepath.Join(changeDir, "specs", "cap.md"),
+				"## ADDED Requirements\n\n### Requirement: B\n\nSHALL b.\n")
+
+			if _, err := runOnto(t, "merge-deltas", "c", "--dir", root); err == nil {
+				t.Fatalf("merge-deltas must refuse at phase %q", phase)
+			}
+		})
+	}
+}

@@ -382,3 +382,48 @@ func TestCloseCommand_ArchiveTargetExistsRefused(t *testing.T) {
 		t.Errorf("st.Archived = true after refusal, want false")
 	}
 }
+
+// TestCloseCommand_MalformedWorkflowBypassesGuides verifies that a hand-edited
+// state carrying an unknown workflow value (e.g. "epic") cannot bypass the
+// full-workflow guides obligation. The close command must validate the loaded
+// state, not just check `workflow == "full"` — otherwise a malformed workflow
+// skips the guides gate. See F9.
+func TestCloseCommand_MalformedWorkflowBypassesGuides(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedCloseState(t, dir, ontostate.State{
+		Change:   "demo",
+		Workflow: "epic", // not full/fix/tweak — validation rejects this
+		Phase:    "close",
+		Created:  "2026-07-10",
+		Verify:   ontostate.Verify{Result: "pass"},
+		Close:    ontostate.Close{Merged: true},
+		Guides:   "pending", // would be blocked under full; epic would skip it
+	})
+	commitAll(t, dir, "seed change")
+
+	if _, err := runOnto(t, "close", "demo", "--dir", dir); err == nil {
+		t.Fatalf("close must reject a state with an unknown workflow value")
+	}
+}
+
+// TestCloseCommand_MalformedGuidesValueRejected verifies a guides value of
+// "waived:" (empty reason) — which ValidGuides rejects but GuidesResolved
+// accepts as a prefix — cannot satisfy close. Validation must run before the
+// guides gate. See F9.
+func TestCloseCommand_MalformedGuidesValueRejected(t *testing.T) {
+	dir := prepWorkspace(t)
+	seedCloseState(t, dir, ontostate.State{
+		Change:   "demo",
+		Workflow: "full",
+		Phase:    "close",
+		Created:  "2026-07-10",
+		Verify:   ontostate.Verify{Result: "pass"},
+		Close:    ontostate.Close{Merged: true},
+		Guides:   "waived:", // empty reason — ValidGuides rejects, GuidesResolved accepts
+	})
+	commitAll(t, dir, "seed change")
+
+	if _, err := runOnto(t, "close", "demo", "--dir", dir); err == nil {
+		t.Fatalf("close must reject a guides value with an empty waived reason")
+	}
+}

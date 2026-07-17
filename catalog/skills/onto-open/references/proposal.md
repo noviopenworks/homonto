@@ -13,7 +13,7 @@ summary.
      line under the title — the rebuild greps `^Preset:`, so column-0
      position is what matters, not being byte one of the file. An upgrade
      rewrites it to `Preset: fix (upgraded to full YYYY-MM-DD)`. -->
-<!-- optional: `Depends-on: <change-name>[, <change-name>]` — feeds state.yaml deps -->
+<!-- optional: `Depends-on: <change-name>[, <change-name>]` — feeds onto-state.yaml deps -->
 
 ## Why
 

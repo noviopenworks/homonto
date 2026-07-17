@@ -89,6 +89,14 @@ func runClose(cmd *cobra.Command, root, name string) error {
 	if err != nil {
 		return fmt.Errorf("onto close: loading %s: %w", statePath, err)
 	}
+	// Validate before closeEvidenceGate reads workflow/guides: an unknown
+	// workflow value would otherwise skip the guides gate (close only checks
+	// `full`/empty), and a malformed guides value like "waived:" (empty reason)
+	// is accepted by GuidesResolved but rejected by ValidGuides. Load migrates
+	// but does not validate (F9).
+	if err := st.Validate(); err != nil {
+		return fmt.Errorf("onto close: %w", err)
+	}
 
 	// Abandoned is the UNSUCCESSFUL terminal state; archiving is the successful
 	// one. Without this guard a change abandoned at phase close still passed
