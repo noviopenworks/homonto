@@ -52,7 +52,11 @@ prompt contains:
    off in BOTH `tasks.md` and `plan.md` (its `- [ ] done` line), then
    commit — files, not chat
 8. Return contract: commit sha + diff summary + literal verification
-   output
+   output + any **discovered work** (needed work outside this task's
+   stated scope) — reported, never done. The coordinator appends each
+   reported item to `tasks.md`/`plan.md` as a new unchecked task (or
+   routes it through the scope-change gate) BEFORE the next dispatch, so
+   the task list never trails what the repository already knows.
 
 ## Parallel dispatch (exception — meet every condition or stay serial)
 

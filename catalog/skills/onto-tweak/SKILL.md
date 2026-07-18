@@ -67,6 +67,8 @@ Then execute the build. After verify, advance once more into close.
 No `plan.md` required. Still binding:
 
 - one commit per task, checked off in `tasks.md` as it lands
+- the checklist is live: in-scope discovered work is APPENDED to `tasks.md`
+  as a new unchecked item before its code is written — never done silently
 - on ANY failure: systematic debugging — root cause before any fix
 - stay inside the tweak's stated scope; anything more hits the upgrade gate
 

@@ -51,7 +51,11 @@ suspected blast radius. Create `docs/changes/<name>/` with:
 - `proposal.md` — a `Preset: fix` line at column 0 under the title (the
   state rebuild greps `^Preset:`), then the bug (link the issue if any),
   reproduction, expected behavior, fix scope
-- `tasks.md` — short checklist (reproduce → fix → regression)
+- `tasks.md` — short checklist (reproduce → fix → regression). The
+  checklist is live during the fix: in-scope discovered work is APPENDED
+  as a new unchecked item before its code is written, checked off as its
+  commit lands — never done silently (scope-exceeding work hits the
+  upgrade gate instead)
 
 No full design and no plan.md required. Branch: `fix/YYYYMMDD/<name>`.
 Templates: reuse the full-workflow references (`onto/references/state-yaml.md`,

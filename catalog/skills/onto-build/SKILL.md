@@ -119,6 +119,34 @@ the final task. If no real dispatch capability exists, fall back to
    intent. Never batch tasks into one commit; never leave checked-off tasks
    uncommitted.
 
+**The task list is live state — append before doing, check off at landing.**
+The checkboxes are the change's ground truth; a fresh session resumes from
+them alone, so any drift between the list and the repository is how a session
+gets lost. Four rules, no exceptions:
+
+- **No work outside a written task.** Discovered work — a missing edge case,
+  a prerequisite refactor, a test the plan forgot — is APPENDED to `tasks.md`
+  and `plan.md` as a new unchecked task (with its files and verification)
+  **before** any of its code is written. Append-then-do, never
+  do-then-maybe-note. A few lines inside the current task's stated scope
+  belong to that task; anything more is a new task.
+- **Check off at landing, in the task's own commit.** The `tasks.md` +
+  `plan.md` checkoffs ride the commit that completes the task — never before
+  the commit, never batched afterwards.
+- **Never renumber, reorder, or delete tasks.** A task that becomes
+  unnecessary is checked with a one-line reason
+  (`- [x] N.N SUPERSEDED: <why>`); appended tasks take the next number.
+  Stable numbering is what makes "first unchecked task" a reliable resume
+  point.
+- **Fix the list before writing more code.** If at any moment the checkboxes
+  do not describe reality (an unchecked task is actually done, work happened
+  that no task names), stop and reconcile the list first — that state is a
+  live defect, not cleanup for later.
+
+Appended tasks that touch the design's interfaces, components, or data flow
+are not "discovered work" — they are scope changes; route them through
+section 5 instead of appending silently.
+
 **Delegate review and parallelize independent tasks.** The reviewer role above
 is the `onto-reviewer` subagent shipped with onto — hand it each task's diff (and
 always the final diff), rather than reviewing inline. Its findings are input to

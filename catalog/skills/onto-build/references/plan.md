@@ -27,4 +27,10 @@ Design: `design.md` (Status: Confirmed <date>). One commit per task.
   `execution: subagent` (and deserve extra scrutiny under `direct`).
 - Tasks map to `tasks.md` areas; when a plan task completes, check BOTH
   files (`- [ ] done` here, the matching `- [ ]` item in tasks.md).
-- The final task is always validation (the change proving itself).
+- **The plan is live**: work discovered during execution is appended as
+  `## Task N — <outcome> (discovered <date>)` with the same Files/Do/Verify
+  fields, BEFORE its code is written — and mirrored into `tasks.md` in the
+  same edit. Numbering only grows; never renumber or delete a task (mark a
+  dead one's checkbox `- [x] SUPERSEDED: <reason>`).
+- The final task is always validation (the change proving itself). Appended
+  tasks land BEFORE it — validation stays last.

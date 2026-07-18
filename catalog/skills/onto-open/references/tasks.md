@@ -35,5 +35,11 @@ refines and checks items off — one commit per checked item.
   `- [x] N.N (deferred, done at close YYYY-MM-DD): <desc>` — that rewrite
   is what the pre-archive lint's "no unresolved markers" check reads.
 - Number tasks `<area>.<n>`; keep one outcome per task.
+- **The list is live**: work discovered during build is appended as
+  `- [ ] N.M (discovered <date>): <task>` — appended BEFORE its code is
+  written, checked off when its commit lands. Never renumber, reorder, or
+  delete existing tasks; a task made unnecessary is checked as
+  `- [x] N.N SUPERSEDED: <reason>`. A fresh session resumes from the first
+  unchecked task, so the checkboxes must describe reality at every commit.
 - Every change ends with a Validation area — a change that can't state its
   own proof isn't ready to build.
