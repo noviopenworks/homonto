@@ -1,23 +1,21 @@
 package tocli
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/noviopenworks/homonto/internal/buildinfo"
 	"github.com/noviopenworks/homonto/internal/tostate"
+	"github.com/noviopenworks/homonto/internal/workcli"
 	"github.com/spf13/cobra"
 )
 
-// ErrQuietFindings is what `to doctor --quiet` returns when there are
-// findings: the caller (cmd/to/main.go) must exit non-zero WITHOUT printing —
-// quiet mode's whole contract is "exit code only", so a hook capturing stderr
-// sees nothing.
-var ErrQuietFindings = errors.New("to doctor: findings (quiet)")
+// ErrQuietFindings is what `to doctor --quiet` returns when there are findings:
+// the caller (cmd/to/main.go) must exit non-zero WITHOUT printing. Aliased to
+// the shared workcli sentinel so the quiet contract and the errors.Is check in
+// cmd/to/main.go hold for both workflow CLIs from one definition.
+var ErrQuietFindings = workcli.ErrQuietFindings
 
 // doctorCmd builds "to doctor": a strictly read-only, config-independent
 // workspace-health diagnostic. It is NOT gated on the framework install — a
@@ -131,8 +129,8 @@ func collectFindings(root string) ([]string, error) {
 	// read only homontoVersion from .homonto/state.json; missing file or field
 	// is silently skipped, and build metadata is ignored so a homogeneous dev
 	// build of both binaries does not report a false skew.
-	if applied := homontoAppliedVersion(root); applied != "" {
-		if me := buildinfo.Resolve(Version, devVersion); me != "" && normalizeVersion(me) != normalizeVersion(applied) {
+	if applied := workcli.HomontoAppliedVersion(root); applied != "" {
+		if me := buildinfo.Resolve(Version, buildinfo.DevVersion); me != "" && workcli.NormalizeVersion(me) != workcli.NormalizeVersion(applied) {
 			findings = append(findings, fmt.Sprintf(
 				"version skew: to %s, but the to framework was last applied by homonto %s — run `homonto update` (or align the two binaries)",
 				me, applied))
@@ -140,31 +138,4 @@ func collectFindings(root string) ([]string, error) {
 	}
 
 	return findings, nil
-}
-
-// homontoAppliedVersion reads the homonto version recorded by the last apply
-// ("" if unavailable). Standalone on purpose: to imports none of homonto's
-// projection packages.
-func homontoAppliedVersion(root string) string {
-	data, err := os.ReadFile(filepath.Join(root, ".homonto", "state.json"))
-	if err != nil {
-		return ""
-	}
-	var s struct {
-		HomontoVersion string `json:"homontoVersion"`
-	}
-	if json.Unmarshal(data, &s) != nil {
-		return ""
-	}
-	return s.HomontoVersion
-}
-
-// normalizeVersion strips a leading "v" and any build metadata (from "+") so a
-// dirty local build of both binaries compares equal on its release core.
-func normalizeVersion(v string) string {
-	v = strings.TrimPrefix(v, "v")
-	if i := strings.IndexByte(v, '+'); i >= 0 {
-		v = v[:i]
-	}
-	return v
 }

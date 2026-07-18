@@ -10,13 +10,13 @@ import (
 
 // runTransition loads the change via LoadChange (so migration + dual-legacy
 // conflict detection apply), lets apply validate+mutate the state, re-validates
-// the whole state, and saves. It gates on gate(root) and validChangeName, and
-// writes nothing if any step fails.
+// the whole state, and saves. It gates on ontoFramework.Gate(root) and
+// ontoFramework.ValidChangeName, and writes nothing if any step fails.
 func runTransition(cmd *cobra.Command, root, name string, apply func(*ontostate.State) error) error {
-	if err := gate(root); err != nil {
+	if err := ontoFramework.Gate(root); err != nil {
 		return err
 	}
-	if err := validChangeName(name); err != nil {
+	if err := ontoFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 	changeDir := filepath.Join(root, "docs", "changes", name)
@@ -182,7 +182,7 @@ func depsCmd() *cobra.Command {
 				// metacharacter-carrying dep fails here instead of silently never
 				// (or, with the old glob matching, always) resolving.
 				for _, dep := range deps {
-					if err := validChangeName(dep); err != nil {
+					if err := ontoFramework.ValidChangeName(dep); err != nil {
 						return fmt.Errorf("onto set deps: --dep %q: %w", dep, err)
 					}
 				}

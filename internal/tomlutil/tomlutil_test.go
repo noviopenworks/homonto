@@ -7,7 +7,10 @@ func TestSetGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, ok := Get(doc, "mcp_servers.demo.command")
+	got, ok, err := Get(doc, "mcp_servers.demo.command")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
 	if !ok {
 		t.Fatal("key should be present after set")
 	}
@@ -22,14 +25,14 @@ func TestSetPreservesUnmanaged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, ok := Get(doc, "model"); !ok || v != `"o3"` {
-		t.Fatalf("unmanaged top-level key lost: %q ok=%v", v, ok)
+	if v, ok, err := Get(doc, "model"); err != nil || !ok || v != `"o3"` {
+		t.Fatalf("unmanaged top-level key lost: %q ok=%v err=%v", v, ok, err)
 	}
-	if v, ok := Get(doc, "mcp_servers.user_owned.command"); !ok || v != `["x"]` {
-		t.Fatalf("unmanaged server table lost: %q ok=%v", v, ok)
+	if v, ok, err := Get(doc, "mcp_servers.user_owned.command"); err != nil || !ok || v != `["x"]` {
+		t.Fatalf("unmanaged server table lost: %q ok=%v err=%v", v, ok, err)
 	}
-	if v, ok := Get(doc, "mcp_servers.demo.command"); !ok || v != `["codex-mcp","serve"]` {
-		t.Fatalf("managed value wrong: %q ok=%v", v, ok)
+	if v, ok, err := Get(doc, "mcp_servers.demo.command"); err != nil || !ok || v != `["codex-mcp","serve"]` {
+		t.Fatalf("managed value wrong: %q ok=%v err=%v", v, ok, err)
 	}
 }
 
@@ -42,18 +45,29 @@ func TestDeletePrunesEmptyParents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := Get(doc, "mcp_servers.demo"); ok {
+	if _, ok, err := Get(doc, "mcp_servers.demo"); err != nil || ok {
 		t.Fatal("deleted table should be gone")
 	}
 	// The unmanaged sibling key survives.
-	if v, ok := Get(doc, "model"); !ok || v != `"o3"` {
-		t.Fatalf("unmanaged key lost after delete: %q ok=%v", v, ok)
+	if v, ok, err := Get(doc, "model"); err != nil || !ok || v != `"o3"` {
+		t.Fatalf("unmanaged key lost after delete: %q ok=%v err=%v", v, ok, err)
 	}
 }
 
 func TestGetAbsent(t *testing.T) {
-	if _, ok := Get([]byte("model=\"o3\"\n"), "mcp_servers.none.command"); ok {
-		t.Fatal("absent key must report not present")
+	if _, ok, err := Get([]byte("model=\"o3\"\n"), "mcp_servers.none.command"); err != nil || ok {
+		t.Fatal("absent key must report not present (and no parse error on a valid doc)")
+	}
+}
+
+// TestGetSurfacesParseError guards the H5 fix: a corrupted document must
+// return an error rather than silently collapse to ok=false, so a caller
+// doing plan diffing cannot mistake a broken file for a deleted key and emit
+// a destructive plan.
+func TestGetSurfacesParseError(t *testing.T) {
+	corrupt := []byte("not = valid = toml = =")
+	if _, _, err := Get(corrupt, "mcp_servers.demo.command"); err == nil {
+		t.Fatal("Get on corrupt TOML must return a parse error")
 	}
 }
 
@@ -80,7 +94,7 @@ func TestGetNestedEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, ok := Get(doc, "mcp_servers.x.env"); !ok || v != `{"KEY":"val"}` {
-		t.Fatalf("nested env round-trip: %q ok=%v", v, ok)
+	if v, ok, err := Get(doc, "mcp_servers.x.env"); err != nil || !ok || v != `{"KEY":"val"}` {
+		t.Fatalf("nested env round-trip: %q ok=%v err=%v", v, ok, err)
 	}
 }

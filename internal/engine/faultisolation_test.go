@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,11 +25,11 @@ targets = ["claude"]
 	os.MkdirAll(ocDir, 0o755)
 	os.WriteFile(filepath.Join(ocDir, "opencode.jsonc"), []byte(`{ "plugin": [ this is not json `), 0o644)
 
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 
 	sets, err := e.Plan()
 	if err != nil {
@@ -37,7 +38,7 @@ targets = ["claude"]
 	if len(e.Warnings) == 0 {
 		t.Fatal("expected a warning about the unparseable opencode file")
 	}
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply should proceed for the healthy tool: %v", err)
 	}
 	cj, _ := os.ReadFile(filepath.Join(home, ".claude.json"))

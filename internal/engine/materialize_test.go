@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -65,11 +66,11 @@ effort = "low"
 
 func buildEngine(t *testing.T, home, repo string) *Engine {
 	t.Helper()
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 	return e
 }
 
@@ -136,12 +137,12 @@ func TestApplyRelativeConfigLinksResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chdir(prevWD) })
-	e, err := Build("homonto.toml", home, "content")
+	e, err := Build(context.Background(), "homonto.toml", home, "content")
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -166,7 +167,7 @@ func TestApplyMaterializesBuiltinSkills(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -192,7 +193,7 @@ func TestApplyRematerializesWhenVersionStale(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	skillFile := filepath.Join(repo, ".homonto", "catalog", "skills", "onto-open", "SKILL.md")
@@ -206,7 +207,7 @@ func TestApplyRematerializesWhenVersionStale(t *testing.T) {
 
 	e2 := buildEngine(t, home, repo)
 	sets2, _ := e2.Plan()
-	if err := e2.Apply(sets2); err != nil {
+	if err := e2.Apply(context.Background(), sets2); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	if b, _ := os.ReadFile(skillFile); string(b) == "STALE" {
@@ -221,7 +222,7 @@ func TestApplyRematerializesWhenSkillDirMissing(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	skillDir := filepath.Join(e.CatalogDir(), "onto-open")
@@ -237,7 +238,7 @@ func TestApplyRematerializesWhenSkillDirMissing(t *testing.T) {
 
 	e2 := buildEngine(t, home, repo)
 	sets2, _ := e2.Plan()
-	if err := e2.Apply(sets2); err != nil {
+	if err := e2.Apply(context.Background(), sets2); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil {
@@ -252,7 +253,7 @@ func TestApplySkipsRematerializeWhenVersionMatchesAndDirsIntact(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	skillDir := filepath.Join(e.CatalogDir(), "onto-open")
@@ -266,7 +267,7 @@ func TestApplySkipsRematerializeWhenVersionMatchesAndDirsIntact(t *testing.T) {
 	// os.RemoveAll(dstDir) per skill, which would delete the sentinel).
 	e2 := buildEngine(t, home, repo)
 	sets2, _ := e2.Plan()
-	if err := e2.Apply(sets2); err != nil {
+	if err := e2.Apply(context.Background(), sets2); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	if _, err := os.Stat(sentinel); err != nil {
@@ -281,7 +282,7 @@ func TestApplyMaterializesBuiltinCommand(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -301,7 +302,7 @@ func TestApplyRematerializesWhenCommandFileMissing(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	cmdFile := filepath.Join(e.CommandDir(), "example-command.md")
@@ -311,7 +312,7 @@ func TestApplyRematerializesWhenCommandFileMissing(t *testing.T) {
 
 	e2 := buildEngine(t, home, repo)
 	sets2, _ := e2.Plan()
-	if err := e2.Apply(sets2); err != nil {
+	if err := e2.Apply(context.Background(), sets2); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	if _, err := os.Stat(cmdFile); err != nil {
@@ -321,7 +322,7 @@ func TestApplyRematerializesWhenCommandFileMissing(t *testing.T) {
 
 func TestApplyMaterializesBuiltinSubagent(t *testing.T) {
 	e := buildEngineWithSubagent(t)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	p := filepath.Join(e.SubagentDir(), "onto-reviewer.md")
@@ -332,14 +333,14 @@ func TestApplyMaterializesBuiltinSubagent(t *testing.T) {
 
 func TestApplyRematerializesWhenSubagentFileMissing(t *testing.T) {
 	e := buildEngineWithSubagent(t)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
 	p := filepath.Join(e.SubagentDir(), "onto-reviewer.md")
 	if err := os.Remove(p); err != nil {
 		t.Fatalf("remove: %v", err)
 	}
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 	if _, err := os.Stat(p); err != nil {

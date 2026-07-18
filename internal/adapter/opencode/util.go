@@ -1,17 +1,13 @@
 package opencode
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/tidwall/gjson"
 )
-
-func contains(ss []string, x string) bool { return slices.Contains(ss, x) }
 
 func arrayHas(doc []byte, path, elem string) bool {
 	for _, v := range gjson.GetBytes(doc, path).Array() {
@@ -21,8 +17,6 @@ func arrayHas(doc []byte, path, elem string) bool {
 	}
 	return false
 }
-
-func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 
 func hasPrefix(s, p string) bool { return strings.HasPrefix(s, p) }
 func trim(s, p string) string    { return strings.TrimPrefix(s, p) }

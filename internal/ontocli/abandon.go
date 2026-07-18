@@ -10,8 +10,9 @@ import (
 
 // abandonCmd builds the "onto abandon <change>" subcommand: it marks a change as
 // the unsuccessful terminal state (cancelled without completing), distinct from
-// the successful close/archived terminal. It enforces gate(dir) and a valid
-// change name, and writes nothing unless every precondition below passes.
+// the successful close/archived terminal. It enforces ontoFramework.Gate(dir)
+// and a valid change name, and writes nothing unless every precondition below
+// passes.
 func abandonCmd() *cobra.Command {
 	var dir string
 
@@ -27,16 +28,17 @@ func abandonCmd() *cobra.Command {
 	return cmd
 }
 
-// runAbandon enforces, in order: gate(root); validChangeName(name); that
+// runAbandon enforces, in order: ontoFramework.Gate(root);
+// ontoFramework.ValidChangeName(name); that
 // docs/changes/<name>/onto-state.yaml loads; that the change is not already
 // archived (a completed change is not abandonable). It then sets Abandoned=true
 // and saves. It is idempotent: abandoning an already-abandoned change succeeds
 // and rewrites the same terminal state.
 func runAbandon(cmd *cobra.Command, root, name string) error {
-	if err := gate(root); err != nil {
+	if err := ontoFramework.Gate(root); err != nil {
 		return err
 	}
-	if err := validChangeName(name); err != nil {
+	if err := ontoFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 

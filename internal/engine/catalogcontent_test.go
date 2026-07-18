@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,7 +48,7 @@ func TestApplyRematerializesWhenLocalFrameworkContentChanges(t *testing.T) {
 	}
 
 	e := buildEngine(t, home, repo)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
 	materialized := filepath.Join(e.CatalogRoot, "greet", "SKILL.md")
@@ -59,7 +60,7 @@ func TestApplyRematerializesWhenLocalFrameworkContentChanges(t *testing.T) {
 	// same file set, same model routes.
 	seedLocalFramework(t, repo, "---\nname: greet\ndescription: v2\n---\nVERSION TWO\n")
 	e2 := buildEngine(t, home, repo)
-	if err := e2.Apply(mustPlan(t, e2)); err != nil {
+	if err := e2.Apply(context.Background(), mustPlan(t, e2)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 	if b, _ := os.ReadFile(materialized); !strings.Contains(string(b), "VERSION TWO") {
@@ -77,7 +78,7 @@ func TestApplyGCsUndeclaredCatalogEntries(t *testing.T) {
 	writeConfig(t, repo, "first/model-a") // declares builtin:onto-reviewer for opencode
 
 	e := buildEngine(t, home, repo)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
 	// Plant pre-rename litter of every kind (the command root may not exist yet
@@ -102,7 +103,7 @@ func TestApplyGCsUndeclaredCatalogEntries(t *testing.T) {
 	// Change a model route so the gate re-materializes (and therefore GCs).
 	writeConfig(t, repo, "second/model-b")
 	e2 := buildEngine(t, home, repo)
-	if err := e2.Apply(mustPlan(t, e2)); err != nil {
+	if err := e2.Apply(context.Background(), mustPlan(t, e2)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 	for _, p := range append(stale, filepath.Join(e.CatalogRoot, "old-skill")) {

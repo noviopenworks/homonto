@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -37,18 +38,18 @@ func TestPartialApplyPersistsEarlierAdapterState(t *testing.T) {
 	cfgPath := filepath.Join(repo, "homonto.toml")
 	os.WriteFile(cfgPath, []byte("[mcps.codegraph]\ncommand = [\"codegraph\",\"serve\"]\ntargets = [\"claude\"]\n"), 0o644)
 
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 	e.Adapters = append(e.Adapters, failingAdapter{})
 
 	sets, err := e.Plan()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = e.Apply(sets)
+	err = e.Apply(context.Background(), sets)
 	if err == nil {
 		t.Fatal("expected apply to fail on the failing adapter")
 	}

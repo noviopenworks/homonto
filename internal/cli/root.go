@@ -5,18 +5,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// devVersion is the unstamped default; release builds override Version via
-// -ldflags "-X github.com/noviopenworks/homonto/internal/cli.Version=...".
-const devVersion = "0.1.0-dev"
-
-// Version is the homonto build version. It is a constant-initialized string so
-// the linker's -X stamp takes effect; when unstamped (e.g. `go install ...@tag`,
-// which applies no ldflags) buildinfo.Resolve recovers the module version.
-var Version = devVersion
+// Version is the homonto build version. It is initialized to buildinfo.
+// DevVersion (the single source of the dev literal shared by every homonto
+// binary) and is a constant-initialized string so the linker's -X stamp takes
+// effect; when unstamped (e.g. `go install ...@tag`, which applies no ldflags)
+// buildinfo.Resolve recovers the module version.
+var Version = buildinfo.DevVersion
 
 // NewRootCmd builds the root cobra command and registers subcommands.
 func NewRootCmd() *cobra.Command {
-	version := buildinfo.Resolve(Version, devVersion)
+	version := buildinfo.Resolve(Version, buildinfo.DevVersion)
 	root := &cobra.Command{
 		Use:           "homonto",
 		Short:         "Declarative config for AI coding tools",

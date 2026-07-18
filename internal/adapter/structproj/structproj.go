@@ -24,8 +24,11 @@ import (
 type Codec interface {
 	// EnsureRoot normalizes an empty/whitespace document to a writable root.
 	EnsureRoot(doc []byte) ([]byte, error)
-	// Get returns the canonical JSON value at a path and whether it is present.
-	Get(doc []byte, path string) (string, bool)
+	// Get returns the canonical JSON value at a path, whether it is present,
+	// and a parse error if the document is malformed. A parse failure must NOT
+	// be folded into ok=false — callers must be able to tell a missing key
+	// (create/adopt path) from a corrupted file (abort).
+	Get(doc []byte, path string) (string, bool, error)
 	// Set assigns a JSON-encoded value at a path, preserving unmanaged content.
 	Set(doc []byte, path, jsonValue string) ([]byte, error)
 	// Delete removes the value at a path, pruning parents it empties.
@@ -40,13 +43,18 @@ type PathFor func(stateKey string) string
 // Project diffs desired (state-key → JSON value) against the on-disk document
 // and recorded state, producing the change list for one managed namespace. It
 // reproduces the built-in adapters' semantics exactly, including secret-safe
-// redaction of Old.
-func Project(tool, prefix string, desired map[string]string, disk []byte, st *state.State, codec Codec, pathFor PathFor) []adapter.Change {
+// redaction of Old. A codec parse error aborts the projection rather than being
+// folded into "key absent" — emitting a destructive plan against a corrupted
+// file would be worse than failing loud.
+func Project(tool, prefix string, desired map[string]string, disk []byte, st *state.State, codec Codec, pathFor PathFor) ([]adapter.Change, error) {
 	var changes []adapter.Change
 	declared := make(map[string]bool, len(desired))
 	for key, want := range desired {
 		declared[key] = true
-		diskVal, hasDisk := codec.Get(disk, pathFor(key))
+		diskVal, hasDisk, err := codec.Get(disk, pathFor(key))
+		if err != nil {
+			return nil, err
+		}
 		e, inState := st.Get(tool, key)
 		switch {
 		case !hasDisk:
@@ -82,7 +90,7 @@ func Project(tool, prefix string, desired map[string]string, disk []byte, st *st
 		changes = append(changes, adapter.Change{Action: "delete", Key: k, Old: adapter.SecretRedaction})
 	}
 	sort.SliceStable(changes, func(i, j int) bool { return changes[i].Key < changes[j].Key })
-	return changes
+	return changes, nil
 }
 
 // Apply writes the changes into the document (managed keys only), records state,
@@ -145,18 +153,24 @@ func Apply(tool, prefix string, changes []adapter.Change, disk []byte, codec Cod
 
 // Observe re-hashes each recorded key of this namespace still present on disk,
 // the same way Apply stored Entry.Applied, so an unchanged key hashes back to
-// its recorded value. Keys absent from disk are omitted.
-func Observe(tool, prefix string, disk []byte, st *state.State, codec Codec, pathFor PathFor) map[string]string {
+// its recorded value. Keys absent from disk are omitted. A codec parse error
+// aborts observation rather than silently treating every key as absent (which
+// would report false drift).
+func Observe(tool, prefix string, disk []byte, st *state.State, codec Codec, pathFor PathFor) (map[string]string, error) {
 	out := map[string]string{}
 	for _, k := range st.Keys(tool) {
 		if !strings.HasPrefix(k, prefix) {
 			continue
 		}
-		if v, ok := codec.Get(disk, pathFor(k)); ok {
+		v, ok, err := codec.Get(disk, pathFor(k))
+		if err != nil {
+			return nil, err
+		}
+		if ok {
 			out[k] = secret.Hash(v)
 		}
 	}
-	return out
+	return out, nil
 }
 
 // MustJSON marshals a value to a JSON string ("null" on error). Exported so

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,7 +64,7 @@ func TestApplyRerendersSubagentsWhenModelRouteChanges(t *testing.T) {
 
 	writeConfig(t, repo, "first/model-a")
 	e := buildEngine(t, home, repo)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
 	if got := renderedModel(t, e, "onto-reviewer.opencode.md"); got != "first/model-a" {
@@ -73,7 +74,7 @@ func TestApplyRerendersSubagentsWhenModelRouteChanges(t *testing.T) {
 	// Change ONLY the architectural route. The catalog is byte-for-byte identical.
 	writeConfig(t, repo, "second/model-b")
 	e2 := buildEngine(t, home, repo)
-	if err := e2.Apply(mustPlan(t, e2)); err != nil {
+	if err := e2.Apply(context.Background(), mustPlan(t, e2)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 	if got := renderedModel(t, e2, "onto-reviewer.opencode.md"); got != "second/model-b" {
@@ -93,7 +94,7 @@ func TestApplyRestoresDeletedRenderedVariant(t *testing.T) {
 	writeConfig(t, repo, "first/model-a")
 
 	e := buildEngine(t, home, repo)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
 	variant := filepath.Join(e.SubagentDir(), "onto-reviewer.opencode.md")
@@ -102,7 +103,7 @@ func TestApplyRestoresDeletedRenderedVariant(t *testing.T) {
 	}
 
 	e2 := buildEngine(t, home, repo)
-	if err := e2.Apply(mustPlan(t, e2)); err != nil {
+	if err := e2.Apply(context.Background(), mustPlan(t, e2)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 	if _, err := os.Stat(variant); err != nil {
@@ -158,7 +159,7 @@ effort = "max"
 		t.Fatal(err)
 	}
 	e := buildEngine(t, home, repo)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -202,7 +203,7 @@ func TestDoctorSilentOnPrimaryAgentClaudeVariant(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := buildEngine(t, home, repo)
-	if err := e.Apply(mustPlan(t, e)); err != nil {
+	if err := e.Apply(context.Background(), mustPlan(t, e)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 

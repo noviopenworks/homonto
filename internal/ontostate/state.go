@@ -345,6 +345,12 @@ var archiveDatePrefix = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-`)
 // name matched anything. The returned slice contains the unresolved subset of
 // deps, in input order. A nil or empty deps returns an empty (len 0) slice.
 func DepsResolved(root string, deps []string) []string {
+	// Note: both os.ReadDir calls below intentionally collapse "missing" and
+	// "unreadable" into "no entries". For a workflow gate that is the safe
+	// direction: an unreadable archive/changes dir leaves every dep
+	// unresolved, so the gate refuses to advance rather than greenlighting an
+	// unverified dependency. Do not "fix" this by surfacing the error — it
+	// would change the gate-closed contract.
 	archived := map[string]bool{}
 	if entries, err := os.ReadDir(filepath.Join(root, "docs", "changes", "archive")); err == nil {
 		for _, e := range entries {

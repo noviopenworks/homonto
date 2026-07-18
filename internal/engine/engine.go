@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -43,8 +44,10 @@ type Engine struct {
 }
 
 // Build loads config and wires both adapters. home is $HOME; contentDir is the
-// local provider root; state lives in <repo>/.homonto next to the config.
-func Build(configPath, home, contentDir string) (*Engine, error) {
+// local provider root; state lives in <repo>/.homonto next to the config. The
+// context bounds the in-Build remote-framework resolution (fetch/verify can
+// touch the network) and is propagated to every Resolver.Resolve call.
+func Build(ctx context.Context, configPath, home, contentDir string) (*Engine, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, err
@@ -110,7 +113,7 @@ func Build(configPath, home, contentDir string) (*Engine, error) {
 	// builds via Cfg.FrameworkCatalog()) overlay the remote framework roots. A
 	// config with no remote frameworks resolves nothing (no network); a bad,
 	// mismatched, or revoked digest fails closed here and aborts Build.
-	dirs, err := e.resolveRemoteFrameworks()
+	dirs, err := e.resolveRemoteFrameworks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +155,9 @@ func (e *Engine) Plan() ([]adapter.ChangeSet, error) {
 // Apply is two-phase: resolve every non-noop change's secrets first (abort
 // before any write on error), then apply each adapter, saving state after each
 // successful adapter so a later failure never loses an earlier one's record.
-func (e *Engine) Apply(sets []adapter.ChangeSet) error {
+// The context bounds remote-source fetches during materializeRemotes so the
+// caller (typically a cobra command) can interrupt a hung network operation.
+func (e *Engine) Apply(ctx context.Context, sets []adapter.ChangeSet) error {
 	// Fail closed on a malformed plan before any side effect: an unknown tool
 	// (otherwise silently skipped below) or an operation with an undefined action
 	// (otherwise a silent no-op) must abort — never quietly drop a change to a
@@ -183,7 +188,7 @@ func (e *Engine) Apply(sets []adapter.ChangeSet) error {
 	// Resolve, verify, and materialize remote sources before any adapter links
 	// them. This fetches → validates → pin-matches → caches, aborting the whole
 	// apply before any adapter write if any remote resource fails closed.
-	if err := e.materializeRemotes(); err != nil {
+	if err := e.materializeRemotes(ctx); err != nil {
 		return err
 	}
 	// Materialize builtin skills before any adapter links them, so no symlink is

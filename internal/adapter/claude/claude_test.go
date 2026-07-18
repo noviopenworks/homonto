@@ -44,7 +44,7 @@ func cfgWithSubagents(scope string, names ...string) *config.Config {
 
 func resolver() *secret.Resolver {
 	return &secret.Resolver{
-		Getenv: os.Getenv,
+		Getenv: func(string) string { return "" },
 		Pass:   func(string) (string, error) { return "SECRET", nil },
 	}
 }
@@ -98,7 +98,7 @@ func TestSecretWithSpecialCharsDoesNotCorruptFile(t *testing.T) {
 	a := New(home, t.TempDir())
 	st, _ := state.Load(t.TempDir())
 	res := &secret.Resolver{
-		Getenv: os.Getenv,
+		Getenv: func(string) string { return "" },
 		Pass:   func(string) (string, error) { return `x","injected":"y`, nil },
 	}
 	cs, _ := a.Plan(cfg(), st)

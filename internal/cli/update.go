@@ -38,7 +38,7 @@ func updateCmd() *cobra.Command {
 // values from the LAST apply) and the embedded versions from the catalog, so it
 // shows the exact "from → to" the projection is about to make.
 func printVersionTransition(cmd *cobra.Command, e *engine.Engine) {
-	binary := buildinfo.Resolve(Version, devVersion)
+	binary := buildinfo.Resolve(Version, buildinfo.DevVersion)
 	if rec := e.State.HomontoVersionRecorded(); rec != "" && rec != binary {
 		cmd.Printf("homonto %s → %s\n", rec, binary)
 	} else {

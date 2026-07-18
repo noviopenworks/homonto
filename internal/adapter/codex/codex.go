@@ -49,11 +49,11 @@ func docPath(stateKey string) string {
 // codec adapts the tomlutil package functions to structproj.Codec.
 type codec struct{}
 
-func (codec) EnsureRoot(doc []byte) ([]byte, error)       { return tomlutil.EnsureRoot(doc) }
-func (codec) Get(doc []byte, p string) (string, bool)     { return tomlutil.Get(doc, p) }
-func (codec) Set(doc []byte, p, v string) ([]byte, error) { return tomlutil.Set(doc, p, v) }
-func (codec) Delete(doc []byte, p string) ([]byte, error) { return tomlutil.Delete(doc, p) }
-func (codec) Canonical(v string) string                   { return tomlutil.Canonical(v) }
+func (codec) EnsureRoot(doc []byte) ([]byte, error)          { return tomlutil.EnsureRoot(doc) }
+func (codec) Get(doc []byte, p string) (string, bool, error) { return tomlutil.Get(doc, p) }
+func (codec) Set(doc []byte, p, v string) ([]byte, error)    { return tomlutil.Set(doc, p, v) }
+func (codec) Delete(doc []byte, p string) ([]byte, error)    { return tomlutil.Delete(doc, p) }
+func (codec) Canonical(v string) string                      { return tomlutil.Canonical(v) }
 
 // desired maps each MCP that explicitly targets codex to its mcp_servers.<name>
 // value. Codex is opt-in: an MCP with no explicit targets defaults to
@@ -86,7 +86,10 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
-	changes := structproj.Project(Tool, keyPrefix, a.desired(c), disk, st, codec{}, docPath)
+	changes, err := structproj.Project(Tool, keyPrefix, a.desired(c), disk, st, codec{}, docPath)
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
 	return adapter.ChangeSet{Tool: Tool, Changes: changes}, nil
 }
 
@@ -116,7 +119,7 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return structproj.Observe(Tool, keyPrefix, disk, st, codec{}, docPath), nil
+	return structproj.Observe(Tool, keyPrefix, disk, st, codec{}, docPath)
 }
 
 // read returns the raw config.toml, or empty bytes when absent.

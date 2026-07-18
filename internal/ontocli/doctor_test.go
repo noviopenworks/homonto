@@ -76,7 +76,7 @@ func TestDoctorReportsVersionSkew(t *testing.T) {
 	// Matching version (this binary's own resolved version) → no skew.
 	match := t.TempDir()
 	seedDocsLayout(t, match)
-	writeHomontoState(t, match, buildinfo.Resolve(Version, devVersion))
+	writeHomontoState(t, match, buildinfo.Resolve(Version, buildinfo.DevVersion))
 	if out, err := execDoctor(t, match); err != nil || !strings.Contains(out, "healthy") {
 		t.Fatalf("matching versions must be healthy; out=%q err=%v", out, err)
 	}

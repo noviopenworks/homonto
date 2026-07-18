@@ -26,7 +26,7 @@ func planCmd() *cobra.Command {
 			}
 			cfgPath, _ := cmd.Flags().GetString("config")
 			home, _ := os.UserHomeDir()
-			e, err := engine.Build(cfgPath, home, "homonto")
+			e, err := engine.Build(cmd.Context(), cfgPath, home, "homonto")
 			if err != nil {
 				return err
 			}

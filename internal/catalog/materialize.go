@@ -217,6 +217,11 @@ func (c *Catalog) SubagentFiles(name string, renderCtx map[string]agentfm.Render
 	return files, nil
 }
 
+// MaterializeSubagents writes the named subagents' content into dstRoot,
+// rendering per-tool variants via renderCtx when the source carries a
+// homonto: frontmatter block. Mirrors Materialize/MaterializeCommands: one
+// file per name, removing any stale per-tool variants a previous verbatim
+// projection left behind.
 func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx map[string]agentfm.RenderContext) error {
 	for _, name := range names {
 		sp, ok := c.subagents[name]

@@ -49,16 +49,16 @@ func TestCodexCompatibilityFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc, _ := os.ReadFile(path)
-	if v, ok := tomlutil.Get(doc, "mcp_servers.declared.command"); !ok || v != `"declared-server"` {
+	if v, ok, _ := tomlutil.Get(doc, "mcp_servers.declared.command"); !ok || v != `"declared-server"` {
 		t.Fatalf("declared server not projected: %q ok=%v", v, ok)
 	}
-	if v, _ := tomlutil.Get(doc, "model"); v != `"o3"` {
+	if v, _, _ := tomlutil.Get(doc, "model"); v != `"o3"` {
 		t.Fatalf("unmanaged top-level key clobbered: %q", v)
 	}
-	if v, _ := tomlutil.Get(doc, "approval_policy"); v != `"on-request"` {
+	if v, _, _ := tomlutil.Get(doc, "approval_policy"); v != `"on-request"` {
 		t.Fatalf("unmanaged key clobbered: %q", v)
 	}
-	if v, _ := tomlutil.Get(doc, "mcp_servers.user_owned.command"); v != `"user-server"` {
+	if v, _, _ := tomlutil.Get(doc, "mcp_servers.user_owned.command"); v != `"user-server"` {
 		t.Fatalf("unmanaged server clobbered: %q", v)
 	}
 
@@ -84,13 +84,13 @@ func TestCodexCompatibilityFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc, _ = os.ReadFile(path)
-	if _, ok := tomlutil.Get(doc, "mcp_servers.declared"); ok {
+	if _, ok, _ := tomlutil.Get(doc, "mcp_servers.declared"); ok {
 		t.Fatal("de-declared managed server should be pruned")
 	}
-	if v, _ := tomlutil.Get(doc, "mcp_servers.user_owned.command"); v != `"user-server"` {
+	if v, _, _ := tomlutil.Get(doc, "mcp_servers.user_owned.command"); v != `"user-server"` {
 		t.Fatal("unmanaged server must survive a prune")
 	}
-	if v, _ := tomlutil.Get(doc, "model"); v != `"o3"` {
+	if v, _, _ := tomlutil.Get(doc, "model"); v != `"o3"` {
 		t.Fatal("unmanaged top-level key must survive a prune")
 	}
 }

@@ -20,9 +20,9 @@ func TestCodec_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Set: %v", err)
 	}
-	got, ok := c.Get(doc, "a.b")
-	if !ok {
-		t.Fatalf("Get after Set: not present")
+	got, ok, gerr := c.Get(doc, "a.b")
+	if gerr != nil || !ok {
+		t.Fatalf("Get after Set: not present (ok=%v, err=%v)", ok, gerr)
 	}
 	// canonical form sorts keys
 	if got != `{"x":1,"y":2}` {
@@ -39,7 +39,7 @@ func TestCodec_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	if _, ok := c.Get(doc, "a.b"); ok {
+	if _, ok, _ := c.Get(doc, "a.b"); ok {
 		t.Errorf("Get after Delete: still present")
 	}
 }

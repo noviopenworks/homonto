@@ -52,6 +52,14 @@ func WriteAtomic(path string, data []byte) error {
 	return os.Rename(tmp, path)
 }
 
+// FileExists reports whether path exists and is not a directory. Provided as
+// the shared helper so the adapter/engine packages do not each declare their
+// own four-line wrapper.
+func FileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
+}
+
 // WriteControlPlane atomically writes homonto's OWN control-plane files under
 // .homonto (state, remote lockfile, materialized catalog). Unlike WriteAtomic it
 // does NOT follow a symlink at the destination: if the final path component is a

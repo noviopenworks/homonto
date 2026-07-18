@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,17 +35,17 @@ func TestEndToEndApplyIsIdempotent(t *testing.T) {
 	os.MkdirAll(filepath.Join(repo, "content", "skills", "graphify"), 0o755)
 
 	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+		e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "brave-secret", nil }}
+		e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "brave-secret", nil }}
 		return e
 	}
 
 	e := build()
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 

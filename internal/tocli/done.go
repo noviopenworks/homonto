@@ -41,7 +41,7 @@ func doneCmd() *cobra.Command {
 }
 
 func runDone(cmd *cobra.Command, root, name string, verified bool, evidence string, jsonMode bool) error {
-	if err := gate(root); err != nil {
+	if err := toFramework.Gate(root); err != nil {
 		return err
 	}
 	if !verified {

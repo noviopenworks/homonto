@@ -79,7 +79,9 @@ func (e *Engine) remoteRevokedPath() string {
 // verified content into the deterministic remote root, records provenance in the
 // remote lockfile, prunes de-declared installs, and GCs unreferenced cache
 // entries. It aborts before any adapter write if a remote resource fails closed.
-func (e *Engine) materializeRemotes() error {
+// The context bounds every network fetch so the caller can interrupt a hung or
+// slow source.
+func (e *Engine) materializeRemotes(ctx context.Context) error {
 	declared, err := e.declaredRemoteSubagents()
 	if err != nil {
 		return err
@@ -155,7 +157,7 @@ func (e *Engine) materializeRemotes() error {
 		if err != nil {
 			return fmt.Errorf("remote subagent %q: %w", name, err)
 		}
-		cacheDir, err := resolver.Resolve(context.Background(), src, pin)
+		cacheDir, err := resolver.Resolve(ctx, src, pin)
 		if err != nil {
 			return fmt.Errorf("remote subagent %q: %w", name, err)
 		}
@@ -198,8 +200,8 @@ func (e *Engine) materializeRemotes() error {
 // fetch/verify/digest code lives here; resolver.Resolve verifies the content
 // against the pin before returning the dir. A config with no remote frameworks
 // returns (nil, nil) with no network access, so the builtin/local path is
-// unchanged.
-func (e *Engine) resolveRemoteFrameworks() (map[string]string, error) {
+// unchanged. The context bounds every fetch.
+func (e *Engine) resolveRemoteFrameworks(ctx context.Context) (map[string]string, error) {
 	declared := map[string]config.Resource{}
 	for name, fw := range e.Cfg.Frameworks {
 		if remote.IsRemoteSource(fw.Source) {
@@ -242,7 +244,7 @@ func (e *Engine) resolveRemoteFrameworks() (map[string]string, error) {
 		if rev.Contains(pin) {
 			return nil, fmt.Errorf("remote framework %q: content is revoked", name)
 		}
-		cacheDir, err := resolver.Resolve(context.Background(), src, pin)
+		cacheDir, err := resolver.Resolve(ctx, src, pin)
 		if err != nil {
 			return nil, fmt.Errorf("remote framework %q: %w", name, err)
 		}

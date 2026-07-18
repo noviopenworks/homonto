@@ -11,11 +11,10 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/agentfm"
 	"github.com/noviopenworks/homonto/internal/catalog"
-	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
+	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/remote"
-	"github.com/noviopenworks/homonto/internal/skillpath"
-	"github.com/noviopenworks/homonto/internal/subagentpath"
+	"github.com/noviopenworks/homonto/internal/resourcepath"
 )
 
 // Status reports two independent facts about the managed surface:
@@ -197,123 +196,129 @@ func (e *Engine) doctorRemoteDigests() []string {
 	return out
 }
 
+// doctorOp parameterizes the per-resource health probe so the three near-
+// identical doctor{Skills,Commands,Subagents} methods share one walk. Each
+// kind supplies its own sourcePath (where the content lives) and linkPath
+// (where it is symlinked into the tool).
+type doctorOp struct {
+	kind       string // "skill" | "command" | "subagent"
+	entries    []config.NamedResource
+	sourcePath func(e *Engine, entry config.NamedResource, tool string) (path string, skip bool)
+	linkPath   func(e *Engine, tool string, entry config.NamedResource) string
+}
+
+// doctorResource walks op.entries and reports per-entry ok (content present and
+// linked into the tool) or warn (content missing or link stale). skip=true on
+// the sourcePath call suppresses the entry entirely — used for the subagent
+// "deliberately not projected here" case so a by-design absence is never
+// reported as a fixable finding.
+func (e *Engine) doctorResource(tool string, op doctorOp) []string {
+	var out []string
+	for _, entry := range op.entries {
+		name := entry.Name
+		p, skip := op.sourcePath(e, entry, tool)
+		if skip {
+			continue
+		}
+		if _, err := os.Stat(p); err != nil {
+			out = append(out, fmt.Sprintf("warn: %s %q missing from %s (run apply)", op.kind, name, p))
+			continue
+		}
+		dst := op.linkPath(e, tool, entry)
+		if target, err := os.Readlink(dst); err == nil && target == p {
+			out = append(out, fmt.Sprintf("ok: %s %q linked (%s)", op.kind, name, tool))
+		} else {
+			out = append(out, fmt.Sprintf("warn: %s %q content present, not linked for %s (run apply)", op.kind, name, tool))
+		}
+	}
+	return out
+}
+
+// sourceDir is the shared source-path rule for a directory-style resource
+// (skills): builtin:<name> resolves under the catalog root; local:<name> (or
+// any other source) resolves under <contentDir>/<plural>/<source-or-entry-name>.
+func (e *Engine) sourceDir(entry config.NamedResource, plural, catalogDir string) string {
+	if strings.HasPrefix(entry.Resource.Source, "builtin:") {
+		return filepath.Join(catalogDir, strings.TrimPrefix(entry.Resource.Source, "builtin:"))
+	}
+	sourceName := entry.Name
+	if strings.HasPrefix(entry.Resource.Source, "local:") {
+		sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
+	}
+	return filepath.Join(e.ContentDir, plural, sourceName)
+}
+
 // doctorSkills reports, per skill, whether its content is present at the right
 // source (builtin: from the materialized catalog, local: from the content dir)
 // and whether it is linked into the tool's skills directory.
 func (e *Engine) doctorSkills(tool string, entries []config.NamedResource) []string {
-	var out []string
-	for _, entry := range entries {
-		name := entry.Name
-		var p string
-		if strings.HasPrefix(entry.Resource.Source, "builtin:") {
-			p = filepath.Join(e.CatalogDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:"))
-		} else {
-			sourceName := name
-			if strings.HasPrefix(entry.Resource.Source, "local:") {
-				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
-			}
-			p = filepath.Join(e.ContentDir, "skills", sourceName)
-		}
-		if _, err := os.Stat(p); err != nil {
-			out = append(out, fmt.Sprintf("warn: skill %q missing from %s (run apply)", name, p))
-			continue
-		}
-		dst := filepath.Join(skillpath.Dir(tool, entry.Resource.Scope, e.Home, e.ProjectRoot), name)
-		if target, err := os.Readlink(dst); err == nil && target == p {
-			out = append(out, fmt.Sprintf("ok: skill %q linked (%s)", name, tool))
-		} else {
-			out = append(out, fmt.Sprintf("warn: skill %q content present, not linked for %s (run apply)", name, tool))
-		}
-	}
-	return out
+	return e.doctorResource(tool, doctorOp{
+		kind:    "skill",
+		entries: entries,
+		sourcePath: func(e *Engine, entry config.NamedResource, _ string) (string, bool) {
+			return e.sourceDir(entry, "skills", e.CatalogDir()), false
+		},
+		linkPath: func(e *Engine, tool string, entry config.NamedResource) string {
+			return filepath.Join(resourcepath.Dir(resourcepath.Skill, tool, entry.Resource.Scope, e.Home, e.ProjectRoot), entry.Name)
+		},
+	})
 }
 
 // doctorCommands reports, per command, whether its content file is present at
 // the right source (builtin: from the materialized command root, local: from
 // the content dir) and whether it is linked into the tool's command directory.
 func (e *Engine) doctorCommands(tool string, entries []config.NamedResource) []string {
-	var out []string
-	for _, entry := range entries {
-		name := entry.Name
-		var p string
-		if strings.HasPrefix(entry.Resource.Source, "builtin:") {
-			p = filepath.Join(e.CommandDir(), strings.TrimPrefix(entry.Resource.Source, "builtin:")+".md")
-		} else {
-			sourceName := name
-			if strings.HasPrefix(entry.Resource.Source, "local:") {
-				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
-			}
-			p = filepath.Join(e.ContentDir, "commands", sourceName+".md")
-		}
-		if _, err := os.Stat(p); err != nil {
-			out = append(out, fmt.Sprintf("warn: command %q missing from %s (run apply)", name, p))
-			continue
-		}
-		dst := filepath.Join(commandpath.Dir(tool, entry.Resource.Scope, e.Home, e.ProjectRoot), name+".md")
-		if target, err := os.Readlink(dst); err == nil && target == p {
-			out = append(out, fmt.Sprintf("ok: command %q linked (%s)", name, tool))
-		} else {
-			out = append(out, fmt.Sprintf("warn: command %q content present, not linked for %s (run apply)", name, tool))
-		}
-	}
-	return out
+	return e.doctorResource(tool, doctorOp{
+		kind:    "command",
+		entries: entries,
+		sourcePath: func(e *Engine, entry config.NamedResource, _ string) (string, bool) {
+			return e.sourceDir(entry, "commands", e.CommandDir()) + ".md", false
+		},
+		linkPath: func(e *Engine, tool string, entry config.NamedResource) string {
+			return filepath.Join(resourcepath.Dir(resourcepath.Command, tool, entry.Resource.Scope, e.Home, e.ProjectRoot), entry.Name+".md")
+		},
+	})
 }
 
 // doctorSubagents reports, per subagent, whether its content file is present at
 // the right source (builtin: from the materialized subagent root, local: from
 // the content dir) and whether it is linked into the tool's agent directory.
-func fileExists(p string) bool {
-	fi, err := os.Stat(p)
-	return err == nil && !fi.IsDir()
-}
-
 func (e *Engine) doctorSubagents(tool string, entries []config.NamedResource) []string {
-	var out []string
-	for _, entry := range entries {
-		name := entry.Name
-		var p string
-		switch {
-		case strings.HasPrefix(entry.Resource.Source, "builtin:"):
-			// Mirror the adapter's per-tool variant preference: a subagent with a
-			// neutral homonto: block is materialized as <name>.<tool>.md and linked
-			// from there; fall back to the shared <name>.md otherwise.
-			base := strings.TrimPrefix(entry.Resource.Source, "builtin:")
-			variant := filepath.Join(e.SubagentDir(), base+"."+tool+".md")
-			shared := filepath.Join(e.SubagentDir(), base+".md")
-			if fileExists(variant) {
-				p = variant
-			} else {
-				// No variant. Mirror the adapters' skip rule too: an agent that
-				// renders nothing for this tool (the Claude side of an
-				// OpenCode-primary agent) is deliberately not projected here, so its
-				// absent link is correct — warning about it would be a permanent
-				// finding no apply could ever clear.
+	return e.doctorResource(tool, doctorOp{
+		kind:    "subagent",
+		entries: entries,
+		sourcePath: func(e *Engine, entry config.NamedResource, tool string) (string, bool) {
+			switch {
+			case strings.HasPrefix(entry.Resource.Source, "builtin:"):
+				// Mirror the adapter's per-tool variant preference: a subagent
+				// with a neutral homonto: block is materialized as
+				// <name>.<tool>.md and linked from there; fall back to the
+				// shared <name>.md otherwise.
+				base := strings.TrimPrefix(entry.Resource.Source, "builtin:")
+				variant := filepath.Join(e.SubagentDir(), base+"."+tool+".md")
+				shared := filepath.Join(e.SubagentDir(), base+".md")
+				if fsutil.FileExists(variant) {
+					return variant, false
+				}
+				// No variant. Mirror the adapters' skip rule too: an agent
+				// that renders nothing for this tool (the Claude side of an
+				// OpenCode-primary agent) is deliberately not projected here,
+				// so its absent link is correct — warning about it would be a
+				// permanent finding no apply could ever clear.
 				if data, rerr := os.ReadFile(shared); rerr == nil && agentfm.NeedsTransform(data) {
 					if projects, perr := agentfm.ProjectsFor(data, tool); perr == nil && !projects {
-						continue
+						return "", true
 					}
 				}
-				p = shared
+				return shared, false
+			case strings.HasPrefix(entry.Resource.Source, "remote:"):
+				return filepath.Join(e.remoteSubagentDir(), entry.Name+".md"), false
+			default:
+				return e.sourceDir(entry, "subagents", e.SubagentDir()) + ".md", false
 			}
-		case strings.HasPrefix(entry.Resource.Source, "remote:"):
-			p = filepath.Join(e.remoteSubagentDir(), name+".md")
-		default:
-			sourceName := name
-			if strings.HasPrefix(entry.Resource.Source, "local:") {
-				sourceName = strings.TrimPrefix(entry.Resource.Source, "local:")
-			}
-			p = filepath.Join(e.ContentDir, "subagents", sourceName+".md")
-		}
-		if _, err := os.Stat(p); err != nil {
-			out = append(out, fmt.Sprintf("warn: subagent %q missing from %s (run apply)", name, p))
-			continue
-		}
-		dst := filepath.Join(subagentpath.Dir(tool, entry.Resource.Scope, e.Home, e.ProjectRoot), name+".md")
-		if target, err := os.Readlink(dst); err == nil && target == p {
-			out = append(out, fmt.Sprintf("ok: subagent %q linked (%s)", name, tool))
-		} else {
-			out = append(out, fmt.Sprintf("warn: subagent %q content present, not linked for %s (run apply)", name, tool))
-		}
-	}
-	return out
+		},
+		linkPath: func(e *Engine, tool string, entry config.NamedResource) string {
+			return filepath.Join(resourcepath.Dir(resourcepath.Subagent, tool, entry.Resource.Scope, e.Home, e.ProjectRoot), entry.Name+".md")
+		},
+	})
 }

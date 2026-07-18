@@ -1,16 +1,10 @@
 package claude
 
 import (
-	"encoding/json"
-	"slices"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 )
-
-func contains(ss []string, x string) bool { return slices.Contains(ss, x) }
-
-func mustJSON(v any) string { b, _ := json.Marshal(v); return string(b) }
 
 func hasPrefix(s, p string) bool { return strings.HasPrefix(s, p) }
 func trim(s, p string) string    { return strings.TrimPrefix(s, p) }

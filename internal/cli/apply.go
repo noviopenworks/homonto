@@ -33,14 +33,14 @@ func applyCmd() *cobra.Command {
 // can print the version transition ahead of the same flow apply uses.
 func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.Engine)) error {
 	home, _ := os.UserHomeDir()
-	e, err := engine.Build(cfgPath, home, "homonto")
+	e, err := engine.Build(cmd.Context(), cfgPath, home, "homonto")
 	if err != nil {
 		return err
 	}
 	// Record the resolved build version (recovers the module version for a
 	// `go install @tag` that applied no ldflags), so state, the compat check, and
 	// the update banner all agree on one version string.
-	e.HomontoVersion = buildinfo.Resolve(Version, devVersion)
+	e.HomontoVersion = buildinfo.Resolve(Version, buildinfo.DevVersion)
 	if banner != nil {
 		banner(e)
 	}
@@ -96,7 +96,7 @@ func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.
 						return nil
 					}
 				}
-				if err := e.Apply(sets); err != nil {
+				if err := e.Apply(cmd.Context(), sets); err != nil {
 					return err
 				}
 				cmd.Println("Applied.")
@@ -108,7 +108,7 @@ func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.
 			// re-materialized (fail-closed) rather than silently serving stale
 			// pinned content.
 			if e.HasRemoteResources() {
-				if err := e.Apply(sets); err != nil {
+				if err := e.Apply(cmd.Context(), sets); err != nil {
 					return err
 				}
 				cmd.Println("No projection changes; remote sources verified.")
@@ -120,7 +120,7 @@ func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.
 			// leaves the projection plan empty. Run apply so it re-materializes,
 			// rather than stranding content nothing else would ever repair.
 			if e.CatalogNeedsMaterialize() {
-				if err := e.Apply(sets); err != nil {
+				if err := e.Apply(cmd.Context(), sets); err != nil {
 					return err
 				}
 				cmd.Println("No projection changes; catalog re-materialized.")
@@ -137,7 +137,7 @@ func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.
 				}
 			}
 		}
-		if err := e.Apply(sets); err != nil {
+		if err := e.Apply(cmd.Context(), sets); err != nil {
 			return err
 		}
 		cmd.Printf("Reconciled %d pre-existing resource(s) into state.\n", n)
@@ -156,7 +156,7 @@ func runApply(cmd *cobra.Command, cfgPath string, yes bool, banner func(*engine.
 			return nil
 		}
 	}
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(cmd.Context(), sets); err != nil {
 		return err
 	}
 	cmd.Println("Applied.")

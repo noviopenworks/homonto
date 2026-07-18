@@ -34,10 +34,10 @@ func mergeDeltasCmd() *cobra.Command {
 }
 
 func runMergeDeltas(cmd *cobra.Command, root, name string) error {
-	if err := gate(root); err != nil {
+	if err := ontoFramework.Gate(root); err != nil {
 		return err
 	}
-	if err := validChangeName(name); err != nil {
+	if err := ontoFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 	changeDir := filepath.Join(root, "docs", "changes", name)

@@ -16,6 +16,7 @@ func TestParseRemoteSource(t *testing.T) {
 		{"not remote prefix", "builtin:x", "", "", true},
 		{"empty url", "remote:", "", "", true},
 		{"plain http rejected", "remote:http://h.test/x.tgz", "", "", true},
+		{"git scheme rejected as insecure", "remote:git://h.test/r.git#deadbeef", "", "", true},
 		{"unknown scheme", "remote:ftp://h.test/x", "", "", true},
 	}
 	for _, c := range cases {

@@ -1,15 +1,25 @@
 package secret
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var refRe = regexp.MustCompile(`\$\{([^}]+)\}`)
+
+// passTimeout bounds a single `pass show` invocation. `pass` may shell out to
+// gpg-agent, which can block indefinitely waiting for a passphrase prompt;
+// without a deadline a hung pass hangs the whole apply with no way for the
+// caller's context to interrupt it. The CLI is single-threaded, so this leaf
+// timeout is sufficient — we do not need to thread context through the entire
+// resolver/adapter contract.
+const passTimeout = 30 * time.Second
 
 // Resolver replaces ${...} references with values from pass or the environment.
 // Resolved tokens are memoized for the Resolver's lifetime (one `pass`
@@ -27,7 +37,12 @@ func NewResolver() *Resolver {
 	return &Resolver{
 		Getenv: os.Getenv,
 		Pass: func(path string) (string, error) {
-			out, err := exec.Command("pass", "show", path).Output()
+			// gpg-agent may block on a passphrase prompt; bound it so apply
+			// cannot hang forever waiting on interactive input that will never
+			// arrive in a non-interactive CLI run.
+			ctx, cancel := context.WithTimeout(context.Background(), passTimeout)
+			defer cancel()
+			out, err := exec.CommandContext(ctx, "pass", "show", path).Output()
 			if err != nil {
 				return "", fmt.Errorf("pass show %s: %w", path, err)
 			}

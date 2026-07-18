@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// initCmd builds "to init": it enforces gate(dir) before scaffolding
+// initCmd builds "to init": it enforces toFramework.Gate(dir) before scaffolding
 // docs/tasks/ and docs/tasks/archive/, and performs no writes if the gate
 // fails. Existing directories are left untouched.
 func initCmd() *cobra.Command {
@@ -29,7 +29,7 @@ func initCmd() *cobra.Command {
 }
 
 func runInit(cmd *cobra.Command, root string, jsonMode bool) error {
-	if err := gate(root); err != nil {
+	if err := toFramework.Gate(root); err != nil {
 		return err
 	}
 

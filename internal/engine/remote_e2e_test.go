@@ -66,7 +66,7 @@ func TestRemoteSubagentEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestRemoteSubagentEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -106,7 +106,7 @@ func TestRemoteSubagentEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets2); err != nil {
+	if err := e.Apply(context.Background(), sets2); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 
@@ -114,7 +114,7 @@ func TestRemoteSubagentEndToEnd(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(remoteModels), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e2, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e2, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestRemoteSubagentEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e2.Apply(sets3); err != nil {
+	if err := e2.Apply(context.Background(), sets3); err != nil {
 		t.Fatalf("prune apply: %v", err)
 	}
 	if _, err := os.Stat(contentFile); !os.IsNotExist(err) {
@@ -147,7 +147,7 @@ func TestRemoteSubagentPinMismatchAbortsApply(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestRemoteSubagentPinMismatchAbortsApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err == nil {
+	if err := e.Apply(context.Background(), sets); err == nil {
 		t.Fatal("apply must fail closed on a pin mismatch")
 	}
 	if _, err := os.Stat(filepath.Join(e.RemoteRoot, "subagents", "reviewer.md")); !os.IsNotExist(err) {
@@ -184,7 +184,7 @@ func TestRemoteSubagentRollbackAndRevocation(t *testing.T) {
 		if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+		e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,7 +192,7 @@ func TestRemoteSubagentRollbackAndRevocation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := e.Apply(sets); err != nil {
+		if err := e.Apply(context.Background(), sets); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
 	}
@@ -217,7 +217,7 @@ func TestRemoteSubagentRollbackAndRevocation(t *testing.T) {
 	if err := os.WriteFile(revoked, []byte(`["`+pinV1.String()+`"]`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestRemoteSubagentRollbackAndRevocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err == nil {
+	if err := e.Apply(context.Background(), sets); err == nil {
 		t.Fatal("apply of a revoked pin must fail closed")
 	}
 }
@@ -243,9 +243,9 @@ func TestRemoteSubagentGCReclaimsAfterPrune(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e, _ := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, _ := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 	if !cache.Has(pin) {
@@ -255,9 +255,9 @@ func TestRemoteSubagentGCReclaimsAfterPrune(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(remoteModels), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e2, _ := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e2, _ := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	sets2, _ := e2.Plan()
-	if err := e2.Apply(sets2); err != nil {
+	if err := e2.Apply(context.Background(), sets2); err != nil {
 		t.Fatal(err)
 	}
 	// Apply keeps the cache entry (so a revert can roll back). It is reclaimed

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +28,7 @@ func TestApply_RejectsUnknownTool(t *testing.T) {
 	sets := []adapter.ChangeSet{{Tool: "ghost-tool", Changes: []adapter.Change{
 		{Action: adapter.ActionCreate, Key: "mcp.x", New: `{"a":1}`},
 	}}}
-	err := e.Apply(sets)
+	err := e.Apply(context.Background(), sets)
 	if err == nil || !strings.Contains(err.Error(), "ghost-tool") {
 		t.Fatalf("Apply should abort on unknown tool, got %v", err)
 	}
@@ -41,7 +42,7 @@ func TestApply_RejectsUnknownAction(t *testing.T) {
 	sets := []adapter.ChangeSet{{Tool: tool, Changes: []adapter.Change{
 		{Action: adapter.Action("frobnicate"), Key: "mcp.x", New: `{"a":1}`},
 	}}}
-	err := e.Apply(sets)
+	err := e.Apply(context.Background(), sets)
 	if err == nil || !strings.Contains(err.Error(), "frobnicate") {
 		t.Fatalf("Apply should abort on unknown action, got %v", err)
 	}

@@ -78,7 +78,7 @@ type adapterCase struct {
 // noSecret is a resolver with no secret material; the conformance configs
 // declare no ${...} secret tokens, so resolution is a no-op.
 func noSecret() *secret.Resolver {
-	return &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	return &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 }
 
 func cases() []adapterCase {
@@ -491,7 +491,7 @@ const secretPlaintext = "PLAINTEXT-SECRET-DO-NOT-LEAK-zzz"
 // writes the resolved plaintext to disk (the surface a leak would escape from).
 func secretResolver() *secret.Resolver {
 	return &secret.Resolver{
-		Getenv: os.Getenv,
+		Getenv: func(string) string { return "" },
 		Pass:   func(string) (string, error) { return secretPlaintext, nil },
 	}
 }

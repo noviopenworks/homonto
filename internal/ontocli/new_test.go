@@ -13,7 +13,7 @@ import (
 // TestValidChangeName_Valid covers the accepted shape: lowercase
 // alphanumeric segments separated by single hyphens.
 func TestValidChangeName_Valid(t *testing.T) {
-	if err := validChangeName("feature-x"); err != nil {
+	if err := ontoFramework.ValidChangeName("feature-x"); err != nil {
 		t.Errorf("validChangeName(%q) = %v, want nil", "feature-x", err)
 	}
 }
@@ -23,7 +23,7 @@ func TestValidChangeName_Valid(t *testing.T) {
 func TestValidChangeName_Invalid(t *testing.T) {
 	cases := []string{"", "../evil", "Foo", "a/b", "-x"}
 	for _, name := range cases {
-		if err := validChangeName(name); err == nil {
+		if err := ontoFramework.ValidChangeName(name); err == nil {
 			t.Errorf("validChangeName(%q) = nil, want error", name)
 		}
 	}

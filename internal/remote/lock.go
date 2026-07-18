@@ -77,8 +77,14 @@ func (l *Lock) Remove(kind, name string) {
 	delete(l.Entries, kind+"/"+name)
 }
 
-// Digests returns the parsed pins referenced by the lock (skipping any that do
-// not parse, so a hand-edited lock cannot crash GC).
+// Digests returns the parsed pins referenced by the lock. Entries whose digest
+// does not parse are skipped deliberately: the lockfile is human-editable and a
+// typo in one entry must not crash GC. The trade is that a malformed pin's
+// cache entry becomes unreferenced and may be reclaimed by `cache gc` — but
+// the cache is content-addressed and a correct re-declaration will re-fetch
+// cleanly, so the recovery path is "re-apply", not "data loss". Callers that
+// need to surface malformed entries to the user should validate the lock
+// separately (LoadLock already rejects structurally-broken files).
 func (l Lock) Digests() []Digest {
 	var out []Digest
 	for _, e := range l.sorted() {

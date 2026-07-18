@@ -28,22 +28,25 @@ func EnsureRoot(doc []byte) ([]byte, error) {
 	return doc, nil
 }
 
-// Get returns the value at a dotted path encoded as canonical JSON, and whether
-// it is present.
-func Get(doc []byte, path string) (string, bool) {
+// Get returns the value at a dotted path encoded as canonical JSON, whether it
+// is present, and a parse error if the document is malformed TOML. Distinguishing
+// "broken" from "absent" matters at callers: a corrupted tool file interpreted
+// as "key absent" would emit a destructive plan or a misleading drift report,
+// so the parse failure is surfaced rather than collapsed into ok=false.
+func Get(doc []byte, path string) (string, bool, error) {
 	m, err := load(doc)
 	if err != nil {
-		return "", false
+		return "", false, err
 	}
 	v, ok := getPath(m, splitPath(path))
 	if !ok {
-		return "", false
+		return "", false, nil
 	}
 	enc, err := json.Marshal(v)
 	if err != nil {
-		return "", false
+		return "", false, fmt.Errorf("tomlutil: encode value at %q: %w", path, err)
 	}
-	return Canonical(string(enc)), true
+	return Canonical(string(enc)), true, nil
 }
 
 // Set assigns jsonValue (a JSON-encoded value) at a dotted path, creating

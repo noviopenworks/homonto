@@ -60,17 +60,17 @@ func TestCodexProjectsMCP(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc := configTOML(t, home)
-	if v, ok := tomlutil.Get(doc, "mcp_servers.demo.command"); !ok || v != `"npx"` {
+	if v, ok, _ := tomlutil.Get(doc, "mcp_servers.demo.command"); !ok || v != `"npx"` {
 		t.Fatalf("command not projected: %q ok=%v", v, ok)
 	}
-	if v, _ := tomlutil.Get(doc, "mcp_servers.demo.args"); v != `["-y","demo-server"]` {
+	if v, _, _ := tomlutil.Get(doc, "mcp_servers.demo.args"); v != `["-y","demo-server"]` {
 		t.Fatalf("args wrong: %q", v)
 	}
-	if v, _ := tomlutil.Get(doc, "mcp_servers.demo.env"); v != `{"K":"v"}` {
+	if v, _, _ := tomlutil.Get(doc, "mcp_servers.demo.env"); v != `{"K":"v"}` {
 		t.Fatalf("env wrong: %q", v)
 	}
 	// the claude-only MCP must not be present
-	if _, ok := tomlutil.Get(doc, "mcp_servers.other"); ok {
+	if _, ok, _ := tomlutil.Get(doc, "mcp_servers.other"); ok {
 		t.Fatal("a non-codex MCP must not project to codex")
 	}
 
@@ -99,7 +99,7 @@ func TestCodexPrunesDeDeclared(t *testing.T) {
 	if err := a.Apply(empty, cs2, res, st); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := tomlutil.Get(configTOML(t, home), "mcp_servers.demo"); ok {
+	if _, ok, _ := tomlutil.Get(configTOML(t, home), "mcp_servers.demo"); ok {
 		t.Fatal("de-declared server should be pruned")
 	}
 }
@@ -155,10 +155,10 @@ func TestCodexDottedMCPName(t *testing.T) {
 	doc := configTOML(t, home)
 	// The server must be reachable as a single dotted key, and there must be no
 	// nested "github" server table.
-	if v, ok := tomlutil.Get(doc, `mcp_servers."github.copilot".command`); !ok || v != `"srv"` {
+	if v, ok, _ := tomlutil.Get(doc, `mcp_servers."github.copilot".command`); !ok || v != `"srv"` {
 		t.Fatalf("dotted-name server not projected as one table: %q ok=%v\n%s", v, ok, doc)
 	}
-	if _, ok := tomlutil.Get(doc, "mcp_servers.github.copilot"); ok {
+	if _, ok, _ := tomlutil.Get(doc, "mcp_servers.github.copilot"); ok {
 		t.Fatalf("dotted name misprojected into nested tables:\n%s", doc)
 	}
 	// idempotent

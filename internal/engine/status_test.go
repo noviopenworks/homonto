@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,7 @@ func TestDoctorFlagsMissingSkillContent(t *testing.T) {
 	repo := t.TempDir()
 	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte("[skills.ghost]\nsource=\"local:ghost\"\nscope=\"user\"\n"), 0o644)
 
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,7 @@ func TestDoctorReportsSkillLinkState(t *testing.T) {
 	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
 
 	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, content)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +68,7 @@ func TestDoctorProjectScopeChecksProjectLocation(t *testing.T) {
 	src := filepath.Join(content, "skills", "graphify")
 	os.MkdirAll(src, 0o755)
 	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, content)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +110,7 @@ func TestDoctorChecksOpenCodeSkillLink(t *testing.T) {
 	os.MkdirAll(filepath.Join(content, "skills", "graphify"), 0o755)
 	src := filepath.Join(content, "skills", "graphify")
 	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, content)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -149,7 +150,7 @@ func TestDoctorChecksToolConfigLocations(t *testing.T) {
 	// Claude dir present, OpenCode dir absent
 	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
 
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,11 +167,11 @@ func TestDoctorChecksToolConfigLocations(t *testing.T) {
 // resolver so secret-free config applies without touching `pass`.
 func buildStatusEngine(t *testing.T, repo, home string) *Engine {
 	t.Helper()
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 	return e
 }
 
@@ -181,7 +182,7 @@ func TestStatusDetectsDriftAfterOutOfBandChange(t *testing.T) {
 
 	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 
@@ -219,7 +220,7 @@ func TestStatusConfigEditIsPendingNotDrift(t *testing.T) {
 
 	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 
@@ -247,7 +248,7 @@ func TestStatusReportsMissingManagedKey(t *testing.T) {
 
 	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 
@@ -281,7 +282,7 @@ func TestStatusDriftedKeyExcludedFromPendingWhileOthersCount(t *testing.T) {
 
 	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 
@@ -324,7 +325,7 @@ func TestStatusSkipsErroredAdapterButReportsOther(t *testing.T) {
 
 	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 
@@ -358,7 +359,7 @@ func TestDoctorReportsBuiltinSkillLinked(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -376,7 +377,7 @@ func TestDoctorReportsLinkedCommand(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -425,7 +426,7 @@ func TestDoctorReportsLinkedSubagent(t *testing.T) {
 
 	e := buildEngine(t, home, repo)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 
@@ -445,7 +446,7 @@ func TestStatusCleanAfterApply(t *testing.T) {
 
 	e := buildStatusEngine(t, repo, home)
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 

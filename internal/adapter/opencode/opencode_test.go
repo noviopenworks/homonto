@@ -15,7 +15,7 @@ import (
 )
 
 func noSecret() *secret.Resolver {
-	return &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	return &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 }
 
 // cfgWithSkills builds a config whose named skills are explicit local resources
@@ -82,7 +82,7 @@ func TestOpenCodeSecretMCPIsIdempotent(t *testing.T) {
 			"brave": {Command: []string{"npx", "server-brave"}, Env: map[string]string{"K": "${pass:ai/brave}"}, Targets: []string{"opencode"}},
 		},
 	}
-	res := &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "SECRET", nil }}
+	res := &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "SECRET", nil }}
 
 	cs, _ := a.Plan(c, st)
 	if err := a.Apply(c, cs, res, st); err != nil {

@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,11 +15,11 @@ import (
 // tryBuildEngine is buildEngine without t.Fatal — returns Build's error so a
 // fail-closed remote resolution can be asserted.
 func tryBuildEngine(home, repo string) (*Engine, error) {
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, filepath.Join(repo, "content"))
 	if err != nil {
 		return nil, err
 	}
-	e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 	return e, nil
 }
 
@@ -73,7 +74,7 @@ func TestApply_RemoteFrameworkSkillMaterialized(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	got := filepath.Join(repo, ".homonto", "catalog", "skills", "myskill", "SKILL.md")
@@ -101,7 +102,7 @@ func TestApply_RemoteFrameworkWrongDigestAborts(t *testing.T) {
 		failed = true
 	} else if sets, err := e.Plan(); err != nil {
 		failed = true
-	} else if err := e.Apply(sets); err != nil {
+	} else if err := e.Apply(context.Background(), sets); err != nil {
 		failed = true
 	}
 	if !failed {

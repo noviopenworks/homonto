@@ -3,6 +3,7 @@
 package catalog
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	embedded "github.com/noviopenworks/homonto/catalog"
+	"github.com/noviopenworks/homonto/internal/schema"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -184,6 +186,21 @@ func newBaseCatalog(base fs.FS) (*Catalog, error) {
 // the shared index. fs operations use src, so resource paths are validated in
 // the source they belong to.
 func (c *Catalog) mergeSource(src fs.FS) error {
+	// readOptionalDir returns the entries of a directory that may legitimately
+	// be absent (subagents/, skills/, commands/ are all optional). A real I/O
+	// error (permission denied, corrupt FS) is surfaced rather than collapsed
+	// into "missing" — a corrupted overlay must not silently mask itself.
+	readOptionalDir := func(name string) ([]fs.DirEntry, error) {
+		entries, err := fs.ReadDir(src, name)
+		if err == nil {
+			return entries, nil
+		}
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("catalog: read %s: %w", name, err)
+	}
+
 	// Loose (framework-agnostic) subagents: every "<n>.md" file directly under
 	// subagents/ is indexed by base name, independent of any framework
 	// declaring it. Unlike skills/commands, subagents are designed to include
@@ -191,18 +208,20 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 	// directly by an explicit [subagents.X] config entry with no framework
 	// home. The subagents/ directory is optional — fixtures/tests that don't
 	// exercise subagents need not provide one.
-	if entries, err := fs.ReadDir(src, "subagents"); err == nil {
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			name := strings.TrimSuffix(e.Name(), ".md")
-			if name == e.Name() {
-				continue // not a ".md" file
-			}
-			c.subagents[name] = path.Join("subagents", e.Name())
-			c.subagentFS[name] = src
+	subagentEntries, err := readOptionalDir("subagents")
+	if err != nil {
+		return err
+	}
+	for _, e := range subagentEntries {
+		if e.IsDir() {
+			continue
 		}
+		name := strings.TrimSuffix(e.Name(), ".md")
+		if name == e.Name() {
+			continue // not a ".md" file
+		}
+		c.subagents[name] = path.Join("subagents", e.Name())
+		c.subagentFS[name] = src
 	}
 
 	dirs, err := fs.ReadDir(src, "frameworks")
@@ -227,7 +246,7 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 		// any of its resources, so an older binary never silently half-reads a
 		// newer framework manifest. Absent/0 is a legacy manifest (current).
 		if ft.ManifestSchema > CurrentManifestSchemaVersion {
-			return fmt.Errorf("catalog: framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto", dir, ft.ManifestSchema, CurrentManifestSchemaVersion)
+			return fmt.Errorf("catalog: framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto: %w", dir, ft.ManifestSchema, CurrentManifestSchemaVersion, schema.ErrTooNew)
 		}
 		if ft.Name != dir {
 			return fmt.Errorf("catalog: framework %q declares name %q; name must equal directory", dir, ft.Name)
@@ -240,38 +259,42 @@ func (c *Catalog) mergeSource(src fs.FS) error {
 	// SKILL.md, or a commands/<n>.md file, not already claimed by a framework is
 	// indexed by name so it installs as builtin:<name> with no framework home
 	// (mirrors loose subagents). Framework declarations take precedence.
-	if entries, err := fs.ReadDir(src, "skills"); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			name := e.Name()
-			if _, ok := c.skills[name]; ok {
-				continue // a framework already declares this skill
-			}
-			sp := path.Join("skills", name)
-			if _, err := fs.Stat(src, path.Join(sp, "SKILL.md")); err != nil {
-				continue // a skill directory must hold a SKILL.md
-			}
-			c.skills[name] = sp
-			c.skillFS[name] = src
-		}
+	skillEntries, err := readOptionalDir("skills")
+	if err != nil {
+		return err
 	}
-	if entries, err := fs.ReadDir(src, "commands"); err == nil {
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			name := strings.TrimSuffix(e.Name(), ".md")
-			if name == e.Name() {
-				continue // not a ".md" file
-			}
-			if _, ok := c.commands[name]; ok {
-				continue // a framework already declares this command
-			}
-			c.commands[name] = path.Join("commands", e.Name())
-			c.commandFS[name] = src
+	for _, e := range skillEntries {
+		if !e.IsDir() {
+			continue
 		}
+		name := e.Name()
+		if _, ok := c.skills[name]; ok {
+			continue // a framework already declares this skill
+		}
+		sp := path.Join("skills", name)
+		if _, err := fs.Stat(src, path.Join(sp, "SKILL.md")); err != nil {
+			continue // a skill directory must hold a SKILL.md
+		}
+		c.skills[name] = sp
+		c.skillFS[name] = src
+	}
+	commandEntries, err := readOptionalDir("commands")
+	if err != nil {
+		return err
+	}
+	for _, e := range commandEntries {
+		if e.IsDir() {
+			continue
+		}
+		name := strings.TrimSuffix(e.Name(), ".md")
+		if name == e.Name() {
+			continue // not a ".md" file
+		}
+		if _, ok := c.commands[name]; ok {
+			continue // a framework already declares this command
+		}
+		c.commands[name] = path.Join("commands", e.Name())
+		c.commandFS[name] = src
 	}
 	return nil
 }
@@ -388,7 +411,7 @@ func (c *Catalog) mergeFrameworkRoot(name string, src fs.FS) error {
 	// Forward-safety mirrors mergeSource: refuse a newer manifest schema before
 	// indexing any resource.
 	if ft.ManifestSchema > CurrentManifestSchemaVersion {
-		return fmt.Errorf("catalog: local framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto", name, ft.ManifestSchema, CurrentManifestSchemaVersion)
+		return fmt.Errorf("catalog: local framework %q manifest_schema %d is newer than this binary supports (up to %d) — upgrade homonto: %w", name, ft.ManifestSchema, CurrentManifestSchemaVersion, schema.ErrTooNew)
 	}
 	if ft.Name != name {
 		return fmt.Errorf("catalog: local framework %q declares name %q; name must equal the framework key", name, ft.Name)

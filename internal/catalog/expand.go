@@ -103,7 +103,11 @@ func (c *Catalog) Expand(frameworkNames []string) ([]ExpandedSkill, error) {
 	}
 	out := make([]ExpandedSkill, len(res))
 	for i, e := range res {
-		out[i] = ExpandedSkill{Name: e.Name, Framework: e.Framework}
+		// ExpandedSkill and Expanded share the same underlying struct (Name +
+		// Framework), so a conversion preserves the fields verbatim. The
+		// kind-specific return type is the API-safety boundary: a caller
+		// cannot mix skills and commands.
+		out[i] = ExpandedSkill(e)
 	}
 	return out, nil
 }
@@ -118,7 +122,7 @@ func (c *Catalog) ExpandCommands(frameworkNames []string) ([]ExpandedCommand, er
 	}
 	out := make([]ExpandedCommand, len(res))
 	for i, e := range res {
-		out[i] = ExpandedCommand{Name: e.Name, Framework: e.Framework}
+		out[i] = ExpandedCommand(e)
 	}
 	return out, nil
 }
@@ -133,7 +137,7 @@ func (c *Catalog) ExpandSubagents(frameworkNames []string) ([]ExpandedSubagent, 
 	}
 	out := make([]ExpandedSubagent, len(res))
 	for i, e := range res {
-		out[i] = ExpandedSubagent{Name: e.Name, Framework: e.Framework}
+		out[i] = ExpandedSubagent(e)
 	}
 	return out, nil
 }

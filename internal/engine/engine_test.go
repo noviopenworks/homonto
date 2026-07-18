@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +22,7 @@ func TestApplyAbortsBeforeWritingOnMissingSecret(t *testing.T) {
 	cfgPath := filepath.Join(repo, "homonto.toml")
 	os.WriteFile(cfgPath, []byte(cfgTOML), 0o644)
 
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +32,7 @@ func TestApplyAbortsBeforeWritingOnMissingSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err == nil {
+	if err := e.Apply(context.Background(), sets); err == nil {
 		t.Fatal("expected apply to fail on missing secret")
 	}
 	if _, err := os.Stat(filepath.Join(home, ".claude.json")); !os.IsNotExist(err) {
@@ -56,9 +57,12 @@ func TestRelativeContentDirResolvesAgainstConfig(t *testing.T) {
 	if err := os.Chdir(other); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(wd)
+	// t.Cleanup (not defer) so the working directory is restored even if the
+	// test panics or a sub-test fails midway — process-global state must not
+	// leak into neighboring tests in this package.
+	t.Cleanup(func() { os.Chdir(wd) })
 
-	e, err := Build(filepath.Join(repo, "homonto.toml"), home, "content")
+	e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, "content")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +70,7 @@ func TestRelativeContentDirResolvesAgainstConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	dst := filepath.Join(home, ".claude", "skills", "onto")

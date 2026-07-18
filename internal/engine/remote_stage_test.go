@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,7 @@ func TestRemoteStageBeforeMutateLeavesFirstIntactOnSecondFailure(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(cfg1), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e1, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e1, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestRemoteStageBeforeMutateLeavesFirstIntactOnSecondFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e1.Apply(sets1); err != nil {
+	if err := e1.Apply(context.Background(), sets1); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
 	contentA := filepath.Join(e1.RemoteRoot, "subagents", "aaa.md")
@@ -54,7 +55,7 @@ func TestRemoteStageBeforeMutateLeavesFirstIntactOnSecondFailure(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(cfg2), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e2, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e2, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestRemoteStageBeforeMutateLeavesFirstIntactOnSecondFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e2.Apply(sets2); err == nil {
+	if err := e2.Apply(context.Background(), sets2); err == nil {
 		t.Fatal("apply must fail closed when the second remote fails verification")
 	}
 

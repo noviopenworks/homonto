@@ -20,7 +20,7 @@ func builtinCfg() *config.Config {
 }
 
 func resolver() *secret.Resolver {
-	return &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+	return &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 }
 
 func TestBuiltinSkillLinksToCatalogRoot(t *testing.T) {

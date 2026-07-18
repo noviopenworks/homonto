@@ -1,15 +1,23 @@
 package ontocli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
+
+// gitCmdTimeout bounds each git invocation in the worktree-dirt scan. A git
+// command can block indefinitely on a credential prompt, a corrupt repo, or a
+// hung FS (NFS/FUSE); without a deadline the close/advance gates would hang
+// the whole CLI. remote/fetch.go uses the same idiom for its git fetches.
+const gitCmdTimeout = 30 * time.Second
 
 // dirtEntry is one uncommitted path, classified structurally so gates and
 // agents can tell "this change's own evidence" from "another change's
@@ -36,11 +44,13 @@ type dirtEntry struct {
 // subdirectory, matching the close gate's promise that the whole tree is
 // committed.
 func worktreeDirt(root, change string) (entries []dirtEntry, determinable bool) {
-	out, err := exec.Command("git", "-C", root, "status", "--porcelain", "-z").Output()
+	ctx, cancel := context.WithTimeout(context.Background(), gitCmdTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "git", "-C", root, "status", "--porcelain", "-z").Output()
 	if err != nil {
 		return nil, false
 	}
-	prefixOut, err := exec.Command("git", "-C", root, "rev-parse", "--show-prefix").Output()
+	prefixOut, err := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "--show-prefix").Output()
 	if err != nil {
 		return nil, false
 	}
@@ -155,7 +165,7 @@ func dirtCmd() *cobra.Command {
 			change := ""
 			if len(args) == 1 {
 				change = args[0]
-				if err := validChangeName(change); err != nil {
+				if err := ontoFramework.ValidChangeName(change); err != nil {
 					return err
 				}
 			}

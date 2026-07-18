@@ -11,9 +11,9 @@ import (
 )
 
 // closeCmd builds the "onto close <change>" subcommand: it enforces
-// gate(dir), validates the change name, and only then attempts to archive a
-// change already at the terminal "close" phase. It writes nothing and moves
-// nothing unless every precondition below passes.
+// ontoFramework.Gate(dir), validates the change name, and only then attempts to
+// archive a change already at the terminal "close" phase. It writes nothing and
+// moves nothing unless every precondition below passes.
 func closeCmd() *cobra.Command {
 	var dir string
 
@@ -62,7 +62,8 @@ func closeEvidenceGate(st ontostate.State) error {
 	return nil
 }
 
-// runClose enforces, in order: gate(root); validChangeName(name); that
+// runClose enforces, in order: ontoFramework.Gate(root);
+// ontoFramework.ValidChangeName(name); that
 // docs/changes/<name>/onto-state.yaml loads; that its phase is "close" (the
 // terminal phase reached via repeated "onto advance"); that the workflow's
 // close-phase evidence tokens are present and well-formed
@@ -74,11 +75,11 @@ func closeEvidenceGate(st ontostate.State) error {
 // Archived, save it, and move the change directory into
 // docs/changes/archive/<date>-<name>/.
 func runClose(cmd *cobra.Command, root, name string) error {
-	if err := gate(root); err != nil {
+	if err := ontoFramework.Gate(root); err != nil {
 		return err
 	}
 
-	if err := validChangeName(name); err != nil {
+	if err := ontoFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 

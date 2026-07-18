@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/noviopenworks/homonto/internal/fsutil"
+	"github.com/noviopenworks/homonto/internal/schema"
 )
 
 // Entry is the last-applied record for one managed key. Desired holds the
@@ -104,7 +105,7 @@ func Load(dir string) (*State, error) {
 		return nil, err
 	}
 	if s.SchemaVersion > CurrentStateSchemaVersion {
-		return nil, fmt.Errorf("state: unknown state schema version %d (this binary supports up to %d) — upgrade homonto", s.SchemaVersion, CurrentStateSchemaVersion)
+		return nil, fmt.Errorf("state: unknown state schema version %d (this binary supports up to %d) — upgrade homonto: %w", s.SchemaVersion, CurrentStateSchemaVersion, schema.ErrTooNew)
 	}
 	if s.Managed == nil {
 		s.Managed = map[string]map[string]Entry{}

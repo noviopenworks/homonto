@@ -2,6 +2,7 @@ package ontocli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,9 @@ func diffScale(root, baseRef string) (files, lines int, level string, err error)
 		return 0, 0, "", fmt.Errorf("onto scale: no base ref recorded for this change — the committed diff cannot be measured without one; run `onto set base-ref <change> <ref>` first")
 	}
 	args := []string{"-C", root, "diff", "--numstat", baseRef + "..HEAD"}
-	out, err := exec.Command("git", args...).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), gitCmdTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "git", args...).Output()
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("onto scale: git diff failed (is %s a git repo, and is %q a valid ref?): %w", root, baseRef, err)
 	}
@@ -94,7 +97,7 @@ func scaleCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			if err := validChangeName(name); err != nil {
+			if err := ontoFramework.ValidChangeName(name); err != nil {
 				return err
 			}
 			changeDir := filepath.Join(dir, "docs", "changes", name)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/noviopenworks/homonto/internal/adapter"
 	"github.com/noviopenworks/homonto/internal/config"
-	"github.com/noviopenworks/homonto/internal/skillpath"
+	"github.com/noviopenworks/homonto/internal/resourcepath"
 	"github.com/noviopenworks/homonto/internal/state"
 )
 
@@ -309,8 +309,8 @@ func TestMixedScopesProjectIndependently(t *testing.T) {
 		t.Fatalf("apply: %v", err)
 	}
 
-	userDir := skillpath.Dir("claude", "user", home, proj)
-	projDir := skillpath.Dir("claude", "project", home, proj)
+	userDir := resourcepath.Dir(resourcepath.Skill, "claude", "user", home, proj)
+	projDir := resourcepath.Dir(resourcepath.Skill, "claude", "project", home, proj)
 	linkA := filepath.Join(userDir, "a")
 	linkB := filepath.Join(projDir, "b")
 

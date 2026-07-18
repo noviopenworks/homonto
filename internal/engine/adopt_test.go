@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,11 +28,11 @@ func TestApplyAdoptRecordsStateThroughEngine(t *testing.T) {
 	}
 
 	build := func() *Engine {
-		e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+		e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+		e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 		return e
 	}
 
@@ -42,7 +43,7 @@ func TestApplyAdoptRecordsStateThroughEngine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := seed.Apply(sets); err != nil {
+	if err := seed.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("seed apply: %v", err)
 	}
 
@@ -63,7 +64,7 @@ func TestApplyAdoptRecordsStateThroughEngine(t *testing.T) {
 
 	// The adopt path must not be routed through secret resolution and must
 	// persist via the per-adapter save.
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply of adopt must not error: %v", err)
 	}
 	if _, ok := e.State.Get("claude", "setting.model"); !ok {

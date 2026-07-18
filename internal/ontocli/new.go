@@ -4,41 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/noviopenworks/homonto/internal/ontostate"
 	"github.com/spf13/cobra"
 )
 
-// changeNamePattern is the accepted shape for a change name: one or more
-// lowercase-alphanumeric segments joined by single hyphens.
-var changeNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-
-// validChangeName rejects any change name that is empty, escapes its own
-// base name (e.g. via ".." or a path separator), or does not match the
-// lowercase-hyphenated shape required for a docs/changes/<name> directory.
-func validChangeName(name string) error {
-	if name == "" {
-		return fmt.Errorf("onto new: change name must not be empty")
-	}
-	if name != filepath.Base(name) {
-		return fmt.Errorf("onto new: change name %q must not contain path separators", name)
-	}
-	if strings.Contains(name, "..") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
-		return fmt.Errorf("onto new: change name %q must not contain \"..\", \"/\", or \"\\\"", name)
-	}
-	if !changeNamePattern.MatchString(name) {
-		return fmt.Errorf("onto new: change name %q must match %s", name, changeNamePattern.String())
-	}
-	return nil
-}
-
 // newCmd builds the "onto new <change-name>" subcommand: it enforces
-// gate(dir) (the framework-install precondition) and validChangeName before
-// scaffolding a new change-workspace skeleton, and performs no writes at
-// all if either check fails or the change directory already exists.
+// ontoFramework.Gate(dir) (the framework-install precondition) and
+// ontoFramework.ValidChangeName before scaffolding a new change-workspace
+// skeleton, and performs no writes at all if either check fails or the change
+// directory already exists.
 func newCmd() *cobra.Command {
 	var (
 		dir      string
@@ -58,17 +34,18 @@ func newCmd() *cobra.Command {
 	return cmd
 }
 
-// runNew enforces gate(root) then validChangeName(name), refuses to
-// clobber an existing docs/changes/<name> directory, and only then
-// scaffolds onto-state.yaml plus an empty proposal.md (and, for the fix/tweak
-// presets, tasks.md — full derives its task list in design). Each file is
-// written only if absent. It reports the created change and its files.
+// runNew enforces ontoFramework.Gate(root) then
+// ontoFramework.ValidChangeName(name), refuses to clobber an existing
+// docs/changes/<name> directory, and only then scaffolds onto-state.yaml plus an
+// empty proposal.md (and, for the fix/tweak presets, tasks.md — full derives its
+// task list in design). Each file is written only if absent. It reports the
+// created change and its files.
 func runNew(cmd *cobra.Command, root, name, workflow string) error {
-	if err := gate(root); err != nil {
+	if err := ontoFramework.Gate(root); err != nil {
 		return err
 	}
 
-	if err := validChangeName(name); err != nil {
+	if err := ontoFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 

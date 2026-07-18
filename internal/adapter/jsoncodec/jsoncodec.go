@@ -36,13 +36,17 @@ func (Codec) EnsureRoot(doc []byte) ([]byte, error) {
 
 // Get returns the canonical JSON value at path and whether it is present. The
 // value is canonicalized so it compares and hashes identically to the value
-// Apply records (the noop identity: Applied == hash(Canonical(disk))).
-func (Codec) Get(doc []byte, path string) (string, bool) {
+// Apply records (the noop identity: Applied == hash(Canonical(disk))). It never
+// returns a parse error: callers standardize JSONC → JSON before this codec
+// runs (see opencode/claude readStandardized), so by the time bytes reach Get
+// the document is valid JSON; gjson returns ok=false for a missing path rather
+// than a parse failure, and that distinction is preserved.
+func (Codec) Get(doc []byte, path string) (string, bool, error) {
 	raw, ok := jsonutil.GetJSON(doc, path)
 	if !ok {
-		return "", false
+		return "", false, nil
 	}
-	return jsonutil.Canonical(raw), true
+	return jsonutil.Canonical(raw), true, nil
 }
 
 // Set assigns a JSON-encoded value at path, preserving unmanaged content. The

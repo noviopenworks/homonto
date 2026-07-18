@@ -4,43 +4,38 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
-	"strings"
 
 	"github.com/noviopenworks/homonto/internal/adapter"
+	"github.com/noviopenworks/homonto/internal/adapter/baseadapter"
 	"github.com/noviopenworks/homonto/internal/adapter/copyproj"
 	"github.com/noviopenworks/homonto/internal/adapter/fileproj"
 	"github.com/noviopenworks/homonto/internal/adapter/jsoncodec"
 	"github.com/noviopenworks/homonto/internal/adapter/structproj"
-	"github.com/noviopenworks/homonto/internal/agentfm"
-	"github.com/noviopenworks/homonto/internal/commandpath"
 	"github.com/noviopenworks/homonto/internal/config"
 	"github.com/noviopenworks/homonto/internal/copyfile"
 	"github.com/noviopenworks/homonto/internal/fsutil"
 	"github.com/noviopenworks/homonto/internal/jsonutil"
 	"github.com/noviopenworks/homonto/internal/secret"
-	"github.com/noviopenworks/homonto/internal/skillpath"
 	"github.com/noviopenworks/homonto/internal/state"
-	"github.com/noviopenworks/homonto/internal/subagentpath"
 )
 
 // Adapter projects desired config into Claude Code's files under home.
 type Adapter struct {
-	home                string
-	content             string
-	catalogRoot         string // materialized builtin catalog root (.homonto/catalog/skills)
-	commandCatalogRoot  string // materialized builtin command root (.homonto/catalog/commands)
-	subagentCatalogRoot string // materialized builtin subagent root (.homonto/catalog/subagents)
-	remoteSubagentRoot  string // materialized remote subagent root (.homonto/remote/subagents)
-	projectRoot         string // directory of homonto.toml; used for project-scope resources
-	skills              []config.NamedResource
-	commands            []config.NamedResource
-	subagents           []config.NamedResource
+	baseadapter.Base
 }
 
 // New builds a Claude adapter at user scope. home is the $HOME root; content
 // holds owned skills. Use WithProjectRoot to install project-scope skills.
-func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
+func New(home, content string) *Adapter {
+	return &Adapter{Base: baseadapter.Base{
+		Tool:          "claude",
+		VariantSuffix: ".claude.md",
+		Home:          home,
+		Content:       content,
+	}}
+}
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
 // used for project-scope resource placement. MCP servers and explicit settings
@@ -48,28 +43,28 @@ func New(home, content string) *Adapter { return &Adapter{home: home, content: c
 // under projectRoot when every model-backed resource is project-scoped (see
 // config.ModelSettingsScope).
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
-	a.projectRoot = projectRoot
+	a.Base.ProjectRoot = projectRoot
 	return a
 }
 
 // WithCatalogRoot sets the materialized builtin-catalog root that builtin:<name>
 // skills link from. Mirrors WithProjectRoot.
 func (a *Adapter) WithCatalogRoot(catalogRoot string) *Adapter {
-	a.catalogRoot = catalogRoot
+	a.Base.CatalogRoot = catalogRoot
 	return a
 }
 
 // WithCommandCatalogRoot sets the materialized builtin-command root that
 // builtin:<name> commands link from. Mirrors WithCatalogRoot.
 func (a *Adapter) WithCommandCatalogRoot(commandCatalogRoot string) *Adapter {
-	a.commandCatalogRoot = commandCatalogRoot
+	a.Base.CommandCatalogRoot = commandCatalogRoot
 	return a
 }
 
 // WithSubagentCatalogRoot sets the materialized builtin-subagent root that
 // builtin:<name> subagents link from. Mirrors WithCommandCatalogRoot.
 func (a *Adapter) WithSubagentCatalogRoot(subagentCatalogRoot string) *Adapter {
-	a.subagentCatalogRoot = subagentCatalogRoot
+	a.Base.SubagentCatalogRoot = subagentCatalogRoot
 	return a
 }
 
@@ -77,60 +72,28 @@ func (a *Adapter) WithSubagentCatalogRoot(subagentCatalogRoot string) *Adapter {
 // remote:<url> subagents link from (populated by the engine's verify pipeline
 // before apply). Mirrors WithSubagentCatalogRoot.
 func (a *Adapter) WithRemoteSubagentRoot(remoteSubagentRoot string) *Adapter {
-	a.remoteSubagentRoot = remoteSubagentRoot
+	a.Base.RemoteSubagentRoot = remoteSubagentRoot
 	return a
 }
 
-// managedRoots returns every content root homonto owns links into. catalogRoot,
-// commandCatalogRoot, and subagentCatalogRoot are included only when set:
-// link.managed() treats an empty-string root as a prefix match for every
-// absolute path, so passing "" here would make link calls treat any symlink as
-// "ours" — an empty root must never reach link.*.
-func (a *Adapter) managedRoots() []string {
-	roots := []string{a.content}
-	if a.catalogRoot != "" {
-		roots = append(roots, a.catalogRoot)
-	}
-	if a.commandCatalogRoot != "" {
-		roots = append(roots, a.commandCatalogRoot)
-	}
-	if a.subagentCatalogRoot != "" {
-		roots = append(roots, a.subagentCatalogRoot)
-	}
-	if a.remoteSubagentRoot != "" {
-		roots = append(roots, a.remoteSubagentRoot)
-	}
-	return roots
+func (a *Adapter) claudeJSON() string { return filepath.Join(a.Home, ".claude.json") }
+func (a *Adapter) settingsJSON() string {
+	return filepath.Join(a.Home, ".claude", "settings.json")
 }
-
-// skillSource resolves a skill entry's on-disk content directory by source
-// scheme: builtin:<n> from the materialized catalog root, otherwise the local
-// content dir.
-func (a *Adapter) skillSource(entry config.NamedResource) string {
-	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
-		return filepath.Join(a.catalogRoot, strings.TrimPrefix(s, "builtin:"))
-	}
-	return filepath.Join(a.content, "skills", localSourceName(entry.Resource.Source, entry.Name))
-}
-
-func (a *Adapter) Name() string { return "claude" }
-
-func (a *Adapter) claudeJSON() string   { return filepath.Join(a.home, ".claude.json") }
-func (a *Adapter) settingsJSON() string { return filepath.Join(a.home, ".claude", "settings.json") }
 
 // projectSettingsJSON is the project-level settings file (merged by Claude Code
 // over the user one, project winning on conflicting keys). Only the
 // route-derived default-model key ever lands here; call only when projectRoot
 // is set.
 func (a *Adapter) projectSettingsJSON() string {
-	return filepath.Join(a.projectRoot, ".claude", "settings.json")
+	return filepath.Join(a.ProjectRoot, ".claude", "settings.json")
 }
 
 // readProjectSettings reads the project-level settings document, or an empty
 // root when no project root is known — recorded projsetting.* keys still prune
 // cleanly (state-only) without inventing a relative path to read.
 func (a *Adapter) readProjectSettings() ([]byte, error) {
-	if a.projectRoot == "" {
+	if a.ProjectRoot == "" {
 		return jsonutil.Standardize(nil)
 	}
 	return readStandardized(a.projectSettingsJSON())
@@ -140,255 +103,21 @@ func (a *Adapter) readProjectSettings() ([]byte, error) {
 // servers. Only project-scoped [mcps.*] entries land here; call only when
 // projectRoot is set.
 func (a *Adapter) projectMCPJSON() string {
-	return filepath.Join(a.projectRoot, ".mcp.json")
+	return filepath.Join(a.ProjectRoot, ".mcp.json")
 }
 
 // readProjectMCP mirrors readProjectSettings for .mcp.json.
 func (a *Adapter) readProjectMCP() ([]byte, error) {
-	if a.projectRoot == "" {
+	if a.ProjectRoot == "" {
 		return jsonutil.Standardize(nil)
 	}
 	return readStandardized(a.projectMCPJSON())
 }
 
-// skillsDir is the directory owned-skill symlinks live in for the given scope.
-func (a *Adapter) skillsDir(scope string) string {
-	return skillpath.Dir("claude", scope, a.home, a.projectRoot)
-}
-
-// inactiveSkillsDir is the other scope's skills directory — where a link may
-// linger after a per-resource scope switch. It returns "" when there is nothing
-// meaningful to relocate from: no project root is known, or the two scopes
-// resolve to the same directory (a homonto.toml that sits in $HOME).
-func (a *Adapter) inactiveSkillsDir(scope string) string {
-	if a.projectRoot == "" {
-		return ""
-	}
-	d := skillpath.Dir("claude", skillpath.Other(scope), a.home, a.projectRoot)
-	if d == a.skillsDir(scope) {
-		return ""
-	}
-	return d
-}
-
-// skillFileLinks builds the desired managed skill symlinks for the fileproj
-// contract: destination, content source, state key, and the same-named link at
-// the other scope (Inactive is "" when there is nothing to relocate from).
-func (a *Adapter) skillFileLinks() []fileproj.Link {
-	var out []fileproj.Link
-	for _, e := range a.skills {
-		inact := ""
-		if d := a.inactiveSkillsDir(e.Resource.Scope); d != "" {
-			inact = filepath.Join(d, e.Name)
-		}
-		out = append(out, fileproj.Link{
-			Dst:      filepath.Join(a.skillsDir(e.Resource.Scope), e.Name),
-			Src:      a.skillSource(e),
-			Key:      "skill." + e.Name,
-			Inactive: inact,
-		})
-	}
-	return out
-}
-
-// commandsDir is the directory owned-command symlinks live in for the scope.
-func (a *Adapter) commandsDir(scope string) string {
-	return commandpath.Dir("claude", scope, a.home, a.projectRoot)
-}
-
-// inactiveCommandsDir is the other scope's commands directory — where a link
-// may linger after a per-resource scope switch. It returns "" when nothing
-// meaningful can be relocated (no project root, or both scopes resolve equal).
-func (a *Adapter) inactiveCommandsDir(scope string) string {
-	if a.projectRoot == "" {
-		return ""
-	}
-	d := commandpath.Dir("claude", skillpath.Other(scope), a.home, a.projectRoot)
-	if d == a.commandsDir(scope) {
-		return ""
-	}
-	return d
-}
-
-// commandSource resolves a command entry's on-disk file by source scheme:
-// builtin:<n> from the materialized command root (<n>.md), otherwise the local
-// content dir (homonto/commands/<n>.md).
-func (a *Adapter) commandSource(entry config.NamedResource) string {
-	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
-		return filepath.Join(a.commandCatalogRoot, strings.TrimPrefix(s, "builtin:")+".md")
-	}
-	return filepath.Join(a.content, "commands", localSourceName(entry.Resource.Source, entry.Name)+".md")
-}
-
-// commandFileLinks builds the desired managed command symlinks for the fileproj
-// contract (destination is <name>.md).
-func (a *Adapter) commandFileLinks() []fileproj.Link {
-	var out []fileproj.Link
-	for _, e := range a.commands {
-		inact := ""
-		if d := a.inactiveCommandsDir(e.Resource.Scope); d != "" {
-			inact = filepath.Join(d, e.Name+".md")
-		}
-		out = append(out, fileproj.Link{
-			Dst:      filepath.Join(a.commandsDir(e.Resource.Scope), e.Name+".md"),
-			Src:      a.commandSource(e),
-			Key:      "command." + e.Name,
-			Inactive: inact,
-		})
-	}
-	return out
-}
-
-// subagentsDir is the directory owned-subagent symlinks live in for the scope.
-func (a *Adapter) subagentsDir(scope string) string {
-	return subagentpath.Dir("claude", scope, a.home, a.projectRoot)
-}
-
-// inactiveSubagentsDir is the other scope's subagent directory — where a link
-// may linger after a per-resource scope switch. It returns "" when nothing
-// meaningful can be relocated (no project root, or both scopes resolve equal).
-func (a *Adapter) inactiveSubagentsDir(scope string) string {
-	if a.projectRoot == "" {
-		return ""
-	}
-	d := subagentpath.Dir("claude", skillpath.Other(scope), a.home, a.projectRoot)
-	if d == a.subagentsDir(scope) {
-		return ""
-	}
-	return d
-}
-
-// subagentSource resolves a subagent entry's on-disk file by source scheme:
-// builtin:<n> from the materialized subagent root (<n>.md), remote:<url> from the
-// materialized remote root (<name>.md), otherwise the local content dir
-// (homonto/subagents/<n>.md).
-func (a *Adapter) subagentSource(entry config.NamedResource) string {
-	if s := entry.Resource.Source; strings.HasPrefix(s, "builtin:") {
-		name := strings.TrimPrefix(s, "builtin:")
-		// Prefer the Claude-rendered frontmatter variant when the subagent
-		// declared a neutral homonto: block (materialize wrote <name>.claude.md);
-		// fall back to the shared verbatim file.
-		if variant := filepath.Join(a.subagentCatalogRoot, name+".claude.md"); fileExists(variant) {
-			return variant
-		}
-		return filepath.Join(a.subagentCatalogRoot, name+".md")
-	}
-	if strings.HasPrefix(entry.Resource.Source, "remote:") {
-		return filepath.Join(a.remoteSubagentRoot, entry.Name+".md")
-	}
-	return filepath.Join(a.content, "subagents", localSourceName(entry.Resource.Source, entry.Name)+".md")
-}
-
-func fileExists(p string) bool {
-	fi, err := os.Stat(p)
-	return err == nil && !fi.IsDir()
-}
-
-// skipsSubagent reports whether a builtin subagent must NOT be projected for
-// Claude: it carries a neutral homonto: block (so it is rendered per tool) but
-// has no <name>.claude.md variant — agentfm skips the Claude render for an
-// OpenCode-primary agent, so Claude simply does not project it (its entry point
-// is the /onto command). A verbatim subagent (no block) is always projected.
-func (a *Adapter) skipsSubagent(e config.NamedResource) bool {
-	name, ok := strings.CutPrefix(e.Resource.Source, "builtin:")
-	if !ok {
-		return false
-	}
-	if fileExists(filepath.Join(a.subagentCatalogRoot, name+".claude.md")) {
-		return false
-	}
-	data, err := os.ReadFile(filepath.Join(a.subagentCatalogRoot, name+".md"))
-	return err == nil && agentfm.NeedsTransform(data)
-}
-
-// subagentFileLinks builds the desired managed subagent symlinks for the
-// fileproj contract. Copy-mode subagents are projected as content files (not
-// links), so they are skipped here and reconciled by applyCopySubagents.
-func (a *Adapter) subagentFileLinks() []fileproj.Link {
-	var out []fileproj.Link
-	for _, e := range a.subagents {
-		if e.Mode == "copy" || a.skipsSubagent(e) {
-			continue
-		}
-		inact := ""
-		if d := a.inactiveSubagentsDir(e.Resource.Scope); d != "" {
-			inact = filepath.Join(d, e.Name+".md")
-		}
-		out = append(out, fileproj.Link{
-			Dst:      filepath.Join(a.subagentsDir(e.Resource.Scope), e.Name+".md"),
-			Src:      a.subagentSource(e),
-			Key:      "subagent." + e.Name,
-			Inactive: inact,
-		})
-	}
-	return out
-}
-
-// copySubagentDesired returns dst -> resolved content for each copy-mode
-// subagent (a real managed file rather than a symlink).
-func (a *Adapter) copySubagentDesired() (map[string][]byte, error) {
-	out := map[string][]byte{}
-	for _, entry := range a.subagents {
-		if entry.Mode != "copy" || a.skipsSubagent(entry) {
-			continue
-		}
-		content, err := os.ReadFile(a.subagentSource(entry))
-		if err != nil {
-			return nil, err
-		}
-		out[filepath.Join(a.subagentsDir(entry.Resource.Scope), entry.Name+".md")] = content
-	}
-	return out, nil
-}
-
-// planCopyOps computes the reconciler ops for copy-mode subagents against state
-// through the shared copyproj core.
-func (a *Adapter) planCopyOps(st *state.State) ([]copyfile.Op, error) {
-	desired, err := a.copySubagentDesired()
-	if err != nil {
-		return nil, err
-	}
-	return copyproj.Plan("claude", desired, st)
-}
-
-// applyCopySubagents reconciles copy-mode subagent content files through the
-// shared copyproj core (write/update/prune + local-edit .bak backup + state,
-// conflict abort, F7 prune-root guard).
-func (a *Adapter) applyCopySubagents(st *state.State) error {
-	desired, err := a.copySubagentDesired()
-	if err != nil {
-		return err
-	}
-	return copyproj.Apply("claude", desired, st, a.copyPruneRoots())
-}
-
-// copyPruneRoots are the directories a copy-mode subagent file may legitimately
-// live in (user + project agent dirs). copyfile.Apply refuses to delete a prune
-// destination — reconstructed from an untrusted state entry — that resolves
-// outside these roots, so a tampered state.json path cannot delete an arbitrary
-// file (F7). The project dir is included only when a project root is known.
-func (a *Adapter) copyPruneRoots() []string {
-	roots := []string{a.subagentsDir("user")}
-	if a.projectRoot != "" {
-		roots = append(roots, a.subagentsDir("project"))
-	}
-	return roots
-}
-
-// localSourceName resolves a skill resource's content subdirectory: a local:
-// source names that directory directly; any other source falls back to the
-// skill's declared name.
-func localSourceName(source, fallback string) string {
-	if strings.HasPrefix(source, "local:") {
-		return strings.TrimPrefix(source, "local:")
-	}
-	return fallback
-}
-
 // mcpValue renders one declared server as Claude's mcpServers entry, or
 // ok=false when there is nothing runnable to project for this tool.
 func mcpValue(m config.MCP) (string, bool) {
-	if !contains(m.TargetsOrAll(), "claude") {
+	if !slices.Contains(m.TargetsOrAll(), "claude") {
 		return "", false
 	}
 	if len(m.Command) == 0 {
@@ -403,7 +132,7 @@ func mcpValue(m config.MCP) (string, bool) {
 	if len(m.Env) > 0 {
 		obj["env"] = m.Env
 	}
-	return mustJSON(obj), true
+	return structproj.MustJSON(obj), true
 }
 
 // desiredProjectMCPs maps the project-scoped servers to their projmcp.* state
@@ -412,7 +141,7 @@ func mcpValue(m config.MCP) (string, bool) {
 // one repository's servers don't run in every other session.
 func (a *Adapter) desiredProjectMCPs(c *config.Config) map[string]string {
 	out := map[string]string{}
-	if a.projectRoot == "" {
+	if a.ProjectRoot == "" {
 		return out
 	}
 	for name, m := range c.MCPs {
@@ -432,7 +161,7 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	for name, m := range c.MCPs {
 		// Project-scoped servers live in .mcp.json (desiredProjectMCPs); they
 		// fall back here only when no project root is known.
-		if m.ScopeOrDefault() == "project" && a.projectRoot != "" {
+		if m.ScopeOrDefault() == "project" && a.ProjectRoot != "" {
 			continue
 		}
 		if v, ok := mcpValue(m); ok {
@@ -440,7 +169,7 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		}
 	}
 	for k, v := range c.Settings.Claude {
-		out["setting."+k] = mustJSON(v)
+		out["setting."+k] = structproj.MustJSON(v)
 	}
 	// Project the architectural model route into Claude's default model setting
 	// so a declared [models.claude.*] block configures the model. The key stays
@@ -450,7 +179,7 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	// other projects' sessions. An explicit [settings.claude].model wins — and
 	// suppresses the project-level twin too, which would otherwise override it
 	// in Claude's settings merge order.
-	if !a.projectModelSettings(c) {
+	if !a.ProjectModelSettings(c) {
 		if v, ok := routeModelSetting(c); ok {
 			out["setting.model"] = v
 		}
@@ -458,19 +187,19 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	for _, pl := range c.Plugins.Claude {
 		// Source-keyed: enabledPlugins[<source>] carries the plugin's enabled
 		// value, so a disabled plugin emits a managed `false` (not absence).
-		out["plugin."+pl.Source] = mustJSON(pl.IsEnabled())
+		out["plugin."+pl.Source] = structproj.MustJSON(pl.IsEnabled())
 	}
 	for _, pl := range c.Plugins.Claude {
 		// pluginConfigs[<source>] carries the whole {options:…} object so write
 		// and read-back stay symmetric (see current()); no config → no key.
 		if len(pl.Config) > 0 {
-			out["pluginconfig."+pl.Source] = mustJSON(map[string]any{"options": pl.Config})
+			out["pluginconfig."+pl.Source] = structproj.MustJSON(map[string]any{"options": pl.Config})
 		}
 	}
 	for name, mk := range c.Marketplaces.Claude {
 		// extraKnownMarketplaces[<name>] carries the whole {source:…} object so
 		// write and read-back stay symmetric (see current()).
-		out["marketplace."+name] = mustJSON(marketplaceValue(mk))
+		out["marketplace."+name] = structproj.MustJSON(marketplaceValue(mk))
 	}
 	return out
 }
@@ -486,14 +215,7 @@ func routeModelSetting(c *config.Config) (string, bool) {
 	if !ok || r.Model == "" {
 		return "", false
 	}
-	return mustJSON(r.Model), true
-}
-
-// projectModelSettings reports whether the route-derived default-model key
-// belongs in <projectRoot>/.claude/settings.json rather than the user file:
-// every model-backed resource is project-scoped and a project root is known.
-func (a *Adapter) projectModelSettings(c *config.Config) bool {
-	return a.projectRoot != "" && c.ModelSettingsScope("claude") == "project"
+	return structproj.MustJSON(r.Model), true
 }
 
 // desiredProjectSettings maps the route-derived default-model key to its
@@ -501,7 +223,7 @@ func (a *Adapter) projectModelSettings(c *config.Config) bool {
 // file instead (every model-backed resource project-scoped).
 func (a *Adapter) desiredProjectSettings(c *config.Config) map[string]string {
 	out := map[string]string{}
-	if !a.projectModelSettings(c) {
+	if !a.ProjectModelSettings(c) {
 		return out
 	}
 	if v, ok := routeModelSetting(c); ok {
@@ -556,30 +278,8 @@ func marketplacePath(key string) string {
 	return "extraKnownMarketplaces." + jsonutil.EscapePath(trim(key, "marketplace."))
 }
 
-// expand resolves the config's skill/command/subagent entries for claude into
-// the adapter's instance fields. Both Plan and Apply call it first so Apply's
-// file entries derive from the supplied config rather than a prior Plan.
-func (a *Adapter) expand(c *config.Config) error {
-	skills, err := c.ExpandedSkillEntriesForTool("claude")
-	if err != nil {
-		return err
-	}
-	a.skills = skills
-	commands, err := c.ExpandedCommandEntriesForTool("claude")
-	if err != nil {
-		return err
-	}
-	a.commands = commands
-	subagents, err := c.ExpandedSubagentEntriesForTool("claude")
-	if err != nil {
-		return err
-	}
-	a.subagents = subagents
-	return nil
-}
-
 func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, error) {
-	if err := a.expand(c); err != nil {
+	if err := a.Expand(c); err != nil {
 		return adapter.ChangeSet{}, err
 	}
 	mj, err := readStandardized(a.claudeJSON())
@@ -603,33 +303,61 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	// project-level settings.json. Each Project call sees only its prefix's
 	// desired keys and prunes only its own recorded keys, so the generic delete
 	// loop below no longer touches these prefixes.
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "mcp.", filterDesired(des, "mcp."), mj, st, codec, mcpPath)...)
+	if changes, err := structproj.Project("claude", "mcp.", filterDesired(des, "mcp."), mj, st, codec, mcpPath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
 	pmj, err := a.readProjectMCP()
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "projmcp.", a.desiredProjectMCPs(c), pmj, st, codec, projMCPPath)...)
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "setting.", filterDesired(des, "setting."), sj, st, codec, settingPath)...)
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "projsetting.", a.desiredProjectSettings(c), psj, st, codec, projSettingPath)...)
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "plugin.", filterDesired(des, "plugin."), sj, st, codec, pluginPath)...)
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "pluginconfig.", filterDesired(des, "pluginconfig."), sj, st, codec, pluginConfigPath)...)
-	cs.Changes = append(cs.Changes, structproj.Project("claude", "marketplace.", filterDesired(des, "marketplace."), sj, st, codec, marketplacePath)...)
+	if changes, err := structproj.Project("claude", "projmcp.", a.desiredProjectMCPs(c), pmj, st, codec, projMCPPath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
+	if changes, err := structproj.Project("claude", "setting.", filterDesired(des, "setting."), sj, st, codec, settingPath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
+	if changes, err := structproj.Project("claude", "projsetting.", a.desiredProjectSettings(c), psj, st, codec, projSettingPath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
+	if changes, err := structproj.Project("claude", "plugin.", filterDesired(des, "plugin."), sj, st, codec, pluginPath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
+	if changes, err := structproj.Project("claude", "pluginconfig.", filterDesired(des, "pluginconfig."), sj, st, codec, pluginConfigPath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
+	if changes, err := structproj.Project("claude", "marketplace.", filterDesired(des, "marketplace."), sj, st, codec, marketplacePath); err != nil {
+		return adapter.ChangeSet{}, err
+	} else {
+		cs.Changes = append(cs.Changes, changes...)
+	}
 	// File-projection namespaces go through the shared symlink contract: each
 	// Project call emits create/relocate/relink + adopt for its links and plans
 	// NO deletes — the generic delete loop below stays the single source of
 	// file-prefix deletes.
-	roots := a.managedRoots()
-	skillChanges, err := fileproj.Project("claude", a.skillFileLinks(), st, roots)
+	roots := a.ManagedRoots()
+	skillChanges, err := fileproj.Project("claude", a.SkillFileLinks(), st, roots)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
 	cs.Changes = append(cs.Changes, skillChanges...)
-	commandChanges, err := fileproj.Project("claude", a.commandFileLinks(), st, roots)
+	commandChanges, err := fileproj.Project("claude", a.CommandFileLinks(), st, roots)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
 	cs.Changes = append(cs.Changes, commandChanges...)
-	subagentChanges, err := fileproj.Project("claude", a.subagentFileLinks(), st, roots)
+	subagentChanges, err := fileproj.Project("claude", a.SubagentFileLinks(), st, roots)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
@@ -641,13 +369,13 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	for k := range des {
 		declared[k] = true
 	}
-	for _, entry := range a.skills {
+	for _, entry := range a.Skills {
 		declared["skill."+entry.Name] = true
 	}
-	for _, entry := range a.commands {
+	for _, entry := range a.Commands {
 		declared["command."+entry.Name] = true
 	}
-	for _, entry := range a.subagents {
+	for _, entry := range a.Subagents {
 		declared["subagent."+entry.Name] = true
 	}
 	// Copy-mode subagents are managed content files (not symlinks): surface their
@@ -655,7 +383,7 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	// reconciles them in a dedicated pass (a.applyCopySubagents); subagentcopy.* is
 	// deliberately outside filePrefix so the generic delete loop never touches
 	// it.
-	copyOps, err := a.planCopyOps(st)
+	copyOps, err := a.PlanCopyOps(st)
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
@@ -704,8 +432,12 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	out := map[string]string{}
 	// Structured-document keys (mcp.* in .claude.json; setting./plugin./
 	// pluginconfig./marketplace.* in settings.json) re-hash through the contract.
-	for k, v := range structproj.Observe("claude", "mcp.", mj, st, codec, mcpPath) {
-		out[k] = v
+	if obs, err := structproj.Observe("claude", "mcp.", mj, st, codec, mcpPath); err != nil {
+		return nil, err
+	} else {
+		for k, v := range obs {
+			out[k] = v
+		}
 	}
 	for _, o := range []struct {
 		prefix  string
@@ -716,23 +448,35 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 		{"pluginconfig.", pluginConfigPath},
 		{"marketplace.", marketplacePath},
 	} {
-		for k, v := range structproj.Observe("claude", o.prefix, sj, st, codec, o.pathFor) {
-			out[k] = v
+		if obs, err := structproj.Observe("claude", o.prefix, sj, st, codec, o.pathFor); err != nil {
+			return nil, err
+		} else {
+			for k, v := range obs {
+				out[k] = v
+			}
 		}
 	}
 	psj, err := a.readProjectSettings()
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range structproj.Observe("claude", "projsetting.", psj, st, codec, projSettingPath) {
-		out[k] = v
+	if obs, err := structproj.Observe("claude", "projsetting.", psj, st, codec, projSettingPath); err != nil {
+		return nil, err
+	} else {
+		for k, v := range obs {
+			out[k] = v
+		}
 	}
 	pmj, err := a.readProjectMCP()
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range structproj.Observe("claude", "projmcp.", pmj, st, codec, projMCPPath) {
-		out[k] = v
+	if obs, err := structproj.Observe("claude", "projmcp.", pmj, st, codec, projMCPPath); err != nil {
+		return nil, err
+	} else {
+		for k, v := range obs {
+			out[k] = v
+		}
 	}
 	// File-projection keys (skill./command./subagent.*) live on disk as symlinks;
 	// each re-hashes its recorded link through the shared contract, reading at the
@@ -766,7 +510,7 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 }
 
 func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Resolver, st *state.State) error {
-	if err := a.expand(cfg); err != nil {
+	if err := a.Expand(cfg); err != nil {
 		return err
 	}
 	mj, err := readStandardized(a.claudeJSON())
@@ -831,19 +575,19 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	// fileproj.ApplyLinks pass below; noop and subagentcopy.* are handled
 	// elsewhere. The fallback recovers a de-declared key's on-disk dst at user
 	// scope when state lacks a recorded dst, matching the prior inline behavior.
-	roots := a.managedRoots()
+	roots := a.ManagedRoots()
 	if err := fileproj.ApplyState("claude", filterChanges(cs.Changes, "skill."), st, roots, func(k string) string {
-		return filepath.Join(a.skillsDir("user"), trim(k, "skill."))
+		return filepath.Join(a.SkillsDir("user"), trim(k, "skill."))
 	}); err != nil {
 		return err
 	}
 	if err := fileproj.ApplyState("claude", filterChanges(cs.Changes, "command."), st, roots, func(k string) string {
-		return filepath.Join(a.commandsDir("user"), trim(k, "command.")+".md")
+		return filepath.Join(a.CommandsDir("user"), trim(k, "command.")+".md")
 	}); err != nil {
 		return err
 	}
 	if err := fileproj.ApplyState("claude", filterChanges(cs.Changes, "subagent."), st, roots, func(k string) string {
-		return filepath.Join(a.subagentsDir("user"), trim(k, "subagent.")+".md")
+		return filepath.Join(a.SubagentsDir("user"), trim(k, "subagent.")+".md")
 	}); err != nil {
 		return err
 	}
@@ -851,17 +595,17 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	// the three namespaces must be detected here, before any JSON write or state
 	// mutation below — otherwise a command conflict could let Apply partially
 	// write JSON and commit skill-link state before erroring.
-	if err := fileproj.Conflicts(a.skillFileLinks(), roots); err != nil {
+	if err := fileproj.Conflicts(a.SkillFileLinks(), roots); err != nil {
 		return err
 	}
-	if err := fileproj.Conflicts(a.commandFileLinks(), roots); err != nil {
+	if err := fileproj.Conflicts(a.CommandFileLinks(), roots); err != nil {
 		return err
 	}
-	if err := fileproj.Conflicts(a.subagentFileLinks(), roots); err != nil {
+	if err := fileproj.Conflicts(a.SubagentFileLinks(), roots); err != nil {
 		return err
 	}
 	// Fail fast on a copy-mode subagent conflict too, before any file is written.
-	copyOps, err := a.planCopyOps(st)
+	copyOps, err := a.PlanCopyOps(st)
 	if err != nil {
 		return err
 	}
@@ -880,12 +624,12 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 			return err
 		}
 	}
-	if psjChanged && a.projectRoot != "" {
+	if psjChanged && a.ProjectRoot != "" {
 		if err := fsutil.WriteAtomic(a.projectSettingsJSON(), psj); err != nil {
 			return err
 		}
 	}
-	if pmjChanged && a.projectRoot != "" {
+	if pmjChanged && a.ProjectRoot != "" {
 		if err := fsutil.WriteAtomic(a.projectMCPJSON(), pmj); err != nil {
 			return err
 		}
@@ -894,18 +638,18 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	// scope switch), then create the link and record state. Runs after the JSON
 	// writes. Only our own managed symlink is ever removed (IsManaged guards it);
 	// a foreign file or an absent path is left untouched.
-	if err := fileproj.ApplyLinks("claude", a.skillFileLinks(), st, roots); err != nil {
+	if err := fileproj.ApplyLinks("claude", a.SkillFileLinks(), st, roots); err != nil {
 		return err
 	}
-	if err := fileproj.ApplyLinks("claude", a.commandFileLinks(), st, roots); err != nil {
+	if err := fileproj.ApplyLinks("claude", a.CommandFileLinks(), st, roots); err != nil {
 		return err
 	}
-	if err := fileproj.ApplyLinks("claude", a.subagentFileLinks(), st, roots); err != nil {
+	if err := fileproj.ApplyLinks("claude", a.SubagentFileLinks(), st, roots); err != nil {
 		return err
 	}
 	// Reconcile copy-mode subagent content files (write/update/prune + state),
 	// backing up any local edit. Conflicts were already rejected above.
-	if err := a.applyCopySubagents(st); err != nil {
+	if err := a.ApplyCopySubagents(st); err != nil {
 		return err
 	}
 	return nil

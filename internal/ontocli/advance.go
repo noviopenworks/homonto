@@ -11,8 +11,8 @@ import (
 )
 
 // advanceCmd builds the "onto advance <change>" subcommand: it enforces
-// gate(dir), validates the change name, and only then attempts a single
-// gated phase transition on that change's onto-state.yaml. It writes
+// ontoFramework.Gate(dir), validates the change name, and only then attempts a
+// single gated phase transition on that change's onto-state.yaml. It writes
 // nothing unless every precondition below passes.
 func advanceCmd() *cobra.Command {
 	var dir string
@@ -29,7 +29,8 @@ func advanceCmd() *cobra.Command {
 	return cmd
 }
 
-// runAdvance enforces, in order: gate(root); validChangeName(name); that
+// runAdvance enforces, in order: ontoFramework.Gate(root);
+// ontoFramework.ValidChangeName(name); that
 // docs/changes/<name>/onto-state.yaml loads; that its phase has a next
 // phase; that every RequiredArtifacts(st.Phase) file — the current phase's
 // cumulative deliverables — is present in the change directory; that, when
@@ -41,11 +42,11 @@ func advanceCmd() *cobra.Command {
 // every other transition. Only once all of these pass does it flip the
 // phase and save onto-state.yaml.
 func runAdvance(cmd *cobra.Command, root, name string) error {
-	if err := gate(root); err != nil {
+	if err := ontoFramework.Gate(root); err != nil {
 		return err
 	}
 
-	if err := validChangeName(name); err != nil {
+	if err := ontoFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 

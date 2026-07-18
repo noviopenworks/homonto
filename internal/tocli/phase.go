@@ -31,7 +31,7 @@ func phaseCmd() *cobra.Command {
 }
 
 func runPhase(cmd *cobra.Command, root, name string, jsonMode bool) error {
-	if err := gate(root); err != nil {
+	if err := toFramework.Gate(root); err != nil {
 		return err
 	}
 	unlock, err := lock(root)

@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCmd builds "to new <change-name>": it enforces gate(dir) and
-// validChangeName before scaffolding a change directory with to-state.yaml
-// (phase plan) and an empty plan.md, and performs no writes if either check
-// fails or the change already exists (active or archived).
+// newCmd builds "to new <change-name>": it enforces toFramework.Gate(dir) and
+// toFramework.ValidChangeName before scaffolding a change directory with
+// to-state.yaml (phase plan) and an empty plan.md, and performs no writes if
+// either check fails or the change already exists (active or archived).
 func newCmd() *cobra.Command {
 	var (
 		dir      string
@@ -32,10 +32,10 @@ func newCmd() *cobra.Command {
 }
 
 func runNew(cmd *cobra.Command, root, name string, jsonMode bool) error {
-	if err := gate(root); err != nil {
+	if err := toFramework.Gate(root); err != nil {
 		return err
 	}
-	if err := validChangeName(name); err != nil {
+	if err := toFramework.ValidChangeName(name); err != nil {
 		return err
 	}
 	unlock, err := lock(root)

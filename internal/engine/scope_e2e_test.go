@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,11 +25,11 @@ func TestProjectScopeEndToEnd(t *testing.T) {
 			[]byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\""+scope+"\"\n"), 0o644)
 	}
 	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, content)
 		if err != nil {
 			t.Fatal(err)
 		}
-		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+		e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 		return e
 	}
 
@@ -40,7 +41,7 @@ func TestProjectScopeEndToEnd(t *testing.T) {
 	writeTOML("project")
 	e := build()
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 	for _, dst := range []string{projClaude, projOpen} {
@@ -70,7 +71,7 @@ func TestProjectScopeEndToEnd(t *testing.T) {
 	writeTOML("user")
 	e3 := build()
 	sets3, _ := e3.Plan()
-	if err := e3.Apply(sets3); err != nil {
+	if err := e3.Apply(context.Background(), sets3); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Readlink(homeClaude); err != nil {
@@ -105,11 +106,11 @@ func TestScopeSwitchStatusReportsPendingNotDrift(t *testing.T) {
 					[]byte("[skills.graphify]\nsource=\"local:graphify\"\nscope=\""+scope+"\"\n"), 0o644)
 			}
 			build := func() *Engine {
-				e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+				e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, content)
 				if err != nil {
 					t.Fatal(err)
 				}
-				e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+				e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 				return e
 			}
 
@@ -117,7 +118,7 @@ func TestScopeSwitchStatusReportsPendingNotDrift(t *testing.T) {
 			writeTOML(tc.from)
 			e := build()
 			sets, _ := e.Plan()
-			if err := e.Apply(sets); err != nil {
+			if err := e.Apply(context.Background(), sets); err != nil {
 				t.Fatal(err)
 			}
 			if drift, pending, err := build().Status(); err != nil || len(drift) != 0 || pending != 0 {
@@ -140,7 +141,7 @@ func TestScopeSwitchStatusReportsPendingNotDrift(t *testing.T) {
 			// Applying the switch converges: relocation happens and status goes clean.
 			e2 := build()
 			sets2, _ := e2.Plan()
-			if err := e2.Apply(sets2); err != nil {
+			if err := e2.Apply(context.Background(), sets2); err != nil {
 				t.Fatal(err)
 			}
 			if drift, pending, err := build().Status(); err != nil || len(drift) != 0 || pending != 0 {
@@ -161,18 +162,18 @@ func TestSkillsOnlyRebuildsLostState(t *testing.T) {
 	os.WriteFile(filepath.Join(repo, "homonto.toml"),
 		[]byte("[skills.foo]\nsource=\"local:foo\"\nscope=\"project\"\n"), 0o644)
 	build := func() *Engine {
-		e, err := Build(filepath.Join(repo, "homonto.toml"), home, content)
+		e, err := Build(context.Background(), filepath.Join(repo, "homonto.toml"), home, content)
 		if err != nil {
 			t.Fatal(err)
 		}
-		e.Resolver = &secret.Resolver{Getenv: os.Getenv, Pass: func(string) (string, error) { return "", nil }}
+		e.Resolver = &secret.Resolver{Getenv: func(string) string { return "" }, Pass: func(string) (string, error) { return "", nil }}
 		return e
 	}
 
 	// Apply, then wipe state to simulate a lost .homonto/state.json.
 	e := build()
 	sets, _ := e.Plan()
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatal(err)
 	}
 	stateFile := filepath.Join(repo, ".homonto", "state.json")
@@ -185,7 +186,7 @@ func TestSkillsOnlyRebuildsLostState(t *testing.T) {
 	if !plan.HasAdoptions(sets2) {
 		t.Fatalf("expected adoptions to rebuild lost state, got: %s", plan.Render(sets2))
 	}
-	if err := e2.Apply(sets2); err != nil {
+	if err := e2.Apply(context.Background(), sets2); err != nil {
 		t.Fatal(err)
 	}
 	st, _ := state.Load(filepath.Join(repo, ".homonto"))
@@ -200,7 +201,7 @@ func TestSkillsOnlyRebuildsLostState(t *testing.T) {
 	os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(""), 0o644)
 	e3 := build()
 	sets3, _ := e3.Plan()
-	if err := e3.Apply(sets3); err != nil {
+	if err := e3.Apply(context.Background(), sets3); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(filepath.Join(repo, ".claude", "skills", "foo")); err == nil {

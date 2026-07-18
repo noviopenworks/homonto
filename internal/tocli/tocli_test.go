@@ -56,19 +56,19 @@ func setUpGatedWorkspace(t *testing.T) string {
 func TestGate_OrderedFailures(t *testing.T) {
 	// Step 1: no homonto.toml at all.
 	dir := t.TempDir()
-	if err := gate(dir); err == nil || !strings.Contains(err.Error(), "homonto init") {
+	if err := toFramework.Gate(dir); err == nil || !strings.Contains(err.Error(), "homonto init") {
 		t.Errorf("gate(no toml) = %v, want mention of homonto init", err)
 	}
 
 	// Step 2: homonto.toml without [frameworks.to].
 	writeFile(t, filepath.Join(dir, "homonto.toml"), "[frameworks.onto]\nsource=\"builtin:onto\"\n")
-	if err := gate(dir); err == nil || !strings.Contains(err.Error(), "[frameworks.to]") {
+	if err := toFramework.Gate(dir); err == nil || !strings.Contains(err.Error(), "[frameworks.to]") {
 		t.Errorf("gate(no frameworks.to) = %v, want mention of [frameworks.to]", err)
 	}
 
 	// Step 3: declared but never applied.
 	writeFile(t, filepath.Join(dir, "homonto.toml"), "[frameworks.to]\nsource=\"builtin:to\"\n")
-	if err := gate(dir); err == nil || !strings.Contains(err.Error(), "homonto apply") {
+	if err := toFramework.Gate(dir); err == nil || !strings.Contains(err.Error(), "homonto apply") {
 		t.Errorf("gate(unapplied) = %v, want mention of homonto apply", err)
 	}
 
@@ -76,7 +76,7 @@ func TestGate_OrderedFailures(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".homonto", "catalog", "skills", "to"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := gate(dir); err != nil {
+	if err := toFramework.Gate(dir); err != nil {
 		t.Errorf("gate(all present) = %v, want nil", err)
 	}
 }

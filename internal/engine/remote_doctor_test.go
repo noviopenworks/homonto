@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,7 @@ func applyReviewer(t *testing.T, home, repo, tarPath string, pin remote.Digest) 
 	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +25,7 @@ func applyReviewer(t *testing.T, home, repo, tarPath string, pin remote.Digest) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err != nil {
+	if err := e.Apply(context.Background(), sets); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	return e
@@ -86,7 +87,7 @@ func TestRevokedRemoteContentDeactivatedOnApplyFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfgPath := filepath.Join(repo, "homonto.toml")
-	e, err := Build(cfgPath, home, filepath.Join(repo, "content"))
+	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +95,7 @@ func TestRevokedRemoteContentDeactivatedOnApplyFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Apply(sets); err == nil {
+	if err := e.Apply(context.Background(), sets); err == nil {
 		t.Fatal("apply of a revoked pin must fail closed")
 	}
 	if _, err := os.Stat(active); !os.IsNotExist(err) {

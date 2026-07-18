@@ -146,13 +146,17 @@ func claudeModel(s ModelSpec) (string, error) {
 }
 
 // NeedsTransform reports whether content carries a `homonto:` frontmatter block
-// (and therefore must be rendered per tool rather than projected verbatim).
+// (and therefore must be rendered per tool rather than projected verbatim). A
+// malformed `homonto:` block is reported as not-transformed: NeedsTransform is a
+// quick filter (drives whether Render is called at all), and a parse error in
+// the block surfaces from Render itself, where the agent name is in scope for a
+// clearer message.
 func NeedsTransform(content []byte) bool {
 	fm, _, ok := split(content)
 	if !ok {
 		return false
 	}
-	_, has := parseHomonto(fm)
+	_, has, _ := parseHomonto(fm)
 	return has
 }
 
@@ -180,7 +184,14 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 	if !ok {
 		return content, nil
 	}
-	h, has := parseHomonto(fm)
+	h, has, err := parseHomonto(fm)
+	if err != nil {
+		// A malformed `homonto:` block must NOT be silently projected as if
+		// the agent had no neutral capability intent — that would emit a
+		// weakened agent (no model line, default permissions) with no signal.
+		// Name the parse failure so a typo in the block is loud, not silent.
+		return nil, fmt.Errorf("agentfm: malformed homonto block: %w", err)
+	}
 	if !has {
 		return content, nil
 	}
@@ -341,15 +352,22 @@ func split(content []byte) (fm []byte, body []byte, ok bool) {
 	return fm, body, true
 }
 
-// parseHomonto reads the `homonto:` block from frontmatter YAML.
-func parseHomonto(fm []byte) (Homonto, bool) {
+// parseHomonto reads the `homonto:` block from frontmatter YAML. It returns the
+// parsed block, whether a block was present at all, and a parse error if the
+// block exists but is malformed. The two outcomes a caller must distinguish —
+// "no block, project verbatim" vs "block present but unparseable, fail loudly" —
+// are surfaced as (zero, false, nil) and (zero, false, err) respectively.
+func parseHomonto(fm []byte) (Homonto, bool, error) {
 	var doc struct {
 		Homonto *Homonto `yaml:"homonto"`
 	}
-	if err := yaml.Unmarshal(fm, &doc); err != nil || doc.Homonto == nil {
-		return Homonto{}, false
+	if err := yaml.Unmarshal(fm, &doc); err != nil {
+		return Homonto{}, false, err
 	}
-	return *doc.Homonto, true
+	if doc.Homonto == nil {
+		return Homonto{}, false, nil
+	}
+	return *doc.Homonto, true, nil
 }
 
 // stripHomontoBlock returns the frontmatter lines with the `homonto:` key and its

@@ -164,7 +164,7 @@ func fetchGit(ctx context.Context, url string, lim Limits) (Tree, int64, error) 
 			for i, a := range args {
 				safe[i] = RedactLocator(a)
 			}
-			return out, fmt.Errorf("remote: git %v failed: %v: %s", safe, err, out)
+			return out, fmt.Errorf("remote: git %v failed: %w: %s", safe, err, out)
 		}
 		return out, nil
 	}

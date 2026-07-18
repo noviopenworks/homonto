@@ -23,7 +23,7 @@ func stateCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			if err := validChangeName(name); err != nil {
+			if err := ontoFramework.ValidChangeName(name); err != nil {
 				return err
 			}
 			changeDir := filepath.Join(dir, "docs", "changes", name)

@@ -14,7 +14,7 @@ import (
 func TestGate_MissingHomontoToml(t *testing.T) {
 	dir := t.TempDir()
 
-	err := gate(dir)
+	err := ontoFramework.Gate(dir)
 	if err == nil {
 		t.Fatal("gate() = nil, want error")
 	}
@@ -32,7 +32,7 @@ func TestGate_MissingFrameworksOnto(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "homonto.toml"), "[models.claude.architectural]\nmodel=\"opus\"\n")
 
-	err := gate(dir)
+	err := ontoFramework.Gate(dir)
 	if err == nil {
 		t.Fatal("gate() = nil, want error")
 	}
@@ -54,7 +54,7 @@ func TestGate_MissingCatalog(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "homonto.toml"), "[frameworks.onto]\nsource=\"builtin:onto\"\nscope=\"project\"\n")
 
-	err := gate(dir)
+	err := ontoFramework.Gate(dir)
 	if err == nil {
 		t.Fatal("gate() = nil, want error")
 	}
@@ -75,7 +75,7 @@ func TestGate_AllPresent(t *testing.T) {
 		t.Fatalf("failed to create catalog dir: %v", err)
 	}
 
-	if err := gate(dir); err != nil {
+	if err := ontoFramework.Gate(dir); err != nil {
 		t.Errorf("gate() = %v, want nil", err)
 	}
 }
