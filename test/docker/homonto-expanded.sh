@@ -22,6 +22,10 @@ effort = "high"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
+variant = "1m"
+effort = "high"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -72,15 +76,15 @@ is_file "$W/.homonto/catalog/subagents/onto-implementer.md"
 is_file "$W/.homonto/catalog/subagents/onto-skeptic.md"
 # Homonto-block subagents materialize per-tool variants; the Claude variant of a
 # read-only spawn:[] agent carries a tools: allowlist WITHOUT Edit/Write/Task, and
-# stamps the role's model (this config maps claude architectural -> opus).
+# stamps the role's model (this config maps the claude review tier -> opus).
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'tools: Read, Grep, Glob'
 if grep -qE 'Edit|Write|Task' "$W/.homonto/catalog/subagents/onto-reviewer.claude.md"; then fail "read-only reviewer must not carry Edit/Write/Task in Claude"; fi
 # Claude has no variant field: a variant brackets the ALIAS into the model, and
-# effort is its own field. Both come from the architectural tier.
+# effort is its own field. Both come from the review tier.
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'model: opus\[1m\]'
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'effort: high'
 # A per-subagent override beats the tier field by field: the skeptic shares the
-# architectural tier but thinks at max, and still inherits that tier's model.
+# review tier but thinks at max, and still inherits that tier's model.
 in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'effort: max'
 in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'model: opus\[1m\]'
 # The implementer edits (coding model) but still spawns nothing (no Task).

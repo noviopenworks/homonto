@@ -18,6 +18,8 @@ effort = "high"
 [models.claude.coding]
 model = "anthropic/claude-sonnet-4-5"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "anthropic/claude-haiku-4-5"
 effort = "low"
@@ -25,6 +27,8 @@ effort = "low"
 model = "anthropic/claude-opus-4-1"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4-5"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "anthropic/claude-haiku-4-5"
 

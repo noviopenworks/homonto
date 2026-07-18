@@ -7,7 +7,7 @@ mode: subagent
 # A reviewer judges (architectural model), never edits (read-only) but keeps bash
 # for git inspection, spawns nothing, and may ask via an interactive dialog.
 homonto:
-  role: architectural
+  role: review
   read_only: true
   dialogs: true
   spawn: []

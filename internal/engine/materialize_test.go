@@ -20,6 +20,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -36,6 +38,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -52,6 +56,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -100,6 +106,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"

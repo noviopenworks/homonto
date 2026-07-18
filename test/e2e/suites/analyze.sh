@@ -24,6 +24,10 @@ variant = "max"
 model = "sonnet"
 variant = "max"
 
+[models.claude.review]
+model = "opus"
+variant = "max"
+
 [models.claude.trivial]
 model = "haiku"
 variant = "max"

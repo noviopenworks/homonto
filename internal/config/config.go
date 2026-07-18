@@ -21,6 +21,21 @@ type MCP struct {
 	Command []string          `toml:"command"`
 	Env     map[string]string `toml:"env"`
 	Targets []string          `toml:"targets"`
+	// Scope selects where the server projects: "user" (default) → the global
+	// tool config; "project" → the project-level config each tool merges over
+	// it (OpenCode <repo>/opencode.jsonc; Claude <repo>/.mcp.json), so a
+	// repository's servers don't run in every other session. Codex is
+	// user-scope only (the pilot has no project config).
+	Scope string `toml:"scope"`
+}
+
+// ScopeOrDefault returns the scope, defaulting to user (the historical
+// always-global projection) when unset.
+func (m MCP) ScopeOrDefault() string {
+	if m.Scope == "" {
+		return "user"
+	}
+	return m.Scope
 }
 
 // TargetsOrAll returns the explicit targets, or all tools when none are set.
@@ -552,6 +567,55 @@ func (c *Config) EnabledModelTools() []string {
 	return out
 }
 
+// ModelSettingsScope reports where a tool's route-derived default-model
+// settings belong: "project" when every model-backed resource enabled for the
+// tool (builtin framework, command, or subagent — the same set
+// EnabledModelTools counts) is project-scoped, so the models exist only to
+// serve this repository; "user" otherwise — any user-scope resource, or no
+// model-backed resource at all, keeps the global default-model projection.
+// Both tools read a project-level settings file that overrides the global one
+// (OpenCode: <repo>/opencode.jsonc; Claude: <repo>/.claude/settings.json), so
+// a project-scoped workflow's models never leak into other projects' sessions.
+func (c *Config) ModelSettingsScope(tool string) string {
+	backed := false
+	for _, r := range c.Frameworks {
+		// Mirrors EnabledModelTools: only a builtin framework forces model
+		// routing; a local skills-only framework does not.
+		if !strings.HasPrefix(r.Source, "builtin:") {
+			continue
+		}
+		if containsString(r.TargetsOrAll(), tool) {
+			backed = true
+			if r.Scope != "project" {
+				return "user"
+			}
+		}
+	}
+	for _, r := range c.Commands {
+		if containsString(r.TargetsOrAll(), tool) {
+			backed = true
+			if r.Scope != "project" {
+				return "user"
+			}
+		}
+	}
+	for _, s := range c.Subagents {
+		if s.IsTuneOnly() {
+			continue
+		}
+		if containsString(s.TargetsOrAll(), tool) {
+			backed = true
+			if s.ScopeOrDefault() != "project" {
+				return "user"
+			}
+		}
+	}
+	if !backed {
+		return "user"
+	}
+	return "project"
+}
+
 func entriesForTool(resources map[string]Resource, tool string) []NamedResource {
 	var out []NamedResource
 	for name, r := range resources {
@@ -704,6 +768,18 @@ func validate(c *Config) error {
 			if !isMCPTarget(target) {
 				return fmt.Errorf("parse config: mcps entry %q targets unknown tool %q; valid targets are \"claude\", \"opencode\", and \"codex\"", name, target)
 			}
+		}
+		switch m.Scope {
+		case "", "user", "project":
+			// ok
+		default:
+			return fmt.Errorf("parse config: mcps entry %q scope %q is invalid; valid values are \"user\" and \"project\"", name, m.Scope)
+		}
+		// Codex has no project-level config in the MCP pilot, so a
+		// project-scoped server could only silently project globally there —
+		// reject the combination instead.
+		if m.ScopeOrDefault() == "project" && containsString(m.Targets, "codex") {
+			return fmt.Errorf("parse config: mcps entry %q is project-scoped but targets codex, which supports only user scope (~/.codex/config.toml)", name)
 		}
 	}
 	for _, tool := range []struct {
@@ -1099,7 +1175,7 @@ func validateModelSpec(tool, label string, r ModelRoute, requireModel bool) erro
 }
 
 // validateModels ensures every tool enabled by a non-skill resource declares all
-// three model tiers with a model, and that every model/variant/effort value —
+// four model tiers with a model, and that every model/variant/effort value —
 // tier or per-subagent override — is one the target tool can actually express.
 //
 // Effort and variant are OPTIONAL: a tier naming just a model is complete. They
@@ -1107,8 +1183,27 @@ func validateModelSpec(tool, label string, r ModelRoute, requireModel bool) erro
 // you to write a field it then discarded — and never checked, so configs filled
 // with values no tool accepts.
 func validateModels(c *Config) error {
+	// An unknown tier name ([models.opencode.reviewing], say) matches no agent
+	// role and no default-model projection, so it would validate clean and then
+	// do nothing — reject it naming the offender. agentfm.TierNames is the
+	// single source of truth the role check in rendering uses too.
+	for tool, routes := range map[string]map[string]ModelRoute{
+		"claude":   c.Models.Claude,
+		"opencode": c.Models.OpenCode,
+	} {
+		levels := make([]string, 0, len(routes))
+		for level := range routes {
+			levels = append(levels, level)
+		}
+		sort.Strings(levels) // deterministic: the same config must fail on the same offender
+		for _, level := range levels {
+			if !agentfm.Tiers[level] {
+				return fmt.Errorf("parse config: models.%s.%s is not a model tier; valid tiers are %q, %q, %q, %q (agents pick one via their role)", tool, level, agentfm.TierNames[0], agentfm.TierNames[1], agentfm.TierNames[2], agentfm.TierNames[3])
+			}
+		}
+	}
 	for _, tool := range c.EnabledModelTools() {
-		for _, level := range []string{"architectural", "coding", "trivial"} {
+		for _, level := range agentfm.TierNames {
 			route, ok := modelRouteFor(c.Models, tool, level)
 			label := "models." + tool + "." + level
 			if !ok {

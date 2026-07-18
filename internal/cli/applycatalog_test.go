@@ -8,11 +8,11 @@ import (
 )
 
 // catalogSubagentTOML installs a builtin subagent whose rendered frontmatter is
-// stamped from the [models.opencode.*] routes. %MODEL% is the architectural
-// route that `onto-reviewer`'s `role: architectural` resolves through.
+// stamped from the [models.opencode.*] routes. %MODEL% is the review route
+// that `onto-reviewer`'s `role: review` resolves through.
 //
 // [settings.opencode].model is pinned explicitly, which wins over the
-// route-derived default — so changing the architectural route re-stamps the
+// route-derived default — so changing the review route re-stamps the
 // AGENT while projecting no setting diff at all. That is the case this file
 // exists for: the projection plan comes out empty, and an empty plan is exactly
 // what the CLI used to treat as "nothing to do".
@@ -26,10 +26,12 @@ targets = ["opencode"]
 model = "pinned/explicit-model"
 
 [models.opencode.architectural]
-model = "%MODEL%"
-variant = "high"
+model = "some/architectural-model"
 [models.opencode.coding]
 model = "some/coding-model"
+[models.opencode.review]
+model = "%MODEL%"
+variant = "high"
 [models.opencode.trivial]
 model = "some/trivial-model"
 `

@@ -53,6 +53,7 @@ index-like such as `"0"`/`"-1"`).
 command = ["codegraph", "serve", "--mcp"]   # required, non-empty
 env     = { API_KEY = "${pass:ai/key}" }    # optional; values may be secret references
 targets = ["claude", "opencode", "codex"]   # optional; default: claude + opencode
+scope   = "project"                         # optional; user (default) | project
 ```
 
 | Field | Type | Required | Notes |
@@ -60,10 +61,17 @@ targets = ["claude", "opencode", "codex"]   # optional; default: claude + openco
 | `command` | array of strings | **yes** | first element is the executable, the rest are args |
 | `env` | table of strings | no | values may hold `${pass:…}` / `${ENV_VAR}` references — never plaintext secrets |
 | `targets` | array | no | default `["claude", "opencode"]`; add `"codex"` to opt into the Codex pilot |
+| `scope` | string | no | `user` (default) → global tool config; `project` → the project-level config the tool merges over it |
 
-Projection: Claude Code `mcpServers` (`type: stdio`), OpenCode `mcp`
-(`type: local`), Codex `~/.codex/config.toml` `[mcp_servers.<name>]` (opt-in
-only).
+Projection at user scope: Claude Code `~/.claude.json` `mcpServers`
+(`type: stdio`), OpenCode global `opencode.jsonc` `mcp` (`type: local`),
+Codex `~/.codex/config.toml` `[mcp_servers.<name>]` (opt-in only). At
+project scope: Claude Code `<repo>/.mcp.json` `mcpServers`, OpenCode
+`<repo>/opencode.jsonc` `mcp` — the server runs only in that repository's
+sessions instead of everywhere. Codex is user-scope only; a project-scoped
+server targeting codex fails at load. Switching an applied server's scope
+migrates it on the next `apply` (pruned from the old file, written to the
+new one).
 
 ## Skills — `[skills.<name>]`
 
@@ -83,8 +91,11 @@ targets = ["claude"]         # optional; default both
 Skills are **symlinked**, not copied, so editing `homonto/skills/<name>/` is
 instantly live in every tool. Switching a skill's `scope` relocates the link
 cleanly: `plan` shows the move, and `apply` removes the old link as it
-creates the new one. `scope` affects skills, commands, and subagents only;
-MCP servers and settings always project into the global tool files.
+creates the new one. `scope` affects skills, commands, subagents, and
+[MCP servers](#mcp-servers--mcpsname) directly; explicit `[settings.<tool>]`
+keys always project into the global tool files, while the route-derived
+default-model keys follow the model-backed resources' scope — see
+[model routes](#model-routes--modelstoolroute).
 
 ## Commands — `[commands.<name>]`
 
@@ -158,8 +169,10 @@ frameworks at the running binary's version.
 ## Model routes — `[models.<tool>.<route>]`
 
 Any config that enables a model-backed resource (a framework, command, or
-subagent) for a tool must declare **all three** routes for that tool:
-`architectural`, `coding`, and `trivial`. A partial set fails at load.
+subagent) for a tool must declare **all four** routes for that tool:
+`architectural` (orchestrate/design), `coding` (implement), `review` (judge
+others' work — the reviewer and the skeptic run here), and `trivial` (cheap
+lookups). A partial set fails at load.
 
 ```toml
 [models.claude.architectural]
@@ -169,6 +182,10 @@ model = "opus"
 model = "sonnet"
 effort = "medium"
 
+[models.claude.review]
+model = "opus"
+effort = "high"
+
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -176,7 +193,7 @@ effort = "low"
 [models.opencode.architectural]
 model = "anthropic/claude-opus-4-8"
 variant = "high"
-# … coding and trivial likewise
+# … coding, review, and trivial likewise
 ```
 
 | Field | Required | Notes |
@@ -210,9 +227,28 @@ parse config: models.opencode.coding sets effort "high", but OpenCode has no eff
 
 The routes also project into each tool's default model: `architectural` →
 the tool's main model (Claude `settings.model`, OpenCode `model`) and
-`trivial` → OpenCode's `small_model`. An explicit `[settings.<tool>].model`
-always wins over the route-derived value. Subagents declare a `role:` that
-maps to one of these routes (see [subagents](subagents.md)).
+`trivial` → OpenCode's `small_model`. **Where** those keys land follows the
+scope of the model-backed resources that required the routes: when every
+model-backed resource (framework, command, subagent) enabled for a tool is
+project-scoped, the keys project into the project-level config the tool
+merges over its global one (`<repo>/opencode.jsonc`;
+`<repo>/.claude/settings.json`), so one repository's workflow models never
+become another session's defaults. Any user-scope model-backed resource
+keeps them in the global file, as before. An explicit
+`[settings.<tool>].model` always wins over the route-derived value — and
+suppresses the project-level twin entirely, which would otherwise override
+it in the tool's merge order. Subagents declare a `role:` that maps to one
+of these routes (see [subagents](subagents.md)).
+
+The four tier names are closed: a `[models.<tool>.<level>]` block naming
+any other level fails at load —
+
+```
+parse config: models.opencode.reviewing is not a model tier; valid tiers are "architectural", "coding", "review", "trivial" (agents pick one via their role)
+```
+
+— and an agent frontmatter `role:` outside the same four tiers fails at
+render instead of silently emitting an agent with no model.
 
 ### Retuning one agent — `[subagents.<name>.<tool>]`
 
@@ -222,10 +258,10 @@ over the tier, **field by field**, so an effort-only override keeps the
 tier's model:
 
 ```toml
-[models.claude.architectural]
+[models.claude.review]
 model = "opus"
 variant = "1m"
-effort = "high"          # the default for every architectural agent
+effort = "high"          # the default for every review agent
 
 [subagents.onto-skeptic.claude]
 effort = "max"           # …but the skeptic thinks harder
@@ -357,6 +393,8 @@ theme = "gruvbox"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 
@@ -365,6 +403,8 @@ model = "anthropic/claude-opus-4-8"
 variant = "high"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-5"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "anthropic/claude-haiku-4-5"
 ```

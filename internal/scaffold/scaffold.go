@@ -43,10 +43,11 @@ var files = map[string]string{
 # [settings.claude]
 # model = "opus"
 
-# A tool gains its three model routes (architectural/coding/trivial) as soon as a
-# framework, command, or subagent targets it — declare all three for every such
-# tool. The examples above target both tools, so both are shown here. An agent
-# picks its route by the role it declares; model is required, the rest optional.
+# A tool gains its four model routes (architectural/coding/review/trivial) as
+# soon as a framework, command, or subagent targets it — declare all four for
+# every such tool. The examples above target both tools, so both are shown
+# here. An agent picks its route by the role it declares; model is required,
+# the rest optional.
 #
 # Claude: model is an alias (opus/sonnet/haiku/fable) or a full id; variant
 # brackets an ALIAS only (opus[1m] — 1m is the only one); effort is one of
@@ -57,6 +58,9 @@ var files = map[string]string{
 # [models.claude.coding]
 # model = "sonnet"
 # effort = "medium"
+# [models.claude.review]
+# model = "opus"
+# effort = "high"
 # [models.claude.trivial]
 # model = "haiku"
 # effort = "low"
@@ -67,6 +71,8 @@ var files = map[string]string{
 # model = "anthropic/claude-opus-4-8"
 # [models.opencode.coding]
 # model = "anthropic/claude-sonnet-4-5"
+# [models.opencode.review]
+# model = "anthropic/claude-opus-4-8"
 # [models.opencode.trivial]
 # model = "anthropic/claude-haiku-4-5"
 `,

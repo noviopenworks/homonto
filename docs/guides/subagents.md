@@ -134,15 +134,19 @@ Rendering, by explicit parity tier:
 
 `role` maps to the tool's model from the user's `[models.<tool>.<role>]`
 route, so the same declaration yields `opus` in Claude and the OpenCode model
-id. A missing route omits `model:` and the agent inherits the default.
+id. The role names are closed — `architectural`, `coding`, `review`,
+`trivial` — and any other value fails the render naming the agent (an
+unknown role would otherwise silently emit an agent with no model). A
+missing route omits `model:` and the agent inherits the default.
 The prompt body is single-source, never duplicated; the neutral block and its
 comments are stripped from the rendered files. Subagents without a
 `homonto:` block are projected verbatim (a plain symlink to the shared
 file), unchanged.
 
 The onto framework's specialists show the division of labor: read-only
-`onto-explorer` (trivial model) and `onto-reviewer` (architectural), and the
-edit-capable `onto-implementer` (coding) — all `spawn: []`; they never nest.
+`onto-explorer` (trivial model), `onto-reviewer` and `onto-skeptic` (review),
+and the edit-capable `onto-implementer` (coding) — all `spawn: []`; they
+never nest. The `to-*` twins carry the same roles.
 
 ## Remote subagents are pinned and fail-closed
 

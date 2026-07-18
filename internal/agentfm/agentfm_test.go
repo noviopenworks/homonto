@@ -155,3 +155,19 @@ func TestRender_MissingRouteOmitsModel(t *testing.T) {
 		t.Errorf("missing route must omit model:\n%s", out)
 	}
 }
+
+// TestRenderUnknownRoleErrors: an unknown role would look up no tier and render
+// the agent with no model line — silently weaker than declared. Render must
+// fail naming the agent and the bad role instead.
+func TestRenderUnknownRoleErrors(t *testing.T) {
+	content := "---\nname: rev\ndescription: d\nmode: subagent\nhomonto:\n  role: reviewing\n---\nbody\n"
+	for _, tool := range []string{"claude", "opencode"} {
+		_, err := Render("rev", []byte(content), tool, ctx())
+		if err == nil {
+			t.Fatalf("Render(%s): unknown role must error", tool)
+		}
+		if !strings.Contains(err.Error(), `"reviewing"`) || !strings.Contains(err.Error(), `"rev"`) {
+			t.Fatalf("Render(%s): error must name the agent and role, got: %v", tool, err)
+		}
+	}
+}

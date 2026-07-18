@@ -8,7 +8,7 @@ capability profile (homonto renders it per tool):
 
 - **`onto-implementer`** — the worker. Edits on the coding-tier model, runs
   build/test, **spawns nothing**. Hand it one task's spec; it returns a diff.
-- **`onto-reviewer`** — the reviewer. Read-only on the architectural-tier model.
+- **`onto-reviewer`** — the reviewer. Read-only on the review-tier model.
 
 **A subagent never prompts the user.** If the implementer hits an ambiguous spec
 it **returns** the question (a `Questions:` section), and the coordinator asks the

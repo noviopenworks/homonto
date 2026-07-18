@@ -36,9 +36,27 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// TierNames are the model tiers an agent's `role:` may declare — the same four
+// levels a [models.<tool>.<route>] block must define, in the order validation
+// reports them: architectural (orchestrate/design), coding (implement), review
+// (judge others' work — the reviewer and the skeptic), trivial (cheap
+// lookups). Single source of truth, like ClaudeAliases: config validation and
+// rendering both reference it, so an unknown tier fails loudly in both places
+// instead of silently rendering an agent with no model.
+var TierNames = []string{"architectural", "coding", "review", "trivial"}
+
+// Tiers is TierNames as a membership set.
+var Tiers = func() map[string]bool {
+	m := make(map[string]bool, len(TierNames))
+	for _, t := range TierNames {
+		m[t] = true
+	}
+	return m
+}()
+
 // Homonto is the neutral capability intent declared under the `homonto:` key.
 type Homonto struct {
-	Role     string    `yaml:"role"`      // "" | architectural | coding | trivial → model
+	Role     string    `yaml:"role"`      // "" or a Tiers key → model
 	ReadOnly bool      `yaml:"read_only"` // deny edits/writes
 	Bash     *bool     `yaml:"bash"`      // nil = default (allowed); false = deny
 	Dialogs  bool      `yaml:"dialogs"`   // allow the question/dialog tool
@@ -158,6 +176,12 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 	h, has := parseHomonto(fm)
 	if !has {
 		return content, nil
+	}
+	// An unknown role would look up no tier and render the agent with no model
+	// line at all — a silently weaker agent. Fail loudly instead, naming the
+	// agent and the valid tiers.
+	if h.Role != "" && !Tiers[h.Role] {
+		return nil, fmt.Errorf("agentfm: agent %q: unknown role %q; valid roles are %s", name, h.Role, strings.Join(TierNames, ", "))
 	}
 	spec := ctx.specFor(name, h.Role)
 

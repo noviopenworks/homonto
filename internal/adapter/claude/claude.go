@@ -43,8 +43,10 @@ type Adapter struct {
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
-// used for project-scope resource placement. MCP servers and settings always
-// project under home.
+// used for project-scope resource placement. MCP servers and explicit settings
+// always project under home; the route-derived default-model key projects
+// under projectRoot when every model-backed resource is project-scoped (see
+// config.ModelSettingsScope).
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.projectRoot = projectRoot
 	return a
@@ -115,6 +117,39 @@ func (a *Adapter) Name() string { return "claude" }
 
 func (a *Adapter) claudeJSON() string   { return filepath.Join(a.home, ".claude.json") }
 func (a *Adapter) settingsJSON() string { return filepath.Join(a.home, ".claude", "settings.json") }
+
+// projectSettingsJSON is the project-level settings file (merged by Claude Code
+// over the user one, project winning on conflicting keys). Only the
+// route-derived default-model key ever lands here; call only when projectRoot
+// is set.
+func (a *Adapter) projectSettingsJSON() string {
+	return filepath.Join(a.projectRoot, ".claude", "settings.json")
+}
+
+// readProjectSettings reads the project-level settings document, or an empty
+// root when no project root is known — recorded projsetting.* keys still prune
+// cleanly (state-only) without inventing a relative path to read.
+func (a *Adapter) readProjectSettings() ([]byte, error) {
+	if a.projectRoot == "" {
+		return jsonutil.Standardize(nil)
+	}
+	return readStandardized(a.projectSettingsJSON())
+}
+
+// projectMCPJSON is Claude Code's project MCP file, merged over the user-level
+// servers. Only project-scoped [mcps.*] entries land here; call only when
+// projectRoot is set.
+func (a *Adapter) projectMCPJSON() string {
+	return filepath.Join(a.projectRoot, ".mcp.json")
+}
+
+// readProjectMCP mirrors readProjectSettings for .mcp.json.
+func (a *Adapter) readProjectMCP() ([]byte, error) {
+	if a.projectRoot == "" {
+		return jsonutil.Standardize(nil)
+	}
+	return readStandardized(a.projectMCPJSON())
+}
 
 // skillsDir is the directory owned-skill symlinks live in for the given scope.
 func (a *Adapter) skillsDir(scope string) string {
@@ -350,36 +385,74 @@ func localSourceName(source, fallback string) string {
 	return fallback
 }
 
+// mcpValue renders one declared server as Claude's mcpServers entry, or
+// ok=false when there is nothing runnable to project for this tool.
+func mcpValue(m config.MCP) (string, bool) {
+	if !contains(m.TargetsOrAll(), "claude") {
+		return "", false
+	}
+	if len(m.Command) == 0 {
+		return "", false
+	}
+	// Claude Code's real schema: command is a string with a separate args
+	// array (matching `claude mcp add` output; empty keys omitted).
+	obj := map[string]any{"type": "stdio", "command": m.Command[0]}
+	if len(m.Command) > 1 {
+		obj["args"] = m.Command[1:]
+	}
+	if len(m.Env) > 0 {
+		obj["env"] = m.Env
+	}
+	return mustJSON(obj), true
+}
+
+// desiredProjectMCPs maps the project-scoped servers to their projmcp.* state
+// keys — the same mcpServers entries, written into <projectRoot>/.mcp.json
+// (Claude Code's project MCP file) instead of the global ~/.claude.json, so
+// one repository's servers don't run in every other session.
+func (a *Adapter) desiredProjectMCPs(c *config.Config) map[string]string {
+	out := map[string]string{}
+	if a.projectRoot == "" {
+		return out
+	}
+	for name, m := range c.MCPs {
+		if m.ScopeOrDefault() != "project" {
+			continue
+		}
+		if v, ok := mcpValue(m); ok {
+			out["projmcp."+name] = v
+		}
+	}
+	return out
+}
+
 // desired returns managed key -> unresolved JSON-encoded desired value.
 func (a *Adapter) desired(c *config.Config) map[string]string {
 	out := map[string]string{}
 	for name, m := range c.MCPs {
-		if !contains(m.TargetsOrAll(), "claude") {
+		// Project-scoped servers live in .mcp.json (desiredProjectMCPs); they
+		// fall back here only when no project root is known.
+		if m.ScopeOrDefault() == "project" && a.projectRoot != "" {
 			continue
 		}
-		if len(m.Command) == 0 {
-			continue
+		if v, ok := mcpValue(m); ok {
+			out["mcp."+name] = v
 		}
-		// Claude Code's real schema: command is a string with a separate args
-		// array (matching `claude mcp add` output; empty keys omitted).
-		obj := map[string]any{"type": "stdio", "command": m.Command[0]}
-		if len(m.Command) > 1 {
-			obj["args"] = m.Command[1:]
-		}
-		if len(m.Env) > 0 {
-			obj["env"] = m.Env
-		}
-		out["mcp."+name] = mustJSON(obj)
 	}
 	for k, v := range c.Settings.Claude {
 		out["setting."+k] = mustJSON(v)
 	}
-	// Project the architectural model route into Claude's default model setting so
-	// a declared [models.claude.*] block configures the model (previously the
-	// routes were validation-only). An explicit [settings.claude].model wins.
-	if _, explicit := out["setting.model"]; !explicit {
-		if r, ok := c.Models.Claude["architectural"]; ok && r.Model != "" {
-			out["setting.model"] = mustJSON(r.Model)
+	// Project the architectural model route into Claude's default model setting
+	// so a declared [models.claude.*] block configures the model. The key stays
+	// in the USER settings.json only while some model-backed resource is
+	// user-scoped; a fully project-scoped workflow routes it into the project
+	// settings file instead (desiredProjectSettings), so it never leaks into
+	// other projects' sessions. An explicit [settings.claude].model wins — and
+	// suppresses the project-level twin too, which would otherwise override it
+	// in Claude's settings merge order.
+	if !a.projectModelSettings(c) {
+		if v, ok := routeModelSetting(c); ok {
+			out["setting.model"] = v
 		}
 	}
 	for _, pl := range c.Plugins.Claude {
@@ -398,6 +471,41 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 		// extraKnownMarketplaces[<name>] carries the whole {source:…} object so
 		// write and read-back stay symmetric (see current()).
 		out["marketplace."+name] = mustJSON(marketplaceValue(mk))
+	}
+	return out
+}
+
+// routeModelSetting returns the route-derived default-model JSON value
+// (architectural → model), or ok=false when no route declares one or an
+// explicit [settings.claude].model suppresses it.
+func routeModelSetting(c *config.Config) (string, bool) {
+	if _, explicit := c.Settings.Claude["model"]; explicit {
+		return "", false
+	}
+	r, ok := c.Models.Claude["architectural"]
+	if !ok || r.Model == "" {
+		return "", false
+	}
+	return mustJSON(r.Model), true
+}
+
+// projectModelSettings reports whether the route-derived default-model key
+// belongs in <projectRoot>/.claude/settings.json rather than the user file:
+// every model-backed resource is project-scoped and a project root is known.
+func (a *Adapter) projectModelSettings(c *config.Config) bool {
+	return a.projectRoot != "" && c.ModelSettingsScope("claude") == "project"
+}
+
+// desiredProjectSettings maps the route-derived default-model key to its
+// projsetting.* state key when it projects into the project-level settings
+// file instead (every model-backed resource project-scoped).
+func (a *Adapter) desiredProjectSettings(c *config.Config) map[string]string {
+	out := map[string]string{}
+	if !a.projectModelSettings(c) {
+		return out
+	}
+	if v, ok := routeModelSetting(c); ok {
+		out["projsetting.model"] = v
 	}
 	return out
 }
@@ -430,8 +538,14 @@ func marketplaceValue(mk config.Marketplace) map[string]any {
 // structproj.Project/Apply/Observe. Config-supplied names are escaped so a name
 // containing dots/@/|/# addresses the literal key rather than nesting or being
 // dropped (mirroring the prior inline SetJSON/GetJSON escaping).
-func mcpPath(key string) string     { return "mcpServers." + jsonutil.EscapePath(trim(key, "mcp.")) }
+func mcpPath(key string) string { return "mcpServers." + jsonutil.EscapePath(trim(key, "mcp.")) }
+func projMCPPath(key string) string {
+	return "mcpServers." + jsonutil.EscapePath(trim(key, "projmcp."))
+}
 func settingPath(key string) string { return jsonutil.EscapePath(trim(key, "setting.")) }
+func projSettingPath(key string) string {
+	return jsonutil.EscapePath(trim(key, "projsetting."))
+}
 func pluginPath(key string) string {
 	return "enabledPlugins." + jsonutil.EscapePath(trim(key, "plugin."))
 }
@@ -476,16 +590,27 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
+	psj, err := a.readProjectSettings()
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
 	cs := adapter.ChangeSet{Tool: "claude"}
 	des := a.desired(c)
 	codec := jsoncodec.Codec{}
 	// Structured-document namespaces go through the shared projection contract:
 	// mcp.* lives in .claude.json; setting./plugin./pluginconfig./marketplace.*
-	// all live in settings.json. Each Project call sees only its prefix's desired
-	// keys and prunes only its own recorded keys, so the generic delete loop below
-	// no longer touches these prefixes.
+	// all live in the user settings.json; projsetting.* lives in the
+	// project-level settings.json. Each Project call sees only its prefix's
+	// desired keys and prunes only its own recorded keys, so the generic delete
+	// loop below no longer touches these prefixes.
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "mcp.", filterDesired(des, "mcp."), mj, st, codec, mcpPath)...)
+	pmj, err := a.readProjectMCP()
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "projmcp.", a.desiredProjectMCPs(c), pmj, st, codec, projMCPPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "setting.", filterDesired(des, "setting."), sj, st, codec, settingPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("claude", "projsetting.", a.desiredProjectSettings(c), psj, st, codec, projSettingPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "plugin.", filterDesired(des, "plugin."), sj, st, codec, pluginPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "pluginconfig.", filterDesired(des, "pluginconfig."), sj, st, codec, pluginConfigPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("claude", "marketplace.", filterDesired(des, "marketplace."), sj, st, codec, marketplacePath)...)
@@ -595,6 +720,20 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 			out[k] = v
 		}
 	}
+	psj, err := a.readProjectSettings()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range structproj.Observe("claude", "projsetting.", psj, st, codec, projSettingPath) {
+		out[k] = v
+	}
+	pmj, err := a.readProjectMCP()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range structproj.Observe("claude", "projmcp.", pmj, st, codec, projMCPPath) {
+		out[k] = v
+	}
 	// File-projection keys (skill./command./subagent.*) live on disk as symlinks;
 	// each re-hashes its recorded link through the shared contract, reading at the
 	// recorded dst so a pending scope switch is not misread as drift.
@@ -638,6 +777,10 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	if err != nil {
 		return err
 	}
+	psj, err := a.readProjectSettings()
+	if err != nil {
+		return err
+	}
 	// Write a tool file only when a managed key living in it actually changed.
 	// adopt/noop are state-only and must leave the file byte-for-byte untouched
 	// (comments/formatting preserved); skill.* is symlink work, not JSON.
@@ -647,6 +790,14 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	// settings.json (threaded through one doc so a change to any of them writes the
 	// file exactly once). Each Apply reports whether its document actually changed.
 	mj, mjChanged, err := structproj.Apply("claude", "mcp.", filterChanges(cs.Changes, "mcp."), mj, codec, res, st, mcpPath)
+	if err != nil {
+		return err
+	}
+	pmj, err := a.readProjectMCP()
+	if err != nil {
+		return err
+	}
+	pmj, pmjChanged, err := structproj.Apply("claude", "projmcp.", filterChanges(cs.Changes, "projmcp."), pmj, codec, res, st, projMCPPath)
 	if err != nil {
 		return err
 	}
@@ -670,6 +821,10 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 			return err
 		}
 		sjChanged = sjChanged || ch
+	}
+	psj, psjChanged, err := structproj.Apply("claude", "projsetting.", filterChanges(cs.Changes, "projsetting."), psj, codec, res, st, projSettingPath)
+	if err != nil {
+		return err
 	}
 	// File-projection keys (skill./command./subagent.): adopt records state only;
 	// delete removes the managed symlink. Their create/update are handled by the
@@ -722,6 +877,16 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	}
 	if sjChanged {
 		if err := fsutil.WriteAtomic(a.settingsJSON(), sj); err != nil {
+			return err
+		}
+	}
+	if psjChanged && a.projectRoot != "" {
+		if err := fsutil.WriteAtomic(a.projectSettingsJSON(), psj); err != nil {
+			return err
+		}
+	}
+	if pmjChanged && a.projectRoot != "" {
+		if err := fsutil.WriteAtomic(a.projectMCPJSON(), pmj); err != nil {
 			return err
 		}
 	}

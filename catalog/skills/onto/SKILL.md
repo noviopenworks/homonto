@@ -283,8 +283,8 @@ multiple Task calls in one turn). Each carries an enforced capability profile
 |---|---|---|---|
 | Understand something, or locate where behavior lives | `onto-explorer` | trivial (fast/cheap) | read-only, no shell, no spawn |
 | Execute one bite-sized task from a precise spec | `onto-implementer` | coding | **edits**, bash, no spawn |
-| Audit a diff for correctness/security/contract/clarity | `onto-reviewer` | architectural | read-only, keeps bash, no spawn |
-| Refute a verification claim, or hunt what the scenarios miss | `onto-skeptic` **×2, parallel** | architectural | read-only, keeps bash, no spawn |
+| Audit a diff for correctness/security/contract/clarity | `onto-reviewer` | review | read-only, keeps bash, no spawn |
+| Refute a verification claim, or hunt what the scenarios miss | `onto-skeptic` **×2, parallel** | review | read-only, keeps bash, no spawn |
 | **Plan, judge scope, decide, commit** | **nobody — you do it** | — | — |
 
 That last row is the rule the others serve: the orchestrator (this session)

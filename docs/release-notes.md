@@ -15,6 +15,43 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
+### New in v0.6.0 — four model tiers, project-scoped model settings & MCPs, closed tier names
+
+**`review` is the fourth model tier.** Model routes are now `architectural`
+(orchestrate/design), `coding` (implement), `review` (judge others' work),
+and `trivial` (cheap lookups) — and a model-backed config must declare all
+four per enabled tool (**breaking**: existing three-route configs fail at
+load until a `[models.<tool>.review]` block is added). The onto and to
+reviewers and skeptics now run on the review tier instead of borrowing the
+architectural one, in both Claude Code and OpenCode; the catalog is bumped
+to 0.5.0 and re-materializes on the next apply.
+
+**Route-derived default-model keys follow scope.** When every model-backed
+resource (framework, command, subagent) enabled for a tool is
+project-scoped, the `[models.<tool>.*]`-derived default-model keys now
+project into the project-level config the tool merges over its global one
+(`<repo>/opencode.jsonc` `model`/`small_model`;
+`<repo>/.claude/settings.json` `model`) instead of the global file — one
+repository's workflow models no longer become every other session's
+defaults, and two repositories no longer fight over the same global keys.
+Previously-applied global keys are pruned automatically on the next
+`apply`. Any user-scope model-backed resource, and all explicit
+`[settings.<tool>]` keys, keep today's global projection.
+
+**MCP servers take a `scope`.** `[mcps.<name>] scope = "project"` projects
+the server into the project-level config (Claude Code `<repo>/.mcp.json`;
+OpenCode `<repo>/opencode.jsonc`) instead of the global one, so a
+repository's servers no longer run in every other session. Default stays
+`user` (global, today's behavior); codex remains user-scope only and a
+project-scoped codex target fails at load. A previously-global server whose
+scope changes migrates automatically on the next `apply`.
+
+**Tier and role names are enforced.** `[models.<tool>.<level>]` with a
+level outside `architectural`/`coding`/`trivial` now fails at load naming
+the offender, and an agent frontmatter `role:` outside the same three tiers
+fails at render — both were silent no-ops before (an unknown role rendered
+the agent with no model at all).
+
 ### New in v0.5.1 — documentation rewrite
 
 Docs only; the binaries are identical to v0.5.0. The README and every living

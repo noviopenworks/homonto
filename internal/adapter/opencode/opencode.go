@@ -44,8 +44,10 @@ type Adapter struct {
 func New(home, content string) *Adapter { return &Adapter{home: home, content: content} }
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
-// used for project-scope resource placement. MCP servers, settings, and
-// plugins always project under home.
+// used for project-scope resource placement. MCP servers, explicit settings,
+// and plugins always project under home; the route-derived default-model keys
+// project under projectRoot when every model-backed resource is project-scoped
+// (see config.ModelSettingsScope).
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.projectRoot = projectRoot
 	return a
@@ -116,6 +118,23 @@ func (a *Adapter) Name() string { return "opencode" }
 
 func (a *Adapter) cfgFile() string {
 	return filepath.Join(a.home, ".config", "opencode", "opencode.jsonc")
+}
+
+// projectCfgFile is the project-level OpenCode config (merged by OpenCode over
+// the global one, project winning on conflicting keys). Only the route-derived
+// default-model keys ever land here; call only when projectRoot is set.
+func (a *Adapter) projectCfgFile() string {
+	return filepath.Join(a.projectRoot, "opencode.jsonc")
+}
+
+// readProjectCfg reads the project-level config document, or an empty root when
+// no project root is known — recorded projsetting.* keys still prune cleanly
+// (state-only) without inventing a relative "opencode.jsonc" path to read.
+func (a *Adapter) readProjectCfg() ([]byte, error) {
+	if a.projectRoot == "" {
+		return jsonutil.Standardize(nil)
+	}
+	return readStandardized(a.projectCfgFile())
 }
 
 // tuiFile is the second managed file: OpenCode reads TUI settings from a
@@ -338,46 +357,115 @@ func localSourceName(source, fallback string) string {
 	return fallback
 }
 
+// mcpValue renders one declared server as OpenCode's mcp entry, or ok=false
+// when there is nothing runnable to project for this tool.
+func mcpValue(m config.MCP) (string, bool) {
+	if !contains(m.TargetsOrAll(), "opencode") {
+		return "", false
+	}
+	// No command means nothing runnable to project (matches claude's
+	// adapter); writing `command: []` would just break the tool.
+	if len(m.Command) == 0 {
+		return "", false
+	}
+	obj := map[string]any{"type": "local", "command": m.Command, "enabled": true}
+	if len(m.Env) > 0 {
+		obj["environment"] = m.Env
+	}
+	return mustJSON(obj), true
+}
+
+// desiredMCPs maps the user-scoped servers to their mcp.* state keys (the
+// global opencode.jsonc). Project-scoped servers fall back here only when no
+// project root is known.
 func (a *Adapter) desiredMCPs(c *config.Config) map[string]string {
 	out := map[string]string{}
 	for name, m := range c.MCPs {
-		if !contains(m.TargetsOrAll(), "opencode") {
+		if m.ScopeOrDefault() == "project" && a.projectRoot != "" {
 			continue
 		}
-		// No command means nothing runnable to project (matches claude's
-		// adapter); writing `command: []` would just break the tool.
-		if len(m.Command) == 0 {
-			continue
+		if v, ok := mcpValue(m); ok {
+			out["mcp."+name] = v
 		}
-		obj := map[string]any{"type": "local", "command": m.Command, "enabled": true}
-		if len(m.Env) > 0 {
-			obj["environment"] = m.Env
-		}
-		out["mcp."+name] = mustJSON(obj)
 	}
 	return out
 }
 
-// desiredSettings maps each [settings.opencode] key to its setting.* state key,
-// and projects the declared model routes into OpenCode's default-model keys so a
-// [models.opencode.*] block actually configures the chat (previously the routes
-// were validation-only): architectural → model, trivial → small_model. An
-// explicit [settings.opencode] value always wins over the route-derived one.
-func desiredSettings(c *config.Config) map[string]string {
+// desiredProjectMCPs maps the project-scoped servers to their projmcp.* state
+// keys — the same mcp.<name> entries, written into the project-level
+// opencode.jsonc instead, so one repository's servers don't run in every other
+// session.
+func (a *Adapter) desiredProjectMCPs(c *config.Config) map[string]string {
+	out := map[string]string{}
+	if a.projectRoot == "" {
+		return out
+	}
+	for name, m := range c.MCPs {
+		if m.ScopeOrDefault() != "project" {
+			continue
+		}
+		if v, ok := mcpValue(m); ok {
+			out["projmcp."+name] = v
+		}
+	}
+	return out
+}
+
+// routeSettings returns the route-derived default-model keys (unprefixed
+// setting name → JSON value): architectural → model, trivial → small_model. An
+// explicit [settings.opencode] key suppresses its route-derived twin entirely:
+// wherever the route key would land, the explicit value must stay effective,
+// and a project-level copy would override a global explicit one in OpenCode's
+// merge order.
+func routeSettings(c *config.Config) map[string]string {
+	out := map[string]string{}
+	for settingKey, level := range map[string]string{"model": "architectural", "small_model": "trivial"} {
+		if _, explicit := c.Settings.OpenCode[settingKey]; explicit {
+			continue
+		}
+		if r, ok := c.Models.OpenCode[level]; ok && r.Model != "" {
+			out[settingKey] = mustJSON(r.Model)
+		}
+	}
+	return out
+}
+
+// projectModelSettings reports whether the route-derived default-model keys
+// belong in <projectRoot>/opencode.jsonc rather than the global config: every
+// model-backed resource is project-scoped and a project root is known.
+func (a *Adapter) projectModelSettings(c *config.Config) bool {
+	return a.projectRoot != "" && c.ModelSettingsScope("opencode") == "project"
+}
+
+// desiredSettings maps each [settings.opencode] key to its setting.* state key
+// (explicit settings always live in the global opencode.jsonc), plus the
+// route-derived default-model keys when those stay global too — a user-scope
+// model-backed resource means the models serve every session, not one repo.
+func (a *Adapter) desiredSettings(c *config.Config) map[string]string {
 	out := map[string]string{}
 	for k, v := range c.Settings.OpenCode {
 		out["setting."+k] = mustJSON(v)
 	}
-	setRoute := func(settingKey, level string) {
-		if _, explicit := out["setting."+settingKey]; explicit {
-			return
-		}
-		if r, ok := c.Models.OpenCode[level]; ok && r.Model != "" {
-			out["setting."+settingKey] = mustJSON(r.Model)
+	if !a.projectModelSettings(c) {
+		for k, v := range routeSettings(c) {
+			out["setting."+k] = v
 		}
 	}
-	setRoute("model", "architectural")
-	setRoute("small_model", "trivial")
+	return out
+}
+
+// desiredProjectSettings maps the route-derived default-model keys to their
+// projsetting.* state keys when they project into the project-level
+// opencode.jsonc instead (every model-backed resource project-scoped), so a
+// project's workflow models never leak into other projects' sessions.
+func (a *Adapter) desiredProjectSettings(c *config.Config) map[string]string {
+	out := map[string]string{}
+	if !a.projectModelSettings(c) {
+		return out
+	}
+	for k, v := range routeSettings(c) {
+		out["projsetting."+k] = v
+	}
 	return out
 }
 
@@ -392,9 +480,15 @@ func desiredTUI(c *config.Config) map[string]string {
 
 // Document-path mappings for each structured-document namespace. Config-supplied
 // names are escaped so a name with dots/@/|/# addresses the literal key.
-func mcpDocPath(key string) string     { return "mcp." + jsonutil.EscapePath(trim(key, "mcp.")) }
+func mcpDocPath(key string) string { return "mcp." + jsonutil.EscapePath(trim(key, "mcp.")) }
+func projMCPDocPath(key string) string {
+	return "mcp." + jsonutil.EscapePath(trim(key, "projmcp."))
+}
 func settingDocPath(key string) string { return jsonutil.EscapePath(trim(key, "setting.")) }
-func tuiDocPath(key string) string     { return jsonutil.EscapePath(trim(key, "tui.")) }
+func projSettingDocPath(key string) string {
+	return jsonutil.EscapePath(trim(key, "projsetting."))
+}
+func tuiDocPath(key string) string { return jsonutil.EscapePath(trim(key, "tui.")) }
 
 // expand resolves the config's skill/command/subagent entries for opencode into
 // the adapter's instance fields. Both Plan and Apply call it first so Apply's
@@ -426,6 +520,10 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	if err != nil {
 		return adapter.ChangeSet{}, err
 	}
+	projDoc, err := a.readProjectCfg()
+	if err != nil {
+		return adapter.ChangeSet{}, err
+	}
 	tuiDoc, err := readStandardized(a.tuiFile())
 	if err != nil {
 		return adapter.ChangeSet{}, err
@@ -433,13 +531,16 @@ func (a *Adapter) Plan(c *config.Config, st *state.State) (adapter.ChangeSet, er
 	cs := adapter.ChangeSet{Tool: "opencode"}
 
 	// Structured-document namespaces go through the shared projection contract:
-	// mcp./setting.* live in opencode.jsonc; tui.* lives in tui.json. Each Project
+	// mcp./setting.* live in the global opencode.jsonc; projsetting.* lives in
+	// the project-level opencode.jsonc; tui.* lives in tui.json. Each Project
 	// call prunes only its own recorded keys, so the generic delete loop below no
 	// longer touches these prefixes. plugin.* stays bespoke (array membership).
 	codec := jsoncodec.Codec{}
 	des := a.desiredMCPs(c)
 	cs.Changes = append(cs.Changes, structproj.Project("opencode", "mcp.", des, doc, st, codec, mcpDocPath)...)
-	cs.Changes = append(cs.Changes, structproj.Project("opencode", "setting.", desiredSettings(c), doc, st, codec, settingDocPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("opencode", "projmcp.", a.desiredProjectMCPs(c), projDoc, st, codec, projMCPDocPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("opencode", "setting.", a.desiredSettings(c), doc, st, codec, settingDocPath)...)
+	cs.Changes = append(cs.Changes, structproj.Project("opencode", "projsetting.", a.desiredProjectSettings(c), projDoc, st, codec, projSettingDocPath)...)
 	cs.Changes = append(cs.Changes, structproj.Project("opencode", "tui.", desiredTUI(c), tuiDoc, st, codec, tuiDocPath)...)
 	for _, pl := range c.Plugins.OpenCode {
 		src := pl.Source
@@ -608,6 +709,16 @@ func (a *Adapter) ObserveHashes(st *state.State) (map[string]string, error) {
 	for k, v := range structproj.Observe("opencode", "setting.", doc, st, codec, settingDocPath) {
 		out[k] = v
 	}
+	projDoc, err := a.readProjectCfg()
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range structproj.Observe("opencode", "projmcp.", projDoc, st, codec, projMCPDocPath) {
+		out[k] = v
+	}
+	for k, v := range structproj.Observe("opencode", "projsetting.", projDoc, st, codec, projSettingDocPath) {
+		out[k] = v
+	}
 	for k, v := range structproj.Observe("opencode", "tui.", tuiDoc, st, codec, tuiDocPath) {
 		out[k] = v
 	}
@@ -656,6 +767,10 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 		return err
 	}
 	doc, err := readStandardized(a.cfgFile())
+	if err != nil {
+		return err
+	}
+	projDoc, err := a.readProjectCfg()
 	if err != nil {
 		return err
 	}
@@ -724,6 +839,18 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 		}
 		docChanged = docChanged || ch
 	}
+	projDoc, projChanged, err := structproj.Apply("opencode", "projmcp.", filterChanges(cs.Changes, "projmcp."), projDoc, codec, res, st, projMCPDocPath)
+	if err != nil {
+		return err
+	}
+	{
+		var ch bool
+		projDoc, ch, err = structproj.Apply("opencode", "projsetting.", filterChanges(cs.Changes, "projsetting."), projDoc, codec, res, st, projSettingDocPath)
+		if err != nil {
+			return err
+		}
+		projChanged = projChanged || ch
+	}
 	tuiDoc, tuiChanged, err := structproj.Apply("opencode", "tui.", filterChanges(cs.Changes, "tui."), tuiDoc, codec, res, st, tuiDocPath)
 	if err != nil {
 		return err
@@ -774,6 +901,11 @@ func (a *Adapter) Apply(cfg *config.Config, cs adapter.ChangeSet, res *secret.Re
 	}
 	if docChanged {
 		if err := fsutil.WriteAtomic(a.cfgFile(), doc); err != nil {
+			return err
+		}
+	}
+	if projChanged && a.projectRoot != "" {
+		if err := fsutil.WriteAtomic(a.projectCfgFile(), projDoc); err != nil {
 			return err
 		}
 	}

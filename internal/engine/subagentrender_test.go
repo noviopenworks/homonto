@@ -9,8 +9,8 @@ import (
 
 // opencodeSubagentTOML installs a builtin subagent for OpenCode, whose rendered
 // frontmatter is stamped with the [models.opencode.*] routes. %s is the
-// architectural model — the route the onto-reviewer's `role: architectural`
-// resolves through.
+// review model — the route the onto-reviewer's `role: review` resolves
+// through.
 const opencodeSubagentTOML = `
 [subagents.onto-reviewer]
 source = "builtin:onto-reviewer"
@@ -18,10 +18,12 @@ scope = "project"
 targets = ["opencode"]
 
 [models.opencode.architectural]
-model = "%s"
-variant = "high"
+model = "some/architectural-model"
 [models.opencode.coding]
 model = "some/coding-model"
+[models.opencode.review]
+model = "%s"
+variant = "high"
 [models.opencode.trivial]
 model = "some/trivial-model"
 `
@@ -121,6 +123,9 @@ effort = "high"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
+effort = "high"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -130,6 +135,8 @@ model = "some/architectural-model"
 variant = "high"
 [models.opencode.coding]
 model = "some/coding-model"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "some/trivial-model"
 `
@@ -170,7 +177,7 @@ effort = "max"
 	if got := effortOf("onto-skeptic.claude.md"); got != "max" {
 		t.Errorf("tuned agent effort = %q, want max (the override must beat its tier)", got)
 	}
-	// onto-reviewer shares the architectural tier but was not tuned.
+	// onto-reviewer shares the review tier but was not tuned.
 	if got := effortOf("onto-reviewer.claude.md"); got != "high" {
 		t.Errorf("untuned agent on the same tier: effort = %q, want the tier's high", got)
 	}

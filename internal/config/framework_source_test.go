@@ -51,6 +51,8 @@ effort = "high"
 [models.claude.coding]
 model = "m"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "m"
 effort = "low"
@@ -58,6 +60,8 @@ effort = "low"
 model = "m"
 [models.opencode.coding]
 model = "m"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "m"
 `), 0o644); err != nil {
@@ -104,6 +108,8 @@ effort = "high"
 [models.claude.coding]
 model = "m"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "m"
 effort = "low"
@@ -111,6 +117,8 @@ effort = "low"
 model = "m"
 [models.opencode.coding]
 model = "m"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "m"
 `), 0o644); err != nil {

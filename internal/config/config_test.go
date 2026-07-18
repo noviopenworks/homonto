@@ -61,6 +61,8 @@ effort = "high"
 model = "sonnet"
 effort = "medium"
 
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -71,6 +73,8 @@ model = "anthropic/claude-opus-4-8"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
 
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "openai/gpt-5-mini"
 variant = "cheap"
@@ -362,7 +366,7 @@ func TestAgentSupersededIntoSubagent(t *testing.T) {
 
 	// A builtin agent supersedes to a COPY-mode subagent (builtin was copy-only).
 	c := load("[agents.rev]\nsource=\"builtin:code-reviewer\"\ntargets=[\"claude\"]\n" +
-		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
+		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.review]\nmodel=\"opus\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
 	if len(c.Agents) != 0 {
 		t.Fatal("the [agents] table must be cleared after supersede")
 	}
@@ -380,7 +384,7 @@ func TestAgentSupersededIntoSubagent(t *testing.T) {
 	// A declared [agents.X] wins over an explicit [subagents.X] of the same name.
 	c2 := load("[agents.dup]\nsource=\"local:dup\"\nmode=\"copy\"\ntargets=[\"claude\"]\n" +
 		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claude\"]\n" +
-		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
+		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.review]\nmodel=\"opus\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
 	if got := c2.Subagents["dup"].Source; got != "local:dup" {
 		t.Fatalf("the agent declaration must win the name; subagent source = %q", got)
 	}
@@ -583,9 +587,11 @@ model = "anthropic/claude-sonnet-4"
 `
 	err := loadDoc(t, doc)
 	if err == nil {
-		t.Fatal("missing opencode trivial model accepted; want load error")
+		t.Fatal("missing opencode review/trivial models accepted; want load error")
 	}
-	for _, want := range []string{"models.opencode.trivial", "model"} {
+	// Validation walks the tiers in order, so the first missing one (review) is
+	// the named offender.
+	for _, want := range []string{"models.opencode.review", "model"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error %v does not mention %q", err, want)
 		}
@@ -609,6 +615,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 `
@@ -631,6 +639,8 @@ targets = ["claude"]
 ` + route + `
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 `
@@ -646,6 +656,8 @@ targets = ["opencode"]
 ` + route + `
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4-5"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "anthropic/claude-haiku-4-5"
 `
@@ -710,6 +722,8 @@ targets = ["claude"]
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 `
@@ -742,6 +756,8 @@ effort = "max"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 `
@@ -779,12 +795,16 @@ effort = "banana"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 [models.opencode.architectural]
 model = "a/b"
 [models.opencode.coding]
 model = "a/b"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "a/b"
 `)
@@ -817,6 +837,8 @@ effort = "max"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 `)
@@ -854,12 +876,16 @@ effort = "low"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 [models.opencode.architectural]
 model = "a/b"
 [models.opencode.coding]
 model = "a/b"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "a/b"
 `
@@ -888,12 +914,16 @@ scope = "project"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 [models.opencode.architectural]
 model = "a/b"
 [models.opencode.coding]
 model = "a/b"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "a/b"
 `)
@@ -920,6 +950,8 @@ model = "opus "
 variant = " 1m"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 `)
@@ -1020,6 +1052,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -1068,6 +1102,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -1098,6 +1134,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -1130,6 +1168,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -1164,6 +1204,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -1190,6 +1232,8 @@ model = "opus"
 [models.claude.coding]
 model = "sonnet"
 effort = "medium"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 effort = "low"
@@ -1197,6 +1241,8 @@ effort = "low"
 model = "anthropic/claude-opus-4-8"
 [models.opencode.coding]
 model = "anthropic/claude-sonnet-4"
+[models.opencode.review]
+model = "anthropic/claude-opus-4-8"
 [models.opencode.trivial]
 model = "openai/gpt-5-mini"
 variant = "cheap"
@@ -1564,5 +1610,87 @@ func TestAgentsRejectUnknownTarget(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "vscode") {
 		t.Fatalf("error does not name the unknown target: %v", err)
+	}
+}
+
+// TestUnknownModelTierRejected: a [models.<tool>.<level>] whose level is not one
+// of the four tiers matches no agent role and no default-model projection, so
+// it would be a silent no-op — load must fail naming the offender.
+func TestUnknownModelTierRejected(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	doc := "[subagents.architect]\nsource=\"builtin:architect\"\n" + validModelsBothTools() +
+		"[models.opencode.reviewing]\nmodel = \"anthropic/claude-opus-4-8\"\n"
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(p)
+	if err == nil {
+		t.Fatal("an unknown model tier must be rejected at load")
+	}
+	if !strings.Contains(err.Error(), "models.opencode.reviewing") {
+		t.Fatalf("error must name the offending tier, got: %v", err)
+	}
+}
+
+// TestModelSettingsScope: the route-derived default-model settings follow the
+// scope of the model-backed resources — project only when every one is
+// project-scoped, user on any user-scope resource or when nothing is
+// model-backed.
+func TestModelSettingsScope(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) *Config {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		c, err := Load(p)
+		if err != nil {
+			t.Fatalf("load: %v\n%s", err, doc)
+		}
+		return c
+	}
+
+	allProject := load("[frameworks.onto]\nsource=\"builtin:onto\"\nscope=\"project\"\ntargets=[\"opencode\"]\n" + validModelsBothTools())
+	if got := allProject.ModelSettingsScope("opencode"); got != "project" {
+		t.Fatalf("all-project config must scope opencode model settings to project, got %q", got)
+	}
+	if got := allProject.ModelSettingsScope("claude"); got != "user" {
+		t.Fatalf("claude has no model-backed resource here and must stay user, got %q", got)
+	}
+
+	mixed := load("[frameworks.onto]\nsource=\"builtin:onto\"\nscope=\"project\"\ntargets=[\"opencode\"]\n" +
+		"[commands.review]\nsource=\"builtin:example-command\"\nscope=\"user\"\ntargets=[\"opencode\"]\n" + validModelsBothTools())
+	if got := mixed.ModelSettingsScope("opencode"); got != "user" {
+		t.Fatalf("any user-scope model-backed resource must keep model settings global, got %q", got)
+	}
+
+	none := load(validModelsBothTools())
+	if got := none.ModelSettingsScope("opencode"); got != "user" {
+		t.Fatalf("no model-backed resource must keep model settings global, got %q", got)
+	}
+}
+
+// TestMCPScopeValidation: an MCP's scope is user|project (empty = user), and a
+// project-scoped server may not target codex — the pilot has no project config,
+// so the combination could only silently project globally.
+func TestMCPScopeValidation(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	load := func(doc string) error {
+		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(p)
+		return err
+	}
+
+	if err := load("[mcps.cg]\ncommand=[\"cg\"]\nscope=\"project\"\n"); err != nil {
+		t.Fatalf("a project-scoped MCP must load: %v", err)
+	}
+	err := load("[mcps.cg]\ncommand=[\"cg\"]\nscope=\"global\"\n")
+	if err == nil || !strings.Contains(err.Error(), `scope "global"`) {
+		t.Fatalf("an invalid MCP scope must be rejected naming the value, got: %v", err)
+	}
+	err = load("[mcps.cg]\ncommand=[\"cg\"]\nscope=\"project\"\ntargets=[\"codex\"]\n")
+	if err == nil || !strings.Contains(err.Error(), "codex") {
+		t.Fatalf("a project-scoped codex MCP must be rejected, got: %v", err)
 	}
 }

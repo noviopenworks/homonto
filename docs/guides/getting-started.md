@@ -123,7 +123,7 @@ it creates the new one.
 ## 4. The onto workflow
 
 Install the framework via homonto, then apply. A tool that gains a framework
-(or any subagent or command) must declare **all three model routes**:
+(or any subagent or command) must declare **all four model routes**:
 
 ```toml
 [frameworks.onto]
@@ -134,6 +134,8 @@ scope = "project"
 model = "opus"
 [models.claude.coding]
 model = "sonnet"
+[models.claude.review]
+model = "opus"
 [models.claude.trivial]
 model = "haiku"
 ```
