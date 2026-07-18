@@ -15,6 +15,15 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
+### New in v0.5.1 — documentation rewrite
+
+Docs only; the binaries are identical to v0.5.0. The README and every living
+guide were rewritten for accuracy and directness: the source matrix is now
+stated correctly everywhere (frameworks accept `builtin:`, `local:`, and
+digest-pinned `remote:`; onto and `to` are mutually exclusive), stale
+"`to` is planned" claims are gone, and the reference guides were re-checked
+against the shipped binaries' command surfaces.
+
 ### New in v0.5.0 — live task lists, hardened `to`, principle guides
 
 **The task list is live state — in both frameworks.** Discovered work is
