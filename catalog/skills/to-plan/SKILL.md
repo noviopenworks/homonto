@@ -17,18 +17,44 @@ artifact — write it for the person who reads the PR, not for yourself.
 ## Steps
 
 1. **Understand before writing.** Ground every claim about the codebase in
-   reading. For questions that span many files, dispatch `to-explorer` (one at
-   a time, never in parallel) and work from its conclusions.
+   reading. Read the repository's relevant ADRs and nearby design documents
+   before planning a behavior or architecture change. For questions that span
+   many files, dispatch `to-explorer` (one at a time, never in parallel) and
+   work from its conclusions.
 2. **Suggest isolation.** Recommend a branch for the change (the binary is
    git-blind and will not check; this is process advice, not a gate). The user
    may decline — proceed either way.
 3. **Write `docs/tasks/<name>/plan.md`:**
-   - A two-or-three-sentence statement of the goal and the approach.
-   - A task list: each task bite-sized (one sitting, one concern), naming the
-     files it touches and the specific command that verifies it. Use `- [ ]`
-     checkboxes so `do` can track completion.
-   - A "verify" line at the bottom: the narrowest command that proves the whole
-     change works.
+   - A two-or-three-sentence statement of the goal, the chosen approach, and
+     the important boundary (what this change deliberately does not do).
+   - An ordered task list. Every task must be executable from cold context and
+     use this compact contract:
+
+     ```markdown
+     - [ ] <Concrete outcome>
+       - Files: `<paths and, when useful, symbols>`
+       - Change: <behavior or contract to add, remove, or preserve>
+       - Verify: `<exact command>` — <specific passing signal>
+     ```
+
+   - Keep one concern in each task and keep its implementation and focused
+     tests together. Name dependencies only when order is not obvious. Resolve
+     unknowns before advancing; "investigate", "handle edge cases", and "add
+     tests" are not executable tasks without a named question, behavior, or
+     case.
+   - When the implementation changes durable architecture or contradicts an
+     existing guide, design document, or ADR, include the smallest required
+     documentation task. Do not create design ceremony for an implementation
+     detail that existing documentation does not promise.
+   - Reserve `## Notes` for decisions, scope clarifications, and declined
+     review findings discovered during execution. Do not duplicate the task
+     list there.
+   - A `Final Verify:` line after the tasks: the narrowest command that proves
+     the whole change works, plus the expected success signal. This distinct
+     label prevents it from being confused with a task's nested `Verify:`.
+   - When drafting or repairing a task contract, use
+     [the good/bad examples](references/task-examples.md) to test whether an
+     implementer could execute it without inventing scope.
 4. **De-slop it.** Run the `to-no-slop` rules over the plan prose.
 5. **Confirm scope with the user** if the plan grew beyond what they asked —
    otherwise proceed.
@@ -39,6 +65,9 @@ artifact — write it for the person who reads the PR, not for yourself.
 
 - Keep the plan under a screen where possible. A plan nobody reads is
   ceremony, and ceremony is what to exists to avoid.
+- A task is bite-sized when one implementer can finish and verify it without
+  inventing requirements. Split by independently reviewable behavior, not by
+  arbitrary file count or by separate "code" and "tests" tasks.
 - Never hand-edit `to-state.yaml`; the binary owns it.
 - If the work turns out to need evidence-gated phases, spec deltas, or a
   dependency graph, say so: that is onto-shaped work, and this repo chose to.

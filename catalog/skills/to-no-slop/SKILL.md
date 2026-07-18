@@ -1,6 +1,6 @@
 ---
 name: to-no-slop
-description: Remove AI writing patterns from prose. Use when drafting, editing, or reviewing any to prose artifact — plans, change notes, verification records, commit messages — to eliminate predictable AI tells.
+description: Remove AI writing patterns from prose. Use when drafting, editing, or reviewing any to prose artifact — plans, execution notes, verification records, commit messages — to eliminate predictable AI tells.
 metadata:
   trigger: Writing prose, editing drafts, reviewing content for AI patterns
   author: Hardik Pandya (https://hvpandya.com)
@@ -69,21 +69,21 @@ See [references/examples.md](references/examples.md) for before/after transforma
 
 ## Using this inside to
 
-to keeps little prose, which makes what it keeps matter more: `plan.md`, the
-verification record at its bottom, change notes, and commit messages. Run
-these rules over every such artifact before it lands, so the record a human
-reads later sounds like a human wrote it.
+to keeps little prose, which makes what it keeps matter more: `plan.md`, its
+`## Notes` and `## Verification` sections, and commit messages. Run these rules
+over every such artifact before it lands, so the record a human reads later
+sounds like a human wrote it.
 
 This pass edits the **prose you wrote** — the paragraphs a human reads. It
 never edits structure the workflow depends on. Off-limits, always:
 
 - **Machine-read markers.** Checkbox syntax `- [ ]`/`- [x]` in the plan's
-  task list, and the literal verify command and its literal output in the
-  verification record. The to-do loop tracks completion through those
-  checkboxes, and a "cleaned up" command or output is a falsified record.
-- **The plan's task structure.** Each task's files-to-touch and
-  verification-command lines are contract, not prose. Tighten the wording,
-  never drop the parts.
+  task list, the `Final Verify:` label, and literal verification commands and
+  output. The to-do loop tracks completion through those checkboxes, and a
+  "cleaned up" command or output is a falsified record.
+- **The plan's task structure.** Each task's `Files:`, `Change:`, and `Verify:`
+  lines are contract, not prose. Tighten the wording, never drop the parts or
+  weaken the expected passing signal.
 
 Within those bounds everything applies: active voice, name the actor, be
 specific, cut the throat-clearing, vary the rhythm, no em dashes in your own

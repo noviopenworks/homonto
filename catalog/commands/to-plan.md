@@ -7,8 +7,9 @@ argument-hint: "The change to plan (optional)"
 # /to-plan
 
 Run to phase 1 (plan): write `docs/tasks/<name>/plan.md` — a short goal
-statement plus a checklist of bite-sized tasks, each naming its files and its
-verification command — then advance with `to phase <name>`. Load and follow
+statement plus a checklist of bite-sized tasks, each stating a concrete
+outcome, files and symbols, behavioral change, and exact verification command
+with its passing signal — then advance with `to phase <name>`. Load and follow
 the `to-plan` skill; if it is not installed, tell the user to install the to
 framework (declare `[frameworks.to]`, then run `homonto apply`) and stop.
 Every workflow state change goes through the `to` binary — never hand-edit

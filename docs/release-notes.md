@@ -19,7 +19,8 @@ framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
 `to` is the minimal coding framework for LLMs: **plan → do → done**, a
 bookkeeper binary (`init`, `new`, `status`, `phase`, `done --verified`,
-`abandon`, `handoff`; `--json` everywhere), and the `builtin:to` catalog
+`abandon`, `handoff`; structured `--json` output on each of those workflow
+commands), and the `builtin:to` catalog
 framework — a `/to` dispatcher, three phase skills, a vendored `to-no-slop`,
 and four **sequential-only** specialist subagents adapted from onto. Changes
 live under `docs/tasks/` and archive on done. Design and rationale:

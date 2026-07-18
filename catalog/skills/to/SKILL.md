@@ -36,7 +36,7 @@ Run `to status --json` and find the active change.
   user instead of guessing; the binary owns that file.
 
 Resuming after a context compaction? `to handoff <name>` prints the recovery
-pack (phase, plan excerpt, next command) — read it before doing anything.
+pack (phase, plan excerpt, next skill) — read it before doing anything.
 
 ## 3. Route
 
@@ -59,5 +59,5 @@ never dispatch subagents in parallel.** The sequential transcript a human can
 follow is the point; parallel fan-out is onto's territory. onto and to are
 mutually exclusive per repository — never mix their artifacts or advice.
 
-All prose an artifact keeps (plan.md, change notes, commit messages) goes
-through the `to-no-slop` rules before it lands.
+All prose the change keeps (`plan.md`, its notes and verification record, and
+commit messages) goes through the `to-no-slop` rules before it lands.

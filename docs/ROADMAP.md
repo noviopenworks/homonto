@@ -7,7 +7,8 @@
 ## Status after v0.4.0 (2026-07-18)
 
 **Delivered.** The `to` framework shipped in v0.4.0: the third binary
-(`cmd/to`, plan → do → done, `--json` everywhere, git-blind, gated bootstrap),
+(`cmd/to`, plan → do → done, JSON output on its workflow commands, git-blind,
+gated bootstrap),
 the `builtin:to` catalog framework (dispatcher + three phase skills,
 `to-no-slop`, four sequential-only subagents), the onto-xor-to config
 exclusivity, and the `to-lifecycle` Docker E2E suite in the release gate.

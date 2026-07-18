@@ -238,7 +238,7 @@ func TestDoctor(t *testing.T) {
 		t.Errorf("doctor --quiet printed %q, want nothing", quiet)
 	}
 
-	// Converge the wedge, then check the do-phase checkbox contract.
+	// Converge the wedge, then check the do-phase plan contract.
 	run(t, false, "done", "wedged", "--verified", "--dir", dir)
 	run(t, false, "new", "no-boxes", "--dir", dir)
 	writeFile(t, planPath(dir, "no-boxes"), "just prose, no tasks\n")
@@ -247,7 +247,14 @@ func TestDoctor(t *testing.T) {
 	if !strings.Contains(out, "no `- [ ]` task checkboxes") {
 		t.Errorf("doctor = %q, want the checkbox-contract finding", out)
 	}
-	writeFile(t, planPath(dir, "no-boxes"), "# plan\n- [ ] a task\n")
+	writeFile(t, planPath(dir, "no-boxes"), "# plan\n- [ ] a task\n  - Files: `internal/example.go`\nFinal Verify:\n")
+	out = run(t, true, "doctor", "--dir", dir)
+	for _, want := range []string{"`Change:`", "`Verify:`", "non-empty `Final Verify:`"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("doctor = %q, want missing contract field %q", out, want)
+		}
+	}
+	writeFile(t, planPath(dir, "no-boxes"), "# plan\n- [ ] a task\n  - Files: `internal/example.go`\n  - Change: preserve the contract\n  - Verify: `go test ./internal/tocli` — passes\nFinal Verify: `go test ./...` — passes\n")
 	if out := run(t, false, "doctor", "--dir", dir); !strings.Contains(out, "healthy") {
 		t.Errorf("doctor after fix = %q, want healthy", out)
 	}
@@ -266,11 +273,26 @@ func TestHandoffExcerptKeepsUncheckedTail(t *testing.T) {
 		plan.WriteString("- [x] finished step\n")
 	}
 	plan.WriteString("- [ ] the remaining task at the bottom\n")
+	plan.WriteString("  - Files: `internal/example.go`\n")
+	plan.WriteString("  - Change: preserve the complete task contract\n")
+	plan.WriteString("  - Verify: `go test ./internal/tocli` — passes\n")
+	plan.WriteString("Final Verify: `go test ./...` — passes\n")
+	plan.WriteString("## Notes\nKeep this recovery decision.\n")
 	writeFile(t, planPath(dir, "long"), plan.String())
 
 	out := run(t, false, "handoff", "long", "--dir", dir)
 	if !strings.Contains(out, "the remaining task at the bottom") {
 		t.Errorf("handoff dropped the unchecked tail task:\n%s", out)
+	}
+	for _, want := range []string{"Files: `internal/example.go`", "Change: preserve", "Verify: `go test ./internal/tocli`"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff dropped task contract line %q:\n%s", want, out)
+		}
+	}
+	for _, want := range []string{"Final Verify: `go test ./...`", "## Notes", "Keep this recovery decision."} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff dropped recovery context %q:\n%s", want, out)
+		}
 	}
 	if !strings.Contains(out, "truncated") {
 		t.Errorf("handoff must note the truncation:\n%s", out)
@@ -326,7 +348,7 @@ func TestHandoffIsConfigFree(t *testing.T) {
 	writeFile(t, planPath(dir, "resume-me"), "# plan\n- [x] step one\n- [ ] step two\n")
 
 	out := run(t, false, "handoff", "resume-me", "--dir", dir)
-	for _, want := range []string{"phase: do", "step two", "to done resume-me --verified"} {
+	for _, want := range []string{"phase: do", "step two", "/to-do"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff output %q missing %q", out, want)
 		}
@@ -340,6 +362,21 @@ func TestHandoffIsConfigFree(t *testing.T) {
 	if pack["next"] == "" || pack["plan"] == "" {
 		t.Errorf("handoff pack = %+v, want next and plan", pack)
 	}
+
+	writeFile(t, planPath(dir, "resume-me"), "# plan\n- [x] step one\n- [x] step two\nFinal Verify: `go test ./...` — passes\n")
+	if out := run(t, false, "handoff", "resume-me", "--dir", dir); !strings.Contains(out, "/to-done") {
+		t.Errorf("handoff with all tasks checked = %q, want /to-done", out)
+	}
+}
+
+func TestHandoffReportsMissingPlan(t *testing.T) {
+	dir := t.TempDir()
+	if err := tostate.Save(statePath(dir, "missing-plan"), tostate.State{
+		Change: "missing-plan", Phase: tostate.PhasePlan, Created: "2026-07-18",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	run(t, true, "handoff", "missing-plan", "--dir", dir)
 }
 
 func TestJSONOutputsAreWellFormed(t *testing.T) {

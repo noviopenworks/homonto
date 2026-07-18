@@ -6,7 +6,7 @@ argument-hint: "What to de-slop (optional; defaults to the artifact being writte
 
 # /to-no-slop
 
-Apply the `to-no-slop` skill to the prose at hand: plans, change notes,
+Apply the `to-no-slop` skill to the prose at hand: plans, execution notes,
 verification records, commit messages. Load and follow the `to-no-slop`
 skill; if it is not installed, tell the user to install the to framework
 (declare `[frameworks.to]`, then run `homonto apply`) and stop. Never edit

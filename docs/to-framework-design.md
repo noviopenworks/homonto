@@ -60,7 +60,7 @@ Consequences:
 
 - Docs and skills must never imply the checkbox is a guarantee.
 - Real verification rigor lives in the `/to-do` and `/to-done` skill prose
-  (run the tests, paste the outcome into the change notes), not in the binary.
+  (run the tests, record the outcome in `plan.md`), not in the binary.
 - The optional `--evidence "<text>"` flag records *what* was asserted,
   verbatim and unchecked, in the archived state — added post-v0.4.0 so a real
   verification is distinguishable from a skipped one after the fact. It adds
@@ -85,7 +85,9 @@ markdown state decays the moment two sessions touch one change; the binary is
 the sole writer of state, so `to status` stays trustworthy across context
 compactions, sessions, and agents.
 
-Surface (every command supports `--json`):
+Surface (`init`, `new`, `status`, `phase`, `done`, `abandon`, and `handoff`
+support `--json`; `doctor` uses `--quiet` for hook-friendly exit-code-only
+checks, and `version` prints plain text):
 
 | Command | Role |
 |---|---|
@@ -95,13 +97,16 @@ Surface (every command supports `--json`):
 | `to phase <name>` | Advance the change one phase forward. |
 | `to done <name> --verified [--evidence "<text>"]` | Mark done and archive to `docs/tasks/archive/<date>-<name>/`. `--verified` is required but self-asserted; `--evidence` optionally records what was asserted, verbatim and unchecked. |
 | `to abandon <name>` | Terminal exit without done. |
-| `to handoff <name>` | Compact context-recovery pack (phase, plan head + unchecked tasks, next command) for resuming after compaction. Read-only, config-independent. |
-| `to doctor [--quiet]` | Workspace health: invalid state, wedged terminal-but-active changes, plan contract, version skew. `--quiet` is exit-code-only — the enforcement hook primitive. Read-only, config-independent. |
+| `to handoff <name>` | Compact context-recovery pack (phase, plan head + complete unchecked task contracts, final check, bounded notes, safe next skill) for resuming after compaction. Read-only, config-independent. |
+| `to doctor [--quiet]` | Workspace health: invalid state, wedged terminal-but-active changes, missing plans, incomplete `Files:`/`Change:`/`Verify:` task contracts or `Final Verify:`, and version skew. Findings are diagnostic, not phase gates. `--quiet` is exit-code-only — the enforcement hook primitive. Read-only, config-independent. |
+| `to version` | Print the release-stamped binary version as plain text. |
 
 Crash safety: `done`/`abandon` write terminal state then archive; re-running
 the same command converges an interrupted finish, and doctor reports it.
-Mutating commands take a fail-fast workspace lock so concurrent sessions
-cannot interleave writes.
+Change-mutating commands (`new`, `phase`, `done`, `abandon`) take a fail-fast
+workspace lock so concurrent sessions cannot interleave writes. `init` only
+creates the fixed task directories with idempotent `mkdir` operations and does
+not take the lock.
 
 ### Git-blind
 
@@ -120,8 +125,8 @@ Catalog framework `builtin:to`:
 - `/to-do` — the code-writing skill: carries the code-writing standards
   (below) and orchestrates the implementer/reviewer subagents (below),
   strictly sequentially.
-- `/to-done` — verify for real (a single skeptic pass), record the outcome,
-  `to done --verified`, archive.
+- `/to-done` — verify for real, obtain one completed skeptic pass on the final
+  candidate, record the outcome, `to done --verified`, archive.
 - `/to-no-slop` — vendored no-slop prose skill (below).
 
 ### Subagents: onto's cast, adapted — no parallelization
@@ -139,18 +144,20 @@ predictability, lower cost, and a flow a human can follow in the transcript.
 | `to-explorer` | `onto-explorer` | Read-only codebase questions during `plan` and `do`; returns conclusions, not dumps. Unchanged apart from naming. |
 | `to-implementer` | `onto-implementer` | Executes one bite-sized task from the plan: edits, runs that task's verification, returns a diff summary. Never plans, never spawns. |
 | `to-reviewer` | `onto-reviewer` | Reviews the implementer's diff for correctness, security, and clarity; read-only plus git inspection; findings ranked by severity. |
-| `to-skeptic` | `onto-skeptic` | onto dispatches two in parallel, one per lens; `to` runs **one** skeptic, once, sequentially in `/to-done` — a single fresh-context attempt to refute the "it works" claim before the change archives. |
+| `to-skeptic` | `onto-skeptic` | onto dispatches two in parallel, one per lens; `to` obtains **one completed pass on the final candidate**, sequentially in `/to-done`. A blocked attempt or a verdict invalidated by later code changes is rerun, never in parallel; only the verdict for the archived tree is kept. |
 
 The `/to-do` loop is: pick the next plan task → `to-implementer` writes it →
 `to-reviewer` judges the diff → orchestrator applies accepted findings (via
 the implementer again if substantial) → next task. Review findings are acted
-on or explicitly declined in the change notes — never silently dropped.
+on or explicitly declined with a reason in `plan.md`'s `## Notes` section —
+never silently dropped.
 
 ### Bootstrap: same gating as onto *(overruled)*
 
 Mutating commands (`init`, `new`, `phase`, `done`, `abandon`) refuse until
 `[frameworks.to]` is declared in `homonto.toml` and `homonto apply` has run.
-Read-only commands (`status`, `handoff`) work anywhere, config-free.
+Read-only commands (`status`, `handoff`, `doctor`, `version`) work anywhere,
+config-free.
 
 This re-imports onto's setup ceremony into a tool branded "much less hassle,"
 and that tension is accepted deliberately: with no gates, **the skills are the
@@ -172,9 +179,9 @@ code written inside it is held to the same bar:
 
 - **No-slop prose.** The framework vendors onto's `onto-no-slop` skill (itself
   a build of Hardik Pandya's stop-slop) as `to-no-slop`. All prose artifacts a
-  `to` change produces — `plan.md`, change notes, commit messages — go through
-  it. `to` cannot reference onto's copy because the two frameworks are never
-  installed together, so it ships its own.
+  `to` change produces — the plan and its notes, verification record, and
+  commit messages — go through it. `to` cannot reference onto's copy because
+  the two frameworks are never installed together, so it ships its own.
 - **Code-writing standards.** The `/to-do` skill carries the code-quality
   prose adapted from onto's build phase: read the surrounding code before
   changing it, match its idiom and comment density, keep changes focused, add

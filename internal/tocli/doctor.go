@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/buildinfo"
@@ -19,11 +18,6 @@ import (
 // quiet mode's whole contract is "exit code only", so a hook capturing stderr
 // sees nothing.
 var ErrQuietFindings = errors.New("to doctor: findings (quiet)")
-
-// checkboxLine matches any checkbox task line, checked or not — the plan
-// contract the to-do loop's resume logic depends on. (uncheckedTask in
-// handoff.go is the open-checkbox variant.)
-var checkboxLine = regexp.MustCompile(`^\s*[-*] \[[ x]\] `)
 
 // doctorCmd builds "to doctor": a strictly read-only, config-independent
 // workspace-health diagnostic. It is NOT gated on the framework install — a
@@ -71,7 +65,7 @@ func collectFindings(root string) ([]string, error) {
 	findings := []string{}
 
 	// 1. Active changes: state validity, wedged terminal state, the plan.md
-	// artifact, and the checkbox contract the to-do resume logic depends on.
+	// artifact, and the lightweight task contract the skills depend on.
 	dirents, err := os.ReadDir(tasksDir(root))
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("to doctor: reading %s: %w", tasksDir(root), err)
@@ -102,8 +96,10 @@ func collectFindings(root string) ([]string, error) {
 			findings = append(findings, name+": plan.md is missing")
 			continue
 		}
-		if st.Phase == tostate.PhaseDo && !hasCheckbox(string(plan)) {
-			findings = append(findings, name+": at do, but plan.md has no `- [ ]` task checkboxes — the to-do resume logic cannot track completion")
+		if st.Phase == tostate.PhaseDo {
+			for _, finding := range planContractFindings(string(plan)) {
+				findings = append(findings, name+": "+finding)
+			}
 		}
 	}
 
@@ -144,15 +140,6 @@ func collectFindings(root string) ([]string, error) {
 	}
 
 	return findings, nil
-}
-
-func hasCheckbox(plan string) bool {
-	for _, l := range strings.Split(plan, "\n") {
-		if checkboxLine.MatchString(l) {
-			return true
-		}
-	}
-	return false
 }
 
 // homontoAppliedVersion reads the homonto version recorded by the last apply
