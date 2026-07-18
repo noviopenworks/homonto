@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cross-compile, package, and checksum BOTH the homonto and onto binaries for
+# Cross-compile, package, and checksum the homonto, onto, and to binaries for
 # every supported target, producing one archive per binary per target plus a
 # single SHA256SUMS. Runnable locally (Go cross-compiles from any host); the
 # release workflow calls it so the same code path runs on and off CI.
@@ -19,7 +19,7 @@ esac
 # Six targets: macOS ships amd64+arm64; Linux and Windows cover both too.
 TARGETS="linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64"
 
-# build_one packages a single binary for one target. homonto and onto differ
+# build_one packages a single binary for one target. The binaries differ
 # only by name / build path / version package, so this is the sole build
 # definition — no copy-pasted loop body.
 #   build_one <name> <buildpath> <versionpkg> <goos> <goarch>
@@ -48,6 +48,7 @@ for target in $TARGETS; do
   goarch="${target#*/}"
   build_one homonto . github.com/noviopenworks/homonto/internal/cli "$goos" "$goarch"
   build_one onto ./cmd/onto github.com/noviopenworks/homonto/internal/ontocli "$goos" "$goarch"
+  build_one to ./cmd/to github.com/noviopenworks/homonto/internal/tocli "$goos" "$goarch"
 done
 
 cd dist

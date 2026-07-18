@@ -6,6 +6,7 @@
 # a suite runs the same in-container and against locally built binaries.
 : "${HOMONTO:=homonto}"
 : "${ONTO:=onto}"
+: "${TO:=to}"
 
 fail() { printf '\n  FAIL[%s]: %s\n' "${SUITE:-?}" "$1" >&2; exit 1; }
 ok()   { printf '  ok: %s\n' "$1"; }

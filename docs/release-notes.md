@@ -9,15 +9,36 @@ per-release changelog is generated automatically below it.
 
 ## What's in this release
 
-This release ships **two binaries** — `homonto` (config projector) and `onto`
-(spec-driven workflow operator) — for every supported OS/arch as separate
-archives under one `SHA256SUMS`. `onto` requires `homonto` to have installed the
-`onto` framework first (`[frameworks.onto]` + `homonto apply`).
+This release ships **three binaries** — `homonto` (config projector), `onto`
+(spec-driven workflow operator), and `to` (minimal coding-framework
+bookkeeper) — for every supported OS/arch as separate archives under one
+`SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
+framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
+
+### New in v0.4.0 — the `to` framework
+
+`to` is the minimal coding framework for LLMs: **plan → do → done**, a
+bookkeeper binary (`init`, `new`, `status`, `phase`, `done --verified`,
+`abandon`, `handoff`; `--json` everywhere), and the `builtin:to` catalog
+framework — a `/to` dispatcher, three phase skills, a vendored `to-no-slop`,
+and four **sequential-only** specialist subagents adapted from onto. Changes
+live under `docs/tasks/` and archive on done. Design and rationale:
+`docs/to-framework-design.md`.
+
+Two deliberate properties to know before adopting it:
+
+- **onto and `to` are mutually exclusive.** Declaring both frameworks in one
+  `homonto.toml` fails at load — pick one workflow per repository (onto for
+  evidence-gated enterprise changes, `to` for simple development). There is no
+  escalation path between their state formats.
+- **`to done --verified` is self-asserted.** The binary records the checkbox;
+  it observes no evidence. The verification rigor lives in the `to-done`
+  skill (real verify run + a single adversarial skeptic pass), not in a gate.
 
 ### Breaking in v0.3.0 — comet, openspec, and superpowers removed
 
-The catalog now ships **only homonto-native frameworks**: `onto` today, with a
-second framework (`to`) planned — plus the loose framework-agnostic
+The catalog now ships **only homonto-native frameworks**: `onto` (and, since
+v0.4.0, `to`) — plus the loose framework-agnostic
 skills/commands (`handoff`, `grilling`), which are a separate channel and
 unaffected. A config declaring `[frameworks.comet]`, `[frameworks.openspec]`,
 `[frameworks.superpowers]`, or `builtin:comet-navigator` now fails at load
@@ -134,8 +155,8 @@ homonto is a young, deliberately narrow tool. For the v0.3 beta line:
   `opencode.jsonc` (the file is rewritten as normalized JSON). Accepted for beta.
 - **`import` is a narrow Claude MCP bootstrap** — Claude global MCP servers only,
   best-effort secret redaction, no skills/plugins/settings/OpenCode import.
-- **The bundled catalog ships only homonto-native content**: the `onto`
-  framework (a second, `to`, is planned) plus the loose framework-agnostic
+- **The bundled catalog ships only homonto-native content**: the `onto` and
+  `to` frameworks (mutually exclusive) plus the loose framework-agnostic
   skills/commands. Frameworks resolve from the bundled catalog or a `local:`
   path only — there are no remote *framework* sources. Remote sources exist for
   **subagents** only, and require a `digest = "sha256:…"` pin; homonto never

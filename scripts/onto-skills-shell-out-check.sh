@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Enforces onto-skills-shell-out: the onto* SKILL.md files must drive every
-# state mutation through the `onto` binary — never a direct state-file write —
-# and must not carry the retired "markdown-only / no external CLI" copy.
+# Enforces workflow-skills-shell-out: the onto* and to* SKILL.md files must
+# drive every state mutation through their binary (`onto` / `to`) — never a
+# direct state-file write — and must not carry the retired "markdown-only /
+# no external CLI" copy.
 #
 # Deliberately coarse (like spec-command-check.sh): a curated blocklist of
 # mutation phrasings, metric-write references, and the no-CLI copy. It guards
 # the "a skill hand-edits state.yaml" regression class, not full semantics.
-# Scope is the eight SKILL.md files only; references/ (which DOCUMENTS the
-# schema, e.g. onto/references/state-yaml.md) and onto-no-slop are excluded.
+# Scope is the workflow SKILL.md files only; references/ (which DOCUMENTS the
+# schema, e.g. onto/references/state-yaml.md) and the no-slop skills are
+# excluded.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,6 +22,10 @@ FILES=(
   catalog/skills/onto-close/SKILL.md
   catalog/skills/onto-fix/SKILL.md
   catalog/skills/onto-tweak/SKILL.md
+  catalog/skills/to/SKILL.md
+  catalog/skills/to-plan/SKILL.md
+  catalog/skills/to-do/SKILL.md
+  catalog/skills/to-done/SKILL.md
 )
 
 # 1. The retired no-CLI / markdown-only copy (any of these substrings).

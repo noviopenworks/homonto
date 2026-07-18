@@ -7,8 +7,8 @@ description: to workflow dispatcher. Use when starting, resuming, or asking abou
 
 to is a minimal coding framework for LLMs: three phases — **plan → do →
 done** — and the smallest structure that still makes agent-written code good.
-The `to` binary is the bookkeeper and the sole writer of `to-state.yaml`; the
-skills carry the discipline. **Every state mutation goes through the binary**
+The `to` binary is the bookkeeper and the single authority for
+`to-state.yaml`; the skills carry the discipline. **Every state mutation goes through the binary**
 (`to new`, `to phase`, `to done`, `to abandon`) — never hand-edit the state
 file. The binary enforces no evidence gates: `to done --verified` records a
 self-asserted checkbox, so the verification rigor in `to-done` is the only

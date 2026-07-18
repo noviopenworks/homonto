@@ -1,4 +1,4 @@
-# Dual-binary end-to-end image: builds BOTH the real homonto and onto binaries
+# Triple-binary end-to-end image: builds the real homonto, onto, and to binaries
 # and runs five diagnosable suites against a throwaway $HOME inside the container,
 # so the host system is never touched. Built and run by scripts/docker-test.sh
 # (and CI). The release-packaging suite cross-compiles every target, so the image
@@ -14,9 +14,10 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build both binaries from the full source tree.
+# Build all three binaries from the full source tree.
 COPY . .
 RUN go build -o /usr/local/bin/homonto . \
-    && go build -o /usr/local/bin/onto ./cmd/onto
+    && go build -o /usr/local/bin/onto ./cmd/onto \
+    && go build -o /usr/local/bin/to ./cmd/to
 
 ENTRYPOINT ["sh", "/src/test/docker/run-all.sh"]

@@ -52,7 +52,7 @@ go install github.com/noviopenworks/homonto/cmd/onto@latest  # onto (optional)
 go install github.com/noviopenworks/homonto/cmd/to@latest    # to (optional)
 ```
 
-Tagged releases also attach prebuilt `homonto` and `onto` binaries for
+Tagged releases also attach prebuilt `homonto`, `onto`, and `to` binaries for
 Linux/macOS/Windows (amd64 and arm64) with a `SHA256SUMS` file. From a
 checked-out repo use `go install .` — **not** a bare `go build .`, whose output
 name collides with the `homonto/` content directory (see

@@ -1,13 +1,14 @@
 # Release Checklist
 
-The repeatable steps for cutting a dual-binary `homonto` + `onto` release. This
-is the operational *how* of a release; the release gate below decides *whether*.
+The repeatable steps for cutting a triple-binary `homonto` + `onto` + `to`
+release. This is the operational *how* of a release; the release gate below
+decides *whether*.
 
 Releases are driven by the `release` GitHub workflow
-(`.github/workflows/release.yml`), which triggers on any pushed `v*` tag. For the
-first public tag, do not push until that workflow packages both binaries. The
-workflow must re-run the CI gates, cross-compile every target, write checksums
-for the archives, and publish a GitHub release.
+(`.github/workflows/release.yml`), which triggers on any pushed `v*` tag. Do
+not push a tag until that workflow packages all three binaries. The workflow
+must re-run the CI gates, cross-compile every target, write checksums for the
+archives, and publish a GitHub release.
 
 ## Pre-tag verification
 
@@ -21,23 +22,26 @@ a pull request. It ends with `ALL GATE CHECKS PASSED`.
 ```
 
 It covers gofmt, `go mod tidy -diff`, vet, build, test, `-race`, version stamps,
-a CLI smoke, govulncheck, and the dual-binary Docker E2E. That E2E is where the
-old hand-written checks now live, done properly against a disposable `$HOME` so
-the host is never touched:
+a CLI smoke, govulncheck, and the triple-binary Docker E2E. That E2E is where
+the old hand-written checks now live, done properly against a disposable `$HOME`
+so the host is never touched:
 
 - **`release-packaging`** — builds every target, verifies `SHA256SUMS` over all
-  archives, then extracts the **real** archives and smokes both binaries
+  archives, then extracts the **real** archives and smokes all three binaries
   (`version` reports the stamped tag; `init`/`plan`/`apply`/`status` run clean).
 - **`homonto-core` / `homonto-expanded`** — projection, per-tool agent render,
   and prune behavior for the builtin catalog.
 - **`onto-lifecycle`** — drives a change through onto's gates.
+- **`to-lifecycle`** — drives a change through to's plan → do → done (gate
+  refusal, the `--verified` requirement, archive, and the onto-xor-to
+  exclusivity error).
 
 > **Dogfooding is deferred to v1.** This repository is developed with **Comet**
 > (see [`guides/comet-workflow.md`](guides/comet-workflow.md) and
 > [`personas.md`](personas.md)); onto is the workflow we *ship*, not the one we
 > use here yet. So there is deliberately **no "does the repo dogfood cleanly"
 > pre-tag step**, and a stale `.homonto/` in a working copy is not a release
-> blocker. The Docker E2E verifies both binaries in a clean environment instead
+> blocker. The Docker E2E verifies all three binaries in a clean environment instead
 > — stronger evidence than a developer machine whose state has accumulated
 > across versions.
 
@@ -55,8 +59,8 @@ the host is never touched:
 
 3. The `release` workflow then:
     - re-runs gofmt/vet/test as a guard,
-    - builds both `homonto` and `onto` for `linux`, `darwin`, and `windows` on
-      `amd64` and `arm64`, stamping the tag into both version commands via
+    - builds `homonto`, `onto`, and `to` for `linux`, `darwin`, and `windows`
+      on `amd64` and `arm64`, stamping the tag into every version command via
       `-ldflags`,
     - archives each target (`.tar.gz`, or `.zip` for Windows) with `LICENSE`
       and `README.md`,
@@ -74,9 +78,11 @@ GOBIN=$(mktemp -d)
 export GOBIN
 go install github.com/noviopenworks/homonto@v0.1.0-rc.1
 go install github.com/noviopenworks/homonto/cmd/onto@v0.1.0-rc.1  # update if final path differs
+go install github.com/noviopenworks/homonto/cmd/to@v0.1.0-rc.1
 export PATH="$GOBIN:$PATH"
 "$GOBIN"/homonto version    # expect the tagged version string
 "$GOBIN"/onto version       # expect the tagged version string
+"$GOBIN"/to version         # expect the tagged version string
 ```
 
 Then exercise the binaries against a disposable home:
@@ -92,6 +98,7 @@ homonto status              # expect: No drift
 homonto doctor
 onto status
 onto doctor
+to status
 ```
 
 Verify a downloaded archive's checksum matches `SHA256SUMS`:

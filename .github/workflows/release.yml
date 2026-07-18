@@ -30,14 +30,14 @@ jobs:
       # Guard: never ship a tag that does not pass the COMPLETE gate. This is the
       # same scripts/gate.sh that CI and local rehearsal run — race, mod-tidy,
       # vet, build, test, version stamps, cli smoke, govulncheck, and the
-      # dual-binary Docker E2E (incl. release-packaging smoke) — so a tag can
+      # triple-binary Docker E2E (incl. release-packaging smoke) — so a tag can
       # never publish on a weaker gate than a pull request.
       - name: gate
         run: ./scripts/gate.sh
 
-      # Build, package, and checksum BOTH binaries (homonto + onto) for every
-      # target. The packaging logic lives in scripts/build-release.sh so it is
-      # testable off CI and shared by the local and release code paths.
+      # Build, package, and checksum all three binaries (homonto + onto + to)
+      # for every target. The packaging logic lives in scripts/build-release.sh
+      # so it is testable off CI and shared by the local and release code paths.
       - name: build release artifacts
         env:
           VERSION: ${{ github.ref_name }}

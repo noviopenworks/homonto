@@ -1,8 +1,8 @@
 #!/bin/sh
-# Build the dual-binary E2E image and run all five suites. The container builds
-# both homonto and onto and runs the suites (see test/docker/run-all.sh) against a
-# disposable $HOME, so the host is never touched. Exits non-zero if the build or
-# any suite fails.
+# Build the triple-binary E2E image and run all five suites. The container builds
+# homonto, onto, and to and runs the suites (see test/docker/run-all.sh) against
+# a disposable $HOME, so the host is never touched. Exits non-zero if the build
+# or any suite fails.
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
