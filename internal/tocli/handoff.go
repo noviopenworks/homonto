@@ -3,15 +3,41 @@ package tocli
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/noviopenworks/homonto/internal/tostate"
 	"github.com/spf13/cobra"
 )
 
-// planExcerptLines caps how much of plan.md a handoff carries: enough to
-// resume, small enough to paste into a fresh context.
-const planExcerptLines = 60
+// Excerpt caps: a short plan is carried whole; a long plan is cut to its head
+// (the goal) plus every still-unchecked task — the part a resuming session
+// actually needs — rather than its first N lines (which, mid-do, are mostly
+// finished history).
+const (
+	planExcerptLines = 60
+	planHeadLines    = 20
+)
+
+// uncheckedTask matches an open checkbox task line ("- [ ]" / "* [ ]",
+// indented or not) — the resume unit of the to-do loop.
+var uncheckedTask = regexp.MustCompile(`^\s*[-*] \[ \] `)
+
+// excerptPlan reduces plan.md content to a resume-sized excerpt.
+func excerptPlan(content string) string {
+	lines := strings.Split(content, "\n")
+	if len(lines) <= planExcerptLines {
+		return strings.TrimRight(content, "\n")
+	}
+	out := append([]string{}, lines[:planHeadLines]...)
+	out = append(out, "… (plan.md truncated; unchecked tasks below)")
+	for _, l := range lines[planHeadLines:] {
+		if uncheckedTask.MatchString(l) {
+			out = append(out, l)
+		}
+	}
+	return strings.TrimRight(strings.Join(out, "\n"), "\n")
+}
 
 // handoffCmd builds "to handoff <change-name>": a compact context-recovery
 // pack (identity, phase, plan excerpt, the next command) for continuing
@@ -55,11 +81,7 @@ func runHandoff(cmd *cobra.Command, root, name string, jsonMode bool) error {
 
 	excerpt := ""
 	if b, err := os.ReadFile(planPath(root, name)); err == nil {
-		lines := strings.Split(string(b), "\n")
-		if len(lines) > planExcerptLines {
-			lines = append(lines[:planExcerptLines], "… (plan.md truncated)")
-		}
-		excerpt = strings.TrimRight(strings.Join(lines, "\n"), "\n")
+		excerpt = excerptPlan(string(b))
 	}
 
 	if jsonMode {

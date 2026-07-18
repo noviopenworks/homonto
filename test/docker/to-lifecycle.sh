@@ -74,21 +74,38 @@ printf '# plan\n- [ ] step\n' > "$CH/plan.md"
 "$TO" handoff feat-a 2>&1 | grep -q 'phase: do' || fail "handoff must report the phase"
 ok "handoff reported phase + plan"
 
-log "done --verified archives; terminal is terminal"
-"$TO" done feat-a --verified >/dev/null
-ARCH="$W/docs/tasks/archive/feat-a"
-is_dir "$ARCH"; absent "$CH"
+log "done --verified --evidence archives under a date prefix; the name frees up"
+"$TO" done feat-a --verified --evidence "e2e: verify command passed" >/dev/null
+ARCH="$(find "$W/docs/tasks/archive" -maxdepth 1 -name '*-feat-a' -type d | head -1)"
+[ -n "$ARCH" ] || fail "feat-a was not archived under a date-prefixed dir"
+absent "$CH"
 in_file "$ARCH/to-state.yaml" 'phase: done'
 in_file "$ARCH/to-state.yaml" 'verified: true'
+in_file "$ARCH/to-state.yaml" 'e2e: verify command passed'
 if "$TO" phase feat-a >/dev/null 2>&1; then fail "phase must refuse on an archived change"; fi
-if "$TO" new feat-a >/dev/null 2>&1; then fail "new must refuse to reuse an archived name"; fi
-ok "feat-a done, archived, terminal"
+# Date-prefixed archives free the name: a recurring chore can run again.
+"$TO" new feat-a >/dev/null
+"$TO" abandon feat-a >/dev/null
+ok "feat-a done + evidence recorded; name reusable"
 
 log "abandon is the terminal exit without done"
 "$TO" new feat-b >/dev/null
 "$TO" abandon feat-b >/dev/null
-in_file "$W/docs/tasks/archive/feat-b/to-state.yaml" 'phase: abandoned'
+[ -n "$(find "$W/docs/tasks/archive" -maxdepth 1 -name '*-feat-b' -type d)" ] || fail "feat-b was not archived"
 ok "feat-b abandoned and archived"
+
+log "doctor: healthy workspace, wedge finding, quiet contract, convergence"
+"$TO" doctor >/dev/null || fail "doctor must be healthy after clean finishes"
+"$TO" new feat-c >/dev/null
+# Simulate a crash between the terminal state write and the archive rename.
+printf 'change: feat-c\nphase: done\nverified: true\nfinished: "2026-01-01"\n' > "$W/docs/tasks/feat-c/to-state.yaml"
+if "$TO" doctor >/dev/null 2>&1; then fail "doctor must report the wedged change"; fi
+QUIET_OUT="$("$TO" doctor --quiet 2>&1)" && fail "doctor --quiet must exit non-zero on findings"
+[ -z "$QUIET_OUT" ] || fail "doctor --quiet must print nothing, got: $QUIET_OUT"
+"$TO" done feat-c --verified >/dev/null   # converges the interrupted archive
+[ -n "$(find "$W/docs/tasks/archive" -maxdepth 1 -name '*-feat-c' -type d)" ] || fail "convergence did not archive feat-c"
+"$TO" doctor >/dev/null || fail "doctor must be healthy after convergence"
+ok "doctor found the wedge, stayed quiet with --quiet, and done converged it"
 
 log "status --json lists nothing active after both archives"
 "$TO" status --json 2>&1 | grep -q '^\[\]' || fail "status --json should be an empty array"

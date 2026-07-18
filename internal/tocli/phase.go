@@ -34,6 +34,12 @@ func runPhase(cmd *cobra.Command, root, name string, jsonMode bool) error {
 	if err := gate(root); err != nil {
 		return err
 	}
+	unlock, err := lock(root)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	st, err := loadChange(root, name)
 	if err != nil {
 		return err

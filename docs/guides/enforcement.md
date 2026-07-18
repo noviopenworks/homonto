@@ -17,6 +17,10 @@ a missing/broken change state, an unresolved dependency, a version skew, ≥3
 failed verify rounds, an active change marked archived). That exit code is what a
 hook acts on.
 
+In a repository using the `to` framework instead, `to doctor --quiet` has the
+identical contract (read-only, config-independent, exit-code-only) — every
+recipe below works with the command swapped.
+
 ## Claude Code — via `settings.json` hooks (works today)
 
 homonto projects `[settings.claude]` surgically into `~/.claude/settings.json`,

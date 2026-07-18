@@ -21,6 +21,12 @@ without adding ceremony. The deliberate structural choices (self-asserted
 `--verified`, one sequential skeptic, no escalation path, gated bootstrap) are
 not on this list; they are the product.
 
+**Status 2026-07-18: items 1–7 are fixed on main** (crash convergence,
+date-prefixed archives with same-day suffixing, `to doctor --quiet`,
+handoff excerpting head + unchecked tasks, the workspace lock, the
+`to-reference` guide + doc index updates, and the optional `--evidence`
+flag). Item 8 (live-skill exercise) remains deferred to the testing pass.
+
 **P1 — defects.**
 
 1. **`done`/`abandon` crash convergence.** Both save terminal state, then

@@ -117,7 +117,8 @@ supported / not-supported matrix.
 
 Full flags, exit codes, and examples:
 [homonto CLI reference](docs/guides/cli-reference.md) ·
-[onto CLI reference](docs/guides/onto-reference.md).
+[onto CLI reference](docs/guides/onto-reference.md) ·
+[to reference](docs/guides/to-reference.md).
 
 ## Documentation
 
@@ -132,7 +133,8 @@ Full flags, exit codes, and examples:
 | [Remote source trust](docs/guides/remote-source-trust.md) | Pinned, fail-closed remote installs: threat model and lifecycle. |
 | [The onto workflow](docs/guides/onto-workflow.md) | Concepts: phases, skills, specialist subagents. |
 | [onto reference](docs/guides/onto-reference.md) | Every onto command and every gate the binary enforces. |
-| [Enforcement](docs/guides/enforcement.md) | Making onto's gates non-skippable with tool hooks. |
+| [to reference](docs/guides/to-reference.md) | The `to` minimal coding framework: every command, layout, crash safety. |
+| [Enforcement](docs/guides/enforcement.md) | Making onto's gates non-skippable with tool hooks (`to doctor --quiet` slots in the same way). |
 | [Troubleshooting & caveats](docs/guides/troubleshooting.md) | Known limitations and gotchas, with workarounds. |
 
 ## Caveats (the short list)

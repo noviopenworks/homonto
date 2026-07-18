@@ -30,8 +30,11 @@ is what makes the assertion true before it is made.
 4. **Record the outcome** at the bottom of `plan.md`: the literal verify
    command, its result, and the skeptic's verdict (including declined
    findings). De-slop the prose. Commit.
-5. **Assert and archive:** `to done <name> --verified`. The change moves to
-   `docs/tasks/archive/<name>/`.
+5. **Assert and archive:**
+   `to done <name> --verified --evidence "<the literal verify command and its result>"`.
+   The evidence string is recorded verbatim in the archived state — it is
+   what makes this verification distinguishable from a skipped one later.
+   The change moves to `docs/tasks/archive/<date>-<name>/`.
 
 ## Rules
 

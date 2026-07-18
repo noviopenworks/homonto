@@ -143,3 +143,23 @@ decision (accept the deviation or keep fixing) rather than an endless loop.
 **Recovering after context compaction.** `onto handoff <change>` emits a
 compact recovery pack (`--write` persists it) so a fresh agent session can
 resume without re-deriving state.
+
+## to
+
+**`to init`/`new`/`phase`/`done`/`abandon` refuse to run.** Same rule as onto:
+the mutating commands require the to framework installed *by homonto*
+(`[frameworks.to]` + `homonto apply`). The read-only commands (`status`,
+`handoff`, `doctor`, `version`) always work.
+
+**"[frameworks.onto] and [frameworks.to] are mutually exclusive."** By
+design — one workflow framework per repository. Remove one declaration and
+re-apply; the removed framework's projected content is pruned.
+
+**A change shows a terminal phase but still sits in `docs/tasks/`.** An
+interrupted finish (crash between the state write and the archive move).
+`to doctor` reports it; re-run the same finishing command
+(`to done <name> --verified` or `to abandon <name>`) to complete the archive.
+
+**"another to command is in progress (lock held at …)".** A concurrent
+session holds `docs/tasks/.to.lock`, or a killed process left it behind. The
+file records the holder's pid; if nothing is running, remove it by hand.

@@ -31,14 +31,18 @@ var validPhases = map[string]bool{
 	PhaseAbandoned: true,
 }
 
-// State is the entire schema. No git facts (the binary is git-blind), no
-// evidence records — Verified is a self-asserted checkbox, not a guarantee.
+// State is the entire schema. No git facts (the binary is git-blind).
+// Verified is a self-asserted checkbox, not a guarantee; Evidence is the
+// optional text asserted alongside it (`to done --evidence`), recorded
+// verbatim and never checked — it makes a real verification distinguishable
+// from a skipped one after the fact, nothing more.
 type State struct {
 	Change   string `yaml:"change" json:"change"`
 	Phase    string `yaml:"phase" json:"phase"`
 	Created  string `yaml:"created,omitempty" json:"created,omitempty"`
 	Finished string `yaml:"finished,omitempty" json:"finished,omitempty"`
 	Verified bool   `yaml:"verified,omitempty" json:"verified,omitempty"`
+	Evidence string `yaml:"evidence,omitempty" json:"evidence,omitempty"`
 }
 
 // Validate checks the minimal shape: a change name and a known phase.

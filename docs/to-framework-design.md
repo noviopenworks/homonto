@@ -61,6 +61,10 @@ Consequences:
 - Docs and skills must never imply the checkbox is a guarantee.
 - Real verification rigor lives in the `/to-do` and `/to-done` skill prose
   (run the tests, paste the outcome into the change notes), not in the binary.
+- The optional `--evidence "<text>"` flag records *what* was asserted,
+  verbatim and unchecked, in the archived state — added post-v0.4.0 so a real
+  verification is distinguishable from a skipped one after the fact. It adds
+  no ceremony (optional) and no guarantee (never checked).
 
 ### Layout: `docs/tasks/<name>/`
 
@@ -86,14 +90,18 @@ Surface (every command supports `--json`):
 | Command | Role |
 |---|---|
 | `to init` | Scaffold `docs/tasks/` in a repo. |
-| `to new <name>` | Create a change: state YAML + empty `plan.md`. |
+| `to new <name>` | Create a change: state YAML + empty `plan.md`. Only an active change blocks a name — archives are date-prefixed, so recurring names reuse. |
 | `to status` | All active changes and their phases. Read-only, config-independent. |
 | `to phase <name>` | Advance the change one phase forward. |
-| `to done <name> --verified` | Mark done and archive. `--verified` is required but self-asserted. |
+| `to done <name> --verified [--evidence "<text>"]` | Mark done and archive to `docs/tasks/archive/<date>-<name>/`. `--verified` is required but self-asserted; `--evidence` optionally records what was asserted, verbatim and unchecked. |
 | `to abandon <name>` | Terminal exit without done. |
-| `to handoff <name>` | Compact context-recovery pack (phase, plan excerpt) for resuming after compaction. Read-only, config-independent. |
+| `to handoff <name>` | Compact context-recovery pack (phase, plan head + unchecked tasks, next command) for resuming after compaction. Read-only, config-independent. |
+| `to doctor [--quiet]` | Workspace health: invalid state, wedged terminal-but-active changes, plan contract, version skew. `--quiet` is exit-code-only — the enforcement hook primitive. Read-only, config-independent. |
 
-`handoff` is the first command to cut if implementation drags.
+Crash safety: `done`/`abandon` write terminal state then archive; re-running
+the same command converges an interrupted finish, and doctor reports it.
+Mutating commands take a fail-fast workspace lock so concurrent sessions
+cannot interleave writes.
 
 ### Git-blind
 

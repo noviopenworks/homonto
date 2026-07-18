@@ -16,6 +16,9 @@ User-facing documentation, one topic per file.
   exit codes, and examples.
 - [`onto-reference.md`](onto-reference.md) — every `onto` command, the phase
   flow, and every entry/exit gate the binary enforces.
+- [`to-reference.md`](to-reference.md) — every `to` command, the
+  `plan → do → done` flow, layout, and crash safety. onto and `to` are an
+  exclusive choice per repository.
 
 ## Concepts
 

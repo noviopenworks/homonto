@@ -121,13 +121,17 @@ func TestLifecycle_PlanDoDoneArchives(t *testing.T) {
 	// phase from do refuses (done is the only exit).
 	run(t, true, "phase", "my-change", "--dir", dir)
 
-	run(t, false, "done", "my-change", "--verified", "--dir", dir)
+	run(t, false, "done", "my-change", "--verified", "--evidence", "go test ./... passed", "--dir", dir)
 
-	// Archived, terminal, out of the active listing.
-	archived := filepath.Join(archiveDir(dir), "my-change", tostate.FileName)
+	// Archived under a date prefix, terminal, out of the active listing, with
+	// the asserted evidence recorded verbatim.
+	archived := filepath.Join(findArchived(dir, "my-change"), tostate.FileName)
 	st, err = tostate.Load(archived)
 	if err != nil || st.Phase != tostate.PhaseDone || !st.Verified || st.Finished == "" {
 		t.Fatalf("archived state = %+v, err %v", st, err)
+	}
+	if st.Evidence != "go test ./... passed" {
+		t.Errorf("evidence = %q, want the asserted text verbatim", st.Evidence)
 	}
 	if _, err := os.Stat(changeDir(dir, "my-change")); !os.IsNotExist(err) {
 		t.Errorf("active dir still exists after archive, stat err = %v", err)
@@ -136,9 +140,13 @@ func TestLifecycle_PlanDoDoneArchives(t *testing.T) {
 		t.Errorf("status after archive = %q, want no active changes", out)
 	}
 
-	// Terminal is terminal: the archived change can't be mutated or recreated.
+	// Terminal is terminal for the archived change, but its NAME is free
+	// again: date-prefixed archives let a recurring chore name be reused.
 	run(t, true, "phase", "my-change", "--dir", dir)
-	run(t, true, "new", "my-change", "--dir", dir)
+	run(t, false, "new", "my-change", "--dir", dir)
+	if st, err := tostate.Load(statePath(dir, "my-change")); err != nil || st.Phase != tostate.PhasePlan {
+		t.Fatalf("reused name state = %+v, err %v", st, err)
+	}
 }
 
 func TestAbandonIsTerminalAndArchives(t *testing.T) {
@@ -146,11 +154,127 @@ func TestAbandonIsTerminalAndArchives(t *testing.T) {
 	run(t, false, "new", "dead-end", "--dir", dir)
 	run(t, false, "abandon", "dead-end", "--dir", dir)
 
-	st, err := tostate.Load(filepath.Join(archiveDir(dir), "dead-end", tostate.FileName))
+	st, err := tostate.Load(filepath.Join(findArchived(dir, "dead-end"), tostate.FileName))
 	if err != nil || st.Phase != tostate.PhaseAbandoned || st.Verified {
 		t.Fatalf("abandoned state = %+v, err %v", st, err)
 	}
 	run(t, true, "abandon", "dead-end", "--dir", dir)
+}
+
+// TestCrashConvergence_DoneCompletesInterruptedArchive simulates a crash
+// between the terminal state write and the archive rename: the change sits
+// done-but-active. Re-running `to done --verified` must complete the move
+// instead of refusing (the wedge that made a change permanently stuck).
+func TestCrashConvergence_DoneCompletesInterruptedArchive(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+	run(t, false, "new", "crashed", "--dir", dir)
+	// Simulate the post-crash file state through the state package (the same
+	// bytes runDone writes before the rename that never happened).
+	if err := tostate.Save(statePath(dir, "crashed"), tostate.State{
+		Change: "crashed", Phase: tostate.PhaseDone, Verified: true, Finished: "2026-07-01",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	out := run(t, false, "done", "crashed", "--verified", "--dir", dir)
+	if !strings.Contains(out, "completed the archive") {
+		t.Errorf("output = %q, want the completed-archive message", out)
+	}
+	// Archived under its recorded finish date, not today's.
+	if _, err := os.Stat(filepath.Join(archiveDir(dir), "2026-07-01-crashed", tostate.FileName)); err != nil {
+		t.Errorf("archive not completed at the recorded finish date: %v", err)
+	}
+	if _, err := os.Stat(changeDir(dir, "crashed")); !os.IsNotExist(err) {
+		t.Errorf("active dir still present after convergence, stat err = %v", err)
+	}
+
+	// Same for abandon.
+	run(t, false, "new", "crashed-b", "--dir", dir)
+	if err := tostate.Save(statePath(dir, "crashed-b"), tostate.State{
+		Change: "crashed-b", Phase: tostate.PhaseAbandoned, Finished: "2026-07-02",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	run(t, false, "abandon", "crashed-b", "--dir", dir)
+	if _, err := os.Stat(filepath.Join(archiveDir(dir), "2026-07-02-crashed-b", tostate.FileName)); err != nil {
+		t.Errorf("abandon convergence failed: %v", err)
+	}
+}
+
+func TestLockBlocksConcurrentMutation(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+	unlock, err := lock(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run(t, true, "new", "blocked", "--dir", dir)
+	unlock()
+	run(t, false, "new", "blocked", "--dir", dir)
+}
+
+func TestDoctor(t *testing.T) {
+	dir := setUpGatedWorkspace(t)
+
+	// Healthy: empty workspace (docs/tasks may not even exist).
+	if out := run(t, false, "doctor", "--dir", dir); !strings.Contains(out, "healthy") {
+		t.Errorf("doctor = %q, want healthy", out)
+	}
+
+	// A wedged terminal-but-active change is a finding naming the fix.
+	run(t, false, "new", "wedged", "--dir", dir)
+	if err := tostate.Save(statePath(dir, "wedged"), tostate.State{
+		Change: "wedged", Phase: tostate.PhaseDone, Verified: true, Finished: "2026-07-01",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	out := run(t, true, "doctor", "--dir", dir)
+	if !strings.Contains(out, "interrupted archive") || !strings.Contains(out, "to done wedged --verified") {
+		t.Errorf("doctor = %q, want the wedge finding with its fix command", out)
+	}
+
+	// --quiet: exit-code only, no output at all.
+	quiet := run(t, true, "doctor", "--quiet", "--dir", dir)
+	if strings.TrimSpace(quiet) != "" {
+		t.Errorf("doctor --quiet printed %q, want nothing", quiet)
+	}
+
+	// Converge the wedge, then check the do-phase checkbox contract.
+	run(t, false, "done", "wedged", "--verified", "--dir", dir)
+	run(t, false, "new", "no-boxes", "--dir", dir)
+	writeFile(t, planPath(dir, "no-boxes"), "just prose, no tasks\n")
+	run(t, false, "phase", "no-boxes", "--dir", dir)
+	out = run(t, true, "doctor", "--dir", dir)
+	if !strings.Contains(out, "no `- [ ]` task checkboxes") {
+		t.Errorf("doctor = %q, want the checkbox-contract finding", out)
+	}
+	writeFile(t, planPath(dir, "no-boxes"), "# plan\n- [ ] a task\n")
+	if out := run(t, false, "doctor", "--dir", dir); !strings.Contains(out, "healthy") {
+		t.Errorf("doctor after fix = %q, want healthy", out)
+	}
+}
+
+func TestHandoffExcerptKeepsUncheckedTail(t *testing.T) {
+	dir := t.TempDir()
+	if err := tostate.Save(statePath(dir, "long"), tostate.State{
+		Change: "long", Phase: tostate.PhaseDo, Created: "2026-07-18",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var plan strings.Builder
+	plan.WriteString("# goal\n")
+	for i := 0; i < 70; i++ {
+		plan.WriteString("- [x] finished step\n")
+	}
+	plan.WriteString("- [ ] the remaining task at the bottom\n")
+	writeFile(t, planPath(dir, "long"), plan.String())
+
+	out := run(t, false, "handoff", "long", "--dir", dir)
+	if !strings.Contains(out, "the remaining task at the bottom") {
+		t.Errorf("handoff dropped the unchecked tail task:\n%s", out)
+	}
+	if !strings.Contains(out, "truncated") {
+		t.Errorf("handoff must note the truncation:\n%s", out)
+	}
 }
 
 func TestNewValidatesNames(t *testing.T) {

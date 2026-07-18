@@ -3,7 +3,6 @@ package tocli
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/noviopenworks/homonto/internal/tostate"
 	"github.com/spf13/cobra"
@@ -39,11 +38,16 @@ func runNew(cmd *cobra.Command, root, name string, jsonMode bool) error {
 	if err := validChangeName(name); err != nil {
 		return err
 	}
+	unlock, err := lock(root)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 
-	for _, existing := range []string{changeDir(root, name), archiveDir(root) + string(os.PathSeparator) + name} {
-		if _, err := os.Stat(existing); err == nil {
-			return fmt.Errorf("to new: change %q already exists at %s", name, existing)
-		}
+	// Only an ACTIVE change blocks the name: archive dirs are date-prefixed,
+	// so a finished change frees its name for reuse (recurring chores).
+	if _, err := os.Stat(changeDir(root, name)); err == nil {
+		return fmt.Errorf("to new: change %q already exists at %s", name, changeDir(root, name))
 	}
 
 	if err := os.MkdirAll(changeDir(root, name), 0o755); err != nil {
@@ -53,7 +57,7 @@ func runNew(cmd *cobra.Command, root, name string, jsonMode bool) error {
 	st := tostate.State{
 		Change:  name,
 		Phase:   tostate.PhasePlan,
-		Created: time.Now().Format("2006-01-02"),
+		Created: todayFn(),
 	}
 	if err := tostate.Save(statePath(root, name), st); err != nil {
 		return fmt.Errorf("to new: %w", err)

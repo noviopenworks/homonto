@@ -1,9 +1,14 @@
 # Getting started
 
-This is a hands-on walkthrough of both binaries. `homonto` projects your
-`homonto.toml` into Claude Code / OpenCode (Terraform-style: `plan` → `apply`).
-`onto` gates a change through `open → design → build → verify → close`. onto's
-mutating commands need the onto framework installed *by* homonto first.
+This is a hands-on walkthrough of `homonto` and `onto`. `homonto` projects
+your `homonto.toml` into Claude Code / OpenCode (Terraform-style: `plan` →
+`apply`). `onto` gates a change through `open → design → build → verify →
+close`. onto's mutating commands need the onto framework installed *by*
+homonto first.
+
+> A third binary, `to`, is the lightweight alternative to onto (`plan → do →
+> done`, no gates) — see the [to reference](to-reference.md). onto and `to`
+> are an exclusive choice per repository; this walkthrough uses onto.
 
 > Output goes to **stderr** — redirect with `2>&1` when scripting.
 
