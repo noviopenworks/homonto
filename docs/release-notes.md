@@ -15,7 +15,7 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
-### Unreleased — lossless per-tool agent rendering
+### New in v0.6.1 — lossless per-tool agent rendering
 
 An audit of the rendered agents against both tools' real contracts found
 and fixed four silent information losses (catalog 0.6.0, onto 0.4.1,
