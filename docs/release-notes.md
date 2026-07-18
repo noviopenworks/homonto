@@ -15,6 +15,54 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
+### New in v0.7.0 — security hardening + deep code-review pass
+
+A full code-quality review of `internal/` found and fixed five HIGH-severity
+silent-failure paths, eight maintainability hotspots, and several test gaps.
+Shipped happy-path behavior is unchanged; every refactor was verified by the
+existing test suite plus 92 new tests (871 → 963). The changes that **are**
+user-visible all turn previously-silent bugs into loud errors.
+
+**Trust boundary and exec hygiene:**
+- **`git://` is rejected as a remote transport** (insecure, like `http://`
+  already was). Use `git+https://`, `git+file://`, `https://`, or `file://`.
+- **Every external `exec` (pass, git) is now bounded by a 30s timeout.** A
+  hung gpg-agent passphrase prompt or a git credential prompt previously hung
+  the whole CLI indefinitely; you can now Ctrl-C through it.
+- **`context.Context` is threaded through `engine.Build`/`Apply`**, so a hung
+  remote fetch is interruptible from the calling CLI.
+
+**Loud errors where silence was a bug:**
+- **A malformed `homonto:` frontmatter block now fails the projection** with
+  a named parse error. Previously it was treated as "no block" and the agent
+  was silently projected with no model line and default permissions.
+- **A corrupted TOML tool file now fails the projection** rather than being
+  folded into "key absent" — the previous behavior could emit a misleading
+  "create" plan or report false drift.
+
+**Maintainability (no behavior change):**
+- New `internal/adapter/baseadapter` absorbs ~590 LOC of byte-identical
+  methods between the Claude and OpenCode adapters; both adapters shrink by
+  ~294 LOC each.
+- New `internal/resourcepath` unifies the three former
+  `skillpath`/`commandpath`/`subagentpath` packages (their switch bodies had
+  drifted in subtle ways).
+- New `internal/workcli` extracts the gate / `validChangeName` /
+  `ErrQuietFindings` scaffolding shared between `ontocli` and `tocli`; the
+  `"0.1.0-dev"` literal now lives in one place (`buildinfo.DevVersion`).
+- The 1381-line `internal/config/config.go` god file is split into four
+  focused files (`config.go` types / `load.go` decode+migrate+Load /
+  `validate.go` validation / `expand.go` framework expansion).
+- Three near-identical `doctor{Skills,Commands,Subagents}` methods collapse
+  into one `doctorResource(tool, doctorOp)`.
+- `internal/schema.ErrTooNew` is the shared sentinel for the five
+  schema-version-too-new checks (state, config, onto-state, catalog builtin,
+  catalog local) — callers can `errors.Is(err, schema.ErrTooNew)` instead of
+  substring-matching.
+- Error wrapping at six sites uses `%w` (was `%v`) so error types survive
+  the engine boundary; catalog loader surfaces `fs.ReadDir` errors instead
+  of treating an unreadable directory as missing.
+
 ### New in v0.6.1 — lossless per-tool agent rendering
 
 An audit of the rendered agents against both tools' real contracts found
