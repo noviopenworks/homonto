@@ -7,8 +7,9 @@ close`. onto's mutating commands need the onto framework installed *by*
 homonto first.
 
 > A third binary, `to`, is the lightweight alternative to onto (`plan → do →
-> done`, no gates) — see the [to reference](to-reference.md). onto and `to`
-> are an exclusive choice per repository; this walkthrough uses onto.
+> done`, no gates) — see the [to workflow guide](to-workflow.md) and the
+> [to reference](to-reference.md). onto and `to` are an exclusive choice per
+> repository; this walkthrough uses onto.
 
 > Output goes to **stderr** — redirect with `2>&1` when scripting.
 
@@ -182,7 +183,7 @@ command and gate: [onto reference](onto-reference.md).
 | Supported | Notes |
 |---|---|
 | MCP servers, settings, skills, plugins, marketplaces, TUI settings | Claude Code + OpenCode, full |
-| Frameworks (`[frameworks.*]`) | **builtin catalog only**: `onto` (`to` is planned) |
+| Frameworks (`[frameworks.*]`) | builtin: `onto` or `to` (mutually exclusive); also `local:` roots and digest-pinned `remote:` sources |
 | Commands, subagents (`builtin:` / `local:`) | subagents: `mode = link` (default) or `copy` |
 | Remote **subagent** sources (`remote:…`) | **require `digest = "sha256:…"`**; fetched, verified, pinned, cached |
 | Codex adapter | 🟡 pilot — **MCP only**, opt-in (`codex` in `targets`) → `~/.codex/config.toml` |

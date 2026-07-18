@@ -24,7 +24,9 @@ Priorities, in order:
 2. Security — injection, unsafe deserialization, secret leakage, missing
    authorization, unvalidated input crossing a trust boundary.
 3. Contract — incomplete task outcomes, API/type mismatches, violated
-   invariants, misuse of a called function's documented behavior.
+   invariants, misuse of a called function's documented behavior, and edits
+   outside the handed task's stated Files/Change scope (silent scope creep
+   belongs in the plan as its own task, not smuggled into this diff).
 4. Clarity and maintainability — dead code, needless duplication, misleading
    names, missing or wrong tests for the changed behavior.
 

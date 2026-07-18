@@ -136,13 +136,15 @@ in [remote source trust](remote-source-trust.md).
 ## Frameworks — `[frameworks.<name>]`
 
 A framework is a bundled set of skills, commands, and subagents that install
-together, with dependency expansion. Frameworks resolve through the **builtin
-catalog only**: `onto` (a second framework, `to`, is planned). The catalog
-deliberately ships nothing else — workflow frameworks other than onto/to are
-out of scope.
+together, with dependency expansion. The builtin catalog ships exactly the
+two homonto-native frameworks — `onto` and `to` — and they are **mutually
+exclusive**: declaring both fails at load (one workflow per repository).
+Beyond `builtin:`, a framework source may be `local:<path>` (a framework
+root in your repo) or `remote:<url>` with a required `digest = "sha256:…"`
+pin; third-party workflow stacks are not bundled.
 
 ```toml
-[frameworks.onto]
+[frameworks.onto]        # or [frameworks.to] — never both
 source = "builtin:onto"
 scope  = "project"
 ```

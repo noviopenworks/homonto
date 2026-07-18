@@ -16,9 +16,8 @@ User-facing documentation, one topic per file.
   exit codes, and examples.
 - [`onto-reference.md`](onto-reference.md) — every `onto` command, the phase
   flow, and every entry/exit gate the binary enforces.
-- [`to-reference.md`](to-reference.md) — every `to` command, the
-  `plan → do → done` flow, layout, and crash safety. onto and `to` are an
-  exclusive choice per repository.
+- [`to-reference.md`](to-reference.md) — every `to` command: the gate,
+  flags, archive naming, and crash safety.
 
 ## Concepts
 
@@ -33,18 +32,27 @@ User-facing documentation, one topic per file.
 - [`remote-source-trust.md`](remote-source-trust.md) — pinned, fail-closed
   remote installs: threat model, verification pipeline, and lifecycle.
 
-## The onto workflow
+## The workflow frameworks
+
+onto and `to` are an **exclusive choice** per repository — enterprise
+tooling vs. simple development.
 
 - [`onto-workflow.md`](onto-workflow.md) — concepts: the binary/skills split,
   the five phases, presets, and the specialist subagents.
-- [`enforcement.md`](enforcement.md) — making onto's gates non-skippable at the
-  tool boundary with hooks (`onto doctor --quiet` + Claude `settings.json`
-  hooks / an OpenCode plugin).
+- [`to-workflow.md`](to-workflow.md) — concepts: the bookkeeper/skills split,
+  `plan → do → done`, the plan contract, and the sequential-only subagents.
+- [`enforcement.md`](enforcement.md) — making the workflow non-skippable at
+  the tool boundary with hooks (`onto doctor --quiet` / `to doctor --quiet` +
+  Claude `settings.json` hooks / an OpenCode plugin).
+- [`yagni.md`](yagni.md) — you aren't gonna need it: where each framework
+  structurally enforces building only what the change needs now.
+- [`kiss.md`](kiss.md) — keep it simple: the simplicity mechanics both
+  frameworks encode, for code, plans, and prose.
 
 ## When something looks wrong
 
 - [`troubleshooting.md`](troubleshooting.md) — known limitations, gotchas, and
-  workarounds for both binaries.
+  workarounds for all three binaries.
 
 ## Developing homonto itself
 

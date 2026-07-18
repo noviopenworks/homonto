@@ -1,0 +1,138 @@
+# The to workflow
+
+**to** is the minimal coding framework for LLMs that homonto ships as a
+bundled framework. It has two halves that work together:
+
+- the **`to` binary** (built from `cmd/to/`, installed beside `homonto`) — the
+  bookkeeper: it creates change workspaces, records the one phase transition,
+  archives finished changes, and answers `status`/`handoff`/`doctor` from
+  state only it writes; and
+- the **`to-*` skills** (materialized from the builtin catalog by
+  `homonto apply`) — the agent-facing process prose that drives the work
+  inside each phase.
+
+The binary owns the *state*; the skills own the *discipline*. A change moves
+through three phases in a fixed order:
+
+```
+plan → do → done
+```
+
+`done` and `abandoned` are terminal (the change is then archived). Each change
+tracks its phase in a `to-state.yaml` inside its workspace directory — always
+written through the binary, never by hand.
+
+Unlike onto, **to enforces no evidence gates**: `to done --verified` records a
+self-asserted checkbox, not observed proof. The verification rigor lives
+entirely in the `to-done` skill (a real verify run plus one adversarial
+skeptic pass). That trade is the product: much less ceremony per change, no
+guarantee from the binary. Design rationale:
+[to-framework-design.md](../to-framework-design.md).
+
+## onto or to — an exclusive choice
+
+One repository uses one workflow framework. Declaring both
+`[frameworks.onto]` and `[frameworks.to]` in one `homonto.toml` fails at
+load. Pick **onto** for evidence-gated changes that need spec deltas,
+dependency graphs, and non-skippable transitions; pick **to** for simple
+development where that machinery costs more than it protects. There is no
+escalation path between their state formats — choose per repository, not per
+change.
+
+## Install and enable
+
+```bash
+go install github.com/noviopenworks/homonto/cmd/to@latest
+to version
+```
+
+The mutating commands require the framework to be **declared and applied
+through homonto first** — this is how the skills land in your tools:
+
+```toml
+[frameworks.to]
+source = "builtin:to"
+scope = "project"
+# plus the [models.<tool>.*] routes — see the configuration reference
+```
+
+Then `homonto apply`. It also installs the slash commands: `/to` (the
+dispatcher — it finds the active change via `to status --json` and routes),
+plus `/to-plan`, `/to-do`, `/to-done`, and `/to-no-slop`.
+
+## The layout
+
+Each change is a directory `docs/tasks/<name>/` holding `to-state.yaml`
+(written **only** by the binary) and `plan.md` (written by the agent during
+plan). Finished changes move to `docs/tasks/archive/<date>-<name>/`; the date
+prefix frees the name for reuse. `to` is **git-blind**: it never inspects
+branches, worktrees, or dirt — branch-per-change is skill advice, not a gate.
+
+## The plan contract
+
+`plan.md` is the change's single durable human-authored record. It starts
+with the goal, approach, and scope boundary, followed by ordered tasks:
+
+```markdown
+- [ ] <Concrete outcome>
+  - Files: `<paths and, when useful, symbols>`
+  - Change: <behavior or contract to add, remove, or preserve>
+  - Verify: `<exact command>` — <specific passing signal>
+```
+
+Implementation and its focused tests stay in the same task. **The task list
+is live during `do`**: discovered work is appended with the same contract
+(outcome suffixed `(discovered <date>)`, placed before `Final Verify:`)
+before its code is written; tasks are checked off in the commit that
+completes them; a task made unnecessary is checked as
+`- [x] SUPERSEDED: <reason>` rather than deleted. Decisions and declined
+review findings go under `## Notes`. A distinct `Final Verify:` line names
+the whole-change command; its literal result, coverage gaps, and the skeptic
+verdict go under `## Verification`. One archived artifact carries planning,
+recovery, review, and final evidence.
+
+## Phase walkthrough
+
+- **plan** (`/to-plan`) — ground the approach in reading (dispatch
+  `to-explorer` for multi-file questions), write `plan.md` per the contract,
+  de-slop it, then `to phase <name>`.
+- **do** (`/to-do`) — execute one task at a time: `to-implementer` writes it,
+  the orchestrator verifies against the repository, `to-reviewer` judges the
+  diff, findings are fixed or declined in writing, the task is checked off in
+  its own commit. Strictly sequential — **to never runs subagents in
+  parallel**.
+- **done** (`/to-done`) — run `Final Verify:`, obtain one completed
+  `to-skeptic` pass on the final candidate, record the outcome under
+  `## Verification`, then `to done <name> --verified --evidence "…"` archives
+  the change.
+
+`to abandon <name>` is the terminal exit without done, from any phase.
+
+## Specialist subagents
+
+onto's cast, adapted — one at a time, never in parallel:
+
+| Subagent | Role |
+|---|---|
+| `to-explorer` | Read-only codebase questions; returns conclusions, not dumps. |
+| `to-implementer` | Executes one task from its written contract; reports (never does) discovered work. |
+| `to-reviewer` | Judges each diff for correctness, security, contract (including silent scope creep), clarity. |
+| `to-skeptic` | One fresh-context pass in `to-done`, prompted to refute the "it works" claim — claims first, then gaps. |
+
+The sequential transcript a human can follow is the point; parallel fan-out
+is onto's territory.
+
+## Surviving context loss
+
+`to handoff <name>` prints a compact recovery pack — identity, phase, the
+safe next skill, and a plan excerpt built for resuming: the head, every
+unchecked task contract, `Final Verify:`, and bounded notes/verification
+sections. A fresh session reads it, then continues from the first unchecked
+task. `to doctor` is the health check (and, with `--quiet`, the enforcement
+hook primitive — see [enforcement](enforcement.md)).
+
+## Where the details live
+
+Every command, flag, and crash-safety behavior:
+[to reference](to-reference.md). The principles the skills enforce:
+[YAGNI](yagni.md) and [KISS](kiss.md).

@@ -47,12 +47,15 @@ directly — but never skip the verification command or the commit.
 
 **The plan is live state.** Discovered work — a missing edge case, a
 prerequisite, a forgotten test — is APPENDED to `plan.md` as a new unchecked
-task (full contract: Files/Change/Verify) **before** its code is written;
-append-then-do, never do-then-maybe-note. Check off only at the task's own
-commit; never renumber or delete tasks (mark a dead one
-`- [x] SUPERSEDED: <reason>`). A fresh session resumes from the first
-unchecked task, so if the checkboxes ever stop describing reality, fix the
-plan before writing more code.
+task (full contract: Files/Change/Verify, outcome line suffixed
+`(discovered <date>)`, placed before `Final Verify:`) **before** its code is
+written; append-then-do, never do-then-maybe-note. Check off only at the
+task's own commit; never reorder or delete tasks — a task made unnecessary is
+checked as `- [x] SUPERSEDED: <reason>`. A fresh session resumes from the
+first unchecked task, so if the checkboxes ever stop describing reality, fix
+the plan before writing more code. Work that breaks the plan's stated
+boundary is not "discovered work" — confirm the scope change with the user
+first.
 
 ## Code-writing standards (every task, no exceptions)
 

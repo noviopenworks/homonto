@@ -42,6 +42,11 @@ artifact — write it for the person who reads the PR, not for yourself.
      unknowns before advancing; "investigate", "handle edge cases", and "add
      tests" are not executable tasks without a named question, behavior, or
      case.
+   - The list is expected to grow during `do`: discovered work is appended
+     with the same full contract, its outcome line suffixed
+     `(discovered <date>)`, placed after the existing tasks and before
+     `Final Verify:`. Plan for that by writing tasks other sessions can trust
+     — a fresh session resumes from the first unchecked task.
    - When the implementation changes durable architecture or contradicts an
      existing guide, design document, or ADR, include the smallest required
      documentation task. Do not create design ceremony for an implementation

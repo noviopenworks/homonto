@@ -26,8 +26,11 @@ Given a task from the plan (its concrete outcome, `Files:`, `Change:`, and
    implement, then run the task's stated verification.
 3. Run the narrowest useful verification the task names (the specific test, the
    build) and report the literal command and its result.
-4. Return a concise summary: the files changed, what changed and why, and the
-   verification output. Return a unified diff if asked.
+4. Return a concise summary: the files changed, what changed and why, the
+   verification output, and any **discovered work** — needed work outside this
+   task's stated scope, reported and never done. The orchestrator appends it
+   to `plan.md` as a new task before the next dispatch. Return a unified diff
+   if asked.
 
 Rules:
 

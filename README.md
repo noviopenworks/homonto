@@ -133,8 +133,10 @@ Full flags, exit codes, and examples:
 | [Remote source trust](docs/guides/remote-source-trust.md) | Pinned, fail-closed remote installs: threat model and lifecycle. |
 | [The onto workflow](docs/guides/onto-workflow.md) | Concepts: phases, skills, specialist subagents. |
 | [onto reference](docs/guides/onto-reference.md) | Every onto command and every gate the binary enforces. |
-| [to reference](docs/guides/to-reference.md) | The `to` minimal coding framework: every command, layout, crash safety. |
-| [Enforcement](docs/guides/enforcement.md) | Making onto's gates non-skippable with tool hooks (`to doctor --quiet` slots in the same way). |
+| [The to workflow](docs/guides/to-workflow.md) | Concepts: `plan → do → done`, the plan contract, sequential-only subagents. |
+| [to reference](docs/guides/to-reference.md) | Every `to` command: the gate, flags, archive naming, crash safety. |
+| [Enforcement](docs/guides/enforcement.md) | Making the workflow non-skippable with tool hooks (`onto doctor --quiet` / `to doctor --quiet`). |
+| [YAGNI](docs/guides/yagni.md) · [KISS](docs/guides/kiss.md) | The principles both frameworks structurally enforce — what to build, and how simply. |
 | [Troubleshooting & caveats](docs/guides/troubleshooting.md) | Known limitations and gotchas, with workarounds. |
 
 ## Caveats (the short list)

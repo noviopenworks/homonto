@@ -15,6 +15,41 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
+### New in v0.5.0 — live task lists, hardened `to`, principle guides
+
+**The task list is live state — in both frameworks.** Discovered work is
+appended to the checklist (with its files and verification) *before* its code
+is written; checkoffs ride each task's own commit; tasks are never renumbered
+or deleted (`SUPERSEDED` instead), so a fresh session always resumes from the
+first unchecked task. onto gets this in onto-build, its templates, the
+presets, and the subagent protocol (implementers report discovered work, the
+coordinator appends it); `to` gets the same discipline adapted to its plan
+contract.
+
+**`to` grew teeth without growing ceremony:**
+
+- **Plan contract**: every task carries `Files:` / `Change:` / `Verify:`
+  fields plus a whole-change `Final Verify:` line; notes and verification
+  evidence live in the same archived `plan.md`. `to doctor` diagnoses
+  contract violations (line-numbered), wedged archives, and version skew;
+  `--quiet` is the enforcement hook primitive.
+- **Crash convergence**: an interrupted `done`/`abandon` no longer wedges a
+  change — re-running the same command completes the archive.
+- **Date-prefixed archives** (`docs/tasks/archive/<date>-<name>/`) free
+  change names for reuse; mutating commands take a fail-fast workspace lock.
+- **`to done --evidence "<text>"`** records what was asserted, verbatim and
+  unchecked, so a real verification is distinguishable in the archive.
+- **`to handoff`** now excerpts what a resuming session needs: the plan head,
+  every unchecked task contract, `Final Verify:`, and bounded notes.
+
+**Docs**: the `to` guides split into [workflow concepts](https://github.com/noviopenworks/homonto/blob/main/docs/guides/to-workflow.md)
+and a [command reference](https://github.com/noviopenworks/homonto/blob/main/docs/guides/to-reference.md)
+(mirroring onto's pair), and two principle guides —
+[YAGNI](https://github.com/noviopenworks/homonto/blob/main/docs/guides/yagni.md) and
+[KISS](https://github.com/noviopenworks/homonto/blob/main/docs/guides/kiss.md) —
+map where each framework structurally enforces building only what's needed,
+simply. Framework versions: onto 0.3.2, to 0.2.0; catalog 0.4.0.
+
 ### New in v0.4.0 — the `to` framework
 
 `to` is the minimal coding framework for LLMs: **plan → do → done**, a
@@ -170,4 +205,4 @@ homonto is a young, deliberately narrow tool. For the v0.3 beta line:
   delete the stale links and re-apply.
 
 See the README's "Caveats" section and
-[`docs/guides/troubleshooting.md`](docs/guides/troubleshooting.md) for details.
+[`docs/guides/troubleshooting.md`](https://github.com/noviopenworks/homonto/blob/main/docs/guides/troubleshooting.md) for details.

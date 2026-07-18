@@ -21,6 +21,9 @@ targets = ["claude", "opencode"]
 - Supported transports: `https://…(.tar.gz|.tgz)`, `git+https://…#<commit>`,
   and `file://…` (for local mirrors / offline). Plain `http://` is rejected.
 - A remote **subagent** archive must contain `<name>.md` at its root.
+- Remote **frameworks** (`[frameworks.X]` with a `remote:` source) go through
+  this same pipeline: the same required digest pin, the same verification
+  before anything is materialized.
 
 ## What homonto guarantees
 

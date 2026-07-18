@@ -83,9 +83,11 @@ gates the transitions between them.
   delta specs with testable scenarios, and the task list derived from the
   confirmed design. No implementation code in this phase.
 - **build** — `plan.md` of bite-sized verified tasks, one commit per task,
-  root-cause-first debugging on any failure. Entering build requires an
-  isolation choice (`branch` or `worktree`), so build work is never committed
-  unisolated.
+  root-cause-first debugging on any failure. The task list is **live state**:
+  discovered work is appended as a new task before its code is written, and
+  checkoffs ride each task's own commit — a fresh session resumes from the
+  first unchecked task. Entering build requires an isolation choice
+  (`branch` or `worktree`), so build work is never committed unisolated.
 - **verify** — scale-appropriate check of every delta-spec scenario with fresh
   command output as evidence, recorded in `verification.md`. `onto scale`
   derives the appropriate verification level from the measured diff.
@@ -177,6 +179,12 @@ proceed — a degraded session still works:
 - **graphify** (https://graphify.net) — codebase understanding; the open and
   design phases ground claims in graphify/codegraph queries when available,
   falling back to direct file reading otherwise.
+
+The principles the skills enforce throughout — build only what the change
+needs, as simply as it can be built — are spelled out in [YAGNI](yagni.md)
+and [KISS](kiss.md). The lightweight sibling workflow is
+[to](to-workflow.md); the two frameworks are an exclusive choice per
+repository.
 
 > homonto's own repository is developed with **Comet**, not onto — see
 > [comet-workflow.md](comet-workflow.md) and
