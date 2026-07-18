@@ -670,6 +670,15 @@ func validate(c *Config) error {
 	if err := validateFrameworkResources(c.Frameworks); err != nil {
 		return err
 	}
+	// onto and to are an exclusive choice per repository: enterprise tooling
+	// vs. simple development. Their skills give conflicting process guidance
+	// and their binaries each expect to own the workflow, so declaring both
+	// is a config error, not a projection concern.
+	if _, hasOnto := c.Frameworks["onto"]; hasOnto {
+		if _, hasTo := c.Frameworks["to"]; hasTo {
+			return fmt.Errorf("parse config: [frameworks.onto] and [frameworks.to] are mutually exclusive; pick one workflow framework per repository (onto for evidence-gated enterprise changes, to for simple development)")
+		}
+	}
 	if err := validateSubagents(c.Subagents); err != nil {
 		return err
 	}

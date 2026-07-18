@@ -2,19 +2,22 @@ package catalog
 
 import (
 	"io/fs"
+	"reflect"
+	"sort"
 	"testing"
 
 	embedded "github.com/noviopenworks/homonto/catalog"
 )
 
-// TestNew_CatalogShipsOnlyOnto pins the shipped-framework surface: the
-// embedded catalog carries exactly the onto framework (plus loose,
-// framework-agnostic skills/commands indexed separately). comet, openspec,
-// and superpowers were removed deliberately — a framework reappearing here
-// is a packaging regression, not a feature. (Ranged-dep and capability
-// mechanics keep their fstest coverage in version_test.go and
-// capabilities_test.go; no shipped framework exercises them anymore.)
-func TestNew_CatalogShipsOnlyOnto(t *testing.T) {
+// TestNew_CatalogShipsOnlyNativeFrameworks pins the shipped-framework
+// surface: the embedded catalog carries exactly the homonto-native frameworks
+// — onto and to — (plus loose, framework-agnostic skills/commands indexed
+// separately). comet, openspec, and superpowers were removed deliberately —
+// a third-party framework reappearing here is a packaging regression, not a
+// feature. (Ranged-dep and capability mechanics keep their fstest coverage
+// in version_test.go and capabilities_test.go; no shipped framework
+// exercises them anymore.)
+func TestNew_CatalogShipsOnlyNativeFrameworks(t *testing.T) {
 	if _, err := New(); err != nil {
 		t.Fatalf("embedded catalog failed to load: %v", err)
 	}
@@ -28,7 +31,8 @@ func TestNew_CatalogShipsOnlyOnto(t *testing.T) {
 			names = append(names, e.Name())
 		}
 	}
-	if len(names) != 1 || names[0] != "onto" {
-		t.Errorf("shipped frameworks = %v, want exactly [onto]", names)
+	sort.Strings(names)
+	if want := []string{"onto", "to"}; !reflect.DeepEqual(names, want) {
+		t.Errorf("shipped frameworks = %v, want exactly %v", names, want)
 	}
 }

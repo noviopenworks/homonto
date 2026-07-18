@@ -1,6 +1,8 @@
 # `to` — design document
 
-Status: design accepted, not yet implemented.
+Status: implemented — the `to` binary (`cmd/to/`, `internal/tocli`,
+`internal/tostate`), the `builtin:to` catalog framework, and the onto-xor-to
+config validation ship as described below.
 Origin: interview-driven design session (2026-07-18). Each decision below was
 made explicitly; the two marked **overruled** went against the interviewer's
 recommendation and carry recorded consequences.

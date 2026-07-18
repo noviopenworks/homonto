@@ -67,3 +67,56 @@ model = "m"
 		t.Fatalf("builtin: framework rejected at load: %v", err)
 	}
 }
+
+// TestLoad_RejectsOntoAndToTogether: onto and to are an exclusive choice per
+// repository (enterprise tooling vs. simple development), so a config that
+// declares both frameworks fails at load.
+func TestLoad_RejectsOntoAndToTogether(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(`[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+[frameworks.to]
+source = "builtin:to"
+scope = "project"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(p)
+	if err == nil {
+		t.Fatal("onto+to accepted, want a load error")
+	}
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Errorf("error %q should say the frameworks are mutually exclusive", err.Error())
+	}
+}
+
+// TestLoad_AcceptsToAlone: [frameworks.to] on its own is a valid builtin
+// framework declaration.
+func TestLoad_AcceptsToAlone(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	if err := os.WriteFile(p, []byte(`[frameworks.to]
+source = "builtin:to"
+scope = "project"
+[models.claude.architectural]
+model = "m"
+effort = "high"
+[models.claude.coding]
+model = "m"
+effort = "medium"
+[models.claude.trivial]
+model = "m"
+effort = "low"
+[models.opencode.architectural]
+model = "m"
+[models.opencode.coding]
+model = "m"
+[models.opencode.trivial]
+model = "m"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(p); err != nil {
+		t.Fatalf("to framework rejected at load: %v", err)
+	}
+}

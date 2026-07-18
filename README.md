@@ -16,12 +16,13 @@ Terraform-style **plan → confirm → apply** pipeline:
 - **Pinned remote content** — `remote:` sources require a sha256 digest and are
   verified fail-closed before anything touches your tools.
 
-The repository ships **two binaries**:
+The repository ships **three binaries**:
 
 | Binary | Role |
 |---|---|
 | `homonto` | The deterministic installer/projector described above. |
 | `onto` | A spec-driven workflow operator: it gates a change through `open → design → build → verify → close` with evidence-based, non-skippable transitions. |
+| `to` | A minimal coding-framework bookkeeper: `plan → do → done` with no gates — the lightweight, mutually-exclusive alternative to onto (see [the design](docs/to-framework-design.md)). |
 
 ## What the bundled catalog ships
 
@@ -30,8 +31,10 @@ homonto can install content it bundles (`builtin:`), content from your repo
 deliberately narrow — homonto ships only what it authors:
 
 - **`onto`** — the native, binary-enforced workflow framework (skills, slash
-  commands, and four specialist subagents). A second native framework, `to`,
-  is planned.
+  commands, and four specialist subagents).
+- **`to`** — the native minimal coding framework for LLMs (dispatcher + three
+  phase skills, `to-no-slop`, and four sequential-only subagents). onto and
+  `to` are an exclusive choice: declaring both is a config error.
 - **Loose skills and commands** — framework-agnostic and installed
   individually (e.g. `handoff`, `grilling`); they belong to no framework.
 
@@ -46,6 +49,7 @@ homonto doesn't author through a `local:` framework or a digest-pinned
 ```bash
 go install github.com/noviopenworks/homonto@latest           # homonto
 go install github.com/noviopenworks/homonto/cmd/onto@latest  # onto (optional)
+go install github.com/noviopenworks/homonto/cmd/to@latest    # to (optional)
 ```
 
 Tagged releases also attach prebuilt `homonto` and `onto` binaries for

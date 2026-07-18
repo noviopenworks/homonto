@@ -1,0 +1,63 @@
+---
+name: to
+description: to workflow dispatcher. Use when starting, resuming, or asking about development work in a repo with the docs/tasks/ layout — checks the to binary, finds the active change via `to status --json`, and routes to the matching to sub-skill.
+---
+
+# to — Dispatcher
+
+to is a minimal coding framework for LLMs: three phases — **plan → do →
+done** — and the smallest structure that still makes agent-written code good.
+The `to` binary is the bookkeeper and the sole writer of `to-state.yaml`; the
+skills carry the discipline. **Every state mutation goes through the binary**
+(`to new`, `to phase`, `to done`, `to abandon`) — never hand-edit the state
+file. The binary enforces no evidence gates: `to done --verified` records a
+self-asserted checkbox, so the verification rigor in `to-done` is the only
+verification there is. Do not treat the checkbox as a guarantee.
+
+The dispatcher does three things, in order, and never performs phase work
+itself.
+
+## 1. Preflight
+
+Run `to version`. On failure, STOP: the skills drive all workflow state
+through the `to` binary; without it no phase can mutate state safely. Tell the
+user to install/build it (`go build ./cmd/to`) before proceeding.
+
+## 2. Discover
+
+Run `to status --json` and find the active change.
+
+- **One active change** → that is the change; note its phase.
+- **No active change** and `$ARGUMENTS` (or the conversation) describes new
+  work → create one: `to new <kebab-name>`, then treat it as phase plan.
+- **No active change and no described work** → ask what to work on.
+- **Several active changes** → ask which one, unless the conversation names it.
+- An entry with an `error` field is a corrupted state file — surface it to the
+  user instead of guessing; the binary owns that file.
+
+Resuming after a context compaction? `to handoff <name>` prints the recovery
+pack (phase, plan excerpt, next command) — read it before doing anything.
+
+## 3. Route
+
+Load and follow the sub-skill for the change's phase:
+
+| Phase | Sub-skill |
+|---|---|
+| plan | `to-plan` |
+| do | `to-do` |
+| finishing do (work complete, verifying) | `to-done` |
+
+Terminal phases (`done`, `abandoned`) route nowhere — the change is archived;
+start a new one.
+
+## Delegation rules (all phases)
+
+The sub-skills delegate to the `to-explorer`, `to-implementer`, `to-reviewer`,
+and `to-skeptic` subagents. **One subagent at a time, strictly sequential —
+never dispatch subagents in parallel.** The sequential transcript a human can
+follow is the point; parallel fan-out is onto's territory. onto and to are
+mutually exclusive per repository — never mix their artifacts or advice.
+
+All prose an artifact keeps (plan.md, change notes, commit messages) goes
+through the `to-no-slop` rules before it lands.
