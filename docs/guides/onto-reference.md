@@ -1,19 +1,19 @@
 # onto reference — commands, flow, and gates
 
 The precise reference for the `onto` binary: how a change **enters** the
-workflow, how it **moves** between phases, the exact **gates** each transition
-enforces, and every command. For the conceptual overview and the skills side,
-read [the onto workflow](onto-workflow.md) first.
+workflow, how it **moves** between phases, the exact **gates** each
+transition enforces, and every command. For the conceptual overview and the
+skills side, read [the onto workflow](onto-workflow.md) first.
 
-The **`onto` binary owns the state and the gates**; the `onto-*` skills own the
-work inside each phase. Every state change goes through the binary (`onto new`,
-`onto set …`, `onto advance`, `onto close`) — the skills never hand-edit
-`onto-state.yaml`, and the phase is always cross-checked against real file
-state.
+The **`onto` binary owns the state and the gates**; the `onto-*` skills own
+the work inside each phase. Every state change goes through the binary
+(`onto new`, `onto set …`, `onto advance`, `onto close`). The skills never
+hand-edit `onto-state.yaml`, and the phase is always cross-checked against
+real file state.
 
-Most commands take `--dir <root>` (default `.`) to select the workspace root.
-Mutating commands require the onto framework to be installed by homonto;
-read-only ones never read `homonto.toml` and never write.
+Most commands take `--dir <root>` (default `.`) to select the workspace
+root. Mutating commands require the onto framework to be installed by
+homonto; read-only ones never read `homonto.toml` and never write.
 
 ## General flow
 
@@ -29,26 +29,27 @@ read-only ones never read `homonto.toml` and never write.
    failure:   onto abandon <change>  →  abandoned  (the unsuccessful terminal state)
 ```
 
-A change tracks its phase and evidence in `docs/changes/<name>/onto-state.yaml`.
-The phase set is exactly `open → design → build → verify → close`; `close` is
-the terminal phase (reached by advancing), after which `onto close`
-**archives** the change. There is no `archive` phase.
+A change tracks its phase and evidence in
+`docs/changes/<name>/onto-state.yaml`. The phase set is exactly
+`open → design → build → verify → close`; `close` is the terminal phase
+(reached by advancing), after which `onto close` **archives** the change.
+There is no `archive` phase.
 
 ## Entering — `onto init` and `onto new`
 
 **`onto init [--dir <root>]`** scaffolds the `docs/{changes,specs,adr,guides}/`
-layout, idempotently — it reports created vs. skipped paths and never
+layout, idempotently. It reports created vs. skipped paths and never
 overwrites existing content.
 
 **`onto new <name> [--workflow full|fix|tweak]`** creates
 `docs/changes/<name>/` with:
 
 - `onto-state.yaml` at **phase `open`**, `workflow: full` (the default);
-- a `proposal.md` skeleton — plus `tasks.md` **only for the fix/tweak presets**;
-  a full change's `tasks.md` is derived later, in design.
+- a `proposal.md` skeleton — plus `tasks.md` **only for the fix/tweak
+  presets**; a full change's `tasks.md` is derived later, in design.
 
 It requires the framework installed, refuses to clobber an existing change,
-and validates the name is kebab-case with no path traversal.
+and validates that the name is kebab-case with no path traversal.
 
 ## Advancing — `onto advance <change>`
 
@@ -57,13 +58,15 @@ below passes, in this order:
 
 1. **Framework installed** (the install gate) and a **valid change name**.
 2. State **loads** and the change is **not abandoned**.
-3. The current phase has a **next phase** (advancing from `close` is an error).
+3. The current phase has a **next phase** (advancing from `close` is an
+   error).
 4. **Required artifacts** for the *current* phase all exist — **workflow-aware**
-   (they accumulate). A full change derives its task list *from* the confirmed
-   design, so `tasks.md` gates the **design** exit, not the open exit; the
-   fix/tweak presets skip design and decompose at open-lite, so their `tasks.md`
-   gates the **open** exit and no `design.md`/`plan.md` is ever demanded (this
-   is what lets a preset advance straight through design/build):
+   (they accumulate). A full change derives its task list *from* the
+   confirmed design, so `tasks.md` gates the **design** exit, not the open
+   exit. The fix/tweak presets skip design and decompose at open-lite, so
+   their `tasks.md` gates the **open** exit and no `design.md`/`plan.md` is
+   ever demanded (this is what lets a preset advance straight through
+   design and build):
 
    | Leaving phase | full | fix / tweak |
    |---|---|---|
@@ -72,33 +75,34 @@ below passes, in this order:
    | `build`  | + `plan.md` (and all tasks checked) | all tasks checked (no `plan.md`) |
    | `verify` | + `verification.md` | + `verification.md` |
 
-   An empty/unknown workflow is treated as full (strictest).
+   An empty or unknown workflow is treated as full (strictest).
 
 5. **Leaving `build`:** `tasks.md` has **no unchecked items** (`- [ ]`).
 6. **Evidence / entry tokens** (recorded via `onto set`, not inferred from
    files):
    - **Entering `build`** (design→build): `isolation` is set (`branch` or
-     `worktree`), so planning/build work is never committed unisolated — **and**
-     the change is **not in a dependency cycle** (no valid build order exists).
+     `worktree`), so planning and build work is never committed unisolated —
+     **and** the change is **not in a dependency cycle** (no valid build
+     order exists).
    - **Leaving `verify`** (verify→close): `verify.result == pass`.
 7. **Worktree cleanliness:** entering `close` is **blocked** by uncommitted
    paths — except paths under *another* change's `docs/changes/<other>/`,
-   which are that change's own close gate's obligation (parallel changes must
-   not deadlock each other) — *and* blocked if cleanliness can't even be
-   determined (no git). The refusal lists the offending paths; `onto dirt
-   <change>` shows the full classified list. Every other transition only
-   **warns** on a dirty worktree and proceeds.
+   which are that change's own close gate's obligation (parallel changes
+   must not deadlock each other) — *and* blocked if cleanliness cannot even
+   be determined (no git). The refusal lists the offending paths;
+   `onto dirt <change>` shows the full classified list. Every other
+   transition only **warns** on a dirty worktree and proceeds.
 
 A failed gate exits non-zero and leaves the recorded phase unchanged.
 
 ## Merging specs — `onto merge-deltas <change>`
 
 Before archiving, the close phase merges the change's spec deltas into the
-living specs with `onto merge-deltas` — a deterministic
+living specs with `onto merge-deltas`: a deterministic
 RENAMED → MODIFIED → REMOVED → ADDED application, lint-checked,
 **transactional** (writes nothing unless every delta merges clean), and
-**idempotent** (it sets and honors `close.merged`). This replaces the by-hand
-merge that was the workflow's most destructive step.
+**idempotent** (it sets and honors `close.merged`). This replaces the
+by-hand merge that was the workflow's most destructive step.
 
 ## Exiting — `onto close <change>`
 
@@ -106,29 +110,30 @@ Archives a change that has reached the `close` phase. Gates, in order:
 
 1. Framework installed; valid name; state loads.
 2. Phase **is `close`** (advance until it reaches close first).
-3. **Close-evidence gate** — the tokens the workflow actually produces:
+3. **Close-evidence gate** — the tokens the workflow produces:
    - `verify.result == pass`, **and**
    - `close.merged == true`, **and**
-   - for the **full** workflow only, **guides resolved** — `guides` is
-     `updated` or `waived:<reason>` (the fix/tweak presets don't produce
-     guides, so they skip this; an empty/unknown workflow is treated as full).
+   - for the **full** workflow only, **guides resolved**: `guides` is
+     `updated` or `waived:<reason>`. The fix/tweak presets produce no
+     guides, so they skip this; an empty or unknown workflow is treated as
+     full.
 4. **Dependencies resolved** — every change in `deps` is already archived
    (a `docs/changes/archive/*-<dep>/` exists).
 5. **Clean, determinable worktree** (same rule as entering close).
 6. **No-clobber** — the dated archive target must not already exist.
 
 On success it sets `archived: true` and moves the workspace to
-`docs/changes/archive/<YYYY-MM-DD>-<name>/`. The move is transactional: if it
-fails after the flag is written, the flag is rolled back, so a failed close
-never leaves a change marked archived at its original path.
+`docs/changes/archive/<YYYY-MM-DD>-<name>/`. The move is transactional: if
+it fails after the flag is written, the flag is rolled back, so a failed
+close never leaves a change marked archived at its original path.
 
-**`onto abandon <change>`** is the other terminal state — the unsuccessful one
-— for work that is stopped rather than completed.
+**`onto abandon <change>`** is the other terminal state — the unsuccessful
+one — for work that stops rather than completes.
 
 ## Recording evidence — `onto set <field> <change> [value]`
 
-Gate tokens live in `onto-state.yaml` and are set through `onto set` (never by
-hand):
+Gate tokens live in `onto-state.yaml` and are set through `onto set`, never
+by hand:
 
 | `onto set` field | Gate it satisfies / records |
 |---|---|
@@ -161,9 +166,9 @@ hand):
 
 ## Driving it from the tool — slash commands
 
-`homonto apply` installs a slash command per phase and preset, so you can drive
-the flow from the command palette: `/onto` (dispatcher — derives the active
-change's phase and routes automatically), plus `/onto-open`, `/onto-design`,
-`/onto-build`, `/onto-verify`, `/onto-close`, `/onto-fix`, `/onto-tweak`, and
-`/onto-no-slop`. Each command loads its matching skill; the binary still owns
-every state change.
+`homonto apply` installs a slash command per phase and preset, so you can
+drive the flow from the command palette: `/onto` (the dispatcher — it
+derives the active change's phase and routes automatically), plus
+`/onto-open`, `/onto-design`, `/onto-build`, `/onto-verify`, `/onto-close`,
+`/onto-fix`, `/onto-tweak`, and `/onto-no-slop`. Each command loads its
+matching skill; the binary still owns every state change.

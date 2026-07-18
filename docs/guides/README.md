@@ -4,9 +4,8 @@ User-facing documentation, one topic per file.
 
 ## First steps
 
-- [`getting-started.md`](getting-started.md) — hands-on walkthrough of both
-  binaries with real command output, plus a supported / not-supported matrix.
-  **Start here.**
+- [`getting-started.md`](getting-started.md) — hands-on walkthrough with real
+  command output, plus a supported / not-supported matrix. **Start here.**
 
 ## Reference
 
@@ -16,8 +15,8 @@ User-facing documentation, one topic per file.
   exit codes, and examples.
 - [`onto-reference.md`](onto-reference.md) — every `onto` command, the phase
   flow, and every entry/exit gate the binary enforces.
-- [`to-reference.md`](to-reference.md) — every `to` command: the gate,
-  flags, archive naming, and crash safety.
+- [`to-reference.md`](to-reference.md) — every `to` command: the gate, flags,
+  archive naming, and crash safety.
 
 ## Concepts
 
@@ -26,26 +25,26 @@ User-facing documentation, one topic per file.
 - [`projection-and-state.md`](projection-and-state.md) — the apply pipeline:
   surgical merge, symlinked content, state, drift vs. pending, adoption, and
   pruning.
-- [`subagents.md`](subagents.md) — the `[subagents.*]` resource: sources
-  (builtin/local/remote), link vs. copy mode, scope/targets, model routes, and
-  the tool-neutral `homonto:` frontmatter block.
+- [`subagents.md`](subagents.md) — the `[subagents.*]` resource: sources,
+  link vs. copy mode, scope and targets, model routes, and the tool-neutral
+  `homonto:` frontmatter block.
 - [`remote-source-trust.md`](remote-source-trust.md) — pinned, fail-closed
   remote installs: threat model, verification pipeline, and lifecycle.
 
 ## The workflow frameworks
 
-onto and `to` are an **exclusive choice** per repository — enterprise
-tooling vs. simple development.
+onto and `to` are an **exclusive choice** per repository: enterprise tooling
+vs. simple development.
 
 - [`onto-workflow.md`](onto-workflow.md) — concepts: the binary/skills split,
   the five phases, presets, and the specialist subagents.
 - [`to-workflow.md`](to-workflow.md) — concepts: the bookkeeper/skills split,
   `plan → do → done`, the plan contract, and the sequential-only subagents.
 - [`enforcement.md`](enforcement.md) — making the workflow non-skippable at
-  the tool boundary with hooks (`onto doctor --quiet` / `to doctor --quiet` +
-  Claude `settings.json` hooks / an OpenCode plugin).
+  the tool boundary with hooks (`onto doctor --quiet` / `to doctor --quiet`
+  plus Claude `settings.json` hooks or an OpenCode plugin).
 - [`yagni.md`](yagni.md) — you aren't gonna need it: where each framework
-  structurally enforces building only what the change needs now.
+  enforces building only what the change needs now.
 - [`kiss.md`](kiss.md) — keep it simple: the simplicity mechanics both
   frameworks encode, for code, plans, and prose.
 
@@ -57,9 +56,9 @@ tooling vs. simple development.
 ## Developing homonto itself
 
 - [`comet-workflow.md`](comet-workflow.md) — this repository's development
-  workflow (Comet + OpenSpec + Superpowers). These are **external** tools the
-  maintainers use; homonto does not bundle them (see
-  [ADR 0015](../adr/0015-ship-only-onto-frameworks.md)). See also
-  [`../personas.md`](../personas.md) for why we build with Comet but ship onto,
-  [`../adr/`](../adr/) for durable architecture decisions, and
+  workflow (Comet + OpenSpec + Superpowers). These are external tools the
+  maintainers use; homonto does not bundle them
+  ([ADR 0015](../adr/0015-ship-only-onto-frameworks.md)). See also
+  [`../personas.md`](../personas.md) for why we build with Comet but ship
+  onto, [`../adr/`](../adr/) for durable architecture decisions, and
   [`../release-checklist.md`](../release-checklist.md) for the release gate.

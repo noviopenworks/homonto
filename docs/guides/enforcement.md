@@ -1,9 +1,10 @@
-# Enforcing the onto workflow with hooks
+# Enforcing the workflow with hooks
 
-onto's gates are hard **when the binary is invoked** — but nothing forces an
-inattentive agent to invoke it. A tool **hook** closes that gap: it runs a check
-on an event (e.g. when the agent stops) and fails loudly on a workflow-integrity
-problem, so a skipped gate or a broken workspace can't pass silently.
+The workflow gates are hard **when the binary is invoked**, but nothing
+forces an inattentive agent to invoke it. A tool **hook** closes that gap:
+it runs a check on an event (for example, when the agent stops) and fails
+loudly on a workflow-integrity problem, so a skipped gate or a broken
+workspace cannot pass silently.
 
 The enforcement primitive is:
 
@@ -11,21 +12,21 @@ The enforcement primitive is:
 onto doctor --quiet
 ```
 
-`onto doctor` is read-only and config-independent; `--quiet` prints nothing and
-signals health **only through its exit code** (non-zero when there are findings —
-a missing/broken change state, an unresolved dependency, a version skew, ≥3
-failed verify rounds, an active change marked archived). That exit code is what a
-hook acts on.
+`onto doctor` is read-only and config-independent; `--quiet` prints nothing
+and signals health **only through its exit code** (non-zero when there are
+findings: a missing or broken change state, an unresolved dependency, a
+version skew, ≥3 failed verify rounds, an active change marked archived).
+That exit code is what a hook acts on.
 
-In a repository using the `to` framework instead, `to doctor --quiet` has the
-identical contract (read-only, config-independent, exit-code-only) — every
-recipe below works with the command swapped.
+In a repository using the `to` framework instead, `to doctor --quiet` has
+the identical contract (read-only, config-independent, exit-code-only).
+Every recipe below works with the command swapped.
 
 ## Claude Code — via `settings.json` hooks (works today)
 
-homonto projects `[settings.claude]` surgically into `~/.claude/settings.json`,
-and `hooks` is an ordinary settings key — so you can install the guard from
-`homonto.toml` with no extra machinery:
+homonto projects `[settings.claude]` surgically into
+`~/.claude/settings.json`, and `hooks` is an ordinary settings key — so you
+can install the guard from `homonto.toml` with no extra machinery:
 
 ```toml
 [settings.claude]
@@ -38,9 +39,10 @@ hooks = { Stop = [ { matcher = "", hooks = [ { type = "command", command = "onto
 { "hooks": { "Stop": [ { "matcher": "", "hooks": [ { "type": "command", "command": "onto doctor --quiet" } ] } ] } }
 ```
 
-Now a Claude session that stops with the onto workspace in a bad state gets the
-non-zero hook, surfacing the problem instead of ending on it. Use `PreToolUse`
-with a matcher instead of `Stop` to guard *before* a specific action.
+Now a Claude session that stops with the workspace in a bad state gets the
+non-zero hook, surfacing the problem instead of ending on it. Use
+`PreToolUse` with a matcher instead of `Stop` to guard *before* a specific
+action.
 
 ## OpenCode — via a plugin
 
@@ -69,14 +71,15 @@ export const OntoGuard: Plugin = async ({ $, directory }) => ({
 ```
 
 Adjust the event (`session.idle`, `session.completed`) to taste. The guard
-above logs the failure through `console.error`; if you would rather have it
-abort the event handler, drop `.nothrow()` and let the non-zero throw. Because
-the OpenCode side is a code artifact rather than declarative config, install and
-review it yourself — homonto does not project or test the plugin's execution.
+above logs the failure through `console.error`; if you would rather abort
+the event handler, drop `.nothrow()` and let the non-zero throw. The
+OpenCode side is a code artifact rather than declarative config, so install
+and review it yourself — homonto does not project or test the plugin's
+execution.
 
 ## What this buys you
 
-The binary already owns the gates; the hook makes them **non-skippable at the
-tool boundary**. Pair it with `onto gate --json` (structured decisions) and the
-`onto doctor` findings (version skew, verify rounds) for a workflow that surfaces
-its own violations rather than trusting the agent to.
+The binary already owns the gates; the hook makes them **non-skippable at
+the tool boundary**. Pair it with `onto gate --json` (structured decisions)
+and the doctor findings (version skew, verify rounds) for a workflow that
+surfaces its own violations rather than trusting the agent to.

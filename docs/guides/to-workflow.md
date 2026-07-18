@@ -19,8 +19,8 @@ plan → do → done
 ```
 
 `done` and `abandoned` are terminal (the change is then archived). Each change
-tracks its phase in a `to-state.yaml` inside its workspace directory — always
-written through the binary, never by hand.
+tracks its phase in a `to-state.yaml` inside its workspace directory,
+always written through the binary and never by hand.
 
 Unlike onto, **to enforces no evidence gates**: `to done --verified` records a
 self-asserted checkbox, not observed proof. The verification rigor lives
@@ -36,8 +36,8 @@ One repository uses one workflow framework. Declaring both
 load. Pick **onto** for evidence-gated changes that need spec deltas,
 dependency graphs, and non-skippable transitions; pick **to** for simple
 development where that machinery costs more than it protects. There is no
-escalation path between their state formats — choose per repository, not per
-change.
+escalation path between their state formats; choose per repository, not
+per change.
 
 ## Install and enable
 
@@ -66,7 +66,7 @@ Each change is a directory `docs/tasks/<name>/` holding `to-state.yaml`
 (written **only** by the binary) and `plan.md` (written by the agent during
 plan). Finished changes move to `docs/tasks/archive/<date>-<name>/`; the date
 prefix frees the name for reuse. `to` is **git-blind**: it never inspects
-branches, worktrees, or dirt — branch-per-change is skill advice, not a gate.
+branches, worktrees, or dirt; branch-per-change is skill advice, not a gate.
 
 ## The plan contract
 
@@ -99,7 +99,7 @@ recovery, review, and final evidence.
 - **do** (`/to-do`) — execute one task at a time: `to-implementer` writes it,
   the orchestrator verifies against the repository, `to-reviewer` judges the
   diff, findings are fixed or declined in writing, the task is checked off in
-  its own commit. Strictly sequential — **to never runs subagents in
+  its own commit. Strictly sequential: **to never runs subagents in
   parallel**.
 - **done** (`/to-done`) — run `Final Verify:`, obtain one completed
   `to-skeptic` pass on the final candidate, record the outcome under

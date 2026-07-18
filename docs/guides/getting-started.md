@@ -1,17 +1,17 @@
 # Getting started
 
-This is a hands-on walkthrough of `homonto` and `onto`. `homonto` projects
-your `homonto.toml` into Claude Code / OpenCode (Terraform-style: `plan` →
-`apply`). `onto` gates a change through `open → design → build → verify →
+A hands-on walkthrough of `homonto` and `onto`. `homonto` projects your
+`homonto.toml` into Claude Code and OpenCode, Terraform-style: `plan`, then
+`apply`. `onto` gates a change through `open → design → build → verify →
 close`. onto's mutating commands need the onto framework installed *by*
 homonto first.
 
 > A third binary, `to`, is the lightweight alternative to onto (`plan → do →
-> done`, no gates) — see the [to workflow guide](to-workflow.md) and the
+> done`, no gates). See the [to workflow guide](to-workflow.md) and the
 > [to reference](to-reference.md). onto and `to` are an exclusive choice per
 > repository; this walkthrough uses onto.
 
-> Output goes to **stderr** — redirect with `2>&1` when scripting.
+> Output goes to **stderr**. Redirect with `2>&1` when scripting.
 
 ## 1. Install
 
@@ -20,18 +20,18 @@ go install github.com/noviopenworks/homonto@latest           # homonto
 go install github.com/noviopenworks/homonto/cmd/onto@latest  # onto
 ```
 
-Or grab the prebuilt binaries + `SHA256SUMS` from the GitHub release
-(linux/macOS/windows, amd64/arm64). From a checked-out repo use `go install .`
-— **not** a bare `go build .` (the output name collides with the `homonto/`
-content directory; see [troubleshooting](troubleshooting.md)).
+Or grab the prebuilt binaries and `SHA256SUMS` from the GitHub release
+(Linux/macOS/Windows, amd64/arm64). From a checked-out repo use
+`go install .`, not a bare `go build .`: the output name collides with the
+`homonto/` content directory (see [troubleshooting](troubleshooting.md)).
 
 Verify:
 
 ```console
 $ homonto version
-homonto v0.3.0
+homonto v0.5.0
 $ onto version
-onto v0.3.0
+onto v0.5.0
 ```
 
 ## 2. homonto in five commands
@@ -63,8 +63,8 @@ scope = "project"                               # required: user | project
 model = "opus"
 ```
 
-`plan` output is a Terraform-style diff — `+` create, `~` update, `-` delete;
-secrets stay unresolved tokens:
+`plan` prints a Terraform-style diff (`+` create, `~` update, `-` delete) and
+leaves secrets as unresolved tokens:
 
 ```console
 $ homonto plan
@@ -78,8 +78,8 @@ opencode:
   + skill.my-notes = …/.opencode/skills/my-notes -> …/homonto/skills/my-notes
 ```
 
-`apply` resolves every secret first (aborting before any write if one fails),
-then writes surgically — keeping every key it doesn't manage. `status` tells
+`apply` resolves every secret first and aborts before any write if one fails,
+then writes surgically, keeping every key it does not manage. `status` tells
 the three states apart:
 
 ```console
@@ -90,22 +90,23 @@ No drift.                                                 # everything matches
 ```
 
 **Secrets** are referenced, never stored: `${pass:path}` (via
-[`pass`](https://www.passwordstore.org/)) or `${ENV_VAR}`. `.homonto/state.json`
-holds only the token plus a sha256 hash, so it's safe to share. See
-[secrets](secrets.md).
+[`pass`](https://www.passwordstore.org/)) or `${ENV_VAR}`.
+`.homonto/state.json` holds only the token plus a sha256 hash, so it is safe
+to share. See [secrets](secrets.md).
 
 **Health check:** `homonto doctor` verifies `pass` is on `PATH`, the tool
-config locations exist, and each owned skill's content and both tool links are
-intact.
+config locations exist, and each owned skill has intact content and both tool
+links.
 
 **Already using Claude Code?** `homonto import` bootstraps a starter toml from
-Claude's **global MCP servers only** (experimental and deliberately narrow —
-review its output before applying).
+Claude's global MCP servers only. It is experimental and narrow; review its
+output before applying.
 
 ## 3. Your first owned skill
 
 Skills you author live under `homonto/skills/` next to `homonto.toml` and are
-**symlinked** into each tool — editing the source is instantly live everywhere:
+**symlinked** into each tool, so editing the source is instantly live
+everywhere:
 
 ```console
 $ mkdir -p homonto/skills/my-notes
@@ -115,14 +116,14 @@ $ homonto apply --yes
 
 Each skill declares its own `scope` (required, no default): `user` links into
 `~/.claude/skills/` and `~/.config/opencode/skills/`; `project` links into the
-repo itself (`.claude/skills/`, `.opencode/skills/`). Switching scope is clean —
-`plan` shows the link relocating, `apply` removes the old link as it creates
-the new one.
+repo itself (`.claude/skills/`, `.opencode/skills/`). Switching scope is
+clean: `plan` shows the link relocating, and `apply` removes the old link as
+it creates the new one.
 
 ## 4. The onto workflow
 
 Install the framework via homonto, then apply. A tool that gains a framework
-(or any subagent/command) must declare **all three model routes**:
+(or any subagent or command) must declare **all three model routes**:
 
 ```toml
 [frameworks.onto]
@@ -148,8 +149,8 @@ $ onto set isolation add-search branch
 $ onto advance add-search        # design → build
 ```
 
-Each transition needs that phase's deliverables (they accumulate; the table
-below is the `full` workflow — the `fix`/`tweak` presets run a reduced path):
+Each transition needs that phase's deliverables. They accumulate; this table
+is the `full` workflow, and the `fix`/`tweak` presets run a reduced path:
 
 | Leaving | Requires |
 |---|---|
@@ -158,9 +159,9 @@ below is the `full` workflow — the `fix`/`tweak` presets run a reduced path):
 | `build` | + `plan.md` **and every `tasks.md` box checked** |
 | `verify` | + `verification.md`, `verify-result = pass` |
 
-`verify → close` also blocks on uncommitted work — this change's own artifacts
-or any source path, but *not* another change's in-flight docs (`onto dirt
-<change>` classifies each path and the refusal names what blocks). Close has
+`verify → close` also blocks on uncommitted work: this change's own artifacts
+or any source path, but not another change's in-flight docs (`onto dirt
+<change>` classifies each path, and the refusal names what blocks). Close has
 its own evidence gates:
 
 ```console
@@ -183,16 +184,15 @@ command and gate: [onto reference](onto-reference.md).
 | Supported | Notes |
 |---|---|
 | MCP servers, settings, skills, plugins, marketplaces, TUI settings | Claude Code + OpenCode, full |
-| Frameworks (`[frameworks.*]`) | builtin: `onto` or `to` (mutually exclusive); also `local:` roots and digest-pinned `remote:` sources |
+| Frameworks (`[frameworks.*]`) | builtin `onto` or `to` (mutually exclusive); also `local:` roots and digest-pinned `remote:` sources |
 | Commands, subagents (`builtin:` / `local:`) | subagents: `mode = link` (default) or `copy` |
-| Remote **subagent** sources (`remote:…`) | **require `digest = "sha256:…"`**; fetched, verified, pinned, cached |
+| Remote sources (`remote:…`) | subagents and frameworks; **require `digest = "sha256:…"`**; fetched, verified, pinned, cached |
 | Codex adapter | 🟡 pilot — **MCP only**, opt-in (`codex` in `targets`) → `~/.codex/config.toml` |
 | `import` | 🟡 narrow — **Claude global MCP servers only** |
 
 | Not supported (accepted for beta) | Detail |
 |---|---|
 | OpenCode JSONC comments | any apply that writes `opencode.jsonc` drops comments (no-op applies don't) |
-| Remote *framework* sources | frameworks resolve via the builtin catalog only |
 | Non-stdio MCP in `import` | url/http servers skipped with a warning |
 | Secrets without a backend | `${pass:…}` needs `pass` on `PATH`; `${ENV_VAR}` needs the var set |
 | Moving/renaming the repo | skill symlinks are absolute — delete stale links and reapply after a move |
@@ -202,5 +202,5 @@ command and gate: [onto reference](onto-reference.md).
 
 - [Configuration reference](configuration.md) — every table and field of `homonto.toml`.
 - [homonto CLI reference](cli-reference.md) — flags, exit codes, examples.
-- [Projection & state](projection-and-state.md) — how apply, drift, adoption, and pruning actually work.
+- [Projection & state](projection-and-state.md) — how apply, drift, adoption, and pruning work.
 - [Troubleshooting & caveats](troubleshooting.md) — when something looks wrong.

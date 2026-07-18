@@ -1,29 +1,30 @@
 # The onto workflow
 
-**onto** is a spec-driven development workflow that homonto ships as a bundled
-framework. It has two halves that work together:
+**onto** is a spec-driven development workflow that homonto ships as a
+bundled framework. It has two halves that work together:
 
-- the **`onto` binary** (built from `cmd/onto/`, installed beside `homonto`) —
-  the deterministic operator that creates change workspaces, gates phase
-  transitions, merges spec deltas, and archives completed changes; and
+- the **`onto` binary** (built from `cmd/onto/`, installed beside
+  `homonto`) — the deterministic operator that creates change workspaces,
+  gates phase transitions, merges spec deltas, and archives completed
+  changes; and
 - the **`onto-*` skills** (materialized from the builtin catalog by
-  `homonto apply`) — the agent-facing process prose that drives the work inside
-  each phase.
+  `homonto apply`) — the agent-facing process prose that drives the work
+  inside each phase.
 
-The binary owns the *state and the gates*; the skills own the *work*. A change
-moves through five phases in a fixed order:
+The binary owns the *state and the gates*; the skills own the *work*. A
+change moves through five phases in a fixed order:
 
 ```
 open → design → build → verify → close
 ```
 
-`close` is terminal (the change is then archived by `onto close`). Each change
-tracks its phase and gate evidence in an `onto-state.yaml` file inside its
-workspace directory — always written through the binary, never by hand.
+`close` is terminal; `onto close` then archives the change. Each change
+tracks its phase and gate evidence in an `onto-state.yaml` inside its
+workspace directory, always written through the binary and never by hand.
 
-This guide covers the concepts. The precise command surface and every gate is
-in the [onto reference](onto-reference.md); making the gates non-skippable at
-the tool boundary is in [enforcement](enforcement.md).
+This guide covers the concepts. The precise command surface and every gate:
+[onto reference](onto-reference.md). Making the gates non-skippable at the
+tool boundary: [enforcement](enforcement.md).
 
 ## Install and enable
 
@@ -35,8 +36,8 @@ onto version            # prints: onto <version>
 ```
 
 The mutating commands (`init`, `new`, `set`, `advance`, `close`, `abandon`,
-`merge-deltas`) require the onto framework to be **declared and applied through
-homonto first** — this is how the skills land in your tools:
+`merge-deltas`) require the onto framework to be **declared and applied
+through homonto first**. This is how the skills land in your tools:
 
 ```toml
 [frameworks.onto]
@@ -46,20 +47,20 @@ scope = "project"
 ```
 
 Then `homonto apply`. The read-only commands (`status`, `state`, `gate`,
-`scale`, `graph`, `handoff`, `doctor`, `version`) run without any of this —
-they never read `homonto.toml` and never write.
+`scale`, `graph`, `dirt`, `handoff`, `doctor`, `version`) run without any of
+this: they never read `homonto.toml` and never write.
 
 `homonto apply` also installs the framework's **slash commands** into each
-tool: `/onto` (the dispatcher — it derives the active change's real phase and
-routes automatically), plus `/onto-open`, `/onto-design`, `/onto-build`,
+tool: `/onto` (the dispatcher — it derives the active change's real phase
+and routes automatically), plus `/onto-open`, `/onto-design`, `/onto-build`,
 `/onto-verify`, `/onto-close`, `/onto-fix`, `/onto-tweak`, and
-`/onto-no-slop`. Each command loads the matching `onto-*` skill; every state
+`/onto-no-slop`. Each command loads its matching `onto-*` skill; every state
 change still goes through the binary.
 
 ## The layout
 
-`onto init` scaffolds four directories under the workspace root (idempotently —
-existing content is never overwritten):
+`onto init` scaffolds four directories under the workspace root,
+idempotently — existing content is never overwritten:
 
 ```
 docs/
@@ -73,75 +74,82 @@ docs/
 
 ## Phase walkthrough
 
-The `onto-*` skills carry the process discipline inside each phase; the binary
-gates the transitions between them.
+The `onto-*` skills carry the process discipline inside each phase; the
+binary gates the transitions between them.
 
-- **open** — clarify the requirement, decide whether the work should split into
-  several changes, and create the workspace (`onto new`).
+- **open** — clarify the requirement, decide whether the work should split
+  into several changes, and create the workspace (`onto new`).
 - **design** — ground-truth exploration, 2–3 candidate approaches, user
-  confirmation, then `design.md`, ADR drafts (unnumbered, `Status: Proposed`),
-  delta specs with testable scenarios, and the task list derived from the
-  confirmed design. No implementation code in this phase.
+  confirmation, then `design.md`, ADR drafts (unnumbered,
+  `Status: Proposed`), delta specs with testable scenarios, and the task
+  list derived from the confirmed design. No implementation code in this
+  phase.
 - **build** — `plan.md` of bite-sized verified tasks, one commit per task,
-  root-cause-first debugging on any failure. The task list is **live state**:
-  discovered work is appended as a new task before its code is written, and
-  checkoffs ride each task's own commit — a fresh session resumes from the
-  first unchecked task. Entering build requires an isolation choice
-  (`branch` or `worktree`), so build work is never committed unisolated.
-- **verify** — scale-appropriate check of every delta-spec scenario with fresh
-  command output as evidence, recorded in `verification.md`. `onto scale`
-  derives the appropriate verification level from the measured diff.
+  root-cause-first debugging on any failure. The task list is **live
+  state**: discovered work is appended as a new task before its code is
+  written, and checkoffs ride each task's own commit, so a fresh session
+  resumes from the first unchecked task. Entering build requires an
+  isolation choice (`branch` or `worktree`); build work is never committed
+  unisolated.
+- **verify** — scale-appropriate check of every delta-spec scenario with
+  fresh command output as evidence, recorded in `verification.md`.
+  `onto scale` derives the appropriate verification level from the measured
+  diff.
 - **close** — `onto merge-deltas` merges the change's delta specs into
   `docs/specs/` deterministically, then `onto close` archives the workspace
-  once all evidence gates pass; number and accept ADRs into `docs/adr/`, and
+  once all evidence gates pass. Number and accept ADRs into `docs/adr/`, and
   update the affected guides.
 
 Two **presets** run a reduced path for small work: `onto new --workflow fix`
 (an existing-behavior bug) and `--workflow tweak` (copy/config/docs-scale
-change) go `open-lite → build → verify → close`, skipping design — and upgrade
-to the full path when scope grows. `onto abandon` is the unsuccessful terminal
-state for work that is stopped rather than completed.
+change) go `open-lite → build → verify → close`, skipping design, and
+upgrade to the full path when scope grows. `onto abandon` is the
+unsuccessful terminal state for work that stops rather than completes.
 
 ## Specialist subagents
 
 `homonto apply` installs the framework's subagents, which the onto skills
-delegate to (don't also declare them in a top-level `[subagents.*]` table —
-the names collide):
+delegate to. Do not also declare them in a top-level `[subagents.*]` table;
+the names collide.
 
 - **`onto-explorer`** — read-only; reads across many files to answer "how
-  does X work / where does behavior live", returning conclusions, not dumps.
-  Used for grounding in open/design. Runs on the `trivial` model route.
+  does X work / where does behavior live", returning conclusions rather than
+  dumps. Used for grounding in open and design. Runs on the `trivial` model
+  route.
 - **`onto-reviewer`** — read-only; reviews a diff for correctness, security,
-  contract, and clarity, ranked by severity. Used per task in build and across
-  the diff in verify. Runs on the `architectural` route.
+  contract, and clarity, ranked by severity. Used per task in build and
+  across the diff in verify. Runs on the `architectural` route.
 - **`onto-implementer`** — edit-capable executor on the `coding` route. It
-  executes one bite-sized task from a precise spec and returns a diff; it does
-  not plan or judge scope.
-- **`onto-skeptic`** — read-only adversarial verifier on the `architectural`
-  route, used in the verify phase. It is dispatched **twice in parallel**, one
-  lens each (`conformance` — refute each scenario's evidence; `robustness` —
-  attack the gaps the scenarios never cover), and is prompted to **refute, never
-  approve** (ADR 0007). It keeps bash so it can re-run the evidence itself, and
-  is read-only so it can never fix what it finds — that independence is the
-  whole point.
+  executes one bite-sized task from a precise spec and returns a diff. It
+  does not plan or judge scope, and it reports discovered work rather than
+  doing it.
+- **`onto-skeptic`** — read-only adversarial verifier on the
+  `architectural` route, used in the verify phase. It is dispatched **twice
+  in parallel**, one lens each (`conformance`: refute each scenario's
+  evidence; `robustness`: attack the gaps the scenarios never cover), and is
+  prompted to **refute, never approve** (ADR 0007). It keeps bash so it can
+  re-run the evidence itself, and it is read-only so it can never fix what
+  it finds. That independence is the point.
 
-Everything else — planning, judging scope, deciding, committing — stays with the
-orchestrator, because those steps are gated on user confirmation and a subagent
-cannot prompt.
+Everything else — planning, judging scope, deciding, committing — stays with
+the orchestrator, because those steps are gated on user confirmation and a
+subagent cannot prompt.
 
 All declare their capabilities once in a tool-neutral `homonto:` frontmatter
-block, rendered into Claude's `tools:` allowlist and OpenCode's `permission:`
-map (see [subagents](subagents.md)). Parallelization and dialogs work in both
-tools: the build phase fans out independent tasks' investigation/review
-concurrently, and gate decisions are asked through an interactive dialog
-(`onto gate --json` supplies the structured decision; the skill renders it).
-The orchestrator — your main session — still owns every edit and commit.
+block, rendered into Claude's `tools:` allowlist and OpenCode's
+`permission:` map (see [subagents](subagents.md)). Parallelization and
+dialogs work in both tools: the build phase fans out independent tasks'
+investigation and review concurrently, and gate decisions are asked through
+an interactive dialog (`onto gate --json` supplies the structured decision;
+the skill renders it). The orchestrator — your main session — still owns
+every edit and commit.
 
 ## Working in a dirty tree
 
-Uncommitted work is normal — an interrupted task, a parallel change, your own
-edits — so onto classifies it rather than treating "dirty" as one condition.
-`onto dirt [change] [--json]` reports every uncommitted path in three classes:
+Uncommitted work is normal: an interrupted task, a parallel change, your own
+edits. onto classifies it rather than treating "dirty" as one condition.
+`onto dirt [change] [--json]` reports every uncommitted path in three
+classes:
 
 | Class | What it is | Blocks this change's close? |
 |---|---|---|
@@ -149,13 +157,12 @@ edits — so onto classifies it rather than treating "dirty" as one condition.
 | `change` | another change's docs, or the archive | no — that change's own close gate owns it |
 | `source` | any other path in the repo | **yes** — until it is attributed and committed |
 
-That split is what lets two changes be in flight at once: one change's
-half-written proposal no longer blocks another change's close. When close *is*
-blocked, the refusal names the offending paths instead of just saying "dirty
-worktree".
+That split lets two changes be in flight at once: one change's half-written
+proposal no longer blocks another change's close. When close *is* blocked,
+the refusal names the offending paths instead of a bare "dirty worktree".
 
-The division of labor is deliberate: the **binary** owns what-is-dirty and
-what-blocks-close (structure, not judgment); the **agent** owns attribution —
+The division of labor is deliberate. The **binary** owns what-is-dirty and
+what-blocks-close (structure, not judgment); the **agent** owns attribution,
 deciding whether a `source` diff belongs to the current change, belongs
 elsewhere, or is unclear enough to stop and ask. The skills follow a shared
 dirty-workspace protocol for that, and never revert or commit around
@@ -164,18 +171,20 @@ uncommitted work they haven't attributed.
 ## Surviving context loss
 
 Long agent sessions get compacted. `onto handoff <change>` emits a compact
-recovery context pack — identity, phase, pending gate, artifact excerpts plus
-a content hash — and `--write` persists it under the workspace, so a fresh
-session resumes without re-deriving state. `onto set build-pause plan-ready`
-records a first-class pause at the plan-ready gate for the same reason.
+recovery context pack — identity, phase, pending gate, artifact excerpts
+plus a content hash — and `--write` persists it under the workspace, so a
+fresh session resumes without re-deriving state. `onto set build-pause
+plan-ready` records a first-class pause at the plan-ready gate for the same
+reason.
 
 ## Recommended tooling
 
 The onto skills recommend two tools; when either is missing they warn and
-proceed — a degraded session still works:
+proceed. A degraded session still works:
 
-- **rtk** — a token-optimized CLI proxy; workflow shell operations go through
-  it when installed. Missing rtk means higher token cost, never a stop.
+- **rtk** — a token-optimized CLI proxy; workflow shell operations go
+  through it when installed. Missing rtk means higher token cost, never a
+  stop.
 - **graphify** (https://graphify.net) — codebase understanding; the open and
   design phases ground claims in graphify/codegraph queries when available,
   falling back to direct file reading otherwise.

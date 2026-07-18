@@ -5,44 +5,44 @@
 Describe your MCP servers, skills, commands, subagents, plugins, and settings
 once in `homonto.toml`. `homonto apply` projects that desired state into
 **Claude Code** and **OpenCode** (plus a Codex MCP pilot) through a
-Terraform-style **plan → confirm → apply** pipeline:
+Terraform-style **plan → confirm → apply** pipeline.
 
-- **Declarative & reversible** — edit the TOML, `plan` shows the exact diff,
-  `apply` writes it surgically; remove a resource and the next apply prunes it.
-- **Secrets are referenced, never stored** — `${pass:…}` / `${ENV_VAR}` tokens
-  resolve only at apply time; state keeps a hash, never a plaintext value.
-- **Surgical merge** — only managed keys are written; everything you configured
-  by hand in each tool's files is preserved byte-for-byte.
-- **Pinned remote content** — `remote:` sources require a sha256 digest and are
-  verified fail-closed before anything touches your tools.
+- **Declarative and reversible.** Edit the TOML. `plan` shows the exact diff,
+  `apply` writes it surgically, and removing a resource prunes it on the next
+  apply.
+- **Secrets are referenced, never stored.** `${pass:…}` and `${ENV_VAR}`
+  tokens resolve only at apply time. State keeps a hash, never a value.
+- **Surgical merge.** homonto writes only the keys it manages and preserves
+  every key you configured by hand, byte for byte.
+- **Pinned remote content.** A `remote:` source requires a sha256 digest and
+  is verified fail-closed before anything touches your tools.
 
 The repository ships **three binaries**:
 
 | Binary | Role |
 |---|---|
-| `homonto` | The deterministic installer/projector described above. |
-| `onto` | A spec-driven workflow operator: it gates a change through `open → design → build → verify → close` with evidence-based, non-skippable transitions. |
-| `to` | A minimal coding-framework bookkeeper: `plan → do → done` with no gates — the lightweight, mutually-exclusive alternative to onto (see [the design](docs/to-framework-design.md)). |
+| `homonto` | The deterministic installer and projector described above. |
+| `onto` | A spec-driven workflow operator. It gates a change through `open → design → build → verify → close` with evidence-based, non-skippable transitions. |
+| `to` | A minimal coding-framework bookkeeper: `plan → do → done`, no gates. The lightweight, mutually exclusive alternative to onto (see [the design](docs/to-framework-design.md)). |
 
 ## What the bundled catalog ships
 
-homonto can install content it bundles (`builtin:`), content from your repo
-(`local:`), or pinned remote archives (`remote:`). The **bundled** catalog is
-deliberately narrow — homonto ships only what it authors:
+homonto installs content it bundles (`builtin:`), content from your repo
+(`local:`), or pinned remote archives (`remote:`). The bundled catalog carries
+only what homonto authors:
 
-- **`onto`** — the native, binary-enforced workflow framework (skills, slash
-  commands, and four specialist subagents).
-- **`to`** — the native minimal coding framework for LLMs (dispatcher + three
-  phase skills, `to-no-slop`, and four sequential-only subagents). onto and
-  `to` are an exclusive choice: declaring both is a config error.
-- **Loose skills and commands** — framework-agnostic and installed
-  individually (e.g. `handoff`, `grilling`); they belong to no framework.
+- **`onto`** — the native, binary-enforced workflow framework: skills, slash
+  commands, and four specialist subagents.
+- **`to`** — the native minimal coding framework for LLMs: a dispatcher, three
+  phase skills, `to-no-slop`, and four sequential-only subagents. onto and
+  `to` are an exclusive choice; declaring both is a config error.
+- **Loose skills and commands** (`handoff`, `grilling`, …) — framework-agnostic
+  and installed individually.
 
-Third-party workflow stacks are **not** bundled: as of v0.3.0 the `comet`,
+Third-party workflow stacks are not bundled. As of v0.3.0 the `comet`,
 `openspec`, and `superpowers` frameworks are removed
-([ADR 0015](docs/adr/0015-ship-only-onto-frameworks.md)). Install content
-homonto doesn't author through a `local:` framework or a digest-pinned
-`remote:` source.
+([ADR 0015](docs/adr/0015-ship-only-onto-frameworks.md)); vendor such content
+through a `local:` framework or a digest-pinned `remote:` source.
 
 ## Install
 
@@ -52,10 +52,10 @@ go install github.com/noviopenworks/homonto/cmd/onto@latest  # onto (optional)
 go install github.com/noviopenworks/homonto/cmd/to@latest    # to (optional)
 ```
 
-Tagged releases also attach prebuilt `homonto`, `onto`, and `to` binaries for
-Linux/macOS/Windows (amd64 and arm64) with a `SHA256SUMS` file. From a
-checked-out repo use `go install .` — **not** a bare `go build .`, whose output
-name collides with the `homonto/` content directory (see
+Tagged releases attach prebuilt `homonto`, `onto`, and `to` binaries for
+Linux, macOS, and Windows (amd64 and arm64) with a `SHA256SUMS` file. From a
+checked-out repo use `go install .`, not a bare `go build .`: the output name
+collides with the `homonto/` content directory (see
 [troubleshooting](docs/guides/troubleshooting.md)).
 
 After installing a newer binary, run `homonto update` to bring the projected
@@ -79,7 +79,7 @@ command = ["codegraph", "serve", "--mcp"]       # projected into both tools by d
 
 [mcps.brave]
 command = ["npx", "-y", "@modelcontextprotocol/server-brave-search"]
-env = { BRAVE_API_KEY = "${pass:ai/brave}" }    # a reference — never a literal secret
+env = { BRAVE_API_KEY = "${pass:ai/brave}" }    # a reference, never a literal secret
 targets = ["claude"]                            # restrict to Claude Code
 
 [skills.my-notes]
@@ -93,14 +93,14 @@ model = "opus"
 model = "anthropic/claude-opus-4-8"
 ```
 
-`plan` prints a Terraform-style diff (`+` create, `~` update, `-` delete);
-`apply` resolves all secrets up front (aborting before any write if one fails),
-then writes each file atomically, keeping every key it does not manage.
+`plan` prints a Terraform-style diff (`+` create, `~` update, `-` delete).
+`apply` resolves every secret up front and aborts before any write if one
+fails, then writes each file atomically while keeping every key it does not
+manage.
 
 **New to homonto?** Start with the
-[getting-started guide](docs/guides/getting-started.md) — a hands-on
-walkthrough of both binaries with real command output and a
-supported / not-supported matrix.
+[getting-started guide](docs/guides/getting-started.md): a hands-on
+walkthrough with real command output and a supported / not-supported matrix.
 
 ## Commands at a glance
 
@@ -124,7 +124,7 @@ Full flags, exit codes, and examples:
 
 | Guide | What it covers |
 |---|---|
-| [Getting started](docs/guides/getting-started.md) | First steps with both binaries, with real output. **Start here.** |
+| [Getting started](docs/guides/getting-started.md) | First steps with real output. **Start here.** |
 | [Configuration reference](docs/guides/configuration.md) | Every `homonto.toml` table and field, defaults, and validation rules. |
 | [homonto CLI reference](docs/guides/cli-reference.md) | Every command, flag, exit code, and example. |
 | [Secrets](docs/guides/secrets.md) | `${pass:…}` / `${ENV_VAR}` references and the never-stored guarantees. |
@@ -136,39 +136,32 @@ Full flags, exit codes, and examples:
 | [The to workflow](docs/guides/to-workflow.md) | Concepts: `plan → do → done`, the plan contract, sequential-only subagents. |
 | [to reference](docs/guides/to-reference.md) | Every `to` command: the gate, flags, archive naming, crash safety. |
 | [Enforcement](docs/guides/enforcement.md) | Making the workflow non-skippable with tool hooks (`onto doctor --quiet` / `to doctor --quiet`). |
-| [YAGNI](docs/guides/yagni.md) · [KISS](docs/guides/kiss.md) | The principles both frameworks structurally enforce — what to build, and how simply. |
+| [YAGNI](docs/guides/yagni.md) · [KISS](docs/guides/kiss.md) | The principles both frameworks enforce: what to build, and how simply. |
 | [Troubleshooting & caveats](docs/guides/troubleshooting.md) | Known limitations and gotchas, with workarounds. |
 
 ## Caveats (the short list)
 
-homonto is a young, deliberately narrow tool. The most important limitations —
-each detailed in [troubleshooting](docs/guides/troubleshooting.md):
+homonto is a young, narrow tool. The most important limitations, each detailed
+in [troubleshooting](docs/guides/troubleshooting.md):
 
-- **Adapters:** Claude Code and OpenCode are the full adapters; **Codex** is an
-  opt-in pilot that projects **MCP servers only**.
+- **Adapters:** Claude Code and OpenCode are the full adapters. **Codex** is
+  an opt-in pilot that projects MCP servers only.
 - **OpenCode JSONC comments** are dropped by any apply that writes
-  `opencode.jsonc` (a no-op apply leaves the file untouched).
-- **`import`** reads Claude's global MCP servers only — treat its output as a
+  `opencode.jsonc`. A no-op apply leaves the file untouched.
+- **`import`** reads Claude's global MCP servers only. Treat its output as a
   reviewed starting point, not a migration.
 - **Secrets need a backend:** `${pass:…}` requires `pass` on `PATH`;
   `${ENV_VAR}` requires the variable set at apply time.
-- **Moving/renaming the repo** breaks skill symlinks (absolute targets);
-  delete the stale links and re-apply.
-- **CLI output goes to stderr** — redirect with `2>&1` when scripting.
+- **Moving or renaming the repo** breaks skill symlinks (absolute targets).
+  Delete the stale links and re-apply.
+- **CLI output goes to stderr.** Redirect with `2>&1` when scripting.
 
 ## For contributors
 
 The source of truth for shipped behavior is the code and its tests. Durable
-architecture rationale lives in [`docs/adr/`](docs/adr/); this repository is
+architecture rationale lives in [`docs/adr/`](docs/adr/). This repository is
 developed with the Comet workflow
-([`docs/guides/comet-workflow.md`](docs/guides/comet-workflow.md)), while onto
-is the workflow we ship ([`docs/personas.md`](docs/personas.md) explains the
-split). Releases follow
+([`docs/guides/comet-workflow.md`](docs/guides/comet-workflow.md)); onto is
+the workflow we ship, and [`docs/personas.md`](docs/personas.md) explains the
+split. Releases follow
 [`docs/release-checklist.md`](docs/release-checklist.md).
-
-Architecture in one paragraph: `homonto.toml` is parsed into one tool-agnostic
-desired-state model; each tool is an adapter (`Read` → `Plan` → `Apply`) wired
-by the engine. Writes are atomic (temp + rename); state is persisted after each
-successful adapter, so a later adapter failure never loses earlier records.
-Read the relevant ADRs and nearby implementation before changing behavior; add
-focused tests and run the narrowest useful verification command.

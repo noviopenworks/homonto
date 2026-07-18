@@ -1,13 +1,13 @@
 # KISS — keep it simple
 
 The simplest thing that meets the requirement wins. Complexity must buy its
-way in with a named, present need — and in an agent workflow it is doubly
+way in with a named, present need. In an agent workflow it is doubly
 expensive, because every future session pays the comprehension cost fresh.
 Both frameworks encode KISS in their mechanics; this guide maps where.
 
 Simplicity is not the same as brevity. Explicit, boring, one-step-at-a-time
 code is KISS; a dense one-liner that needs a comment to decode is not. When
-in doubt, optimize for the reader who arrives with zero context — in these
+in doubt, optimize for the reader who arrives with zero context. In these
 workflows that reader is usually a fresh agent session.
 
 ## KISS in onto
@@ -59,7 +59,7 @@ workflows that reader is usually a fresh agent session.
    rules, applied to the artifacts a human keeps.
 
 The test, always: **could a fresh session extend this without reading twice?**
-If not, it isn't done — simplicity is part of the task's outcome, not polish
+If not, it isn't done. Simplicity is part of the task's outcome, not polish
 for later.
 
 See also: [YAGNI](yagni.md) — YAGNI bounds *what* you build; KISS bounds *how*.
