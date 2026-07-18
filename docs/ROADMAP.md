@@ -4,6 +4,70 @@
 > v0.2.2; it is kept for the rationale behind each decision, not as a list of
 > pending work. For where things stand now, read the next section first.
 
+## Status after v0.4.0 (2026-07-18)
+
+**Delivered.** The `to` framework shipped in v0.4.0: the third binary
+(`cmd/to`, plan → do → done, `--json` everywhere, git-blind, gated bootstrap),
+the `builtin:to` catalog framework (dispatcher + three phase skills,
+`to-no-slop`, four sequential-only subagents), the onto-xor-to config
+exclusivity, and the `to-lifecycle` Docker E2E suite in the release gate.
+Design record: [to-framework-design.md](to-framework-design.md).
+
+### `to` fix list (post-v0.4.0)
+
+Reviewed 2026-07-18. Scope rule for every item: `to` is lightweight **by
+design** for repos that already run homonto — fixes below harden what shipped
+without adding ceremony. The deliberate structural choices (self-asserted
+`--verified`, one sequential skeptic, no escalation path, gated bootstrap) are
+not on this list; they are the product.
+
+**P1 — defects.**
+
+1. **`done`/`abandon` crash convergence.** Both save terminal state, then
+   rename into `docs/tasks/archive/`. A crash (or an archive-name collision)
+   between the two leaves a terminal change in the active tree that every
+   command refuses to touch — wedged with no recovery command. Same defect
+   class onto fixed in v0.2.1. Fix: re-running `done`/`abandon` on a
+   terminal-but-active change completes the archive move (idempotent
+   finish), and the collision check runs before the state write.
+2. **Archive names are consumed forever.** `to new` refuses any name present
+   in the archive and archive dirs are not timestamped, so a recurring chore
+   name (`update-deps`) works once per repo. Fix: archive as
+   `<date>-<name>` (onto's convention), free the name for reuse.
+
+**P2 — robustness.**
+
+3. **`to doctor [--quiet]`.** No health check exists, so there is no hook
+   primitive — the [enforcement](guides/enforcement.md) recipes cannot apply
+   to `to` at all. Minimal doctor: wedged terminal-active changes (item 1),
+   state-file validity, `plan.md` present, plan-checkbox contract (the
+   `to-do` resume logic depends on `- [ ]` lines the binary never checks),
+   and binary↔materialized-framework version skew. `--quiet` = exit-code
+   only, mirroring `onto doctor`.
+4. **`handoff` truncates the wrong end of the plan.** The excerpt is the
+   first 60 lines, but during `do` the unchecked tasks sit at the bottom —
+   a long plan hands off its finished history and cuts its remaining work.
+   Fix: excerpt = plan head (goal) + every unchecked `- [ ]` line.
+5. **No mutating-command lock.** Two concurrent sessions can interleave
+   `phase`/`done` on one change (writes are atomic; last-writer wins
+   silently). Reuse the applylock pattern for `to`'s mutating commands.
+
+**P3 — docs and decisions.**
+
+6. **User-facing docs.** `to` is documented by its design record and the
+   release notes only; `getting-started`, `cli-reference`, and
+   `troubleshooting` cover the other two binaries. Add a `to` quickstart +
+   CLI reference section, and mention `to` on the README start-here path.
+7. **Decide: optional evidence string on `done --verified`.** An optional
+   `--evidence "<text>"` recorded verbatim in the archived state would make
+   real and skipped verification distinguishable after the fact, at zero
+   added ceremony (it stays optional). Maintainer decision — the mandatory
+   variant was considered and rejected in the design interview.
+8. **Live-skill exercise (deferred by decision).** The mechanical layer is
+   E2E-tested; the skills have not yet driven a real agent session
+   end-to-end. Planned as part of the future testing pass, not scheduled
+   here.
+
 ## Status after v0.3.0 (2026-07-15)
 
 **Delivered.** The whole v0.1.8 → v0.2.0 plan below (releases v0.1.8–v0.1.15
@@ -16,8 +80,9 @@ catalog now ships only homonto-native content
 
 **Known open — not scheduled, each needs a maintainer decision:**
 
-- **The `to` framework.** A second native framework is planned; its scope and
-  content are unspecified. Nothing is built.
+- **The `to` framework.** ~~A second native framework is planned; its scope
+  and content are unspecified. Nothing is built.~~ **Shipped in v0.4.0** —
+  see the status section above and its fix list.
 - **A dedicated `[hooks]` resource** (v0.2.0 item 1's remainder). The feasible
   parts shipped — `onto doctor --quiet` plus the Claude `settings.json` and
   OpenCode plugin recipes in [enforcement](guides/enforcement.md). Auto-shipping
