@@ -4,12 +4,12 @@ description: Use to review a diff or set of changes for correctness, security, a
 mode: subagent
 # Neutral capability intent — homonto renders it into each tool's native fields:
 # Claude's `tools:` allowlist and OpenCode's `permission:` map (internal/agentfm).
-# A reviewer judges (architectural model), never edits (read-only) but keeps bash
-# for git inspection, spawns nothing, and may ask via an interactive dialog.
+# A reviewer judges (review-tier model), never edits (read-only) but keeps bash
+# for git inspection, spawns nothing; it returns questions instead of prompting.
 homonto:
   role: review
   read_only: true
-  dialogs: true
+  dialogs: false
   spawn: []
 ---
 

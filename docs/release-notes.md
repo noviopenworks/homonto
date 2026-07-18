@@ -15,6 +15,30 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
+### Unreleased — lossless per-tool agent rendering
+
+An audit of the rendered agents against both tools' real contracts found
+and fixed four silent information losses (catalog 0.6.0, onto 0.4.1,
+to 0.3.1):
+
+- **Claude renders a denylist, not an allowlist.** The old `tools:`
+  allowlist silently stripped every unlisted default (WebFetch, WebSearch,
+  Skill, …) that the OpenCode variant kept. Claude now gets
+  `disallowedTools:` covering exactly the denied intent — read-only denies
+  `Edit, Write, NotebookEdit`, `bash: false` denies `Bash`, `spawn: []`
+  denies `Agent`/`Task` — matching OpenCode's deny-by-exception model.
+- **`steps` now reaches Claude as `maxTurns`** (it was dropped as
+  "no concept"; Claude has one).
+- **`dialogs: false` is now enforced in OpenCode** (`question: deny`);
+  omitting the line left the question tool available in defiance of the
+  declared intent. All eight specialist subagents in both frameworks are
+  now `dialogs: false` — matching the protocol's "a subagent never prompts
+  the user; it returns a `Questions:` section" rule, which is also the only
+  behavior Claude can express (AskUserQuestion is never available to Claude
+  subagents). The onto orchestrator (primary) keeps its dialogs.
+- **The unrecognized `mode:` line is gone from Claude variants** (Claude
+  has no such frontmatter field).
+
 ### New in v0.6.0 — four model tiers, project-scoped model settings & MCPs, closed tier names
 
 **`review` is the fourth model tier.** Model routes are now `architectural`

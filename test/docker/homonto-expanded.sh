@@ -75,10 +75,11 @@ is_file "$W/.homonto/catalog/subagents/onto-explorer.md"
 is_file "$W/.homonto/catalog/subagents/onto-implementer.md"
 is_file "$W/.homonto/catalog/subagents/onto-skeptic.md"
 # Homonto-block subagents materialize per-tool variants; the Claude variant of a
-# read-only spawn:[] agent carries a tools: allowlist WITHOUT Edit/Write/Task, and
-# stamps the role's model (this config maps the claude review tier -> opus).
-in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'tools: Read, Grep, Glob'
-if grep -qE 'Edit|Write|Task' "$W/.homonto/catalog/subagents/onto-reviewer.claude.md"; then fail "read-only reviewer must not carry Edit/Write/Task in Claude"; fi
+# read-only spawn:[] agent denies exactly the removed capabilities (everything
+# else keeps Claude's defaults), and stamps the role's model (this config maps
+# the claude review tier -> opus).
+in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'disallowedTools: Edit, Write, NotebookEdit, Agent, Task'
+if grep -qE '^tools:|^mode:' "$W/.homonto/catalog/subagents/onto-reviewer.claude.md"; then fail "claude render must not carry a tools: allowlist or mode: field"; fi
 # Claude has no variant field: a variant brackets the ALIAS into the model, and
 # effort is its own field. Both come from the review tier.
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'model: opus\[1m\]'
@@ -87,11 +88,12 @@ in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'effort: high'
 # review tier but thinks at max, and still inherits that tier's model.
 in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'effort: max'
 in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'model: opus\[1m\]'
-# The implementer edits (coding model) but still spawns nothing (no Task).
+# The implementer edits (coding model) but still spawns nothing: the only
+# denial is spawning — Edit/Write stay available (absent from the denylist).
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'model: sonnet'
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'effort: medium'
-in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'Edit, Write'
-if grep -qE 'Task' "$W/.homonto/catalog/subagents/onto-implementer.claude.md"; then fail "spawn:[] implementer must not carry Task"; fi
+in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'disallowedTools: Agent, Task'
+if grep -qE 'disallowedTools:.*Edit' "$W/.homonto/catalog/subagents/onto-implementer.claude.md"; then fail "edit-capable implementer must not deny Edit"; fi
 # The onto primary agent is OpenCode-only: agentfm skips its Claude render, so
 # the .claude.md variant is absent while the .opencode.md variant exists.
 is_file "$W/.homonto/catalog/subagents/onto.md"

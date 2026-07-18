@@ -97,11 +97,13 @@ mode: subagent
 ## Per-tool frontmatter (the `homonto:` block)
 
 Claude Code and OpenCode express an agent's capabilities differently, and the
-two forms **cannot share one file**: Claude uses a `tools:` allowlist string,
-while OpenCode uses a `permission:` map and `mode` and rejects a string
-`tools:`. So a builtin subagent declares its intent once, tool-neutrally, in
-a `homonto:` frontmatter block, and `apply` renders each tool's native
-dialect:
+two forms **cannot share one file**. So a builtin subagent declares its
+intent once, tool-neutrally, in a `homonto:` frontmatter block, and `apply`
+renders each tool's native dialect. Both dialects **deny by exception** —
+Claude a `disallowedTools:` denylist, OpenCode a `permission:` map — so the
+same neutral denial removes the same capability in both tools, and every
+capability the intent does not deny keeps the tool's default (nothing is
+silently stripped by an allowlist):
 
 ```markdown
 ---
@@ -112,25 +114,29 @@ homonto:
   role: coding        # model tier → stamped from [models.<tool>.coding]
   read_only: false    # deny edits/writes when true
   bash: false         # optional; false denies bash (default: allowed)
-  dialogs: true       # allow the interactive question/dialog tool
+  dialogs: false      # question tool denied — subagents return a Questions: section
   spawn: []           # delegation topology: agents this one may dispatch
   primary: true       # OpenCode primary agent; the Claude variant is skipped
-  steps: 60           # OpenCode iteration budget
+  steps: 60           # iteration budget (OpenCode steps / Claude maxTurns)
 ---
 <prompt body>
 ```
 
 Rendering, by explicit parity tier:
 
-| Neutral intent | Claude (`tools:` allowlist) | OpenCode (`permission:` / `mode`) |
+| Neutral intent | Claude (`disallowedTools:` denylist) | OpenCode (`permission:` / `mode`) |
 |---|---|---|
-| `read_only: true` | omit `Edit`/`Write` | `edit: deny` |
-| `bash: false` | omit `Bash` | `bash: deny` |
-| `dialogs: true` | (AskUserQuestion is built in) | `question: allow` |
+| `read_only: true` | deny `Edit`, `Write`, `NotebookEdit` | `edit: deny` |
+| `bash: false` | deny `Bash` | `bash: deny` |
+| `dialogs: true` / `false` | *(advisory — AskUserQuestion is never available to Claude subagents; the body's `Questions:`-return protocol is the cross-tool contract)* | `question: allow` / `question: deny` |
 | `role: <tier>` | `model: <claude route>` | `model: <opencode route>` |
-| `spawn: []` | omit `Task` | `task: deny` |
-| `spawn: [a,b]` | `Task` present (advisory) | `task:` globs allowing only `a`,`b` |
-| `primary` / `steps` | *(no concept — Claude variant skipped)* | `mode: primary`, `steps:` |
+| `spawn: []` | deny `Agent` (and its former name `Task`) | `task: deny` |
+| `spawn: [a,b]` | spawning stays available (advisory) | `task:` globs allowing only `a`,`b` |
+| `steps` | `maxTurns:` | `steps:` |
+| `primary` | *(no concept — Claude variant skipped)* | `mode: primary` |
+
+The Claude variant carries no `mode:` line (Claude has no such field); the
+OpenCode variant re-emits `mode: subagent`/`mode: primary`.
 
 `role` maps to the tool's model from the user's `[models.<tool>.<role>]`
 route, so the same declaration yields `opus` in Claude and the OpenCode model

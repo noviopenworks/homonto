@@ -5,12 +5,12 @@ mode: subagent
 # Neutral capability intent — homonto renders it into each tool's native fields:
 # Claude's `tools:` allowlist and OpenCode's `permission:` map (internal/agentfm).
 # Exploration is read-only with no shell (bash denied), spawns nothing, uses the
-# fast/cheap trivial-tier model, and may ask via a dialog.
+# fast/cheap trivial-tier model; it returns questions instead of prompting.
 homonto:
   role: trivial
   read_only: true
   bash: false
-  dialogs: true
+  dialogs: false
   spawn: []
 ---
 

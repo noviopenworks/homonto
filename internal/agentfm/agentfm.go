@@ -1,31 +1,38 @@
 // Package agentfm renders per-tool subagent frontmatter from one neutral source.
 //
-// Claude Code and OpenCode express an agent's capabilities differently (Claude:
-// a `tools:` allowlist string; OpenCode: a `permission:` map and `mode`), and the
-// two cannot coexist in one file (OpenCode rejects a string `tools:`). So an
-// agent declares its intent once, tool-neutrally, in a `homonto:` frontmatter
-// block, and Render() emits each tool's native dialect:
+// Claude Code and OpenCode express an agent's capabilities differently, and the
+// two dialects cannot coexist in one file. So an agent declares its intent
+// once, tool-neutrally, in a `homonto:` frontmatter block, and Render() emits
+// each tool's native dialect:
 //
 //	---
 //	name: onto-reviewer
 //	description: ...
 //	mode: subagent
 //	homonto:
-//	  role: architectural   # model tier → stamped from [models.<tool>.<role>]
+//	  role: review          # model tier → stamped from [models.<tool>.<role>]
 //	  read_only: true       # deny edits/writes
 //	  bash: false           # optional; false denies bash (default: allowed)
-//	  dialogs: true          # allow the interactive question/dialog tool
+//	  dialogs: true         # allow the interactive question/dialog tool
 //	  spawn: []             # delegation topology: agents this one may dispatch
 //	  primary: true         # OpenCode primary agent; SKIPPED for Claude
-//	  steps: 60             # OpenCode iteration budget
+//	  steps: 60             # iteration budget (OpenCode steps / Claude maxTurns)
 //	---
 //	<prompt body>
 //
-// Parity is by explicit tiers: read_only/bash/role/spawn:[] render fully in both
-// tools; a named spawn list is enforced in OpenCode (task globs) and advisory in
-// Claude (Task present); primary/steps are OpenCode-only (Render returns nil for
-// the Claude variant of a primary agent — its entry point is the /onto command).
-// Every non-homonto frontmatter line except `mode:` is preserved verbatim.
+// Both tools deny by exception, so the same denials carry to both without
+// information loss: Claude renders a `disallowedTools:` denylist and OpenCode a
+// `permission:` map, and every capability the intent does not deny stays at the
+// tool's default. read_only/bash/spawn:[] render fully in both tools; `dialogs`
+// is enforced in OpenCode (`question: allow|deny`) and is Claude-advisory only
+// (AskUserQuestion is never available to Claude subagents, so the body's
+// return-a-Questions-section protocol is the cross-tool contract); a named
+// spawn list is enforced in OpenCode (task globs) and advisory in Claude;
+// `steps` renders as OpenCode `steps:` and Claude `maxTurns:`; `primary` is
+// OpenCode-only (Render returns nil for the Claude variant of a primary agent —
+// its entry point is the /onto command). Every non-homonto frontmatter line
+// except `mode:` is preserved verbatim (`mode:` is re-emitted for OpenCode
+// only; Claude has no such field).
 package agentfm
 
 import (
@@ -201,7 +208,13 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 		if h.Primary {
 			return nil, nil // Claude has no primary-agent concept; entry is /onto
 		}
-		extra = append(extra, "mode: subagent", "tools: "+claudeTools(h))
+		// Claude has no `mode:` field — emitting one would be unrecognized
+		// noise — and models capability as a denylist (`disallowedTools`), the
+		// mirror of OpenCode's permission denials: everything the intent does
+		// not deny stays available, so no default capability is silently lost.
+		if deny := claudeDisallowed(h); deny != "" {
+			extra = append(extra, "disallowedTools: "+deny)
+		}
 		// Claude carries the variant inside the model string (`opus[1m]`) and
 		// effort as its own frontmatter field.
 		m, merr := claudeModel(spec)
@@ -213,6 +226,10 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 		}
 		if spec.Effort != "" {
 			extra = append(extra, "effort: "+spec.Effort)
+		}
+		// The shared iteration budget: OpenCode spells it steps, Claude maxTurns.
+		if h.Steps > 0 {
+			extra = append(extra, fmt.Sprintf("maxTurns: %d", h.Steps))
 		}
 	case "opencode":
 		mode := "subagent"
@@ -254,24 +271,28 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 	return b.Bytes(), nil
 }
 
-// claudeTools renders the Claude `tools:` allowlist. Claude models capability as
-// an allowlist (not a deny map), so this enumerates what the agent MAY use:
-// read tools always; Bash unless denied; Edit/Write unless read_only; Task
-// unless the agent declares it may spawn nothing (spawn: []).
-func claudeTools(h Homonto) string {
-	tools := []string{"Read", "Grep", "Glob"}
-	if h.Bash == nil || *h.Bash {
-		tools = append(tools, "Bash")
+// claudeDisallowed renders the Claude `disallowedTools:` denylist — the mirror
+// of opencodePermission's denials, so the same neutral intent removes the same
+// capabilities in both tools and everything else keeps the tool's defaults. (A
+// `tools:` allowlist would instead silently strip every unlisted default —
+// WebFetch, WebSearch, Skill, … — that the OpenCode variant retains.)
+// read_only denies the file-mutating tools; bash: false denies Bash; spawn: []
+// denies spawning (both the current Agent name and its former name Task; an
+// unknown name in the denylist is inert). A named spawn list is advisory in
+// Claude — spawning stays available, scoped by the body — and enforced in
+// OpenCode. Returns "" when nothing is denied.
+func claudeDisallowed(h Homonto) string {
+	var deny []string
+	if h.ReadOnly {
+		deny = append(deny, "Edit", "Write", "NotebookEdit")
 	}
-	if !h.ReadOnly {
-		tools = append(tools, "Edit", "Write")
+	if h.Bash != nil && !*h.Bash {
+		deny = append(deny, "Bash")
 	}
-	// spawn nil → unrestricted (Task allowed); spawn [] → no spawning (omit Task);
-	// spawn [named] → Task allowed (Claude cannot scope to specific agents).
-	if h.Spawn == nil || len(*h.Spawn) > 0 {
-		tools = append(tools, "Task")
+	if h.Spawn != nil && len(*h.Spawn) == 0 {
+		deny = append(deny, "Agent", "Task")
 	}
-	return strings.Join(tools, ", ")
+	return strings.Join(deny, ", ")
 }
 
 // opencodePermission renders the OpenCode `permission:` block body (indented
@@ -284,8 +305,14 @@ func opencodePermission(h Homonto) string {
 	if h.Bash != nil && !*h.Bash {
 		lines = append(lines, "  bash: deny")
 	}
+	// dialogs is enforced both ways: an agent whose protocol is "return a
+	// Questions: section, never prompt" must actually be unable to prompt —
+	// omitting the line would leave OpenCode's default (available) in place
+	// and the intent silently unenforced.
 	if h.Dialogs {
 		lines = append(lines, "  question: allow")
+	} else {
+		lines = append(lines, "  question: deny")
 	}
 	if h.Spawn != nil {
 		if len(*h.Spawn) == 0 {

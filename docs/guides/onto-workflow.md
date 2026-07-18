@@ -43,7 +43,7 @@ through homonto first**. This is how the skills land in your tools:
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
-# plus all three [models.<tool>.*] routes — see the configuration reference
+# plus all four [models.<tool>.*] routes — see the configuration reference
 ```
 
 Then `homonto apply`. The read-only commands (`status`, `state`, `gate`,
@@ -118,13 +118,13 @@ the names collide.
   route.
 - **`onto-reviewer`** — read-only; reviews a diff for correctness, security,
   contract, and clarity, ranked by severity. Used per task in build and
-  across the diff in verify. Runs on the `architectural` route.
+  across the diff in verify. Runs on the `review` route.
 - **`onto-implementer`** — edit-capable executor on the `coding` route. It
   executes one bite-sized task from a precise spec and returns a diff. It
   does not plan or judge scope, and it reports discovered work rather than
   doing it.
 - **`onto-skeptic`** — read-only adversarial verifier on the
-  `architectural` route, used in the verify phase. It is dispatched **twice
+  `review` route, used in the verify phase. It is dispatched **twice
   in parallel**, one lens each (`conformance`: refute each scenario's
   evidence; `robustness`: attack the gaps the scenarios never cover), and is
   prompted to **refute, never approve** (ADR 0007). It keeps bash so it can
@@ -136,13 +136,14 @@ the orchestrator, because those steps are gated on user confirmation and a
 subagent cannot prompt.
 
 All declare their capabilities once in a tool-neutral `homonto:` frontmatter
-block, rendered into Claude's `tools:` allowlist and OpenCode's
-`permission:` map (see [subagents](subagents.md)). Parallelization and
-dialogs work in both tools: the build phase fans out independent tasks'
-investigation and review concurrently, and gate decisions are asked through
-an interactive dialog (`onto gate --json` supplies the structured decision;
-the skill renders it). The orchestrator — your main session — still owns
-every edit and commit.
+block, rendered into Claude's `disallowedTools:` denylist and OpenCode's
+`permission:` map (see [subagents](subagents.md)). Parallelization works in
+both tools: the build phase fans out independent tasks' investigation and
+review concurrently. Dialogs belong to the orchestrator alone — subagents
+have the question tool denied and return a `Questions:` section instead —
+and gate decisions are asked through an interactive dialog (`onto gate
+--json` supplies the structured decision; the skill renders it). The
+orchestrator — your main session — still owns every edit and commit.
 
 ## Working in a dirty tree
 

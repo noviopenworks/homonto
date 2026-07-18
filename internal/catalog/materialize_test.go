@@ -144,8 +144,8 @@ func TestMaterializeSubagentsWritesPerToolVariants(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claude variant not written: %v", err)
 	}
-	if !bytes.Contains(claude, []byte("tools: Read, Grep, Glob")) || bytes.Contains(claude, []byte("permission:")) {
-		t.Errorf("claude variant should carry a tools allowlist and no permission block:\n%s", claude)
+	if !bytes.Contains(claude, []byte("disallowedTools: Edit, Write, NotebookEdit, Agent, Task")) || bytes.Contains(claude, []byte("permission:")) {
+		t.Errorf("claude variant should carry the denylist and no permission block:\n%s", claude)
 	}
 	oc, err := os.ReadFile(filepath.Join(dst, "onto-reviewer.opencode.md"))
 	if err != nil {

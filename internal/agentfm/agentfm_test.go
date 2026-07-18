@@ -60,18 +60,41 @@ func TestNeedsTransform(t *testing.T) {
 
 func TestRenderClaude_ReadOnlyReviewer(t *testing.T) {
 	s := mustRender(t, readOnlyReviewer, "claude")
-	// read-only + spawn:[] → allowlist without Edit/Write and without Task.
-	if !strings.Contains(s, "tools: Read, Grep, Glob, Bash\n") {
-		t.Errorf("claude tools wrong:\n%s", s)
+	// read-only + spawn:[] → a denylist covering exactly the denied intent;
+	// everything else keeps Claude's defaults (no allowlist stripping them).
+	if !strings.Contains(s, "disallowedTools: Edit, Write, NotebookEdit, Agent, Task\n") {
+		t.Errorf("claude denylist wrong:\n%s", s)
 	}
-	if strings.Contains(s, "Task") || strings.Contains(s, "Edit") || strings.Contains(s, "Write") {
-		t.Errorf("read-only non-spawning agent must not carry Task/Edit/Write:\n%s", s)
+	if strings.Contains(s, "tools:") {
+		t.Errorf("claude output must deny by exception, not allowlist:\n%s", s)
+	}
+	// Claude has no mode: field — emitting one is unrecognized noise.
+	if strings.Contains(s, "mode:") {
+		t.Errorf("claude output must not carry mode:\n%s", s)
 	}
 	if !strings.Contains(s, "model: opus\n") {
 		t.Errorf("role architectural must stamp model: opus:\n%s", s)
 	}
 	if strings.Contains(s, "permission:") || strings.Contains(s, "homonto:") {
 		t.Errorf("claude output must not carry permission/homonto:\n%s", s)
+	}
+}
+
+func TestRenderClaude_EditCapableWorker(t *testing.T) {
+	// read_only: false + bash allowed + spawn:[] → only spawning is denied.
+	worker := strings.Replace(readOnlyReviewer, "  read_only: true\n", "", 1)
+	s := mustRender(t, worker, "claude")
+	if !strings.Contains(s, "disallowedTools: Agent, Task\n") {
+		t.Errorf("worker must deny only spawning:\n%s", s)
+	}
+}
+
+func TestRenderClaude_StepsBecomeMaxTurns(t *testing.T) {
+	// steps on a NON-primary agent renders as Claude's maxTurns.
+	bounded := strings.Replace(readOnlyReviewer, "homonto:\n", "homonto:\n  steps: 40\n", 1)
+	s := mustRender(t, bounded, "claude")
+	if !strings.Contains(s, "maxTurns: 40\n") {
+		t.Errorf("steps must render as Claude maxTurns:\n%s", s)
 	}
 }
 
@@ -105,11 +128,22 @@ func TestRenderPrimary_ClaudeSkipped_OpenCodeMode(t *testing.T) {
 			t.Errorf("opencode spawn topology missing %q:\n%s", want, oc)
 		}
 	}
-	// Claude view of a NON-primary agent with the same named spawn: Task present
-	// (advisory), since Claude cannot scope to specific agents.
+	// Claude view of a NON-primary agent with the same named spawn: spawning
+	// stays available (Agent/Task not denied) — the named list is advisory in
+	// Claude, enforced in OpenCode.
 	named := strings.Replace(orchestrator, "  primary: true\n  steps: 60\n", "", 1)
-	if cl := mustRender(t, named, "claude"); !strings.Contains(cl, "Task") {
-		t.Errorf("named-spawn agent should keep Task in Claude (advisory):\n%s", cl)
+	if cl := mustRender(t, named, "claude"); strings.Contains(cl, "Agent, Task") {
+		t.Errorf("named-spawn agent must not deny spawning in Claude:\n%s", cl)
+	}
+}
+
+// dialogs is enforced BOTH ways in OpenCode: false must render question: deny,
+// or the "subagents never prompt" protocol is silently unenforced there.
+func TestRenderOpenCode_NoDialogsDeniesQuestion(t *testing.T) {
+	silent := strings.Replace(readOnlyReviewer, "  dialogs: true\n", "", 1)
+	s := mustRender(t, silent, "opencode")
+	if !strings.Contains(s, "  question: deny") {
+		t.Errorf("dialogs:false must render question: deny:\n%s", s)
 	}
 }
 
