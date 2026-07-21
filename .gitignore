@@ -14,3 +14,6 @@ __pycache__/
 # E2E matrix run logs (scratch)
 test/e2e/.out/
 /.superpowers/
+# Comet per-change runtime artifacts (trajectory, checkpoints, skill snapshots).
+# The tracked state file .comet.yaml and the durable artifacts stay tracked.
+openspec/changes/*/.comet/
