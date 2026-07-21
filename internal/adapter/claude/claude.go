@@ -38,10 +38,8 @@ func New(home, content string) *Adapter {
 }
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
-// used for project-scope resource placement. MCP servers and explicit settings
-// always project under home; the route-derived default-model key projects
-// under projectRoot when every model-backed resource is project-scoped (see
-// config.ModelSettingsScope).
+// used for project-scope resource placement. Explicit settings remain in the
+// user settings file; project-scoped MCP servers use the project MCP file.
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.Base.ProjectRoot = projectRoot
 	return a
@@ -82,9 +80,8 @@ func (a *Adapter) settingsJSON() string {
 }
 
 // projectSettingsJSON is the project-level settings file (merged by Claude Code
-// over the user one, project winning on conflicting keys). Only the
-// route-derived default-model key ever lands here; call only when projectRoot
-// is set.
+// over the user one, project winning on conflicting keys). It remains part of
+// the projection plumbing to prune prior projsetting.* state entries.
 func (a *Adapter) projectSettingsJSON() string {
 	return filepath.Join(a.ProjectRoot, ".claude", "settings.json")
 }

@@ -153,9 +153,7 @@ func TestRenderOpenCode_NoDialogsDeniesQuestion(t *testing.T) {
 
 func TestRender_NoHomontoBlock_Unchanged(t *testing.T) {
 	in := "---\nname: x\ndescription: y\nmode: subagent\n---\nbody\n"
-	// Pass an explicit model so a no-homonto block stays unchanged for the
-	// right reason (no transform needed) rather than the wrong one (no model
-	// → render error).
+	// A missing homonto block returns before model context is considered.
 	if out := mustRender(t, in, "claude"); out != in {
 		t.Errorf("content without a homonto block must be unchanged\n got: %q", out)
 	}

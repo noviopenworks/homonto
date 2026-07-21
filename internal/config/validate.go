@@ -470,6 +470,15 @@ func validateModelSpec(tool, label string, r ModelRoute, requireModel bool) erro
 // override on those sources could never apply and is rejected separately by
 // validateSubagentOverrides. The per-subagent override walk also runs here so
 // both checks report a deterministic offender.
+//
+// The check covers BOTH explicit [subagents.<name>] declarations and the
+// builtin subagents a framework expands. The explicit walk below iterates
+// c.Subagents by config key; the framework-expanded walk iterates
+// ExpandedSubagentEntriesForTool and resolves each expanded builtin's model
+// the same way rendering does (catalog name → c.Subagents[<catalog-name>]
+// override block). Without the second walk a config that installs a framework
+// but omits the per-tool model blocks for its expanded agents would load
+// clean and render agents with no model line — the silent default R1 forbids.
 func validateModels(c *Config) error {
 	for _, tool := range c.EnabledModelTools() {
 		for _, name := range sortedSubagentNames(c) {
@@ -492,6 +501,72 @@ func validateModels(c *Config) error {
 			}
 			label := "subagents." + name + "." + tool
 			if err := validateModelSpec(tool, label, sa.ModelOverrideFor(tool), true); err != nil {
+				return err
+			}
+		}
+		// Framework-expanded walk: cover builtin subagents a framework
+		// installs that have no matching explicit [subagents.<name>]
+		// declaration. The explicit walk above misses them (their config
+		// keys are absent from c.Subagents), and without this check they
+		// would render through agentfm with no model line.
+		//
+		// Resolve an expanded entry's model the same way rendering does
+		// (engine.subagentRenderContext): iterate c.Subagents and key each
+		// override by the entry's resolved catalog name, so an explicit
+		// [subagents.x] source="builtin:architect" contributes the override
+		// for catalog name "architect" (not "x"). An explicit declaration
+		// (any non-tune-only entry whose source resolves to the catalog
+		// name) targeting this tool was already checked above; only entries with
+		// NO explicit declaration for this tool — or with only a tune-only retune
+		// — fall through here.
+		//
+		// Tolerate expansion errors (e.g. a stale [frameworks.comet] whose
+		// catalog was removed): the engine and doctor already report them
+		// as warnings, the explicit walk above still catches must-declare
+		// failures for explicit declarations, and propagating here would
+		// regress `homonto doctor` on configs it was designed to tolerate.
+		expanded, err := c.ExpandedSubagentEntriesForTool(tool)
+		if err != nil {
+			continue
+		}
+		routeByCat := map[string]ModelRoute{}
+		declaredByCat := map[string]bool{}
+		for _, name := range sortedSubagentNames(c) {
+			sa := c.Subagents[name]
+			var cat string
+			if sa.IsTuneOnly() {
+				// A tune-only entry names the catalog agent directly (its
+				// retune target). Its override still applies, but it does
+				// not count as an explicit declaration for the must-declare
+				// check (which the explicit walk owns).
+				cat = name
+			} else {
+				catName, ok := SubagentCatalogName(sa.Source)
+				if !ok {
+					continue
+				}
+				cat = catName
+				// A declaration only covers an expanded agent for tools it
+				// targets. Its override may still be a model source for either
+				// rendered tool, matching engine.subagentRenderContext.
+				if slices.Contains(sa.TargetsOrAll(), tool) {
+					declaredByCat[cat] = true
+				}
+			}
+			if r := sa.ModelOverrideFor(tool); r != (ModelRoute{}) {
+				routeByCat[cat] = r
+			}
+		}
+		for _, e := range expanded {
+			cat, ok := SubagentCatalogName(e.Resource.Source)
+			if !ok {
+				continue // local:/remote: content is projected verbatim
+			}
+			if declaredByCat[cat] {
+				continue // explicit declaration; checked above
+			}
+			label := "subagents." + cat + "." + tool
+			if err := validateModelSpec(tool, label, routeByCat[cat], true); err != nil {
 				return err
 			}
 		}

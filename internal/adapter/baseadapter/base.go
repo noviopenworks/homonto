@@ -311,13 +311,6 @@ func (b *Base) copyPruneRoots() []string {
 	return roots
 }
 
-// ProjectModelSettings reports whether the route-derived default-model key(s)
-// belong in the project-level config rather than the user file: every
-// model-backed resource is project-scoped and a project root is known.
-func (b *Base) ProjectModelSettings(c *config.Config) bool {
-	return b.ProjectRoot != "" && c.ModelSettingsScope(b.Tool) == "project"
-}
-
 // Expand resolves the config's skill/command/subagent entries for this tool
 // into the Base's instance fields. Both Plan and Apply call it first so Apply's
 // file entries derive from the supplied config rather than a prior Plan.

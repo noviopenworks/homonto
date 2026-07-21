@@ -17,6 +17,30 @@ var files = map[string]string{
 # [frameworks.onto]
 # source = "builtin:onto"
 # scope = "project"
+# A framework expands its catalog subagents; each MUST declare a per-tool
+# block (subagents.<name>.<tool>) with a non-empty model.
+# [subagents.onto.claude]
+# model = "opus"
+# [subagents.onto.opencode]
+# model = "anthropic/claude-opus-4-8"
+# [subagents.onto-explorer.claude]
+# model = "haiku"
+# [subagents.onto-explorer.opencode]
+# model = "openai/gpt-5-mini"
+# [subagents.onto-reviewer.claude]
+# model = "opus"
+# effort = "high"
+# [subagents.onto-reviewer.opencode]
+# model = "anthropic/claude-opus-4-8"
+# [subagents.onto-implementer.claude]
+# model = "sonnet"
+# [subagents.onto-implementer.opencode]
+# model = "anthropic/claude-sonnet-4-5"
+# [subagents.onto-skeptic.claude]
+# model = "opus"
+# effort = "high"
+# [subagents.onto-skeptic.opencode]
+# model = "anthropic/claude-opus-4-8"
 
 # [skills.graphify]
 # source = "local:graphify"
@@ -27,11 +51,12 @@ var files = map[string]string{
 # scope = "user"
 # targets = ["opencode"]
 
+# A standalone builtin subagent (no framework) still needs both tool blocks.
+# Every declared subagent MUST declare a per-tool block (subagents.<name>.<tool>)
+# with a non-empty model. Effort and variant are optional.
 # [subagents.reviewer]
 # source = "builtin:onto-reviewer"
 # scope = "project"
-# Every declared subagent MUST declare a [subagents.<name>.<tool>] block per
-# target tool with a non-empty model. Effort and variant are optional.
 # [subagents.reviewer.claude]
 # model = "opus"
 # effort = "high"

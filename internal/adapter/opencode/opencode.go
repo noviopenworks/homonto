@@ -40,10 +40,8 @@ func New(home, content string) *Adapter {
 }
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
-// used for project-scope resource placement. MCP servers, explicit settings,
-// and plugins always project under home; the route-derived default-model keys
-// project under projectRoot when every model-backed resource is project-scoped
-// (see config.ModelSettingsScope).
+// used for project-scope resource placement. Explicit settings and plugins
+// remain in the user config; project-scoped MCP servers use the project config.
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.Base.ProjectRoot = projectRoot
 	return a
@@ -83,8 +81,8 @@ func (a *Adapter) cfgFile() string {
 }
 
 // projectCfgFile is the project-level OpenCode config (merged by OpenCode over
-// the global one, project winning on conflicting keys). Only the route-derived
-// default-model keys ever land here; call only when projectRoot is set.
+// the global one, project winning on conflicting keys). It remains part of the
+// projection plumbing to prune prior projsetting.* state entries.
 func (a *Adapter) projectCfgFile() string {
 	return filepath.Join(a.ProjectRoot, "opencode.jsonc")
 }

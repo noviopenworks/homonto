@@ -266,11 +266,10 @@ type Config struct {
 	Skills        map[string]Resource `toml:"skills"`
 	Commands      map[string]Resource `toml:"commands"`
 	Subagents     map[string]Subagent `toml:"subagents"`
-	// Models captures any legacy [models.<tool>.<tier>] block. Tier routing
-	// is gone; the field exists only so Load can fail loudly naming the
-	// offender (pelletier/go-toml/v2 cannot write to unexported fields, so
-	// the field is exported but its type is private — no caller can read or
-	// construct the value, only Load can detect-and-reject it).
+	// Models captures any legacy [models.<tool>.<tier>] block so Load can
+	// detect and reject it. The field must be exported for pelletier/go-toml/v2
+	// to populate it; the private type is not an access restriction, since
+	// callers can read its exported fields.
 	Models       modelsTable      `toml:"models"`
 	Plugins      Plugins          `toml:"plugins"`
 	Settings     Settings         `toml:"settings"`
@@ -339,8 +338,7 @@ func (c *Config) SubagentEntriesForTool(tool string) []NamedResource {
 // modelsTable is the post-removal detector shape for legacy [models.<tool>.<tier>]
 // blocks. Load rejects any non-empty value naming the offending key, so a
 // config edited for the old tier system gets a clear error instead of silently
-// dropping its model declarations. The type is private so no caller can read
-// or construct the value.
+// dropping its model declarations.
 type modelsTable struct {
 	Claude   map[string]ModelRoute `toml:"claude"`
 	OpenCode map[string]ModelRoute `toml:"opencode"`

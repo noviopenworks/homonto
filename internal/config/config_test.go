@@ -570,7 +570,7 @@ func TestLoadRejectsUnknownResourceTargets(t *testing.T) {
 	}
 }
 
-func TestLoadRequiresAllModelLevelsForEnabledTools(t *testing.T) {
+func TestLoadRequiresPerToolModelForEnabledSubagents(t *testing.T) {
 	// A declared subagent must declare its model for every enabled tool. The
 	// must-declare check names the offender: <subagent>.<tool> model is required.
 	doc := `
@@ -592,6 +592,62 @@ model = "anthropic/claude-opus-4-8"
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error %v does not mention %q", err, want)
 		}
+	}
+}
+
+// TestLoadRequiresModelsForFrameworkExpandedSubagents locks in the
+// framework-expanded half of the must-declare check (I1): a config that
+// installs a framework but omits the per-tool [subagents.<name>.<tool>]
+// model blocks for its expanded builtin subagents fails at load. Without
+// this check the framework's agents would render through agentfm with no
+// model line — a silent default R1 forbids. The explicit-walk alone misses
+// them because the expanded agents are absent from c.Subagents.
+func TestLoadRequiresModelsForFrameworkExpandedSubagents(t *testing.T) {
+	doc := `
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+`
+	err := loadDoc(t, doc)
+	if err == nil {
+		t.Fatal("framework expanding builtin subagents with no [subagents.<name>.<tool>] model accepted; want load error")
+	}
+	// The error names the first expanded builtin (alphabetically) and its
+	// first enabled tool (claude sorts before opencode). onto is the onto
+	// framework's primary dispatcher, expanded first in sorted order.
+	for _, want := range []string{"subagents.onto.claude", "model is required"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error %v does not mention %q", err, want)
+		}
+	}
+}
+
+func TestLoadRequiresModelForFrameworkAgentOutsideExplicitAliasTargets(t *testing.T) {
+	doc := `
+[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+targets = ["claude"]
+
+[subagents.alias]
+source = "builtin:onto-reviewer"
+scope = "project"
+targets = ["opencode"]
+[subagents.alias.opencode]
+model = "anthropic/claude-opus-4-8"
+
+[subagents.onto.claude]
+model = "opus"
+[subagents.onto-explorer.claude]
+model = "haiku"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
+`
+	err := loadDoc(t, doc)
+	if err == nil || !strings.Contains(err.Error(), "subagents.onto-reviewer.claude model is required") {
+		t.Fatalf("framework agent omitted by an explicit alias's target restriction must fail at load, got: %v", err)
 	}
 }
 
@@ -764,10 +820,12 @@ scope = "project"
 [subagents.onto-skeptic]
 targets = ["opencode"]
 [subagents.onto-skeptic.claude]
+model = "opus"
 effort = "banana"
 [subagents.onto-skeptic.opencode]
 model = "anthropic/claude-opus-4-8"
-`)
+
+`+modelsFor("onto", "onto-explorer", "onto-reviewer", "onto-implementer"))
 		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {
 			t.Fatalf("an override for a tool outside the entry's targets must still be validated, got: %v", err)
 		}
@@ -780,6 +838,7 @@ model = "anthropic/claude-opus-4-8"
 source = "builtin:onto"
 scope = "project"
 
+`+ontoFrameworkModels()+`
 [subagents.onto-skepic.claude]
 effort = "max"
 `)
@@ -834,7 +893,8 @@ model = "opus"
 effort = "low"
 [subagents.b.opencode]
 model = "anthropic/claude-opus-4-8"
-`
+
+` + modelsFor("onto", "onto-explorer", "onto-reviewer", "onto-implementer")
 	err := loadDoc(t, doc)
 	if err == nil || !strings.Contains(err.Error(), "must agree") {
 		t.Fatalf("conflicting overrides for one builtin must be a deterministic load error, got: %v", err)
@@ -858,7 +918,8 @@ model = "anthropic/claude-opus-4-8"
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
-`)
+
+`+modelsFor("onto", "onto-explorer", "onto-reviewer", "onto-implementer"))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -1555,43 +1616,6 @@ func TestUnknownModelTierRejected(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "models.opencode.reviewing") {
 		t.Fatalf("error must name the offending table, got: %v", err)
-	}
-}
-
-// TestModelSettingsScope: the route-derived default-model settings follow the
-// scope of the model-backed resources — project only when every one is
-// project-scoped, user on any user-scope resource or when nothing is
-// model-backed.
-func TestModelSettingsScope(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "homonto.toml")
-	load := func(doc string) *Config {
-		if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		c, err := Load(p)
-		if err != nil {
-			t.Fatalf("load: %v\n%s", err, doc)
-		}
-		return c
-	}
-
-	allProject := load("[frameworks.onto]\nsource=\"builtin:onto\"\nscope=\"project\"\ntargets=[\"opencode\"]\n" + validModelsBothTools())
-	if got := allProject.ModelSettingsScope("opencode"); got != "project" {
-		t.Fatalf("all-project config must scope opencode model settings to project, got %q", got)
-	}
-	if got := allProject.ModelSettingsScope("claude"); got != "user" {
-		t.Fatalf("claude has no model-backed resource here and must stay user, got %q", got)
-	}
-
-	mixed := load("[frameworks.onto]\nsource=\"builtin:onto\"\nscope=\"project\"\ntargets=[\"opencode\"]\n" +
-		"[commands.review]\nsource=\"builtin:example-command\"\nscope=\"user\"\ntargets=[\"opencode\"]\n" + validModelsBothTools())
-	if got := mixed.ModelSettingsScope("opencode"); got != "user" {
-		t.Fatalf("any user-scope model-backed resource must keep model settings global, got %q", got)
-	}
-
-	none := load(validModelsBothTools())
-	if got := none.ModelSettingsScope("opencode"); got != "user" {
-		t.Fatalf("no model-backed resource must keep model settings global, got %q", got)
 	}
 }
 
