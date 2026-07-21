@@ -73,8 +73,8 @@ each artifact from its canonical template:
   ending **any** turn that produced new decisions — this is the
   compaction-recovery checkpoint.
 - `proposal.md` — template: `references/proposal.md`; fill the skeleton `onto
-  new` created. State the intended scope and acceptance scenarios; the concrete
-  task list is **not** written here — it follows from the design.
+  new` created. State the intended scope, non-goals, and acceptance scenarios;
+  the concrete task list is **not** written here — it follows from the design.
 
 Everything in the proposal must trace back to the confirmed clarification
 summary — no invented scope.

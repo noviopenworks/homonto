@@ -23,6 +23,13 @@ summary.
 
 - <bulleted, specific; mark breaking changes **BREAKING**>
 
+## Non-Goals
+
+- <explicitly out of scope — capabilities, behaviors, users, platforms, or
+  follow-ups this change will NOT address; traces to the confirmed
+  clarification summary. Distinct from "Untouched" below, which is about
+  which capability *spec files* are untouched, not behavioral scope>
+
 ## Capability Impact
 
 - **New**: `<capability>` — <one line> (creates docs/specs/<capability>.md)
