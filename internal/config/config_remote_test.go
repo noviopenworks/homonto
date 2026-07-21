@@ -20,7 +20,7 @@ func TestRemoteSourceRequiresDigest(t *testing.T) {
 	const validHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 	t.Run("valid pin loads", func(t *testing.T) {
-		c, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + validHex + "\"\nscope=\"project\"\n" + validModelsBothTools())
+		c, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + validHex + "\"\nscope=\"project\"\n")
 		if err != nil {
 			t.Fatalf("valid pinned remote source should load: %v", err)
 		}
@@ -30,7 +30,7 @@ func TestRemoteSourceRequiresDigest(t *testing.T) {
 	})
 
 	t.Run("missing digest rejected", func(t *testing.T) {
-		_, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\nscope=\"project\"\n" + validModelsBothTools())
+		_, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\nscope=\"project\"\n")
 		if err == nil {
 			t.Fatal("remote source without digest must be rejected")
 		}
@@ -40,21 +40,21 @@ func TestRemoteSourceRequiresDigest(t *testing.T) {
 	})
 
 	t.Run("malformed digest rejected", func(t *testing.T) {
-		_, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:nothex\"\nscope=\"project\"\n" + validModelsBothTools())
+		_, err := load("[subagents.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:nothex\"\nscope=\"project\"\n")
 		if err == nil {
 			t.Fatal("remote source with malformed digest must be rejected")
 		}
 	})
 
 	t.Run("plain http rejected", func(t *testing.T) {
-		_, err := load("[subagents.x]\nsource=\"remote:http://h.test/x.tar.gz\"\ndigest=\"sha256:" + validHex + "\"\nscope=\"project\"\n" + validModelsBothTools())
+		_, err := load("[subagents.x]\nsource=\"remote:http://h.test/x.tar.gz\"\ndigest=\"sha256:" + validHex + "\"\nscope=\"project\"\n")
 		if err == nil {
 			t.Fatal("plain http remote source must be rejected")
 		}
 	})
 
 	t.Run("builtin source unaffected by absent digest", func(t *testing.T) {
-		_, err := load("[subagents.x]\nsource=\"builtin:architect\"\nscope=\"project\"\n" + validModelsBothTools())
+		_, err := load("[subagents.x]\nsource=\"builtin:architect\"\nscope=\"project\"\n" + modelsFor("x"))
 		if err != nil {
 			t.Fatalf("builtin source without digest must still load: %v", err)
 		}
@@ -77,7 +77,7 @@ func TestRemoteRejectedForNonSubagentKinds(t *testing.T) {
 	if err := load("[skills.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + hex + "\"\nscope=\"project\"\n"); err == nil {
 		t.Fatal("a remote skill must be rejected (remote is subagent-only today)")
 	}
-	if err := load("[commands.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + hex + "\"\nscope=\"project\"\n" + validModelsBothTools()); err == nil {
+	if err := load("[commands.x]\nsource=\"remote:https://h.test/x.tar.gz\"\ndigest=\"sha256:" + hex + "\"\nscope=\"project\"\n"); err == nil {
 		t.Fatal("a remote command must be rejected (remote is subagent-only today)")
 	}
 }
@@ -101,7 +101,8 @@ func TestCodexTargetAccepted(t *testing.T) {
 }
 
 // Codex projects MCP servers only; targeting it from a subagent/skill/command
-// must be rejected (else validateModels demands an unsatisfiable models.codex.*).
+// must be rejected (the must-declare check would otherwise demand an
+// unsatisfiable model block for a tool that can't render agents).
 func TestCodexRejectedForNonMCPKinds(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "homonto.toml")
 	load := func(doc string) error {
@@ -111,7 +112,7 @@ func TestCodexRejectedForNonMCPKinds(t *testing.T) {
 		_, err := Load(p)
 		return err
 	}
-	if err := load("[subagents.foo]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"codex\"]\n" + validModelsBothTools()); err == nil {
+	if err := load("[subagents.foo]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"codex\"]\n"); err == nil {
 		t.Fatal("a subagent targeting codex must be rejected (codex is MCP-only)")
 	}
 	if err := load("[skills.foo]\nsource=\"local:foo\"\nscope=\"project\"\ntargets=[\"codex\"]\n"); err == nil {

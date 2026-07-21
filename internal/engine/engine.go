@@ -243,11 +243,12 @@ func (e *Engine) recordVersions() {
 	}
 }
 
-// subagentRenderContext builds the per-tool agentfm render context: each role's
-// tier default from [models.<tool>.<role>], plus any per-subagent override from
-// [subagents.<name>.<tool>]. A subagent's neutral `homonto: role` then stamps
-// the right tool-native model, variant, and effort. A tool with no routes yields
-// an empty map (agents inherit the tool's default model).
+// subagentRenderContext builds the per-tool agentfm render context: each
+// subagent's override from [subagents.<name>.<tool>]. There are no role tiers
+// anymore — every installed builtin agent MUST declare a non-empty model in
+// its per-tool override block, enforced at config load. A tool with no
+// overrides yields an empty map (which would fail validation, since an
+// installed agent without a model is a load-time error).
 //
 // Overrides are keyed by the subagent's CATALOG name, not its config key,
 // because materialization writes one rendered file per catalog name — two
@@ -255,13 +256,6 @@ func (e *Engine) recordVersions() {
 // conflicting overrides on one source, so resolving by catalog name here is
 // unambiguous by the time we run.
 func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
-	roleSpecs := func(routes map[string]config.ModelRoute) map[string]agentfm.ModelSpec {
-		m := map[string]agentfm.ModelSpec{}
-		for role, r := range routes {
-			m[role] = agentfm.ModelSpec{Model: r.Model, Variant: r.Variant, Effort: r.Effort}
-		}
-		return m
-	}
 	overrides := func(pick func(config.Subagent) config.ModelRoute) map[string]agentfm.ModelSpec {
 		m := map[string]agentfm.ModelSpec{}
 		for key, sa := range e.Cfg.Subagents {
@@ -286,14 +280,8 @@ func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
 		return m
 	}
 	return map[string]agentfm.RenderContext{
-		"claude": {
-			Roles:     roleSpecs(e.Cfg.Models.Claude),
-			Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.Claude }),
-		},
-		"opencode": {
-			Roles:     roleSpecs(e.Cfg.Models.OpenCode),
-			Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.OpenCode }),
-		},
+		"claude":   {Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.Claude })},
+		"opencode": {Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.OpenCode })},
 	}
 }
 
@@ -528,11 +516,12 @@ func allCommandFilesExist(root string, names []string) bool {
 	return true
 }
 
-// subagentRenderFingerprint digests every render input — each tool's role tiers
-// AND per-subagent overrides, model + variant + effort — deterministically, so
-// the materialize gate re-renders exactly when something the agents are stamped
-// from actually changed. Every field the render reads must be digested here: one
-// omitted field is one config edit that silently never reaches the agent.
+// subagentRenderFingerprint digests every render input — each tool's
+// per-subagent overrides, model + variant + effort — deterministically, so
+// the materialize gate re-renders exactly when something the agents are
+// stamped from actually changed. Every field the render reads must be digested
+// here: one omitted field is one config edit that silently never reaches the
+// agent.
 //
 // Sorted keys keep it stable across map iteration order; delimited fields keep
 // it unambiguous across values (an "a"+"bc" / "ab"+"c" collision would skip the
@@ -556,7 +545,6 @@ func subagentRenderFingerprint(ctx map[string]agentfm.RenderContext) string {
 	}
 	sort.Strings(tools)
 	for _, tool := range tools {
-		digestSpecs("role", tool, ctx[tool].Roles)
 		digestSpecs("override", tool, ctx[tool].Overrides)
 	}
 	return hex.EncodeToString(h.Sum(nil))

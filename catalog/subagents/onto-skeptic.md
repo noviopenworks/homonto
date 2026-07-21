@@ -8,7 +8,6 @@ mode: subagent
 # bash; it never edits (read-only) — a skeptic that fixes what it finds has
 # contaminated the very context that makes it independent. Spawns nothing.
 homonto:
-  role: review
   read_only: true
   dialogs: false
   spawn: []

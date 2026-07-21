@@ -7,7 +7,6 @@ mode: subagent
 # agentfm skips the Claude variant — there the /onto command loads the onto skill
 # instead. homonto renders the rest per tool (internal/agentfm).
 homonto:
-  role: architectural
   primary: true
   steps: 120
   dialogs: true

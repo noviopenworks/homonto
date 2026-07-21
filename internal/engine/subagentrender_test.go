@@ -9,24 +9,16 @@ import (
 )
 
 // opencodeSubagentTOML installs a builtin subagent for OpenCode, whose rendered
-// frontmatter is stamped with the [models.opencode.*] routes. %s is the
-// review model — the route the onto-reviewer's `role: review` resolves
-// through.
+// frontmatter is stamped with the per-agent override. %s is the model declared
+// in [subagents.onto-reviewer.opencode].
 const opencodeSubagentTOML = `
 [subagents.onto-reviewer]
 source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["opencode"]
 
-[models.opencode.architectural]
-model = "some/architectural-model"
-[models.opencode.coding]
-model = "some/coding-model"
-[models.opencode.review]
+[subagents.onto-reviewer.opencode]
 model = "%s"
-variant = "high"
-[models.opencode.trivial]
-model = "some/trivial-model"
 `
 
 func writeConfig(t *testing.T, repo, model string) {
@@ -54,10 +46,10 @@ func renderedModel(t *testing.T, e *Engine, file string) string {
 // TestApplyRerendersSubagentsWhenModelRouteChanges is the regression guard for
 // the stale-render bug: materializeCatalog was gated on the catalog version and
 // file existence alone, but a subagent's rendered `model:` comes from the
-// config's model routes. Editing a route left the catalog version untouched, so
-// the gate short-circuited and the projected agent kept its OLD model forever —
-// while the tool's own setting.model (re-read from the routes each apply)
-// correctly moved. Same config, two different answers.
+// config's per-agent override. Editing the override left the catalog version
+// untouched, so the gate short-circuited and the projected agent kept its OLD
+// model forever — while the tool's own setting.model (re-read from the routes
+// each apply) correctly moved. Same config, two different answers.
 func TestApplyRerendersSubagentsWhenModelRouteChanges(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
@@ -71,14 +63,15 @@ func TestApplyRerendersSubagentsWhenModelRouteChanges(t *testing.T) {
 		t.Fatalf("after first apply: rendered model = %q, want %q", got, "first/model-a")
 	}
 
-	// Change ONLY the architectural route. The catalog is byte-for-byte identical.
+	// Change ONLY the per-agent override. The catalog is byte-for-byte identical
+	// (same version, same name); the only thing that moved is the override.
 	writeConfig(t, repo, "second/model-b")
 	e2 := buildEngine(t, home, repo)
 	if err := e2.Apply(context.Background(), mustPlan(t, e2)); err != nil {
 		t.Fatalf("second apply: %v", err)
 	}
 	if got := renderedModel(t, e2, "onto-reviewer.opencode.md"); got != "second/model-b" {
-		t.Fatalf("after route change: rendered model = %q, want %q (agent frozen at the old route)", got, "second/model-b")
+		t.Fatalf("after override change: rendered model = %q, want %q (agent frozen at the old model)", got, "second/model-b")
 	}
 }
 
@@ -111,50 +104,53 @@ func TestApplyRestoresDeletedRenderedVariant(t *testing.T) {
 	}
 }
 
-// ontoFrameworkTOML installs the onto framework, whose `onto` agent is
+// ontoFrameworkTOML installs the onto framework and per-agent override blocks
+// for every expanded subagent (each tool they target). onto's `onto` agent is
 // OpenCode-primary — agentfm renders no Claude variant for it by design.
 const ontoFrameworkTOML = `
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
 
-[models.claude.architectural]
+[subagents.onto.claude]
 model = "opus"
-effort = "high"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-effort = "high"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-
-[models.opencode.architectural]
-model = "some/architectural-model"
-variant = "high"
-[models.opencode.coding]
-model = "some/coding-model"
-[models.opencode.review]
+[subagents.onto.opencode]
 model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "some/trivial-model"
+
+[subagents.onto-explorer.claude]
+model = "haiku"
+[subagents.onto-explorer.opencode]
+model = "openai/gpt-5-mini"
+
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-reviewer.opencode]
+model = "anthropic/claude-opus-4-8"
+
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-implementer.opencode]
+model = "anthropic/claude-sonnet-4"
+
+[subagents.onto-skeptic.claude]
+model = "opus"
+[subagents.onto-skeptic.opencode]
+model = "anthropic/claude-opus-4-8"
 `
 
 // A framework's subagents may not be re-declared explicitly (that collision is
-// an error), so without a tune-only form there would be NO way to retune the
-// model of an agent installed via [frameworks.*] — the main reason to want an
-// override at all. A per-tool block with no source must therefore tune the
-// framework's agent in place, overriding its tier field by field, and leave
-// every other agent on that same tier untouched.
+// an error), so the per-agent [subagents.<name>.<tool>] blocks above are
+// tune-only entries (no source): they tune the framework's agent in place,
+// declaring its model — required now that tiers are gone. Changing one agent's
+// override must not affect any other agent.
 func TestTuneOnlyEntryOverridesFrameworkAgentModel(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
-	doc := ontoFrameworkTOML + `
-[subagents.onto-skeptic.claude]
-effort = "max"
-`
+	// onto-skeptic gets an effort tune on top of its model block — both
+	// declared in one tune-only entry, since TOML rejects duplicate tables.
+	doc := strings.Replace(ontoFrameworkTOML,
+		"[subagents.onto-skeptic.claude]\nmodel = \"opus\"\n",
+		"[subagents.onto-skeptic.claude]\nmodel = \"opus\"\neffort = \"xhigh\"\n", 1)
 	if err := os.WriteFile(filepath.Join(repo, "homonto.toml"), []byte(doc), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -175,17 +171,19 @@ effort = "max"
 		}
 		return ""
 	}
-	if got := effortOf("onto-skeptic.claude.md"); got != "max" {
-		t.Errorf("tuned agent effort = %q, want max (the override must beat its tier)", got)
+	if got := effortOf("onto-skeptic.claude.md"); got != "xhigh" {
+		t.Errorf("tuned agent effort = %q, want xhigh (the override must apply)", got)
 	}
-	// onto-reviewer shares the review tier but was not tuned.
-	if got := effortOf("onto-reviewer.claude.md"); got != "high" {
-		t.Errorf("untuned agent on the same tier: effort = %q, want the tier's high", got)
+	// onto-reviewer has its own override block; it must stay at no effort (no
+	// cross-contamination from onto-skeptic's tune).
+	if got := effortOf("onto-reviewer.claude.md"); got != "" {
+		t.Errorf("onto-reviewer effort = %q, want empty (each agent has its own block)", got)
 	}
-	// The override inherits the tier's model rather than blanking it.
+	// onto-skeptic renders its declared model (the override is complete on its
+	// own — there is no tier to inherit from anymore).
 	data, _ := os.ReadFile(filepath.Join(e.SubagentDir(), "onto-skeptic.claude.md"))
 	if !strings.Contains(string(data), "model: opus") {
-		t.Errorf("an effort-only override must inherit the tier's model:\n%s", data)
+		t.Errorf("onto-skeptic must render its declared model:\n%s", data)
 	}
 }
 
@@ -232,9 +230,9 @@ func TestDoctorSilentOnPrimaryAgentClaudeVariant(t *testing.T) {
 }
 
 // TestSubagentRenderFingerprintDistinguishesRoutes pins the fingerprint's job:
-// it must change when a route changes and stay put when nothing does. A
-// fingerprint that collided across route sets would silently skip the re-render
-// this whole gate exists to trigger.
+// it must change when an override changes and stay put when nothing does. A
+// fingerprint that collided across override sets would silently skip the
+// re-render this whole gate exists to trigger.
 func TestSubagentRenderFingerprintDistinguishesRoutes(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
@@ -248,9 +246,9 @@ func TestSubagentRenderFingerprintDistinguishesRoutes(t *testing.T) {
 	b := buildEngine(t, home, repo).subagentRenderContext()
 
 	if subagentRenderFingerprint(a) == subagentRenderFingerprint(b) {
-		t.Fatal("fingerprint collided across different model routes: a route change would not re-render")
+		t.Fatal("fingerprint collided across different overrides: an override change would not re-render")
 	}
 	if subagentRenderFingerprint(a) != subagentRenderFingerprint(aAgain) {
-		t.Fatal("fingerprint is not stable for identical routes: every apply would re-materialize")
+		t.Fatal("fingerprint is not stable for identical overrides: every apply would re-materialize")
 	}
 }

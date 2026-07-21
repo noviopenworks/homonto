@@ -7,7 +7,6 @@ mode: subagent
 # A reviewer judges (review-tier model), never edits (read-only) but keeps bash
 # for git inspection, spawns nothing; it returns questions instead of prompting.
 homonto:
-  role: review
   read_only: true
   dialogs: false
   spawn: []

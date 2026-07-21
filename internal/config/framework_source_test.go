@@ -45,26 +45,7 @@ func TestLoad_AcceptsBuiltinFramework(t *testing.T) {
 	if err := os.WriteFile(p, []byte(`[frameworks.onto]
 source = "builtin:onto"
 scope = "user"
-[models.claude.architectural]
-model = "m"
-effort = "high"
-[models.claude.coding]
-model = "m"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "m"
-effort = "low"
-[models.opencode.architectural]
-model = "m"
-[models.opencode.coding]
-model = "m"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "m"
-`), 0o644); err != nil {
+`+ontoFrameworkModels()), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Load(p); err != nil {
@@ -95,6 +76,13 @@ scope = "project"
 	}
 }
 
+// toFrameworkModels is the per-agent override blocks required by the to
+// framework's four expanded subagents (no `to` dispatcher — the to framework
+// has no `to.md`, only the specialists).
+func toFrameworkModels() string {
+	return modelsFor("to-explorer", "to-implementer", "to-reviewer", "to-skeptic")
+}
+
 // TestLoad_AcceptsToAlone: [frameworks.to] on its own is a valid builtin
 // framework declaration.
 func TestLoad_AcceptsToAlone(t *testing.T) {
@@ -102,26 +90,7 @@ func TestLoad_AcceptsToAlone(t *testing.T) {
 	if err := os.WriteFile(p, []byte(`[frameworks.to]
 source = "builtin:to"
 scope = "project"
-[models.claude.architectural]
-model = "m"
-effort = "high"
-[models.claude.coding]
-model = "m"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "m"
-effort = "low"
-[models.opencode.architectural]
-model = "m"
-[models.opencode.coding]
-model = "m"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "m"
-`), 0o644); err != nil {
+`+toFrameworkModels()), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Load(p); err != nil {

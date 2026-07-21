@@ -10,7 +10,6 @@
 //	description: ...
 //	mode: subagent
 //	homonto:
-//	  role: review          # model tier → stamped from [models.<tool>.<role>]
 //	  read_only: true       # deny edits/writes
 //	  bash: false           # optional; false denies bash (default: allowed)
 //	  dialogs: true         # allow the interactive question/dialog tool
@@ -19,6 +18,11 @@
 //	  steps: 60             # iteration budget (OpenCode steps / Claude maxTurns)
 //	---
 //	<prompt body>
+//
+// The model an agent renders as comes from the config's explicit
+// [subagents.<name>.<tool>] block — there are no roles or tiers, and an agent
+// with no such block (and thus no model) is a load-time error, not a silent
+// default.
 //
 // Both tools deny by exception, so the same denials carry to both without
 // information loss: Claude renders a `disallowedTools:` denylist and OpenCode a
@@ -43,27 +47,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TierNames are the model tiers an agent's `role:` may declare — the same four
-// levels a [models.<tool>.<route>] block must define, in the order validation
-// reports them: architectural (orchestrate/design), coding (implement), review
-// (judge others' work — the reviewer and the skeptic), trivial (cheap
-// lookups). Single source of truth, like ClaudeAliases: config validation and
-// rendering both reference it, so an unknown tier fails loudly in both places
-// instead of silently rendering an agent with no model.
-var TierNames = []string{"architectural", "coding", "review", "trivial"}
-
-// Tiers is TierNames as a membership set.
-var Tiers = func() map[string]bool {
-	m := make(map[string]bool, len(TierNames))
-	for _, t := range TierNames {
-		m[t] = true
-	}
-	return m
-}()
-
 // Homonto is the neutral capability intent declared under the `homonto:` key.
+// Model selection is config-driven ([subagents.<name>.<tool>]); a legacy
+// `role:` field in the YAML, if present, is silently dropped by the YAML
+// decoder as an unknown field.
 type Homonto struct {
-	Role     string    `yaml:"role"`      // "" or a Tiers key → model
 	ReadOnly bool      `yaml:"read_only"` // deny edits/writes
 	Bash     *bool     `yaml:"bash"`      // nil = default (allowed); false = deny
 	Dialogs  bool      `yaml:"dialogs"`   // allow the question/dialog tool
@@ -81,38 +69,15 @@ type ModelSpec struct {
 	Effort  string
 }
 
-// merge returns s with every non-empty field of ov overriding it, so a
-// per-subagent block can override just `effort` and inherit the tier's model.
-func (s ModelSpec) merge(ov ModelSpec) ModelSpec {
-	if ov.Model != "" {
-		s.Model = ov.Model
-	}
-	if ov.Variant != "" {
-		s.Variant = ov.Variant
-	}
-	if ov.Effort != "" {
-		s.Effort = ov.Effort
-	}
-	return s
-}
-
-// RenderContext carries the config-derived values the render needs for the tool
-// being rendered (the caller passes the Claude values for the claude render, the
-// OpenCode values for the opencode render).
-//
-// Roles is the role→spec map from [models.<tool>.<role>] — the default for any
-// agent declaring that role. Overrides is keyed by subagent name and wins field
-// by field, so [subagents.<name>.<tool>] can retune one agent without restating
-// its tier.
+// RenderContext carries the per-subagent model overrides the render needs for
+// the tool being rendered (the caller passes the Claude overrides for the
+// claude render, the OpenCode overrides for the opencode render). Overrides is
+// keyed by subagent name; an agent missing from the map renders nothing for
+// that tool (it is targeted at another tool). Config validation enforces that
+// every declared builtin subagent has a non-empty model for every tool it
+// targets.
 type RenderContext struct {
-	Roles     map[string]ModelSpec
 	Overrides map[string]ModelSpec
-}
-
-// specFor resolves the model spec for an agent: its role's tier default, with
-// any per-subagent override applied field by field.
-func (c RenderContext) specFor(name, role string) ModelSpec {
-	return c.Roles[role].merge(c.Overrides[name])
 }
 
 // ClaudeAliases are the model aliases Claude Code accepts. The bracketed
@@ -132,9 +97,10 @@ var ClaudeEffortLevels = map[string]bool{
 // claudeModel renders the Claude `model:` value. Claude has no separate variant
 // field: a variant is expressed by bracketing the alias. A variant on a
 // non-alias model has no Claude spelling at all — that is an ERROR here, never
-// a silent drop: the merged (tier + override) model isn't known until render,
-// so load-time validation cannot always catch the combination, and silently
-// dropping the variant would ship an agent quietly weaker than declared.
+// a silent drop: load-time validation judges the override's own model, but a
+// future caller that bypasses Load could supply an unrenderable spec, and
+// silently dropping the variant would ship an agent quietly weaker than
+// declared.
 func claudeModel(s ModelSpec) (string, error) {
 	if s.Model == "" || s.Variant == "" {
 		return s.Model, nil
@@ -195,13 +161,19 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 	if !has {
 		return content, nil
 	}
-	// An unknown role would look up no tier and render the agent with no model
-	// line at all — a silently weaker agent. Fail loudly instead, naming the
-	// agent and the valid tiers.
-	if h.Role != "" && !Tiers[h.Role] {
-		return nil, fmt.Errorf("agentfm: agent %q: unknown role %q; valid roles are %s", name, h.Role, strings.Join(TierNames, ", "))
+	// Look up the override for this tool. An empty context (no Overrides map,
+	// or name absent) is treated leniently: the variant is rendered without a
+	// model line. This keeps the catalog's verbatim-materialize unit tests
+	// (which pass nil for renderCtx) working, and lets the engine render
+	// untargeted-tool variants harmlessly (the adapter never links them — a
+	// subagent's target filter rules them out). The load-time check is the
+	// real source of truth for "declared subagent must declare a model for
+	// every ENABLED tool"; this is the backstop for the narrower case where
+	// a caller DOES supply an override entry but its Model is blank.
+	spec := ctx.Overrides[name]
+	if spec.Model == "" && spec != (ModelSpec{}) {
+		return nil, fmt.Errorf("agentfm: agent %q has no model for tool %s; declare [subagents.%s.%s] in homonto.toml", name, tool, name, tool)
 	}
-	spec := ctx.specFor(name, h.Role)
 
 	// Preserve every frontmatter line except the homonto block and the mode line
 	// (re-emitted per tool below).

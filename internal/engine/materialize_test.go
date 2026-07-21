@@ -10,40 +10,60 @@ import (
 	"github.com/noviopenworks/homonto/internal/secret"
 )
 
+// ontoFrameworkModels is the per-agent override blocks required by the onto
+// framework's expanded subagents (each tool they target). Tests that install
+// the onto framework must declare one of these per agent per tool now that
+// tiers are gone.
+const ontoFrameworkModels = `
+[subagents.onto.claude]
+model = "opus"
+[subagents.onto.opencode]
+model = "anthropic/claude-opus-4-8"
+[subagents.onto-explorer.claude]
+model = "haiku"
+[subagents.onto-explorer.opencode]
+model = "openai/gpt-5-mini"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-reviewer.opencode]
+model = "anthropic/claude-opus-4-8"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-implementer.opencode]
+model = "anthropic/claude-sonnet-4"
+[subagents.onto-skeptic.claude]
+model = "opus"
+[subagents.onto-skeptic.opencode]
+model = "anthropic/claude-opus-4-8"
+`
+
+// ontoTOMLClaude is the subset of ontoFrameworkModels targeting claude only,
+// for tests that install onto with targets = ["claude"].
+const ontoTOMLClaude = `
+[subagents.onto.claude]
+model = "opus"
+[subagents.onto-explorer.claude]
+model = "haiku"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
+`
+
 const ontoTOML = `
 [frameworks.onto]
 source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`
+` + ontoTOMLClaude
 
 const commandTOML = `
 [commands.example-command]
 source = "builtin:example-command"
 scope = "user"
 targets = ["claude"]
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
 `
 
 const subagentTOML = `
@@ -52,16 +72,8 @@ source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+[subagents.onto-reviewer.claude]
 model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
 `
 
 func buildEngine(t *testing.T, home, repo string) *Engine {
@@ -101,18 +113,7 @@ const projectOntoTOML = `
 source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`
+` + ontoTOMLClaude
 
 // TestApplyRelativeConfigLinksResolve is the regression guard for the dangling
 // catalog-symlink bug: with the default relative --config ("homonto.toml" from

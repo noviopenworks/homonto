@@ -8,32 +8,24 @@ import (
 )
 
 // catalogSubagentTOML installs a builtin subagent whose rendered frontmatter is
-// stamped from the [models.opencode.*] routes. %MODEL% is the review route
-// that `onto-reviewer`'s `role: review` resolves through.
+// stamped from the per-agent override. %MODEL% is the model declared in
+// [subagents.onto-reviewer.opencode].
 //
-// [settings.opencode].model is pinned explicitly, which wins over the
-// route-derived default — so changing the review route re-stamps the
-// AGENT while projecting no setting diff at all. That is the case this file
-// exists for: the projection plan comes out empty, and an empty plan is exactly
-// what the CLI used to treat as "nothing to do".
+// [settings.opencode].model is pinned explicitly so the projection plan stays
+// empty across a model-only change — that is the case this file exists for:
+// the projection plan comes out empty, and an empty plan is exactly what the
+// CLI used to treat as "nothing to do".
 const catalogSubagentTOML = `
 [subagents.onto-reviewer]
 source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["opencode"]
 
+[subagents.onto-reviewer.opencode]
+model = "%MODEL%"
+
 [settings.opencode]
 model = "pinned/explicit-model"
-
-[models.opencode.architectural]
-model = "some/architectural-model"
-[models.opencode.coding]
-model = "some/coding-model"
-[models.opencode.review]
-model = "%MODEL%"
-variant = "high"
-[models.opencode.trivial]
-model = "some/trivial-model"
 `
 
 func writeCatalogConfig(t *testing.T, repo, model string) string {
@@ -66,7 +58,7 @@ func renderedVariant(t *testing.T, repo string) string {
 // Both cases must instead run apply, exactly as the HasRemoteResources carve-out
 // already does for the identical name-based-target reason.
 func TestApplyRematerializesCatalogWhenProjectionPlanIsEmpty(t *testing.T) {
-	t.Run("stale render after a model-route change", func(t *testing.T) {
+	t.Run("stale render after a model override change", func(t *testing.T) {
 		home := t.TempDir()
 		repo := t.TempDir()
 		cfg := writeCatalogConfig(t, repo, "first/model-a")
@@ -74,12 +66,13 @@ func TestApplyRematerializesCatalogWhenProjectionPlanIsEmpty(t *testing.T) {
 			t.Fatalf("first apply: %v\n%s", err, out)
 		}
 		if got := renderedVariant(t, repo); !strings.Contains(got, "model: first/model-a") {
-			t.Fatalf("first apply did not stamp the route:\n%s", got)
+			t.Fatalf("first apply did not stamp the override:\n%s", got)
 		}
 
-		// Change ONLY the model route. settings.opencode.model is pinned, so no
-		// projected value moves: the plan is empty, and the CLI's empty-plan
-		// branch alone decides whether apply — and thus the re-render — runs.
+		// Change ONLY the per-agent override. settings.opencode.model is pinned,
+		// so no projected value moves: the plan is empty, and the CLI's
+		// empty-plan branch alone decides whether apply — and thus the
+		// re-render — runs.
 		writeCatalogConfig(t, repo, "second/model-b")
 		out, err := runCmd(t, home, "", "apply", "--yes", "--config", cfg)
 		if err != nil {
@@ -89,7 +82,7 @@ func TestApplyRematerializesCatalogWhenProjectionPlanIsEmpty(t *testing.T) {
 			t.Fatalf("precondition broken: the plan was not empty, so this no longer tests the empty-plan path:\n%s", out)
 		}
 		if got := renderedVariant(t, repo); !strings.Contains(got, "model: second/model-b") {
-			t.Fatalf("route change did not re-render the agent (CLI skipped apply on an empty plan):\n%s", got)
+			t.Fatalf("override change did not re-render the agent (CLI skipped apply on an empty plan):\n%s", got)
 		}
 	})
 
@@ -133,10 +126,10 @@ func TestApplyRematerializesCatalogWhenProjectionPlanIsEmpty(t *testing.T) {
 	})
 }
 
-// plan used to be blind to the empty-plan carve-outs apply acts on: after a
-// route change that moves no projected value, plan said "No changes. Everything
-// up to date." with exit 0 while apply re-materialized — automation gating
-// apply on plan's exit code never repaired the stale catalog.
+// plan used to be blind to the empty-plan carve-outs apply acts on: after an
+// override change that moves no projected value, plan said "No changes.
+// Everything up to date." with exit 0 while apply re-materialized — automation
+// gating apply on plan's exit code never repaired the stale catalog.
 func TestPlanSurfacesPendingCatalogRematerialization(t *testing.T) {
 	home := t.TempDir()
 	repo := t.TempDir()
@@ -145,8 +138,8 @@ func TestPlanSurfacesPendingCatalogRematerialization(t *testing.T) {
 		t.Fatalf("first apply: %v\n%s", err, out)
 	}
 
-	// Change ONLY the model route (settings.opencode.model is pinned, so no
-	// projected value moves — the plan is empty).
+	// Change ONLY the per-agent override (settings.opencode.model is pinned, so
+	// no projected value moves — the plan is empty).
 	writeCatalogConfig(t, repo, "second/model-b")
 	out, err := runCmd(t, home, "", "plan", "--config", cfg)
 	if err != nil {

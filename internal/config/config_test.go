@@ -36,10 +36,6 @@ source = "builtin:review"
 scope = "project"
 targets = ["opencode"]
 
-[subagents.architect]
-source = "builtin:architect"
-scope = "project"
-
 [plugins.claude.claude-hud]
 source = "claude-hud@official"
 enabled = true
@@ -53,31 +49,29 @@ model = "opus"
 [settings.opencode]
 model = "anthropic/claude-opus-4-8"
 
-[models.claude.architectural]
+[subagents.onto.claude]
 model = "opus"
-effort = "high"
-
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
+[subagents.onto.opencode]
+model = "anthropic/claude-opus-4-8"
+[subagents.onto-explorer.claude]
 model = "haiku"
 effort = "low"
-
-[models.opencode.architectural]
-model = "anthropic/claude-opus-4-8"
-
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4"
-
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
+[subagents.onto-explorer.opencode]
 model = "openai/gpt-5-mini"
 variant = "cheap"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-reviewer.opencode]
+model = "anthropic/claude-opus-4-8"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+effort = "medium"
+[subagents.onto-implementer.opencode]
+model = "anthropic/claude-sonnet-4"
+[subagents.onto-skeptic.claude]
+model = "opus"
+[subagents.onto-skeptic.opencode]
+model = "anthropic/claude-opus-4-8"
 `
 
 func TestLoad(t *testing.T) {
@@ -119,8 +113,11 @@ func TestLoad(t *testing.T) {
 	if len(opencodeSkills) != 1 || opencodeSkills[0].Name != "graphify" {
 		t.Fatalf("opencode skill entries = %#v", opencodeSkills)
 	}
-	if got := c.Models.Claude["architectural"].Effort; got != "high" {
-		t.Fatalf("claude architectural effort = %q", got)
+	if got := c.Subagents["onto-reviewer"].Claude.Model; got != "opus" {
+		t.Fatalf("onto-reviewer claude override model = %q, want opus", got)
+	}
+	if got := c.Subagents["onto-explorer"].OpenCode.Variant; got != "cheap" {
+		t.Fatalf("onto-explorer opencode variant = %q, want cheap", got)
 	}
 	// Plugin declaration tables parse into per-tool maps keyed by decl name,
 	// carrying source and (default-true) enabled.
@@ -336,7 +333,7 @@ func TestSubagentModeValidation(t *testing.T) {
 		if mode != "" {
 			m = "mode=\"" + mode + "\"\n"
 		}
-		return "[subagents.x]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + m + validModelsBothTools()
+		return "[subagents.x]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + m + modelsFor("x")
 	}
 	for _, mode := range []string{"", "link", "copy"} {
 		if err := loadDoc(t, base(mode)); err != nil {
@@ -365,8 +362,7 @@ func TestAgentSupersededIntoSubagent(t *testing.T) {
 	}
 
 	// A builtin agent supersedes to a COPY-mode subagent (builtin was copy-only).
-	c := load("[agents.rev]\nsource=\"builtin:code-reviewer\"\ntargets=[\"claude\"]\n" +
-		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.review]\nmodel=\"opus\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
+	c := load("[agents.rev]\nsource=\"builtin:code-reviewer\"\ntargets=[\"claude\"]\n" + modelsFor("rev"))
 	if len(c.Agents) != 0 {
 		t.Fatal("the [agents] table must be cleared after supersede")
 	}
@@ -382,9 +378,11 @@ func TestAgentSupersededIntoSubagent(t *testing.T) {
 	}
 
 	// A declared [agents.X] wins over an explicit [subagents.X] of the same name.
+	// After the fold dup's source is local:dup, which the must-declare check
+	// skips (only builtin: sources are rendered through agentfm), so no
+	// per-tool block is required.
 	c2 := load("[agents.dup]\nsource=\"local:dup\"\nmode=\"copy\"\ntargets=[\"claude\"]\n" +
-		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claude\"]\n" +
-		"[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.review]\nmodel=\"opus\"\n[models.claude.trivial]\nmodel=\"haiku\"\n")
+		"[subagents.dup]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claude\"]\n")
 	if got := c2.Subagents["dup"].Source; got != "local:dup" {
 		t.Fatalf("the agent declaration must win the name; subagent source = %q", got)
 	}
@@ -402,7 +400,7 @@ func TestSubagentScopeDefaultsToProject(t *testing.T) {
 		return Load(p)
 	}
 
-	c, err := load("[subagents.architect]\nsource=\"builtin:architect\"\n" + validModelsBothTools())
+	c, err := load("[subagents.architect]\nsource=\"builtin:architect\"\n" + modelsFor("architect"))
 	if err != nil {
 		t.Fatalf("omitted subagent scope should default to project, not error: %v", err)
 	}
@@ -410,7 +408,7 @@ func TestSubagentScopeDefaultsToProject(t *testing.T) {
 		t.Fatalf("omitted subagent scope = %q, want \"project\"", got)
 	}
 
-	c2, err := load("[subagents.architect]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + validModelsBothTools())
+	c2, err := load("[subagents.architect]\nsource=\"builtin:architect\"\nscope=\"user\"\n" + modelsFor("architect"))
 	if err != nil {
 		t.Fatalf("explicit subagent scope: %v", err)
 	}
@@ -514,7 +512,7 @@ func TestLoadRejectsBadResourceNames(t *testing.T) {
 		{"subagent", "subagents", `a\b`},
 		{"skill", "skills", "0"},
 	} {
-		doc := "[" + tc.table + "." + strconv.Quote(tc.name) + "]\nsource=\"local:x\"\nscope=\"project\"\n" + validModelsBothTools()
+		doc := "[" + tc.table + "." + strconv.Quote(tc.name) + "]\nsource=\"local:x\"\nscope=\"project\"\n"
 		err := loadDoc(t, doc)
 		if err == nil {
 			t.Fatalf("%s name %q accepted; want load error", tc.kind, tc.name)
@@ -526,7 +524,7 @@ func TestLoadRejectsBadResourceNames(t *testing.T) {
 }
 
 func TestLoadRejectsResourceWithoutExplicitScope(t *testing.T) {
-	err := loadDoc(t, "[skills.graphify]\nsource=\"local:graphify\"\n"+validModelsBothTools())
+	err := loadDoc(t, "[skills.graphify]\nsource=\"local:graphify\"\n")
 	if err == nil {
 		t.Fatal("resource without scope accepted; want load error")
 	}
@@ -538,7 +536,7 @@ func TestLoadRejectsResourceWithoutExplicitScope(t *testing.T) {
 }
 
 func TestLoadRejectsInvalidResourceScope(t *testing.T) {
-	err := loadDoc(t, "[commands.review]\nsource=\"builtin:review\"\nscope=\"global\"\n"+validModelsBothTools())
+	err := loadDoc(t, "[commands.review]\nsource=\"builtin:review\"\nscope=\"global\"\n")
 	if err == nil {
 		t.Fatal("scope global accepted; want load error")
 	}
@@ -551,7 +549,7 @@ func TestLoadRejectsInvalidResourceScope(t *testing.T) {
 
 func TestLoadRejectsInvalidResourceSource(t *testing.T) {
 	for _, source := range []string{"", "https://example.com/x", "github:owner/repo", "builtin:", "local:"} {
-		doc := "[skills.graphify]\nsource=" + strconv.Quote(source) + "\nscope=\"project\"\n" + validModelsBothTools()
+		doc := "[skills.graphify]\nsource=" + strconv.Quote(source) + "\nscope=\"project\"\n"
 		err := loadDoc(t, doc)
 		if err == nil {
 			t.Fatalf("source %q accepted; want load error", source)
@@ -563,7 +561,7 @@ func TestLoadRejectsInvalidResourceSource(t *testing.T) {
 }
 
 func TestLoadRejectsUnknownResourceTargets(t *testing.T) {
-	err := loadDoc(t, "[subagents.architect]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claud\"]\n"+validModelsBothTools())
+	err := loadDoc(t, "[subagents.architect]\nsource=\"builtin:architect\"\nscope=\"project\"\ntargets=[\"claud\"]\n")
 	if err == nil {
 		t.Fatal("unknown target accepted; want load error")
 	}
@@ -573,25 +571,24 @@ func TestLoadRejectsUnknownResourceTargets(t *testing.T) {
 }
 
 func TestLoadRequiresAllModelLevelsForEnabledTools(t *testing.T) {
+	// A declared subagent must declare its model for every enabled tool. The
+	// must-declare check names the offender: <subagent>.<tool> model is required.
 	doc := `
-[commands.review]
-source = "builtin:review"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
-targets = ["opencode"]
+targets = ["claude", "opencode"]
 
-[models.opencode.architectural]
+[subagents.onto-reviewer.opencode]
 model = "anthropic/claude-opus-4-8"
 
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4"
+[subagents.onto-reviewer.claude]
 `
 	err := loadDoc(t, doc)
 	if err == nil {
-		t.Fatal("missing opencode review/trivial models accepted; want load error")
+		t.Fatal("missing [subagents.<name>.<tool>] model accepted; want load error")
 	}
-	// Validation walks the tiers in order, so the first missing one (review) is
-	// the named offender.
-	for _, want := range []string{"models.opencode.review", "model"} {
+	for _, want := range []string{"subagents.onto-reviewer.claude", "model is required"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("error %v does not mention %q", err, want)
 		}
@@ -604,21 +601,14 @@ model = "anthropic/claude-sonnet-4"
 // ("effort = normal", "variant = max"). They are optional and validated now.
 func TestLoadAcceptsModelWithoutEffortOrVariant(t *testing.T) {
 	doc := `
-[commands.review]
-source = "builtin:review"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
-targets = ["claude"]
 
-[models.claude.architectural]
+[subagents.onto-reviewer.claude]
 model = "opus"
-
-[models.claude.coding]
-model = "sonnet"
-
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
+[subagents.onto-reviewer.opencode]
+model = "anthropic/claude-opus-4-8"
 `
 	if err := loadDoc(t, doc); err != nil {
 		t.Fatalf("a route naming just a model is complete; got: %v", err)
@@ -630,36 +620,24 @@ model = "haiku"
 func TestLoadValidatesModelSpecPerTool(t *testing.T) {
 	claudeDoc := func(route string) string {
 		return `
-[commands.review]
-source = "builtin:review"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+[subagents.onto-reviewer.claude]
 ` + route + `
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
 `
 	}
 	opencodeDoc := func(route string) string {
 		return `
-[commands.review]
-source = "builtin:review"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["opencode"]
 
-[models.opencode.architectural]
+[subagents.onto-reviewer.opencode]
 ` + route + `
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4-5"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "anthropic/claude-haiku-4-5"
 `
 	}
 
@@ -706,9 +684,13 @@ model = "anthropic/claude-haiku-4-5"
 	}
 }
 
-// A per-subagent [subagents.<name>.<tool>] block overrides its role's tier field
-// by field, and is validated against the same per-tool rules.
+// A per-subagent [subagents.<name>.<tool>] block is validated against the same
+// per-tool rules as the must-declare check. The model is required of declared
+// builtin subagents; an override may set effort/variant alone but a tune-only
+// entry still must name an agent a framework or explicit declaration installs.
 func TestLoadValidatesSubagentModelOverride(t *testing.T) {
+	// doc returns a config that declares onto-skeptic explicitly (so the
+	// must-declare check applies) plus the given per-tool block.
 	doc := func(block string) string {
 		return `
 [subagents.onto-skeptic]
@@ -717,57 +699,50 @@ scope = "project"
 targets = ["claude"]
 
 ` + block + `
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
 `
 	}
 
-	t.Run("effort-only override inherits the tier model", func(t *testing.T) {
-		c, err := loadDocCfg(t, doc("[subagents.onto-skeptic.claude]\neffort = \"xhigh\""))
+	t.Run("claude override with model + effort loads", func(t *testing.T) {
+		c, err := loadDocCfg(t, doc("[subagents.onto-skeptic.claude]\nmodel = \"opus\"\neffort = \"xhigh\"\n"))
 		if err != nil {
-			t.Fatalf("effort-only override should load: %v", err)
+			t.Fatalf("override with model + effort should load: %v", err)
 		}
-		if got := c.Subagents["onto-skeptic"].ModelOverrideFor("claude"); got.Effort != "xhigh" || got.Model != "" {
-			t.Fatalf("override = %#v; want effort xhigh and no model", got)
+		if got := c.Subagents["onto-skeptic"].ModelOverrideFor("claude"); got.Effort != "xhigh" || got.Model != "opus" {
+			t.Fatalf("override = %#v; want effort xhigh and model opus", got)
 		}
 	})
 
 	// A tune-only entry projects nothing, so it enables no tool. Counting it
-	// would demand model routes for a tool nothing targets — tuning an agent's
-	// Claude side would start requiring [models.opencode.*].
+	// would demand models for a tool nothing targets — tuning an agent's
+	// Claude side would start requiring [subagents.<name>.opencode].
 	t.Run("tuning one tool does not enable the other", func(t *testing.T) {
-		doc := `
+		// Framework that targets claude only. onto-skeptic is expanded by the
+		// framework for claude, so it needs a claude block; it must NOT need an
+		// opencode block (nothing enables opencode here).
+		if err := loadDoc(t, `
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
-[subagents.onto-skeptic.claude]
-effort = "max"
-
-[models.claude.architectural]
+[subagents.onto.claude]
 model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
+[subagents.onto-explorer.claude]
 model = "haiku"
-`
-		if err := loadDoc(t, doc); err != nil {
-			t.Fatalf("tuning the claude side must not require opencode routes: %v", err)
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
+effort = "max"
+`); err != nil {
+			t.Fatalf("tuning the claude side must not require opencode blocks: %v", err)
 		}
 	})
 
 	t.Run("an override is validated too", func(t *testing.T) {
-		err := loadDoc(t, doc("[subagents.onto-skeptic.claude]\neffort = \"turbo\""))
+		err := loadDoc(t, doc("[subagents.onto-skeptic.claude]\nmodel = \"opus\"\neffort = \"turbo\"\n"))
 		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {
 			t.Fatalf("want the override's bad effort rejected, got: %v", err)
 		}
@@ -790,23 +765,8 @@ scope = "project"
 targets = ["opencode"]
 [subagents.onto-skeptic.claude]
 effort = "banana"
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-[models.opencode.architectural]
-model = "a/b"
-[models.opencode.coding]
-model = "a/b"
-[models.opencode.review]
+[subagents.onto-skeptic.opencode]
 model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "a/b"
 `)
 		if err == nil || !strings.Contains(err.Error(), "not a Claude effort level") {
 			t.Fatalf("an override for a tool outside the entry's targets must still be validated, got: %v", err)
@@ -816,7 +776,13 @@ model = "a/b"
 	// A tune-only entry naming an agent nothing installs was a total silent
 	// no-op: it loaded, planned, and applied clean while retuning nothing.
 	t.Run("a tune-only typo is a load error", func(t *testing.T) {
-		err := loadDoc(t, doc("[subagents.onto-skepic.claude]\neffort = \"max\""))
+		err := loadDoc(t, `[frameworks.onto]
+source = "builtin:onto"
+scope = "project"
+
+[subagents.onto-skepic.claude]
+effort = "max"
+`)
 		if err == nil || !strings.Contains(err.Error(), "not installed") {
 			t.Fatalf("a tune-only entry for an unknown agent must fail naming the typo, got: %v", err)
 		}
@@ -832,15 +798,6 @@ scope = "project"
 targets = ["claude"]
 [subagents.mine.claude]
 effort = "max"
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
 `)
 		if err == nil || !strings.Contains(err.Error(), "never apply") {
 			t.Fatalf("an override on a local: source must be rejected, got: %v", err)
@@ -863,31 +820,20 @@ source = "builtin:onto-skeptic"
 scope = "project"
 targets = ["opencode"]
 [subagents.a.claude]
+model = "opus"
 effort = "max"
+[subagents.a.opencode]
+model = "anthropic/claude-opus-4-8"
 
 [subagents.b]
 source = "builtin:onto-skeptic"
 scope = "project"
 targets = ["claude"]
 [subagents.b.claude]
+model = "opus"
 effort = "low"
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-[models.opencode.architectural]
-model = "a/b"
-[models.opencode.coding]
-model = "a/b"
-[models.opencode.review]
+[subagents.b.opencode]
 model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "a/b"
 `
 	err := loadDoc(t, doc)
 	if err == nil || !strings.Contains(err.Error(), "must agree") {
@@ -904,28 +850,14 @@ func TestLegacyAgentsFoldPreservesTuneBlocks(t *testing.T) {
 source = "builtin:onto-skeptic"
 
 [subagents.foo.claude]
+model = "opus"
 effort = "max"
+[subagents.foo.opencode]
+model = "anthropic/claude-opus-4-8"
 
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
-
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-[models.opencode.architectural]
-model = "a/b"
-[models.opencode.coding]
-model = "a/b"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "a/b"
 `)
 	if err != nil {
 		t.Fatalf("load: %v", err)
@@ -940,25 +872,19 @@ model = "a/b"
 // dropped its variant. Values are now trimmed once, at load.
 func TestModelRouteValuesTrimmedAtLoad(t *testing.T) {
 	c, err := loadDocCfg(t, `
-[commands.review]
-source = "builtin:review"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+[subagents.onto-reviewer.claude]
 model = "opus "
 variant = " 1m"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
 `)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	r := c.Models.Claude["architectural"]
+	r := c.Subagents["onto-reviewer"].Claude
 	if r.Model != "opus" || r.Variant != "1m" {
 		t.Fatalf("route values must be trimmed at load, got model=%q variant=%q", r.Model, r.Variant)
 	}
@@ -1047,17 +973,7 @@ source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`)
+`+ontoFrameworkModels())
 	got, err := c.ExpandedSkillEntriesForTool("claude")
 	if err != nil {
 		t.Fatalf("expand: %v", err)
@@ -1097,17 +1013,7 @@ source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`)
+`+ontoFrameworkModels())
 	got, err := c.ExpandedSkillEntriesForTool("opencode")
 	if err != nil {
 		t.Fatalf("expand: %v", err)
@@ -1129,17 +1035,7 @@ source = "builtin:onto-open"
 scope = "user"
 targets = ["claude"]
 
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`)
+`+ontoFrameworkModels())
 	_, err := c.ExpandedSkillEntriesForTool("claude")
 	if err == nil || !strings.Contains(err.Error(), "onto-open") {
 		t.Fatalf("expected collision error naming onto-open, got %v", err)
@@ -1150,9 +1046,12 @@ effort = "low"
 // framework-vs-framework collision path: two frameworks both expand
 // "onto-open" (and the rest of the onto catalog) via the REAL embedded
 // catalog, but with different scope, so the second framework's declaration
-// conflicts with the first's. ExpandedSkillEntriesForTool must error.
+// conflicts with the first's. With per-agent model blocks required for every
+// expanded subagent, the conflict may surface as a subagent collision at load
+// or a skill collision at expand — both correctly identify the framework
+// collision.
 func TestExpandedSkillsFrameworkVsFrameworkConflict(t *testing.T) {
-	c := loadTOML(t, `
+	doc := `
 [frameworks.onto_a]
 source = "builtin:onto"
 scope = "user"
@@ -1163,23 +1062,25 @@ source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`)
-	_, err := c.ExpandedSkillEntriesForTool("claude")
-	if err == nil {
-		t.Fatal("expected conflict error for two frameworks expanding the same skill with different scope, got nil")
+` + ontoFrameworkModels()
+	dir := t.TempDir()
+	p := filepath.Join(dir, "homonto.toml")
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), "onto-open") && !strings.Contains(err.Error(), "onto_b") {
-		t.Fatalf("error does not name the conflicting skill or framework: %v", err)
+	c, err := Load(p)
+	if err == nil {
+		_, err = c.ExpandedSkillEntriesForTool("claude")
+	}
+	if err == nil {
+		t.Fatal("expected conflict error for two frameworks expanding the same catalog with different scope, got nil")
+	}
+	// The collision may surface as a skill or a subagent expansion conflict;
+	// both name the offending framework or an expanded resource.
+	if !strings.Contains(err.Error(), "onto-open") &&
+		!strings.Contains(err.Error(), "onto_b") &&
+		!strings.Contains(err.Error(), "expanded by multiple frameworks") {
+		t.Fatalf("error does not name the conflicting skill, subagent, or framework: %v", err)
 	}
 }
 
@@ -1199,17 +1100,7 @@ source = "builtin:onto"
 scope = "user"
 targets = ["claude"]
 
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`)
+`+ontoFrameworkModels())
 	got, err := c.ExpandedSkillEntriesForTool("claude")
 	if err != nil {
 		t.Fatalf("expand: %v", err)
@@ -1225,28 +1116,29 @@ effort = "low"
 	}
 }
 
-func validModelsBothTools() string {
-	return `
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-[models.opencode.architectural]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "openai/gpt-5-mini"
-variant = "cheap"
-`
+// validModelsBothTools is kept as a no-op alias for tests whose fixture fails
+// before reaching the must-declare check (so the appended tier blocks of old
+// did nothing either). Tests that load a config with declared subagents must
+// declare per-agent override blocks via modelsFor / ontoFrameworkModels below.
+func validModelsBothTools() string { return "" }
+
+// modelsFor produces [subagents.<name>.<tool>] override blocks (claude +
+// opencode) for each named subagent, each with a valid per-tool model spec.
+// Every declared builtin subagent must declare one of these per target tool
+// now that tiers are gone.
+func modelsFor(names ...string) string {
+	var b strings.Builder
+	for _, name := range names {
+		b.WriteString("[subagents." + name + ".claude]\nmodel = \"opus\"\n")
+		b.WriteString("[subagents." + name + ".opencode]\nmodel = \"anthropic/claude-opus-4-8\"\n")
+	}
+	return b.String()
+}
+
+// ontoFrameworkModels is the per-agent override blocks required by the onto
+// framework's five expanded subagents.
+func ontoFrameworkModels() string {
+	return modelsFor("onto", "onto-explorer", "onto-reviewer", "onto-implementer", "onto-skeptic")
 }
 
 func TestExpandedCommandsExplicitAndTargetFilter(t *testing.T) {
@@ -1353,18 +1245,18 @@ targets = ["claude"]
 
 func TestExpandedSubagentsExplicitAndTargetFilter(t *testing.T) {
 	c := loadTOML(t, `
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude"]
-`+validModelsBothTools())
+`+modelsFor("onto-reviewer"))
 
 	claude, err := c.ExpandedSubagentEntriesForTool("claude")
 	if err != nil {
 		t.Fatalf("claude: %v", err)
 	}
-	if len(claude) != 1 || claude[0].Name != "code-reviewer" {
-		t.Fatalf("claude subagents = %+v, want [code-reviewer]", claude)
+	if len(claude) != 1 || claude[0].Name != "onto-reviewer" {
+		t.Fatalf("claude subagents = %+v, want [onto-reviewer]", claude)
 	}
 	oc, err := c.ExpandedSubagentEntriesForTool("opencode")
 	if err != nil {
@@ -1381,7 +1273,7 @@ func TestExpandedSubagentsFrameworkInheritsScopeTargets(t *testing.T) {
 source = "builtin:onto"
 scope = "project"
 targets = ["claude", "opencode"]
-`+validModelsBothTools())
+`+ontoFrameworkModels())
 
 	got, err := c.ExpandedSubagentEntriesForTool("claude")
 	if err != nil {
@@ -1402,7 +1294,13 @@ targets = ["claude", "opencode"]
 }
 
 func TestExpandedSubagentsExplicitVsFrameworkCollision(t *testing.T) {
-	c := loadTOML(t, `
+	// onto-explorer is declared explicitly AND expanded by the onto framework.
+	// The collision surfaces at load time because validateSubagentOverrides
+	// expands the framework catalog to check tune-only entries, so even a
+	// caller that never asks for the expansion sees the failure.
+	dir := t.TempDir()
+	p := filepath.Join(dir, "homonto.toml")
+	doc := `
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
@@ -1410,27 +1308,33 @@ scope = "project"
 [subagents.onto-explorer]
 source = "builtin:onto-explorer"
 scope = "user"
-`+validModelsBothTools())
-
-	if _, err := c.ExpandedSubagentEntriesForTool("claude"); err == nil {
-		t.Fatal("expected collision error: onto-explorer declared explicitly and by framework")
+`
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(p)
+	if err == nil {
+		// If load did not surface it, expand must.
+		if _, err := c.ExpandedSubagentEntriesForTool("claude"); err == nil {
+			t.Fatal("expected collision error: onto-explorer declared explicitly and by framework")
+		}
 	}
 }
 
 // EnabledModelTools already iterates c.Subagents, so a subagent targeting a
-// tool with no model routes must already fail at Load. This test locks that
-// behavior in place — no production change should be needed for it to pass.
+// tool with no per-tool model block must fail at Load naming the offender.
+// This test locks that behavior in place.
 func TestLoadRequiresModelsForSubagentTargetedTool(t *testing.T) {
 	doc := `
-[subagents.code-reviewer]
-source = "builtin:code-reviewer"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["opencode"]
 `
 	if err := loadDoc(t, doc); err == nil {
-		t.Fatal("subagent enabling opencode without model routes was accepted; want load error")
-	} else if !strings.Contains(err.Error(), "models.opencode") {
-		t.Fatalf("error %v does not mention missing opencode model routes", err)
+		t.Fatal("subagent enabling opencode without a model block was accepted; want load error")
+	} else if !strings.Contains(err.Error(), "subagents.onto-reviewer.opencode") {
+		t.Fatalf("error %v does not mention missing opencode model block", err)
 	}
 }
 
@@ -1613,22 +1517,44 @@ func TestAgentsRejectUnknownTarget(t *testing.T) {
 	}
 }
 
-// TestUnknownModelTierRejected: a [models.<tool>.<level>] whose level is not one
-// of the four tiers matches no agent role and no default-model projection, so
-// it would be a silent no-op — load must fail naming the offender.
+// TestLegacyModelTierRejected: a config carrying a legacy [models.<tool>.<level>]
+// table must fail at load naming the offender. The TOML decoder silently drops
+// unknown tables, so without explicit detection an edited-for-tiers config
+// would parse clean and silently lose its model declarations.
+func TestLegacyModelTierRejected(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "homonto.toml")
+	doc := "[subagents.onto-reviewer]\nsource=\"builtin:onto-reviewer\"\nscope=\"project\"\n" +
+		modelsFor("onto-reviewer") +
+		"[models.claude.architectural]\nmodel = \"opus\"\n"
+	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(p)
+	if err == nil {
+		t.Fatal("a legacy [models.*.*] table must be rejected at load")
+	}
+	if !strings.Contains(err.Error(), "models.claude.architectural") {
+		t.Fatalf("error must name the offending table, got: %v", err)
+	}
+}
+
+// TestUnknownModelTierRejected is the legacy name retained as an alias for the
+// scenario above; both the rejected-key form and the typo-tier form name the
+// offending [models.<tool>.<level>] table.
 func TestUnknownModelTierRejected(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "homonto.toml")
-	doc := "[subagents.architect]\nsource=\"builtin:architect\"\n" + validModelsBothTools() +
+	doc := "[subagents.onto-reviewer]\nsource=\"builtin:onto-reviewer\"\nscope=\"project\"\n" +
+		modelsFor("onto-reviewer") +
 		"[models.opencode.reviewing]\nmodel = \"anthropic/claude-opus-4-8\"\n"
 	if err := os.WriteFile(p, []byte(doc), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Load(p)
 	if err == nil {
-		t.Fatal("an unknown model tier must be rejected at load")
+		t.Fatal("a legacy [models.*.*] table must be rejected at load")
 	}
 	if !strings.Contains(err.Error(), "models.opencode.reviewing") {
-		t.Fatalf("error must name the offending tier, got: %v", err)
+		t.Fatalf("error must name the offending table, got: %v", err)
 	}
 }
 
