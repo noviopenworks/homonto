@@ -1,6 +1,6 @@
 workflow: full
 language: en
-phase: design
+phase: build
 context_compression: off
 build_mode: null
 build_pause: null
@@ -11,7 +11,7 @@ isolation: null
 verify_mode: null
 auto_transition: true
 base_ref: eb3fe5cfcf88a53630592ad6bafac50a1357f5af
-design_doc: null
+design_doc: docs/superpowers/specs/2026-07-21-remove-model-tiers-design.md
 plan: null
 verify_result: pending
 verification_report: null
@@ -20,8 +20,8 @@ created_at: 2026-07-21
 verified_at: null
 archived: false
 direct_override: null
-handoff_context: null
-handoff_hash: null
+handoff_context: openspec/changes/remove-model-tiers/.comet/handoff/design-context.json
+handoff_hash: 723df7b18b4e2dbe07f8b55bf2af6a74f9b766ec493622e110a114427882c6c2
 classic_profile: full
 classic_migration: 1
 run_id: 9d11b26d-d4b2-4361-a57c-4f9856a96a85
