@@ -1,9 +1,11 @@
 # Development Instructions
 
-The source of truth for shipped behavior is the code and its tests. The prior
-spec/change/design apparatus (`openspec/`, `docs/superpowers/`) was cleared from
-the tree; that history lives in git if you need it. Durable architecture
-rationale is in `docs/adr/`.
+The source of truth for shipped behavior is the code and its tests. The repo
+is developed with the Comet workflow: `openspec/specs/` holds the canonical
+capability specs, `openspec/changes/` the active and archived changes, and
+`docs/superpowers/` the design docs and verification reports those changes
+produced. Durable architecture rationale is in `docs/adr/`. When specs and
+code disagree, trust the code and fix the spec at the next archive.
 
 When `.codegraph/` exists, use CodeGraph before grep, glob, or direct reads to
 locate and understand code. If it is absent or unavailable, continue with the
