@@ -122,22 +122,25 @@ it creates the new one.
 
 ## 4. The onto workflow
 
-Install the framework via homonto, then apply. A tool that gains a framework
-(or any subagent or command) must declare **all four model routes**:
+Install the framework via homonto, then apply. Every subagent the framework
+expands must declare **an explicit per-tool model**:
 
 ```toml
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
 
-[models.claude.architectural]
+[subagents.onto.claude]
 model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
+[subagents.onto-explorer.claude]
 model = "haiku"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
+# targeting opencode too? add [subagents.<name>.opencode] blocks as well
 ```
 
 ```console

@@ -26,7 +26,7 @@ User-facing documentation, one topic per file.
   surgical merge, symlinked content, state, drift vs. pending, adoption, and
   pruning.
 - [`subagents.md`](subagents.md) — the `[subagents.*]` resource: sources,
-  link vs. copy mode, scope and targets, model routes, and the tool-neutral
+  link vs. copy mode, scope and targets, per-agent models, and the tool-neutral
   `homonto:` frontmatter block.
 - [`remote-source-trust.md`](remote-source-trust.md) — pinned, fail-closed
   remote installs: threat model, verification pipeline, and lifecycle.

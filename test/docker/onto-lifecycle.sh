@@ -19,18 +19,19 @@ source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+# Every framework-expanded subagent needs an explicit per-tool model for each
+# targeted tool (there are no tiers). The primary dispatcher `onto` needs one
+# too even though its Claude render is skipped (validation is per target).
+[subagents.onto.claude]
 model = "opus"
-variant = "max"
-[models.claude.coding]
-model = "sonnet"
-variant = "max"
-[models.claude.review]
-model = "opus"
-variant = "max"
-[models.claude.trivial]
+[subagents.onto-explorer.claude]
 model = "haiku"
-variant = "max"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
 EOF
 if "$ONTO" init >/dev/null 2>&1; then fail "onto init must refuse before the framework is applied"; fi
 absent "$W/docs"

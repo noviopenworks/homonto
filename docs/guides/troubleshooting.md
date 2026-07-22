@@ -28,8 +28,9 @@ it. `onto doctor` and `to doctor` report a **version skew** finding when a
 workflow binary and the homonto that installed its framework have drifted
 apart.
 
-**I changed a model route but my agents still show the old model.** Fixed in
-v0.2.0. A subagent's `model:` is stamped from `[models.<tool>.<role>]` at
+**I changed a model but my agents still show the old one.** Fixed in
+v0.2.0. A subagent's `model:` is stamped from its configured model block
+(today `[subagents.<name>.<tool>]`; tier routes before v0.8.0) at
 materialization, and materialization used to be gated on the catalog version
 alone — so a route change left the rendered agents frozen while the tool's
 own `setting.model` moved, giving two different answers from one config.

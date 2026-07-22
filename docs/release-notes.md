@@ -15,6 +15,38 @@ bookkeeper) — for every supported OS/arch as separate archives under one
 `SHA256SUMS`. `onto` and `to` each require `homonto` to have installed their
 framework first (`[frameworks.onto]` / `[frameworks.to]` + `homonto apply`).
 
+### New in v0.8.0 — explicit per-agent models; model tiers removed (BREAKING)
+
+The model tier system is gone (ADR 0016). Model selection no longer routes
+through `role:` frontmatter and shared `[models.<tool>.<tier>]` blocks —
+every declared subagent names its own model, per tool, where the agent is
+configured:
+
+```toml
+[subagents.onto-reviewer.claude]
+model = "opus"
+variant = "1m"
+effort = "high"
+```
+
+- **BREAKING — `[models.<tool>.<tier>]` blocks are rejected at load**, naming
+  the offending table. Delete them and declare a
+  `[subagents.<name>.<tool>]` block (non-empty `model`) for every declared
+  subagent × targeted tool — framework-expanded agents included. A missing
+  block fails at load with `subagents.<name>.<tool> model is required`, so
+  the offender is named instead of today's anonymous missing-tier error.
+- **BREAKING — homonto no longer manages the main session model.** The
+  route-derived default (`model` in Claude settings, `model`/`small_model`
+  in OpenCode) is not projected anymore; each tool uses its own default.
+  If you pinned the main model through `[models.claude.architectural]`,
+  move it to `[settings.claude].model` (or `[settings.opencode].model` /
+  `.small_model`) — the explicit settings path is unchanged.
+- Catalog subagents no longer carry `role:` frontmatter; a leftover `role:`
+  in your own agent files is ignored as unknown frontmatter.
+- Tool variants of a subagent now materialize only for the tools it actually
+  targets; stale variants of untargeted tools are removed on apply.
+- `onto new` proposals now require a Non-Goals section (onto framework).
+
 ### New in v0.7.0 — security hardening + deep code-review pass
 
 A full code-quality review of `internal/` found and fixed five HIGH-severity

@@ -17,18 +17,16 @@ source = "builtin:to"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
-model = "opus"
-variant = "max"
-[models.claude.coding]
-model = "sonnet"
-variant = "max"
-[models.claude.review]
-model = "opus"
-variant = "max"
-[models.claude.trivial]
+# Every framework-expanded subagent needs an explicit per-tool model for each
+# targeted tool (there are no tiers).
+[subagents.to-explorer.claude]
 model = "haiku"
-variant = "max"
+[subagents.to-implementer.claude]
+model = "sonnet"
+[subagents.to-reviewer.claude]
+model = "opus"
+[subagents.to-skeptic.claude]
+model = "opus"
 EOF
 if "$TO" init >/dev/null 2>&1; then fail "to init must refuse before the framework is applied"; fi
 absent "$W/docs"

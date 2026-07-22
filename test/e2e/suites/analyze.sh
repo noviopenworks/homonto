@@ -16,21 +16,17 @@ source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+# Per-agent models for the framework's expanded subagents (no tiers).
+[subagents.onto.claude]
 model = "opus"
-variant = "max"
-
-[models.claude.coding]
-model = "sonnet"
-variant = "max"
-
-[models.claude.review]
-model = "opus"
-variant = "max"
-
-[models.claude.trivial]
+[subagents.onto-explorer.claude]
 model = "haiku"
-variant = "max"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
 
 [mcps.e2e-probe]
 command = ["codegraph", "serve", "--mcp"]

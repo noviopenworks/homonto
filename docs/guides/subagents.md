@@ -54,21 +54,18 @@ Subagents project into **Claude Code and OpenCode only**. The Codex pilot
 adapter handles MCP servers only, so listing `codex` in a subagent's
 `targets` has no effect.
 
-## Model routes are required
+## Every agent declares its model
 
-A tool that gains a subagent (or a framework or command) must declare **all
-three** model routes for that tool: `[models.<tool>.architectural]`,
-`[models.<tool>.coding]`, `[models.<tool>.trivial]`. A partial set fails at
-load, naming the offender. This is validated for every target the subagent
-projects into. See the
-[configuration reference](configuration.md#model-routes--modelstoolroute).
-
-An agent's `role:` picks its tier. To retune **one** agent, add a per-tool
-block under its name; each field wins over the tier field by field, so this
-keeps the tier's model and only thinks harder:
+Every declared subagent — explicit or framework-expanded — must have a
+`[subagents.<name>.<tool>]` block with a non-empty `model` for each tool it
+targets. There are no tiers, roles, or shared defaults; a missing block fails
+at load naming the agent and tool
+(`subagents.<name>.<tool> model is required`). See the
+[configuration reference](configuration.md#subagent-models--subagentsnametool).
 
 ```toml
 [subagents.onto-skeptic.claude]
+model = "opus"
 effort = "max"
 ```
 
@@ -111,7 +108,6 @@ name: onto-implementer
 description: ...
 mode: subagent
 homonto:
-  role: coding        # model tier → stamped from [models.<tool>.coding]
   read_only: false    # deny edits/writes when true
   bash: false         # optional; false denies bash (default: allowed)
   dialogs: false      # question tool denied — subagents return a Questions: section
@@ -129,7 +125,6 @@ Rendering, by explicit parity tier:
 | `read_only: true` | deny `Edit`, `Write`, `NotebookEdit` | `edit: deny` |
 | `bash: false` | deny `Bash` | `bash: deny` |
 | `dialogs: true` / `false` | *(advisory — AskUserQuestion is never available to Claude subagents; the body's `Questions:`-return protocol is the cross-tool contract)* | `question: allow` / `question: deny` |
-| `role: <tier>` | `model: <claude route>` | `model: <opencode route>` |
 | `spawn: []` | deny `Agent` (and its former name `Task`) | `task: deny` |
 | `spawn: [a,b]` | spawning stays available (advisory) | `task:` globs allowing only `a`,`b` |
 | `steps` | `maxTurns:` | `steps:` |
@@ -138,12 +133,11 @@ Rendering, by explicit parity tier:
 The Claude variant carries no `mode:` line (Claude has no such field); the
 OpenCode variant re-emits `mode: subagent`/`mode: primary`.
 
-`role` maps to the tool's model from the user's `[models.<tool>.<role>]`
-route, so the same declaration yields `opus` in Claude and the OpenCode model
-id. The role names are closed — `architectural`, `coding`, `review`,
-`trivial` — and any other value fails the render naming the agent (an
-unknown role would otherwise silently emit an agent with no model). A
-missing route omits `model:` and the agent inherits the default.
+The `model:` line comes from the config's `[subagents.<name>.<tool>]` block,
+so the same declaration yields `opus` in Claude and the OpenCode model id.
+The block is required for every targeted tool — a production render with no
+model fails naming the agent and tool rather than silently emitting an agent
+with no model line.
 The prompt body is single-source, never duplicated; the neutral block and its
 comments are stripped from the rendered files. Subagents without a
 `homonto:` block are projected verbatim (a plain symlink to the shared

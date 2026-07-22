@@ -94,9 +94,9 @@ instantly live in every tool. Switching a skill's `scope` relocates the link
 cleanly: `plan` shows the move, and `apply` removes the old link as it
 creates the new one. `scope` affects skills, commands, subagents, and
 [MCP servers](#mcp-servers--mcpsname) directly; explicit `[settings.<tool>]`
-keys always project into the global tool files, while the route-derived
-default-model keys follow the model-backed resources' scope — see
-[model routes](#model-routes--modelstoolroute).
+keys always project into the global tool files. Subagent models are declared
+per agent — see
+[subagent models](#subagent-models--subagentsnametool).
 
 ## Commands — `[commands.<name>]`
 

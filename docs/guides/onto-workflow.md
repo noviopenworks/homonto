@@ -43,7 +43,8 @@ through homonto first**. This is how the skills land in your tools:
 [frameworks.onto]
 source = "builtin:onto"
 scope = "project"
-# plus all four [models.<tool>.*] routes — see the configuration reference
+# plus a [subagents.<name>.<tool>] model block per onto agent — see the
+# configuration reference
 ```
 
 Then `homonto apply`. The read-only commands (`status`, `state`, `gate`,

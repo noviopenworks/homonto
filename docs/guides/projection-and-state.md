@@ -58,11 +58,11 @@ the versions behind each apply (binary, catalog, per-framework), which is how
 detect binary/framework skew.
 
 State additionally records the **catalog version** and a **subagent render
-fingerprint**, a digest of the model routes the projected agents were stamped
-from. Builtin content re-materializes only when one of those inputs moved
-(or a file it would write is missing), so a settled workspace stays a true
-no-op while a changed `[models.<tool>.<role>]` route re-renders the agents
-that read it.
+fingerprint**, a digest of the per-agent models (and per-tool target sets)
+the projected agents were stamped from. Builtin content re-materializes only
+when one of those inputs moved (or a file it would write is missing), so a
+settled workspace stays a true no-op while a changed
+`[subagents.<name>.<tool>]` block re-renders the agent that reads it.
 
 Because a catalog file is reached through a name-based symlink, re-rendering
 it changes no *projected* value and so produces an empty plan. `apply` runs

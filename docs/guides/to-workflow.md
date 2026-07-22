@@ -53,7 +53,8 @@ through homonto first** — this is how the skills land in your tools:
 [frameworks.to]
 source = "builtin:to"
 scope = "project"
-# plus the [models.<tool>.*] routes — see the configuration reference
+# plus a [subagents.<name>.<tool>] model block per to agent — see the
+# configuration reference
 ```
 
 Then `homonto apply`. It also installs the slash commands: `/to` (the

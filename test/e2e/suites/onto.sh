@@ -13,9 +13,9 @@ git config user.email "e2e@example.com"
 git config user.name "e2e"
 
 log "homonto apply installs the onto framework"
-# A framework targeting a tool makes it an "enabled model tool", which requires
-# all three model routes for that tool — so declare them. Target claude only to
-# keep the routing minimal; materialization of .homonto/catalog/skills/onto is
+# Every framework-expanded subagent must declare a per-tool model for each
+# targeted tool (there are no tiers). Target claude only to keep the fixture
+# minimal; materialization of .homonto/catalog/skills/onto is
 # target-independent, so the onto gate is satisfied either way.
 cat > homonto.toml <<'EOF'
 [frameworks.onto]
@@ -23,21 +23,16 @@ source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+[subagents.onto.claude]
 model = "opus"
-variant = "max"
-
-[models.claude.coding]
-model = "sonnet"
-variant = "max"
-
-[models.claude.review]
-model = "opus"
-variant = "max"
-
-[models.claude.trivial]
+[subagents.onto-explorer.claude]
 model = "haiku"
-variant = "max"
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-skeptic.claude]
+model = "opus"
 EOF
 homonto apply --yes
 [ -d "$WORK/.homonto/catalog/skills/onto" ] || fail "onto framework not materialized to .homonto/catalog/skills/onto"

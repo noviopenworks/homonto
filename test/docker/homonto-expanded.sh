@@ -15,24 +15,26 @@ source = "builtin:onto"
 scope = "project"
 targets = ["claude"]
 
-[models.claude.architectural]
+# Per-agent models (no tiers): every framework-expanded agent declares a model
+# for each targeted tool. A block with no source tunes the framework's agent
+# rather than re-declaring it. The dispatcher `onto` must declare one too, even
+# though its Claude render is skipped (primary: true → OpenCode-only).
+[subagents.onto.claude]
 model = "opus"
-variant = "1m"
-effort = "high"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-variant = "1m"
-effort = "high"
-[models.claude.trivial]
+[subagents.onto-explorer.claude]
 model = "haiku"
 effort = "low"
-
-# Retune one agent: wins over its tier field by field, and needs no source
-# because the onto framework already declares this agent.
+[subagents.onto-reviewer.claude]
+model = "opus"
+variant = "1m"
+effort = "high"
+[subagents.onto-implementer.claude]
+model = "sonnet"
+effort = "medium"
+# The skeptic runs the reviewer's model but thinks at max.
 [subagents.onto-skeptic.claude]
+model = "opus"
+variant = "1m"
 effort = "max"
 
 # onto ships all builtin subagents as framework subagents, so declaring one
@@ -76,16 +78,14 @@ is_file "$W/.homonto/catalog/subagents/onto-implementer.md"
 is_file "$W/.homonto/catalog/subagents/onto-skeptic.md"
 # Homonto-block subagents materialize per-tool variants; the Claude variant of a
 # read-only spawn:[] agent denies exactly the removed capabilities (everything
-# else keeps Claude's defaults), and stamps the role's model (this config maps
-# the claude review tier -> opus).
+# else keeps Claude's defaults), and stamps the agent's declared model.
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'disallowedTools: Edit, Write, NotebookEdit, Agent, Task'
 if grep -qE '^tools:|^mode:' "$W/.homonto/catalog/subagents/onto-reviewer.claude.md"; then fail "claude render must not carry a tools: allowlist or mode: field"; fi
 # Claude has no variant field: a variant brackets the ALIAS into the model, and
-# effort is its own field. Both come from the review tier.
+# effort is its own field. Both come from [subagents.onto-reviewer.claude].
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'model: opus\[1m\]'
 in_file "$W/.homonto/catalog/subagents/onto-reviewer.claude.md" 'effort: high'
-# A per-subagent override beats the tier field by field: the skeptic shares the
-# review tier but thinks at max, and still inherits that tier's model.
+# The skeptic's own block: the reviewer's model at max effort.
 in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'effort: max'
 in_file "$W/.homonto/catalog/subagents/onto-skeptic.claude.md" 'model: opus\[1m\]'
 # The implementer edits (coding model) but still spawns nothing: the only
@@ -94,11 +94,14 @@ in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'model: sonne
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'effort: medium'
 in_file "$W/.homonto/catalog/subagents/onto-implementer.claude.md" 'disallowedTools: Agent, Task'
 if grep -qE 'disallowedTools:.*Edit' "$W/.homonto/catalog/subagents/onto-implementer.claude.md"; then fail "edit-capable implementer must not deny Edit"; fi
-# The onto primary agent is OpenCode-only: agentfm skips its Claude render, so
-# the .claude.md variant is absent while the .opencode.md variant exists.
+# Tool variants materialize only for targeted tools: opencode is untargeted in
+# this config, so no agent gets an .opencode.md variant. The onto primary agent
+# additionally skips its Claude render (primary: true → OpenCode-only), so the
+# shared file exists with no tool variant at all.
 is_file "$W/.homonto/catalog/subagents/onto.md"
-is_file "$W/.homonto/catalog/subagents/onto.opencode.md"
+absent  "$W/.homonto/catalog/subagents/onto.opencode.md"
 absent  "$W/.homonto/catalog/subagents/onto.claude.md"
+absent  "$W/.homonto/catalog/subagents/onto-reviewer.opencode.md"
 ok "framework skills, commands, and subagents materialized (per-tool render invariants hold)"
 
 # Assert each tool entry is a symlink AND that it actually resolves to real
