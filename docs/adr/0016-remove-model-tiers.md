@@ -1,6 +1,6 @@
 # Declare subagent models explicitly; drop model tiers
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-21
 - **Change:** remove-model-tiers
 

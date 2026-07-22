@@ -1,5 +1,8 @@
-## ADDED Requirements
+# agent-models Specification
 
+## Purpose
+TBD - created by archiving change remove-model-tiers. Update Purpose after archive.
+## Requirements
 ### Requirement: Every declared subagent resolves an explicit per-tool model
 The loader SHALL require, for every declared subagent and every target tool
 enabled for that subagent, a `[subagents.<name>.<tool>]` block whose `model` is
@@ -69,11 +72,11 @@ SHALL be removed.
   explicit-settings path is unchanged by this change
 
 ### Requirement: Per-tool model spec validation is preserved
-A `[subagents.<name>.<tool>]` block MAY set `effort` (Claude only, one of
-`low|medium|high|xhigh|max`) and `variant` (Claude model alias, or OpenCode
-variant), and SHALL NOT set `effort` for OpenCode. The loader SHALL reject any
-effort/variant value the target tool cannot express, naming the offending
-block. `model` is required; `effort` and `variant` are optional.
+The loader SHALL reject any `effort` or `variant` value the target tool cannot
+express, naming the offending `[subagents.<name>.<tool>]` block. Such a block
+MAY set `effort` (Claude only, one of `low|medium|high|xhigh|max`) and `variant`
+(Claude model alias, or OpenCode variant), and SHALL NOT set `effort` for
+OpenCode. `model` is required; `effort` and `variant` are optional.
 
 #### Scenario: Invalid Claude effort rejected
 - **WHEN** `[subagents.onto-implementer.claude]` sets `effort = "ludicrous"`

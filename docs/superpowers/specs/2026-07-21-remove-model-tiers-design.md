@@ -2,6 +2,8 @@
 comet_change: remove-model-tiers
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-22-remove-model-tiers
+status: final
 ---
 
 # Design Doc: remove-model-tiers (deep technical refinement)
