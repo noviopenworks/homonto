@@ -40,9 +40,10 @@ is where the old hand-written checks now live, done against a disposable
 > **Dogfooding is deferred to v1.** This repository is developed with
 > **Comet** (see [`guides/comet-workflow.md`](guides/comet-workflow.md) and
 > [`personas.md`](personas.md)); onto is the workflow we *ship*, not the one
-> we use here yet. So there is deliberately **no "does the repo dogfood
-> cleanly" pre-tag step**, and a stale `.homonto/` in a working copy is not
-> a release blocker. The Docker E2E verifies all three binaries in a clean
+> we use here yet. The repo therefore carries **no `homonto.toml` and no
+> projected `.claude/` / `.opencode/` content** of its own, there is
+> deliberately **no "does the repo dogfood cleanly" pre-tag step**, and a
+> stale `.homonto/` in a working copy is not a release blocker. The Docker E2E verifies all three binaries in a clean
 > environment instead — stronger evidence than a developer machine whose
 > state has accumulated across versions.
 

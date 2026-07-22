@@ -7,7 +7,9 @@
 /homonto
 graphify-out/
 __pycache__/
-# Project-scoped dogfood skill links (machine-specific absolute symlinks).
+# Per-developer tool state (machine-specific). The repo does not dogfood
+# homonto, so nothing here is projected — these hold each developer's own
+# Claude Code / OpenCode setup.
 /.claude/
 /.opencode/
 
