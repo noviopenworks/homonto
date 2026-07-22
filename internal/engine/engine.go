@@ -256,6 +256,10 @@ func (e *Engine) recordVersions() {
 // conflicting overrides on one source, so resolving by catalog name here is
 // unambiguous by the time we run.
 func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
+	return e.subagentRenderContextFor(nil)
+}
+
+func (e *Engine) subagentRenderContextFor(targets map[string]map[string]bool) map[string]agentfm.RenderContext {
 	overrides := func(pick func(config.Subagent) config.ModelRoute) map[string]agentfm.ModelSpec {
 		m := map[string]agentfm.ModelSpec{}
 		for key, sa := range e.Cfg.Subagents {
@@ -280,8 +284,8 @@ func (e *Engine) subagentRenderContext() map[string]agentfm.RenderContext {
 		return m
 	}
 	return map[string]agentfm.RenderContext{
-		"claude":   {Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.Claude })},
-		"opencode": {Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.OpenCode })},
+		"claude":   {Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.Claude }), Targets: targets["claude"]},
+		"opencode": {Overrides: overrides(func(s config.Subagent) config.ModelRoute { return s.OpenCode }), Targets: targets["opencode"]},
 	}
 }
 
@@ -407,6 +411,7 @@ func (e *Engine) planCatalog() (*catalogPlan, error) {
 	skillSet := map[string]bool{}
 	cmdSet := map[string]bool{}
 	subSet := map[string]bool{}
+	targetedSubagents := map[string]map[string]bool{"claude": {}, "opencode": {}}
 	for _, tool := range []string{"claude", "opencode"} {
 		sEntries, err := e.Cfg.ExpandedSkillEntriesForTool(tool)
 		if err != nil {
@@ -432,7 +437,9 @@ func (e *Engine) planCatalog() (*catalogPlan, error) {
 		}
 		for _, entry := range saEntries {
 			if strings.HasPrefix(entry.Resource.Source, "builtin:") {
-				subSet[strings.TrimPrefix(entry.Resource.Source, "builtin:")] = true
+				name := strings.TrimPrefix(entry.Resource.Source, "builtin:")
+				subSet[name] = true
+				targetedSubagents[tool][name] = true
 			}
 		}
 	}
@@ -474,7 +481,7 @@ func (e *Engine) planCatalog() (*catalogPlan, error) {
 	//     version-only gate served the stale bytes forever, and repinning is
 	//     how a patched resource ships),
 	//   - and the presence of every file a materialize would write.
-	renderCtx := e.subagentRenderContext()
+	renderCtx := e.subagentRenderContextFor(targetedSubagents)
 	contentFP, err := cl.ContentFingerprint(skillNames, cmdNames, subNames)
 	if err != nil {
 		return nil, err
@@ -546,6 +553,14 @@ func subagentRenderFingerprint(ctx map[string]agentfm.RenderContext) string {
 	sort.Strings(tools)
 	for _, tool := range tools {
 		digestSpecs("override", tool, ctx[tool].Overrides)
+		targets := make([]string, 0, len(ctx[tool].Targets))
+		for name := range ctx[tool].Targets {
+			targets = append(targets, name)
+		}
+		sort.Strings(targets)
+		for _, name := range targets {
+			fmt.Fprintf(h, "target\x00%s\x00%s\x00", tool, name)
+		}
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

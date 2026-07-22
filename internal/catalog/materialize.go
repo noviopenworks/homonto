@@ -111,8 +111,8 @@ func (c *Catalog) MaterializeCommands(dstRoot string, names []string) error {
 // internal/agentfm), it ALSO writes per-tool variants — <name>.claude.md and
 // <name>.opencode.md — rendered from that block into each tool's native fields
 // (Claude's `tools:` allowlist vs OpenCode's `permission:` map), which cannot
-// share one file. renderCtx supplies the config-derived values the render needs
-// (the role→model routes) per tool. A render that returns no bytes (a primary
+// share one file. renderCtx supplies the config-derived model values the render
+// needs per tool. A render that returns no bytes (a primary
 // agent has no Claude variant) removes any stale variant instead of writing one,
 // so the adapter's "block present + variant absent → skip" rule holds. Each
 // adapter prefers its own variant; the shared <name>.md remains the version-gate
@@ -206,7 +206,11 @@ func (c *Catalog) SubagentFiles(name string, renderCtx map[string]agentfm.Render
 		return files, nil
 	}
 	for _, tool := range []string{"claude", "opencode"} {
-		rendered, rerr := agentfm.Render(name, data, tool, renderCtx[tool])
+		ctx, targeted := renderContextForTool(renderCtx, tool, name)
+		if !targeted {
+			continue
+		}
+		rendered, rerr := agentfm.Render(name, data, tool, ctx)
 		if rerr != nil {
 			return nil, fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
 		}
@@ -254,7 +258,15 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx
 			continue
 		}
 		for _, tool := range []string{"claude", "opencode"} {
-			rendered, rerr := agentfm.Render(name, data, tool, renderCtx[tool])
+			ctx, targeted := renderContextForTool(renderCtx, tool, name)
+			if !targeted {
+				variant := filepath.Join(dstRoot, name+"."+tool+".md")
+				if err := os.Remove(variant); err != nil && !os.IsNotExist(err) {
+					return err
+				}
+				continue
+			}
+			rendered, rerr := agentfm.Render(name, data, tool, ctx)
 			if rerr != nil {
 				return fmt.Errorf("catalog: render subagent %q for %s: %w", name, tool, rerr)
 			}
@@ -271,4 +283,19 @@ func (c *Catalog) MaterializeSubagents(dstRoot string, names []string, renderCtx
 		}
 	}
 	return nil
+}
+
+// renderContextForTool preserves nil as the catalog-only, model-free rendering
+// mode. Production contexts name their target agents; unselected tool variants
+// are skipped, while a selected agent with no override gets a non-nil context
+// that agentfm rejects instead of omitting a model line.
+func renderContextForTool(renderCtx map[string]agentfm.RenderContext, tool, name string) (*agentfm.RenderContext, bool) {
+	if renderCtx == nil {
+		return nil, true
+	}
+	ctx := renderCtx[tool]
+	if ctx.Targets != nil && !ctx.Targets[name] {
+		return nil, false
+	}
+	return &ctx, true
 }

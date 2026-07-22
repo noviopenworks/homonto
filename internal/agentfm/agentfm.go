@@ -72,12 +72,14 @@ type ModelSpec struct {
 // RenderContext carries the per-subagent model overrides the render needs for
 // the tool being rendered (the caller passes the Claude overrides for the
 // claude render, the OpenCode overrides for the opencode render). Overrides is
-// keyed by subagent name; an agent missing from the map renders nothing for
-// that tool (it is targeted at another tool). Config validation enforces that
-// every declared builtin subagent has a non-empty model for every tool it
-// targets.
+// keyed by subagent name. A non-nil context is a production render and requires
+// a non-empty model for every rendered agent; a nil context is reserved for
+// catalog projection tests that intentionally omit model routing.
 type RenderContext struct {
 	Overrides map[string]ModelSpec
+	// Targets names actually projected to this tool. It lets materialization skip
+	// an unselected tool variant without weakening validation for selected agents.
+	Targets map[string]bool
 }
 
 // ClaudeAliases are the model aliases Claude Code accepts. The bracketed
@@ -134,7 +136,7 @@ func NeedsTransform(content []byte) bool {
 func ProjectsFor(content []byte, tool string) (bool, error) {
 	// Projection is decided by the neutral block alone (primary vs not), never by
 	// the model spec, so an empty context is the right question to ask here.
-	rendered, err := Render("", content, tool, RenderContext{})
+	rendered, err := Render("", content, tool, nil)
 	if err != nil {
 		return false, err
 	}
@@ -145,7 +147,7 @@ func ProjectsFor(content []byte, tool string) (bool, error) {
 // bytes when the agent must NOT be projected for that tool (a primary agent has
 // no Claude variant). Content with no frontmatter or no `homonto:` block is
 // returned unchanged.
-func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte, error) {
+func Render(name string, content []byte, tool string, ctx *RenderContext) ([]byte, error) {
 	fm, body, ok := split(content)
 	if !ok {
 		return content, nil
@@ -161,18 +163,15 @@ func Render(name string, content []byte, tool string, ctx RenderContext) ([]byte
 	if !has {
 		return content, nil
 	}
-	// Look up the override for this tool. An empty context (no Overrides map,
-	// or name absent) is treated leniently: the variant is rendered without a
-	// model line. This keeps the catalog's verbatim-materialize unit tests
-	// (which pass nil for renderCtx) working, and lets the engine render
-	// untargeted-tool variants harmlessly (the adapter never links them — a
-	// subagent's target filter rules them out). The load-time check is the
-	// real source of truth for "declared subagent must declare a model for
-	// every ENABLED tool"; this is the backstop for the narrower case where
-	// a caller DOES supply an override entry but its Model is blank.
-	spec := ctx.Overrides[name]
-	if spec.Model == "" && spec != (ModelSpec{}) {
-		return nil, fmt.Errorf("agentfm: agent %q has no model for tool %s; declare [subagents.%s.%s] in homonto.toml", name, tool, name, tool)
+	// A non-nil context marks a production render after framework expansion.
+	// Unlike the nil catalog-test context, it must resolve a non-empty model.
+	var spec ModelSpec
+	if ctx != nil {
+		var ok bool
+		spec, ok = ctx.Overrides[name]
+		if !ok || spec.Model == "" {
+			return nil, fmt.Errorf("agentfm: agent %q has no model for tool %s; [subagents.%s.%s] model is required", name, tool, name, tool)
+		}
 	}
 
 	// Preserve every frontmatter line except the homonto block and the mode line

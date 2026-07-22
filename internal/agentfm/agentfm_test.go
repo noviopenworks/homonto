@@ -33,8 +33,8 @@ homonto:
 Drive the workflow.
 `
 
-func ctx() RenderContext {
-	return RenderContext{Overrides: map[string]ModelSpec{
+func ctx() *RenderContext {
+	return &RenderContext{Overrides: map[string]ModelSpec{
 		"onto-reviewer": {Model: "opus"},
 		"onto":          {Model: "opus"},
 	}}
@@ -171,7 +171,7 @@ func TestRender_UnknownTool(t *testing.T) {
 // it cannot always do: the override is judged against its own model, but a
 // future caller that bypasses Load could supply an unrenderable combination.
 func TestRenderClaude_VariantOnFullModelIDErrors(t *testing.T) {
-	ctx := RenderContext{Overrides: map[string]ModelSpec{
+	ctx := &RenderContext{Overrides: map[string]ModelSpec{
 		"onto-reviewer": {Model: "claude-opus-4-8", Variant: "1m"},
 	}}
 	_, err := Render("onto-reviewer", []byte(readOnlyReviewer), "claude", ctx)
@@ -185,16 +185,11 @@ func TestRenderClaude_VariantOnFullModelIDErrors(t *testing.T) {
 	}
 }
 
-// TestRenderNoModelErrors: the renderer backstops config validation for the
-// narrow case where an override entry IS supplied but its Model is blank (a
-// gap load-time validation can miss for framework-expanded agents). An empty
-// render context (no entry at all) is treated leniently: the variant renders
-// without a model line, so the catalog's verbatim-materialize unit tests work
-// and the engine can render an untargeted-tool variant the adapter will skip
-// by target filter anyway.
+// TestRenderNoModelErrors keeps the present-but-empty override failure distinct
+// from the missing-override production backstop below.
 func TestRenderNoModelErrors(t *testing.T) {
 	for _, tool := range []string{"claude", "opencode"} {
-		ctx := RenderContext{Overrides: map[string]ModelSpec{
+		ctx := &RenderContext{Overrides: map[string]ModelSpec{
 			"ghost": {Variant: "1m"}, // entry present but no Model
 		}}
 		_, err := Render("ghost", []byte(readOnlyReviewer), tool, ctx)
@@ -207,5 +202,30 @@ func TestRenderNoModelErrors(t *testing.T) {
 		if !strings.Contains(err.Error(), "[subagents.ghost."+tool+"]") {
 			t.Fatalf("Render(%s): error must name the block to add, got: %v", tool, err)
 		}
+	}
+}
+
+func TestRenderMissingModelOverrideErrorsWithRenderContext(t *testing.T) {
+	for _, tool := range []string{"claude", "opencode"} {
+		_, err := Render("ghost", []byte(readOnlyReviewer), tool, &RenderContext{Overrides: map[string]ModelSpec{}})
+		if err == nil {
+			t.Fatalf("Render(%s): a production render context without an override must error", tool)
+		}
+		if !strings.Contains(err.Error(), `"ghost"`) || !strings.Contains(err.Error(), tool) {
+			t.Fatalf("Render(%s): error must name the agent and tool, got: %v", tool, err)
+		}
+		if !strings.Contains(err.Error(), "[subagents.ghost."+tool+"]") {
+			t.Fatalf("Render(%s): error must name the required model block, got: %v", tool, err)
+		}
+	}
+}
+
+func TestRenderNilContextRemainsLenientForCatalogProjection(t *testing.T) {
+	out, err := Render("onto-reviewer", []byte(readOnlyReviewer), "opencode", nil)
+	if err != nil {
+		t.Fatalf("Render with nil context: %v", err)
+	}
+	if strings.Contains(string(out), "model:") {
+		t.Fatalf("nil catalog context must not add a model line:\n%s", out)
 	}
 }
