@@ -398,25 +398,10 @@ source = "builtin:onto-reviewer"
 scope = "project"
 targets = ["claude", "opencode"]
 
-[models.claude.architectural]
+[subagents.onto-reviewer.claude]
 model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-[models.opencode.architectural]
+[subagents.onto-reviewer.opencode]
 model = "anthropic/claude-opus-4-8"
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "openai/gpt-5-mini"
-variant = "cheap"
 `
 
 func TestDoctorReportsLinkedSubagent(t *testing.T) {

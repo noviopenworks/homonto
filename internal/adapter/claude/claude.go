@@ -38,10 +38,8 @@ func New(home, content string) *Adapter {
 }
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
-// used for project-scope resource placement. MCP servers and explicit settings
-// always project under home; the route-derived default-model key projects
-// under projectRoot when every model-backed resource is project-scoped (see
-// config.ModelSettingsScope).
+// used for project-scope resource placement. Explicit settings remain in the
+// user settings file; project-scoped MCP servers use the project MCP file.
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.Base.ProjectRoot = projectRoot
 	return a
@@ -82,9 +80,8 @@ func (a *Adapter) settingsJSON() string {
 }
 
 // projectSettingsJSON is the project-level settings file (merged by Claude Code
-// over the user one, project winning on conflicting keys). Only the
-// route-derived default-model key ever lands here; call only when projectRoot
-// is set.
+// over the user one, project winning on conflicting keys). It remains part of
+// the projection plumbing to prune prior projsetting.* state entries.
 func (a *Adapter) projectSettingsJSON() string {
 	return filepath.Join(a.ProjectRoot, ".claude", "settings.json")
 }
@@ -171,19 +168,10 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	for k, v := range c.Settings.Claude {
 		out["setting."+k] = structproj.MustJSON(v)
 	}
-	// Project the architectural model route into Claude's default model setting
-	// so a declared [models.claude.*] block configures the model. The key stays
-	// in the USER settings.json only while some model-backed resource is
-	// user-scoped; a fully project-scoped workflow routes it into the project
-	// settings file instead (desiredProjectSettings), so it never leaks into
-	// other projects' sessions. An explicit [settings.claude].model wins — and
-	// suppresses the project-level twin too, which would otherwise override it
-	// in Claude's settings merge order.
-	if !a.ProjectModelSettings(c) {
-		if v, ok := routeModelSetting(c); ok {
-			out["setting.model"] = v
-		}
-	}
+	// homonto no longer projects a route-derived default main model: an
+	// operator who wants a specific Claude main model declares it explicitly
+	// via [settings.claude].model above. Each tool uses its own default
+	// otherwise.
 	for _, pl := range c.Plugins.Claude {
 		// Source-keyed: enabledPlugins[<source>] carries the plugin's enabled
 		// value, so a disabled plugin emits a managed `false` (not absence).
@@ -204,32 +192,15 @@ func (a *Adapter) desired(c *config.Config) map[string]string {
 	return out
 }
 
-// routeModelSetting returns the route-derived default-model JSON value
-// (architectural → model), or ok=false when no route declares one or an
-// explicit [settings.claude].model suppresses it.
-func routeModelSetting(c *config.Config) (string, bool) {
-	if _, explicit := c.Settings.Claude["model"]; explicit {
-		return "", false
-	}
-	r, ok := c.Models.Claude["architectural"]
-	if !ok || r.Model == "" {
-		return "", false
-	}
-	return structproj.MustJSON(r.Model), true
-}
-
-// desiredProjectSettings maps the route-derived default-model key to its
-// projsetting.* state key when it projects into the project-level settings
-// file instead (every model-backed resource project-scoped).
+// desiredProjectSettings is the project-level counterpart of desired, for keys
+// that belong in <projectRoot>/.claude/settings.json instead of the user
+// settings. homonto no longer derives any main-model key from a route (an
+// operator who wants a specific main model declares it via [settings.claude]),
+// so today this returns nothing — kept as a hook so the projsetting.* state
+// namespace stays pruned cleanly and a future project-scoped setting has a
+// home.
 func (a *Adapter) desiredProjectSettings(c *config.Config) map[string]string {
-	out := map[string]string{}
-	if !a.ProjectModelSettings(c) {
-		return out
-	}
-	if v, ok := routeModelSetting(c); ok {
-		out["projsetting.model"] = v
-	}
-	return out
+	return map[string]string{}
 }
 
 // marketplaceValue builds the canonical extraKnownMarketplaces value for a

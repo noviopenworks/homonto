@@ -84,11 +84,6 @@ func normalize(c *Config) {
 		r.OpenCode = trimRoute(r.OpenCode)
 		c.Subagents[name] = r
 	}
-	for _, routes := range []map[string]ModelRoute{c.Models.Claude, c.Models.OpenCode} {
-		for level, r := range routes {
-			routes[level] = trimRoute(r)
-		}
-	}
 }
 
 func Load(path string) (*Config, error) {

@@ -14,23 +14,17 @@ scope = "project"
 source = "builtin:onto-explorer"
 scope = "project"
 
-[models.claude.architectural]
+# Declared subagents must declare a [subagents.<name>.<tool>] block with a
+# non-empty model for every tool they target. onto-reviewer (review/judgement)
+# and onto-explorer (cheap lookups) target both tools by default.
+[subagents.onto-reviewer.claude]
 model = "opus"
-
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-
-[models.opencode.architectural]
+[subagents.onto-reviewer.opencode]
 model = "anthropic/claude-opus-4-8"
 
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4"
-
-[models.opencode.trivial]
+[subagents.onto-explorer.claude]
+model = "haiku"
+effort = "low"
+[subagents.onto-explorer.opencode]
 model = "openai/gpt-5-mini"
 variant = "cheap"

@@ -7,7 +7,6 @@ mode: subagent
 # Exploration is read-only with no shell (bash denied), spawns nothing, uses the
 # fast/cheap trivial-tier model; it returns questions instead of prompting.
 homonto:
-  role: trivial
   read_only: true
   bash: false
   dialogs: false

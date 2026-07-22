@@ -40,10 +40,8 @@ func New(home, content string) *Adapter {
 }
 
 // WithProjectRoot sets the project root (the homonto.toml directory). It is
-// used for project-scope resource placement. MCP servers, explicit settings,
-// and plugins always project under home; the route-derived default-model keys
-// project under projectRoot when every model-backed resource is project-scoped
-// (see config.ModelSettingsScope).
+// used for project-scope resource placement. Explicit settings and plugins
+// remain in the user config; project-scoped MCP servers use the project config.
 func (a *Adapter) WithProjectRoot(projectRoot string) *Adapter {
 	a.Base.ProjectRoot = projectRoot
 	return a
@@ -83,8 +81,8 @@ func (a *Adapter) cfgFile() string {
 }
 
 // projectCfgFile is the project-level OpenCode config (merged by OpenCode over
-// the global one, project winning on conflicting keys). Only the route-derived
-// default-model keys ever land here; call only when projectRoot is set.
+// the global one, project winning on conflicting keys). It remains part of the
+// projection plumbing to prune prior projsetting.* state entries.
 func (a *Adapter) projectCfgFile() string {
 	return filepath.Join(a.ProjectRoot, "opencode.jsonc")
 }
@@ -160,55 +158,25 @@ func (a *Adapter) desiredProjectMCPs(c *config.Config) map[string]string {
 	return out
 }
 
-// routeSettings returns the route-derived default-model keys (unprefixed
-// setting name → JSON value): architectural → model, trivial → small_model. An
-// explicit [settings.opencode] key suppresses its route-derived twin entirely:
-// wherever the route key would land, the explicit value must stay effective,
-// and a project-level copy would override a global explicit one in OpenCode's
-// merge order.
-func routeSettings(c *config.Config) map[string]string {
-	out := map[string]string{}
-	for settingKey, level := range map[string]string{"model": "architectural", "small_model": "trivial"} {
-		if _, explicit := c.Settings.OpenCode[settingKey]; explicit {
-			continue
-		}
-		if r, ok := c.Models.OpenCode[level]; ok && r.Model != "" {
-			out[settingKey] = structproj.MustJSON(r.Model)
-		}
-	}
-	return out
-}
-
 // desiredSettings maps each [settings.opencode] key to its setting.* state key
-// (explicit settings always live in the global opencode.jsonc), plus the
-// route-derived default-model keys when those stay global too — a user-scope
-// model-backed resource means the models serve every session, not one repo.
+// (explicit settings always live in the global opencode.jsonc). homonto no
+// longer derives a default main/small_model from any route — an operator who
+// wants a specific model declares it via [settings.opencode], and otherwise
+// OpenCode uses its own default.
 func (a *Adapter) desiredSettings(c *config.Config) map[string]string {
 	out := map[string]string{}
 	for k, v := range c.Settings.OpenCode {
 		out["setting."+k] = structproj.MustJSON(v)
 	}
-	if !a.ProjectModelSettings(c) {
-		for k, v := range routeSettings(c) {
-			out["setting."+k] = v
-		}
-	}
 	return out
 }
 
-// desiredProjectSettings maps the route-derived default-model keys to their
-// projsetting.* state keys when they project into the project-level
-// opencode.jsonc instead (every model-backed resource project-scoped), so a
-// project's workflow models never leak into other projects' sessions.
+// desiredProjectSettings is the project-level counterpart of desiredSettings.
+// homonto no longer derives any main/small_model key from a route, so today
+// this returns nothing — kept as a hook so the projsetting.* state namespace
+// stays pruned cleanly and a future project-scoped setting has a home.
 func (a *Adapter) desiredProjectSettings(c *config.Config) map[string]string {
-	out := map[string]string{}
-	if !a.ProjectModelSettings(c) {
-		return out
-	}
-	for k, v := range routeSettings(c) {
-		out["projsetting."+k] = v
-	}
-	return out
+	return map[string]string{}
 }
 
 // desiredTUI maps each [tui.opencode] key to its tui.* state key (tui.json).

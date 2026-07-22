@@ -18,29 +18,10 @@ func TestHasRemoteResources(t *testing.T) {
 	repo := t.TempDir()
 	cfgPath := filepath.Join(repo, "homonto.toml")
 
-	// A model block is required because a subagent targeting Claude enables
-	// model routing; the validator below rejects an enabled tool with no
-	// routes. Inline it once and append per-case bodies.
-	const base = `
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-[models.opencode.architectural]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.coding]
-model = "anthropic/claude-sonnet-4-8"
-[models.opencode.review]
-model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "anthropic/claude-haiku-4-8"
-`
+	// An empty base — model routing is per-agent now, and these cases declare
+	// only local/remote subagents (neither is rendered through agentfm, so
+	// no per-agent model block is required).
+	const base = ""
 
 	cases := []struct {
 		name string
@@ -91,25 +72,12 @@ func TestPendingRemoteRepins(t *testing.T) {
 	const pinA = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	const pinB = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
-	// The validator requires model routes for any tool a subagent targets.
-	const modelsBlock = `
-[models.claude.architectural]
-model = "opus"
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-`
-
+	// Remote: subagents are not rendered through agentfm (their content is
+	// projected verbatim), so no per-agent model block is required for them.
 	// First config: declares pinA. There is no lockfile yet, so there is no
 	// repin to report (a fresh declaration surfaces in the projection plan as
 	// a create, not as a repin).
-	if err := os.WriteFile(cfgPath, []byte(modelsBlock+
-		"[subagents.r]\nsource = \"remote:https://example.com/r.tar.gz\"\ndigest = \""+pinA+"\"\ntargets = [\"claude\"]\n"), 0o644); err != nil {
+	if err := os.WriteFile(cfgPath, []byte("[subagents.r]\nsource = \"remote:https://example.com/r.tar.gz\"\ndigest = \""+pinA+"\"\ntargets = [\"claude\"]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	e, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))
@@ -137,8 +105,7 @@ effort = "low"
 	}
 
 	// Change the config to pinB → one repin, named, with the old+new pins.
-	if err := os.WriteFile(cfgPath, []byte(modelsBlock+
-		"[subagents.r]\nsource = \"remote:https://example.com/r.tar.gz\"\ndigest = \""+pinB+"\"\ntargets = [\"claude\"]\n"), 0o644); err != nil {
+	if err := os.WriteFile(cfgPath, []byte("[subagents.r]\nsource = \"remote:https://example.com/r.tar.gz\"\ndigest = \""+pinB+"\"\ntargets = [\"claude\"]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	e2, err := Build(context.Background(), cfgPath, home, filepath.Join(repo, "content"))

@@ -13,6 +13,15 @@ import (
 
 // validate rejects a config that would project nothing or corrupt a tool file.
 func validate(c *Config) error {
+	// Legacy [models.<tool>.<tier>] tables were removed (D2 — no more tier
+	// routing). The TOML decoder populates the Models field on Config as a
+	// detector (pelletier/go-toml/v2 cannot write to unexported fields, so the
+	// field is exported but its type private); reject any non-empty value
+	// naming the offender, so a config edited for the tier system fails loudly
+	// instead of silently losing its model declarations.
+	if err := rejectLegacyModels(c.Models); err != nil {
+		return err
+	}
 	for kind, resources := range map[string]map[string]Resource{
 		"skills":   c.Skills,
 		"commands": c.Commands,
@@ -414,9 +423,10 @@ var (
 )
 
 // validateModelSpec checks one model/variant/effort triple against what `tool`
-// can actually express, naming label as the offender. `model` is required only
-// of a tier (a per-subagent override may set effort alone and inherit the rest),
-// which requireModel selects.
+// can actually express, naming label as the offender. `model` is required when
+// requireModel is set (the per-subagent must-declare check passes true; the
+// per-override walk passes false so it can flag malformed values without
+// demanding a model field that an effort-only override wouldn't have).
 //
 // The tools differ, so the rules do:
 //   - Claude renders a variant by bracketing an ALIAS (`opus[1m]`), and takes
@@ -436,7 +446,7 @@ func validateModelSpec(tool, label string, r ModelRoute, requireModel bool) erro
 			return fmt.Errorf("parse config: %s effort %q is not a Claude effort level (low, medium, high, xhigh, max)", label, effort)
 		}
 		// Only meaningful against a model we can see; an override that sets a
-		// variant alone is checked against the tier it merges into, below.
+		// variant alone is checked at render, where the merged model is known.
 		if variant != "" && model != "" && !claudeModelAliases[model] {
 			return fmt.Errorf("parse config: %s variant %q needs a model alias (opus, sonnet, haiku, fable, opusplan) — Claude takes no variant on the full model id %q", label, variant, model)
 		}
@@ -448,47 +458,166 @@ func validateModelSpec(tool, label string, r ModelRoute, requireModel bool) erro
 	return nil
 }
 
-// validateModels ensures every tool enabled by a non-skill resource declares all
-// four model tiers with a model, and that every model/variant/effort value —
-// tier or per-subagent override — is one the target tool can actually express.
+// validateModels ensures every declared subagent resolves an explicit per-tool
+// model for every tool it is enabled for, and that every model/variant/effort
+// value is one the target tool can actually express. A subagent that lacks a
+// model for an enabled tool fails loading — there is no tier or role default
+// to fall back on, so the agent would otherwise render with no model line at
+// all.
 //
-// Effort and variant are OPTIONAL: a tier naming just a model is complete. They
-// were once mandatory while being projected nowhere, which meant homonto forced
-// you to write a field it then discarded — and never checked, so configs filled
-// with values no tool accepts.
+// The must-declare check applies only to builtin: subagents: local:/remote:
+// content is projected verbatim (never rendered through agentfm), so an
+// override on those sources could never apply and is rejected separately by
+// validateSubagentOverrides. The per-subagent override walk also runs here so
+// both checks report a deterministic offender.
+//
+// The check covers BOTH explicit [subagents.<name>] declarations and the
+// builtin subagents a framework expands. The explicit walk below iterates
+// c.Subagents by config key; the framework-expanded walk iterates
+// ExpandedSubagentEntriesForTool and resolves each expanded builtin's model
+// the same way rendering does (catalog name → c.Subagents[<catalog-name>]
+// override block). Without the second walk a config that installs a framework
+// but omits the per-tool model blocks for its expanded agents would load
+// clean and render agents with no model line — the silent default R1 forbids.
 func validateModels(c *Config) error {
-	// An unknown tier name ([models.opencode.reviewing], say) matches no agent
-	// role and no default-model projection, so it would validate clean and then
-	// do nothing — reject it naming the offender. agentfm.TierNames is the
-	// single source of truth the role check in rendering uses too.
-	for tool, routes := range map[string]map[string]ModelRoute{
-		"claude":   c.Models.Claude,
-		"opencode": c.Models.OpenCode,
-	} {
-		levels := make([]string, 0, len(routes))
-		for level := range routes {
-			levels = append(levels, level)
-		}
-		sort.Strings(levels) // deterministic: the same config must fail on the same offender
-		for _, level := range levels {
-			if !agentfm.Tiers[level] {
-				return fmt.Errorf("parse config: models.%s.%s is not a model tier; valid tiers are %q, %q, %q, %q (agents pick one via their role)", tool, level, agentfm.TierNames[0], agentfm.TierNames[1], agentfm.TierNames[2], agentfm.TierNames[3])
-			}
-		}
-	}
 	for _, tool := range c.EnabledModelTools() {
-		for _, level := range agentfm.TierNames {
-			route, ok := modelRouteFor(c.Models, tool, level)
-			label := "models." + tool + "." + level
-			if !ok {
-				return fmt.Errorf("parse config: %s is required for enabled target tool %q", label, tool)
+		for _, name := range sortedSubagentNames(c) {
+			sa := c.Subagents[name]
+			// A tune-only entry declares no agent; its overrides (if any) are
+			// checked below by validateSubagentOverrides. The must-declare
+			// check applies only to subagents that actually project one.
+			if sa.IsTuneOnly() {
+				continue
 			}
-			if err := validateModelSpec(tool, label, route, true); err != nil {
+			// Only builtin: subagents are rendered through agentfm; local:
+			// and remote: content is projected verbatim and has no model line
+			// to stamp, so requiring an override would contradict the
+			// override-on-non-builtin rejection below.
+			if !isBuiltinSubagent(sa) {
+				continue
+			}
+			if !slices.Contains(sa.TargetsOrAll(), tool) {
+				continue
+			}
+			label := "subagents." + name + "." + tool
+			if err := validateModelSpec(tool, label, sa.ModelOverrideFor(tool), true); err != nil {
+				return err
+			}
+		}
+		// Framework-expanded walk: cover builtin subagents a framework
+		// installs that have no matching explicit [subagents.<name>]
+		// declaration. The explicit walk above misses them (their config
+		// keys are absent from c.Subagents), and without this check they
+		// would render through agentfm with no model line.
+		//
+		// Resolve an expanded entry's model the same way rendering does
+		// (engine.subagentRenderContext): iterate c.Subagents and key each
+		// override by the entry's resolved catalog name, so an explicit
+		// [subagents.x] source="builtin:architect" contributes the override
+		// for catalog name "architect" (not "x"). An explicit declaration
+		// (any non-tune-only entry whose source resolves to the catalog
+		// name) targeting this tool was already checked above; only entries with
+		// NO explicit declaration for this tool — or with only a tune-only retune
+		// — fall through here.
+		//
+		// Tolerate expansion errors (e.g. a stale [frameworks.comet] whose
+		// catalog was removed): the engine and doctor already report them
+		// as warnings, the explicit walk above still catches must-declare
+		// failures for explicit declarations, and propagating here would
+		// regress `homonto doctor` on configs it was designed to tolerate.
+		expanded, err := c.ExpandedSubagentEntriesForTool(tool)
+		if err != nil {
+			continue
+		}
+		routeByCat := map[string]ModelRoute{}
+		declaredByCat := map[string]bool{}
+		for _, name := range sortedSubagentNames(c) {
+			sa := c.Subagents[name]
+			var cat string
+			if sa.IsTuneOnly() {
+				// A tune-only entry names the catalog agent directly (its
+				// retune target). Its override still applies, but it does
+				// not count as an explicit declaration for the must-declare
+				// check (which the explicit walk owns).
+				cat = name
+			} else {
+				catName, ok := SubagentCatalogName(sa.Source)
+				if !ok {
+					continue
+				}
+				cat = catName
+				// A declaration only covers an expanded agent for tools it
+				// targets. Its override may still be a model source for either
+				// rendered tool, matching engine.subagentRenderContext.
+				if slices.Contains(sa.TargetsOrAll(), tool) {
+					declaredByCat[cat] = true
+				}
+			}
+			if r := sa.ModelOverrideFor(tool); r != (ModelRoute{}) {
+				routeByCat[cat] = r
+			}
+		}
+		for _, e := range expanded {
+			cat, ok := SubagentCatalogName(e.Resource.Source)
+			if !ok {
+				continue // local:/remote: content is projected verbatim
+			}
+			if declaredByCat[cat] {
+				continue // explicit declaration; checked above
+			}
+			label := "subagents." + cat + "." + tool
+			if err := validateModelSpec(tool, label, routeByCat[cat], true); err != nil {
 				return err
 			}
 		}
 	}
 	return validateSubagentOverrides(c)
+}
+
+// isBuiltinSubagent reports whether the subagent's source resolves to a
+// catalog-rendered agent (the only kind agentfm renders, and therefore the
+// only kind an override can apply to).
+func isBuiltinSubagent(s Subagent) bool {
+	_, ok := SubagentCatalogName(s.Source)
+	return ok
+}
+
+// sortedSubagentNames returns the config's subagent names in deterministic
+// order, so a config that fails validation names the same offender every run.
+func sortedSubagentNames(c *Config) []string {
+	names := make([]string, 0, len(c.Subagents))
+	for name := range c.Subagents {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// rejectLegacyModels fails naming the first [models.<tool>.<level>] block the
+// TOML decoder picked up. pelletier/go-toml/v2 populates the Config's Models
+// detector field, so any non-empty value triggers this rejection; without it,
+// a config edited for the removed tier system would parse clean and silently
+// lose its model declarations. The offender is walked in sorted order for a
+// deterministic error.
+func rejectLegacyModels(m modelsTable) error {
+	for _, tool := range []struct {
+		name   string
+		routes map[string]ModelRoute
+	}{
+		{"claude", m.Claude},
+		{"opencode", m.OpenCode},
+	} {
+		if len(tool.routes) == 0 {
+			continue
+		}
+		levels := make([]string, 0, len(tool.routes))
+		for level := range tool.routes {
+			levels = append(levels, level)
+		}
+		sort.Strings(levels)
+		return fmt.Errorf("parse config: models.%s.%s is an unknown table — model tiers were removed; declare per-agent models via [subagents.<name>.%s]", tool.name, levels[0], tool.name)
+	}
+	return nil
 }
 
 // validateSubagentOverrides checks every [subagents.<name>.<tool>] block —
@@ -570,9 +699,10 @@ func validateSubagentOverrides(c *Config) error {
 			}
 			label := "subagents." + name + "." + tool
 			// Validate the fragment itself. A variant whose model comes from the
-			// tier cannot be judged here — which tier depends on the agent's
-			// frontmatter role, known only at render — so agentfm.Render errors
-			// loudly on an unrenderable merged combination instead.
+			// override itself can be judged here; an override that names only a
+			// variant (with the model coming from elsewhere) is checked at render
+			// where the merged spec is known — agentfm.Render errors loudly on an
+			// unrenderable combination instead.
 			if err := validateModelSpec(tool, label, ov, false); err != nil {
 				return err
 			}
@@ -596,19 +726,6 @@ func validateSubagentOverrides(c *Config) error {
 		}
 	}
 	return nil
-}
-
-func modelRouteFor(models ModelConfig, tool, level string) (ModelRoute, bool) {
-	switch tool {
-	case "claude":
-		r, ok := models.Claude[level]
-		return r, ok
-	case "opencode":
-		r, ok := models.OpenCode[level]
-		return r, ok
-	default:
-		return ModelRoute{}, false
-	}
 }
 
 // indexLike reports whether sjson would treat name as an array index:

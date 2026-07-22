@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-// A read-only specialist: no edits, no shell, dialogs on, spawns nothing, and a
-// role that stamps a model from the render context.
+// A read-only specialist: no edits, no shell, dialogs on, spawns nothing. The
+// model is supplied by the render context's Overrides, mirroring a
+// [subagents.<name>.<tool>] block in homonto.toml.
 const readOnlyReviewer = `---
 name: onto-reviewer
 description: Use to review a diff; reports findings ranked by severity.
 mode: subagent
 homonto:
-  role: architectural
   read_only: true
   dialogs: true
   spawn: []
@@ -26,7 +26,6 @@ name: onto
 description: dispatcher
 mode: subagent
 homonto:
-  role: architectural
   primary: true
   steps: 60
   spawn: [onto-implementer, onto-reviewer]
@@ -34,15 +33,16 @@ homonto:
 Drive the workflow.
 `
 
-func ctx() RenderContext {
-	return RenderContext{Roles: map[string]ModelSpec{
-		"architectural": {Model: "opus"}, "coding": {Model: "sonnet"}, "trivial": {Model: "haiku"},
+func ctx() *RenderContext {
+	return &RenderContext{Overrides: map[string]ModelSpec{
+		"onto-reviewer": {Model: "opus"},
+		"onto":          {Model: "opus"},
 	}}
 }
 
 func mustRender(t *testing.T, content, tool string) string {
 	t.Helper()
-	out, err := Render("agent", []byte(content), tool, ctx())
+	out, err := Render("onto-reviewer", []byte(content), tool, ctx())
 	if err != nil {
 		t.Fatalf("Render(%s): %v", tool, err)
 	}
@@ -73,7 +73,7 @@ func TestRenderClaude_ReadOnlyReviewer(t *testing.T) {
 		t.Errorf("claude output must not carry mode:\n%s", s)
 	}
 	if !strings.Contains(s, "model: opus\n") {
-		t.Errorf("role architectural must stamp model: opus:\n%s", s)
+		t.Errorf("override model must stamp model: opus:\n%s", s)
 	}
 	if strings.Contains(s, "permission:") || strings.Contains(s, "homonto:") {
 		t.Errorf("claude output must not carry permission/homonto:\n%s", s)
@@ -118,14 +118,18 @@ func TestRenderPrimary_ClaudeSkipped_OpenCodeMode(t *testing.T) {
 	if out != nil {
 		t.Errorf("a primary agent must have no Claude variant, got:\n%s", out)
 	}
-	oc := mustRender(t, orchestrator, "opencode")
-	if !strings.Contains(oc, "mode: primary") || !strings.Contains(oc, "steps: 60") {
-		t.Errorf("opencode primary must carry mode: primary + steps:\n%s", oc)
+	oc, err := Render("onto", []byte(orchestrator), "opencode", ctx())
+	if err != nil {
+		t.Fatalf("Render(opencode) primary: %v", err)
+	}
+	s := string(oc)
+	if !strings.Contains(s, "mode: primary") || !strings.Contains(s, "steps: 60") {
+		t.Errorf("opencode primary must carry mode: primary + steps:\n%s", s)
 	}
 	// named spawn → task glob allowlist.
 	for _, want := range []string{"  task:", `    "*": deny`, `    "onto-implementer": allow`, `    "onto-reviewer": allow`} {
-		if !strings.Contains(oc, want) {
-			t.Errorf("opencode spawn topology missing %q:\n%s", want, oc)
+		if !strings.Contains(s, want) {
+			t.Errorf("opencode spawn topology missing %q:\n%s", want, s)
 		}
 	}
 	// Claude view of a NON-primary agent with the same named spawn: spawning
@@ -149,6 +153,7 @@ func TestRenderOpenCode_NoDialogsDeniesQuestion(t *testing.T) {
 
 func TestRender_NoHomontoBlock_Unchanged(t *testing.T) {
 	in := "---\nname: x\ndescription: y\nmode: subagent\n---\nbody\n"
+	// A missing homonto block returns before model context is considered.
 	if out := mustRender(t, in, "claude"); out != in {
 		t.Errorf("content without a homonto block must be unchanged\n got: %q", out)
 	}
@@ -163,10 +168,11 @@ func TestRender_UnknownTool(t *testing.T) {
 // A variant on a non-alias model has no Claude spelling. The render used to
 // silently drop the variant — shipping an agent quietly weaker than declared —
 // on the assumption that config validation had rejected the combination, which
-// it cannot always do: the merged model (tier + override) is only known here.
+// it cannot always do: the override is judged against its own model, but a
+// future caller that bypasses Load could supply an unrenderable combination.
 func TestRenderClaude_VariantOnFullModelIDErrors(t *testing.T) {
-	ctx := RenderContext{Roles: map[string]ModelSpec{
-		"architectural": {Model: "claude-opus-4-8", Variant: "1m"},
+	ctx := &RenderContext{Overrides: map[string]ModelSpec{
+		"onto-reviewer": {Model: "claude-opus-4-8", Variant: "1m"},
 	}}
 	_, err := Render("onto-reviewer", []byte(readOnlyReviewer), "claude", ctx)
 	if err == nil || !strings.Contains(err.Error(), "alias") {
@@ -179,29 +185,47 @@ func TestRenderClaude_VariantOnFullModelIDErrors(t *testing.T) {
 	}
 }
 
-func TestRender_MissingRouteOmitsModel(t *testing.T) {
-	// role set but the render context has no model for it → no model line.
-	out := func() string {
-		b, _ := Render("onto-reviewer", []byte(readOnlyReviewer), "claude", RenderContext{})
-		return string(b)
-	}()
-	if strings.Contains(out, "model:") {
-		t.Errorf("missing route must omit model:\n%s", out)
+// TestRenderNoModelErrors keeps the present-but-empty override failure distinct
+// from the missing-override production backstop below.
+func TestRenderNoModelErrors(t *testing.T) {
+	for _, tool := range []string{"claude", "opencode"} {
+		ctx := &RenderContext{Overrides: map[string]ModelSpec{
+			"ghost": {Variant: "1m"}, // entry present but no Model
+		}}
+		_, err := Render("ghost", []byte(readOnlyReviewer), tool, ctx)
+		if err == nil {
+			t.Fatalf("Render(%s): an override entry with no model must error", tool)
+		}
+		if !strings.Contains(err.Error(), `"ghost"`) || !strings.Contains(err.Error(), tool) {
+			t.Fatalf("Render(%s): error must name the agent and tool, got: %v", tool, err)
+		}
+		if !strings.Contains(err.Error(), "[subagents.ghost."+tool+"]") {
+			t.Fatalf("Render(%s): error must name the block to add, got: %v", tool, err)
+		}
 	}
 }
 
-// TestRenderUnknownRoleErrors: an unknown role would look up no tier and render
-// the agent with no model line — silently weaker than declared. Render must
-// fail naming the agent and the bad role instead.
-func TestRenderUnknownRoleErrors(t *testing.T) {
-	content := "---\nname: rev\ndescription: d\nmode: subagent\nhomonto:\n  role: reviewing\n---\nbody\n"
+func TestRenderMissingModelOverrideErrorsWithRenderContext(t *testing.T) {
 	for _, tool := range []string{"claude", "opencode"} {
-		_, err := Render("rev", []byte(content), tool, ctx())
+		_, err := Render("ghost", []byte(readOnlyReviewer), tool, &RenderContext{Overrides: map[string]ModelSpec{}})
 		if err == nil {
-			t.Fatalf("Render(%s): unknown role must error", tool)
+			t.Fatalf("Render(%s): a production render context without an override must error", tool)
 		}
-		if !strings.Contains(err.Error(), `"reviewing"`) || !strings.Contains(err.Error(), `"rev"`) {
-			t.Fatalf("Render(%s): error must name the agent and role, got: %v", tool, err)
+		if !strings.Contains(err.Error(), `"ghost"`) || !strings.Contains(err.Error(), tool) {
+			t.Fatalf("Render(%s): error must name the agent and tool, got: %v", tool, err)
 		}
+		if !strings.Contains(err.Error(), "[subagents.ghost."+tool+"]") {
+			t.Fatalf("Render(%s): error must name the required model block, got: %v", tool, err)
+		}
+	}
+}
+
+func TestRenderNilContextRemainsLenientForCatalogProjection(t *testing.T) {
+	out, err := Render("onto-reviewer", []byte(readOnlyReviewer), "opencode", nil)
+	if err != nil {
+		t.Fatalf("Render with nil context: %v", err)
+	}
+	if strings.Contains(string(out), "model:") {
+		t.Fatalf("nil catalog context must not add a model line:\n%s", out)
 	}
 }

@@ -13,8 +13,8 @@ Quick map of every table:
 | `[skills.<name>]` | Skills (symlinked) | [Skills](#skills--skillsname) |
 | `[commands.<name>]` | Slash commands | [Commands](#commands--commandsname) |
 | `[subagents.<name>]` | Agent definitions | [Subagents](#subagents--subagentsname) |
+| `[subagents.<name>.<tool>]` | Per-tool model overrides (required for every declared subagent) | [Subagent models](#subagent-models--subagentsnametool) |
 | `[frameworks.<name>]` | Bundled framework installs | [Frameworks](#frameworks--frameworksname) |
-| `[models.<tool>.<route>]` | Model routes (required with the above) | [Model routes](#model-routes--modelstoolroute) |
 | `[plugins.<tool>.<name>]` | Per-tool plugins | [Plugins](#plugins--pluginstoolname) |
 | `[settings.<tool>]` | Per-tool settings | [Settings](#settings--settingstool) |
 | `[tui.opencode]` | OpenCode TUI settings | [TUI](#tui--tuiopencode) |
@@ -39,11 +39,12 @@ content through a `source` string:
 | `remote:<url>` | a fetched, verified, pinned archive; requires `digest` (see [remote source trust](remote-source-trust.md)) | subagents, frameworks |
 
 **Validation is fail-fast.** homonto rejects at load time and names the
-offender: an MCP with no command, an unknown target, a partial model-route
-set, a settings key that collides with a structure homonto manages
-(`settings.claude.enabledPlugins`, `settings.opencode.mcp`,
-`settings.opencode.plugin`), a skill without a `scope`, a `remote:` source
-without a `digest`, and names that would corrupt a JSON file (empty, or
+offender: an MCP with no command, an unknown target, a declared subagent
+without a `[subagents.<name>.<tool>]` model block, a settings key that collides
+with a structure homonto manages (`settings.claude.enabledPlugins`,
+`settings.opencode.mcp`, `settings.opencode.plugin`), a skill without a
+`scope`, a `remote:` source without a `digest`, a legacy `[models.<tool>.<tier>]`
+block (tiers were removed), and names that would corrupt a JSON file (empty, or
 index-like such as `"0"`/`"-1"`).
 
 ## MCP servers — `[mcps.<name>]`
@@ -166,34 +167,26 @@ ones. Do **not** also declare a framework's subagent in a `[subagents.*]`
 table; the names collide. `homonto update` re-materializes installed
 frameworks at the running binary's version.
 
-## Model routes — `[models.<tool>.<route>]`
+## Subagent models — `[subagents.<name>.<tool>]`
 
-Any config that enables a model-backed resource (a framework, command, or
-subagent) for a tool must declare **all four** routes for that tool:
-`architectural` (orchestrate/design), `coding` (implement), `review` (judge
-others' work — the reviewer and the skeptic run here), and `trivial` (cheap
-lookups). A partial set fails at load.
+Every declared subagent **and every tool it targets** must declare a
+`[subagents.<name>.<tool>]` block with a non-empty `model`. There are no tiers,
+no roles, no defaults inherited from a shared route — model selection is
+explicit per agent per tool. A declared subagent that lacks a model for an
+enabled tool fails at load naming the offender.
 
 ```toml
-[models.claude.architectural]
-model = "opus"
+[subagents.onto-reviewer]
+source = "builtin:onto-reviewer"
+scope  = "project"
 
-[models.claude.coding]
-model = "sonnet"
-effort = "medium"
+[subagents.onto-reviewer.claude]
+model   = "opus"
+effort  = "high"          # optional
 
-[models.claude.review]
-model = "opus"
-effort = "high"
-
-[models.claude.trivial]
-model = "haiku"
-effort = "low"
-
-[models.opencode.architectural]
-model = "anthropic/claude-opus-4-8"
-variant = "high"
-# … coding, review, and trivial likewise
+[subagents.onto-reviewer.opencode]
+model   = "anthropic/claude-opus-4-8"
+variant = "thinking"      # optional
 ```
 
 | Field | Required | Notes |
@@ -201,9 +194,6 @@ variant = "high"
 | `model` | **yes** | the tool's model identifier |
 | `effort` | no | how hard to think |
 | `variant` | no | which variant of the model |
-
-A route naming just a `model` is complete; `effort` and `variant` are
-optional.
 
 ### The two tools spell these differently
 
@@ -220,63 +210,63 @@ Each value is validated against the tool that will receive it, so a setting
 the tool would silently ignore becomes a load error naming the offender:
 
 ```
-parse config: models.claude.coding effort "normal" is not a Claude effort level (low, medium, high, xhigh, max)
-parse config: models.claude.architectural variant "1m" needs a model alias (…) — Claude takes no variant on the full model id "claude-opus-4-8"
-parse config: models.opencode.coding sets effort "high", but OpenCode has no effort setting — use variant, or drop it
+parse config: subagents.onto-reviewer.claude effort "normal" is not a Claude effort level (low, medium, high, xhigh, max)
+parse config: subagents.onto-reviewer.claude variant "1m" needs a model alias (…) — Claude takes no variant on the full model id "claude-opus-4-8"
+parse config: subagents.onto-reviewer.opencode sets effort "high", but OpenCode has no effort setting — use variant, or drop it
 ```
 
-The routes also project into each tool's default model: `architectural` →
-the tool's main model (Claude `settings.model`, OpenCode `model`) and
-`trivial` → OpenCode's `small_model`. **Where** those keys land follows the
-scope of the model-backed resources that required the routes: when every
-model-backed resource (framework, command, subagent) enabled for a tool is
-project-scoped, the keys project into the project-level config the tool
-merges over its global one (`<repo>/opencode.jsonc`;
-`<repo>/.claude/settings.json`), so one repository's workflow models never
-become another session's defaults. Any user-scope model-backed resource
-keeps them in the global file, as before. An explicit
-`[settings.<tool>].model` always wins over the route-derived value — and
-suppresses the project-level twin entirely, which would otherwise override
-it in the tool's merge order. Subagents declare a `role:` that maps to one
-of these routes (see [subagents](subagents.md)).
+### Declared subagent must declare its model
 
-The four tier names are closed: a `[models.<tool>.<level>]` block naming
-any other level fails at load —
+A subagent that targets a tool but supplies no `[subagents.<name>.<tool>]`
+block (or supplies one with an empty `model`) fails at load:
 
 ```
-parse config: models.opencode.reviewing is not a model tier; valid tiers are "architectural", "coding", "review", "trivial" (agents pick one via their role)
+parse config: subagents.onto-reviewer.opencode model is required
 ```
 
-— and an agent frontmatter `role:` outside the same four tiers fails at
-render instead of silently emitting an agent with no model.
+Tuning **one** tool does not require the other: a subagent targeting claude
+only needs a claude block; an opencode block would be a tune-only entry that
+can carry an effort or variant override (see [subagents](subagents.md)).
 
-### Retuning one agent — `[subagents.<name>.<tool>]`
+### Framework agents tune in place
 
-A tier is the default for every agent of that role. To retune a single
-agent, declare a per-tool block under its name; each field set there wins
-over the tier, **field by field**, so an effort-only override keeps the
-tier's model:
+A framework's subagents may not be re-declared explicitly (that collision is an
+error), so without a tune-only form there would be no way to supply a model for
+a framework-installed agent. A per-tool block with **no `source`** therefore
+reads as *tune this agent*, not *declare it*. It is required for every expanded
+agent × tool, and is the only way a framework agent gets a model:
 
 ```toml
-[models.claude.review]
-model = "opus"
-variant = "1m"
-effort = "high"          # the default for every review agent
+[frameworks.onto]
+source = "builtin:onto"
+scope  = "project"
 
+# Required: onto framework expands onto-skeptic for both tools.
 [subagents.onto-skeptic.claude]
-effort = "max"           # …but the skeptic thinks harder
+model   = "opus"
+effort  = "max"           # optional tune on top of the model
+[subagents.onto-skeptic.opencode]
+model = "anthropic/claude-opus-4-8"
 ```
 
-`onto-skeptic` renders as `model: opus[1m]` + `effort: max`;
-`onto-reviewer`, on the same tier, stays at `high`.
+For a subagent you declare yourself, add the block under your own
+`[subagents.<name>]` entry the same way.
 
-There is **no `[subagents.onto-skeptic]` declaration** above, and that is
-the point: `onto-skeptic` is installed by `[frameworks.onto]`, and a
-framework's subagent may not be re-declared explicitly (that collision is an
-error). A per-tool block with **no `source`** therefore reads as *tune this
-agent*, not *declare it*. It projects nothing and never collides with the
-framework that owns the agent. For a subagent you declare yourself, add the
-block under your own `[subagents.<name>]` entry the same way.
+### Legacy `[models.<tool>.<tier>]` blocks are rejected
+
+Model tiers (`architectural`, `coding`, `review`, `trivial`) and the role
+frontmatter that mapped to them were removed. A config edited for the old
+system fails at load naming the offending table:
+
+```
+parse config: models.claude.architectural is an unknown table — model tiers were removed; declare per-agent models via [subagents.<name>.claude]
+```
+
+### The main session model is operator-controlled
+
+homonto no longer derives a default `model` (or `small_model`) from any route.
+Each tool uses its own default unless the operator pins one explicitly via
+`[settings.<tool>].model` (see [Settings](#settings--settingstool)).
 
 ## Plugins — `[plugins.<tool>.<name>]`
 
@@ -388,23 +378,35 @@ model = "anthropic/claude-opus-4-8"
 [tui.opencode]
 theme = "gruvbox"
 
-# Required because a framework and a subagent are enabled for both tools:
-[models.claude.architectural]
+# Required: every framework-expanded subagent × targeted tool needs a model.
+[subagents.onto.claude]
 model = "opus"
-[models.claude.coding]
-model = "sonnet"
-[models.claude.review]
-model = "opus"
-[models.claude.trivial]
-model = "haiku"
+[subagents.onto.opencode]
+model = "anthropic/claude-opus-4-8"
 
-[models.opencode.architectural]
+[subagents.onto-explorer.claude]
+model = "haiku"
+[subagents.onto-explorer.opencode]
+model = "openai/gpt-5-mini"
+
+[subagents.onto-reviewer.claude]
+model = "opus"
+[subagents.onto-reviewer.opencode]
 model = "anthropic/claude-opus-4-8"
-variant = "high"
-[models.opencode.coding]
+
+[subagents.onto-implementer.claude]
+model = "sonnet"
+[subagents.onto-implementer.opencode]
 model = "anthropic/claude-sonnet-5"
-[models.opencode.review]
+
+[subagents.onto-skeptic.claude]
+model = "opus"
+[subagents.onto-skeptic.opencode]
 model = "anthropic/claude-opus-4-8"
-[models.opencode.trivial]
-model = "anthropic/claude-haiku-4-5"
+
+# review is explicitly declared above, so it carries its own model block too.
+[subagents.review.claude]
+model = "opus"
+[subagents.review.opencode]
+model = "anthropic/claude-opus-4-8"
 ```

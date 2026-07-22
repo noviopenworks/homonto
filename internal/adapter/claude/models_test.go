@@ -11,56 +11,45 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// routedCfg is a config whose only model-backed resource is a framework at the
-// given scope, with the architectural route declared for claude.
-func routedCfg(scope string) *config.Config {
+// modelBackedCfg is a config whose only model-backed resource is a framework at
+// the given scope. homonto no longer derives a default main model from any
+// route — an operator who wants a specific main model declares it via
+// [settings.claude].model.
+func modelBackedCfg(scope string) *config.Config {
 	return &config.Config{
 		Frameworks: map[string]config.Resource{
 			"onto": {Source: "builtin:onto", Scope: scope, Targets: []string{"claude"}},
 		},
-		Models: config.ModelConfig{
-			Claude: map[string]config.ModelRoute{
-				"architectural": {Model: "opus"},
-				"coding":        {Model: "sonnet"},
-				"trivial":       {Model: "haiku"},
-			},
-		},
 	}
 }
 
-func TestDesired_ProjectScopedRouteLeavesUserSettings(t *testing.T) {
+// With no [settings.claude].model and no route-derived default, the adapter
+// must NOT synthesize a setting.model key — Claude uses its own default.
+func TestDesired_NoMainModelWhenSettingsAbsent(t *testing.T) {
 	a := New(t.TempDir(), t.TempDir()).WithProjectRoot(t.TempDir())
-	c := routedCfg("project")
-	if got := a.desired(c); got["setting.model"] != "" {
-		t.Errorf("project-scoped routes must not project the user setting.model, got %q", got["setting.model"])
+	c := modelBackedCfg("project")
+	got := a.desired(c)
+	if v, ok := got["setting.model"]; ok {
+		t.Errorf("homongo must not synthesize setting.model when [settings.claude].model is absent, got %q", v)
 	}
-	if got := a.desiredProjectSettings(c); got["projsetting.model"] != `"opus"` {
-		t.Errorf("architectural route must project projsetting.model, got %q", got["projsetting.model"])
+	gotProj := a.desiredProjectSettings(c)
+	if v, ok := gotProj["projsetting.model"]; ok {
+		t.Errorf("homonto must not synthesize projsetting.model when [settings.claude].model is absent, got %q", v)
 	}
 }
 
-func TestDesired_UserScopedRouteStaysGlobal(t *testing.T) {
+// An explicit [settings.claude].model is the only way to project setting.model.
+// It lands in the user settings.json; no project-level twin is synthesized.
+func TestDesired_ExplicitSettingStillProjects(t *testing.T) {
 	a := New(t.TempDir(), t.TempDir()).WithProjectRoot(t.TempDir())
-	c := routedCfg("user")
-	if got := a.desired(c); got["setting.model"] != `"opus"` {
-		t.Errorf("a user-scoped framework must keep setting.model global, got %q", got["setting.model"])
-	}
-	if got := a.desiredProjectSettings(c); len(got) != 0 {
-		t.Errorf("a user-scoped framework must project no project-level settings, got %v", got)
-	}
-}
-
-func TestDesired_ExplicitSettingSuppressesProjectTwin(t *testing.T) {
-	a := New(t.TempDir(), t.TempDir()).WithProjectRoot(t.TempDir())
-	c := routedCfg("project")
+	c := modelBackedCfg("project")
 	c.Settings = config.Settings{Claude: map[string]any{"model": "sonnet"}}
-	if got := a.desired(c); got["setting.model"] != `"sonnet"` {
-		t.Errorf("explicit [settings.claude].model must win, got %q", got["setting.model"])
+	got := a.desired(c)
+	if got["setting.model"] != `"sonnet"` {
+		t.Errorf("explicit [settings.claude].model must project, got %q", got["setting.model"])
 	}
-	// A project-level model would override the explicit user one in Claude's
-	// settings merge order, silently inverting "explicit wins".
-	if got := a.desiredProjectSettings(c); len(got) != 0 {
-		t.Errorf("explicit [settings.claude].model must suppress the project-level twin, got %v", got)
+	if v, ok := a.desiredProjectSettings(c)["projsetting.model"]; ok {
+		t.Errorf("explicit [settings.claude].model must not produce a project-level twin, got %q", v)
 	}
 }
 

@@ -17,6 +17,30 @@ var files = map[string]string{
 # [frameworks.onto]
 # source = "builtin:onto"
 # scope = "project"
+# A framework expands its catalog subagents; each MUST declare a per-tool
+# block (subagents.<name>.<tool>) with a non-empty model.
+# [subagents.onto.claude]
+# model = "opus"
+# [subagents.onto.opencode]
+# model = "anthropic/claude-opus-4-8"
+# [subagents.onto-explorer.claude]
+# model = "haiku"
+# [subagents.onto-explorer.opencode]
+# model = "openai/gpt-5-mini"
+# [subagents.onto-reviewer.claude]
+# model = "opus"
+# effort = "high"
+# [subagents.onto-reviewer.opencode]
+# model = "anthropic/claude-opus-4-8"
+# [subagents.onto-implementer.claude]
+# model = "sonnet"
+# [subagents.onto-implementer.opencode]
+# model = "anthropic/claude-sonnet-4-5"
+# [subagents.onto-skeptic.claude]
+# model = "opus"
+# effort = "high"
+# [subagents.onto-skeptic.opencode]
+# model = "anthropic/claude-opus-4-8"
 
 # [skills.graphify]
 # source = "local:graphify"
@@ -27,54 +51,29 @@ var files = map[string]string{
 # scope = "user"
 # targets = ["opencode"]
 
-# [subagents.architect]
-# source = "builtin:architect"
+# A standalone builtin subagent (no framework) still needs both tool blocks.
+# Every declared subagent MUST declare a per-tool block (subagents.<name>.<tool>)
+# with a non-empty model. Effort and variant are optional.
+# [subagents.reviewer]
+# source = "builtin:onto-reviewer"
 # scope = "project"
-# Retune THIS agent without restating its tier: any field set in a per-tool
-# block wins over the role's route, field by field.
-# [subagents.architect.claude]
-# effort = "xhigh"
+# [subagents.reviewer.claude]
+# model = "opus"
+# effort = "high"
+# [subagents.reviewer.opencode]
+# model = "anthropic/claude-opus-4-8"
 
 # [plugins.claude.claude-hud]
 # source = "claude-hud@official"       # name@marketplace
 # [plugins.opencode.opencode-quota]
 # source = "@slkiser/opencode-quota"   # npm package
 
+# The main session model is operator-controlled. homonto projects it ONLY when
+# you declare it explicitly here; otherwise each tool uses its own default.
 # [settings.claude]
 # model = "opus"
-
-# A tool gains its four model routes (architectural/coding/review/trivial) as
-# soon as a framework, command, or subagent targets it — declare all four for
-# every such tool. The examples above target both tools, so both are shown
-# here. An agent picks its route by the role it declares; model is required,
-# the rest optional.
-#
-# Claude: model is an alias (opus/sonnet/haiku/fable) or a full id; variant
-# brackets an ALIAS only (opus[1m] — 1m is the only one); effort is one of
-# low|medium|high|xhigh|max.
-# [models.claude.architectural]
-# model = "opus"
-# effort = "high"
-# [models.claude.coding]
-# model = "sonnet"
-# effort = "medium"
-# [models.claude.review]
-# model = "opus"
-# effort = "high"
-# [models.claude.trivial]
-# model = "haiku"
-# effort = "low"
-#
-# OpenCode: the mirror image — variant is its own field taking whatever your
-# provider defines, and there is no effort setting at all.
-# [models.opencode.architectural]
+# [settings.opencode]
 # model = "anthropic/claude-opus-4-8"
-# [models.opencode.coding]
-# model = "anthropic/claude-sonnet-4-5"
-# [models.opencode.review]
-# model = "anthropic/claude-opus-4-8"
-# [models.opencode.trivial]
-# model = "anthropic/claude-haiku-4-5"
 `,
 	".gitignore":   "/.homonto/\n.env\n",
 	".env.example": "# Document non-pass secrets here, then copy to .env (gitignored).\n# BRAVE_API_KEY=\n",

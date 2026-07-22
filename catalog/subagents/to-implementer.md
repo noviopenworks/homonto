@@ -7,7 +7,6 @@ mode: subagent
 # model, may use bash for build/test, spawns nothing (no nested delegation), and
 # returns questions instead of prompting (subagents never prompt the user).
 homonto:
-  role: coding
   read_only: false
   dialogs: false
   spawn: []

@@ -52,7 +52,11 @@ func buildRemoteSubagentTar(t *testing.T, dir, name, body string) (string, strin
 	return p, "sha256:" + hex.EncodeToString(h.Sum(nil))
 }
 
-const repinModels = "[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.review]\nmodel=\"opus\"\n[models.claude.trivial]\nmodel=\"haiku\"\n"
+// repinModels was a [models.*.*] baseline that the old tier system required
+// when a subagent targeted claude. Tiers are gone and remote: subagents are
+// projected verbatim (never rendered through agentfm), so an empty baseline
+// is all these tests need.
+const repinModels = ""
 
 // TestApplyDigestRepinIsNotSilentlyApplied exercises F6: a config whose only
 // change is a remote source's pinned digest must surface as a plan change and

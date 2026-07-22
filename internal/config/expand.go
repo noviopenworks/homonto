@@ -257,8 +257,9 @@ func (c *Config) EnabledModelTools() []string {
 	for _, s := range c.Subagents {
 		// A tune-only entry projects no agent, so it enables no tool: it only
 		// retunes an agent something else already installed. Counting it would
-		// demand model routes for a tool nothing actually targets — e.g. tuning
-		// the Claude side of an agent would start requiring [models.opencode.*].
+		// demand a model block for a tool nothing actually targets — e.g.
+		// tuning the Claude side of an agent would start requiring
+		// [subagents.<name>.opencode].
 		if s.IsTuneOnly() {
 			continue
 		}
@@ -272,55 +273,6 @@ func (c *Config) EnabledModelTools() []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// ModelSettingsScope reports where a tool's route-derived default-model
-// settings belong: "project" when every model-backed resource enabled for the
-// tool (builtin framework, command, or subagent — the same set
-// EnabledModelTools counts) is project-scoped, so the models exist only to
-// serve this repository; "user" otherwise — any user-scope resource, or no
-// model-backed resource at all, keeps the global default-model projection.
-// Both tools read a project-level settings file that overrides the global one
-// (OpenCode: <repo>/opencode.jsonc; Claude: <repo>/.claude/settings.json), so
-// a project-scoped workflow's models never leak into other projects' sessions.
-func (c *Config) ModelSettingsScope(tool string) string {
-	backed := false
-	for _, r := range c.Frameworks {
-		// Mirrors EnabledModelTools: only a builtin framework forces model
-		// routing; a local skills-only framework does not.
-		if !strings.HasPrefix(r.Source, "builtin:") {
-			continue
-		}
-		if slices.Contains(r.TargetsOrAll(), tool) {
-			backed = true
-			if r.Scope != "project" {
-				return "user"
-			}
-		}
-	}
-	for _, r := range c.Commands {
-		if slices.Contains(r.TargetsOrAll(), tool) {
-			backed = true
-			if r.Scope != "project" {
-				return "user"
-			}
-		}
-	}
-	for _, s := range c.Subagents {
-		if s.IsTuneOnly() {
-			continue
-		}
-		if slices.Contains(s.TargetsOrAll(), tool) {
-			backed = true
-			if s.ScopeOrDefault() != "project" {
-				return "user"
-			}
-		}
-	}
-	if !backed {
-		return "user"
-	}
-	return "project"
 }
 
 func entriesForTool(resources map[string]Resource, tool string) []NamedResource {

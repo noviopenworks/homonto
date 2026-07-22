@@ -89,9 +89,9 @@ type Subagent struct {
 	// remote: source and unused otherwise.
 	Digest string `toml:"digest"`
 	// Claude and OpenCode are per-tool model overrides for THIS subagent,
-	// declared as [subagents.<name>.<tool>]. Each field set here wins over the
-	// agent's role tier ([models.<tool>.<role>]) field by field, so retuning one
-	// agent's effort does not mean restating its model.
+	// declared as [subagents.<name>.<tool>]. A declared subagent must set a
+	// non-empty model for every tool it is enabled for; effort and variant
+	// are optional and merge field-by-field at render.
 	Claude   ModelRoute `toml:"claude"`
 	OpenCode ModelRoute `toml:"opencode"`
 }
@@ -188,20 +188,15 @@ func (a Agent) ModeOrDefault() string {
 	return a.Mode
 }
 
-// ModelRoute is one tool's model binding for a named capability role: which
-// model id to stamp, an optional reasoning effort, and an optional variant
-// tag the agentfm renderer uses to pick a per-tool file suffix.
+// ModelRoute is one tool's model binding for a subagent: which model id to
+// stamp, an optional reasoning effort, and an optional variant tag the agentfm
+// renderer uses to pick a per-tool file suffix. Declared under a
+// [subagents.<name>.<tool>] block; the model field is required at load when the
+// subagent is installed for that tool.
 type ModelRoute struct {
 	Model   string `toml:"model"`
 	Effort  string `toml:"effort"`
 	Variant string `toml:"variant"`
-}
-
-// ModelConfig maps a capability role name (e.g. "coding", "review") to its
-// per-tool ModelRoute. Both the user scope and project scope use this shape.
-type ModelConfig struct {
-	Claude   map[string]ModelRoute `toml:"claude"`
-	OpenCode map[string]ModelRoute `toml:"opencode"`
 }
 
 // Plugin is one declared plugin. Source is the tool-native identifier: for
@@ -271,12 +266,16 @@ type Config struct {
 	Skills        map[string]Resource `toml:"skills"`
 	Commands      map[string]Resource `toml:"commands"`
 	Subagents     map[string]Subagent `toml:"subagents"`
-	Models        ModelConfig         `toml:"models"`
-	Plugins       Plugins             `toml:"plugins"`
-	Settings      Settings            `toml:"settings"`
-	TUI           TUI                 `toml:"tui"`
-	Marketplaces  Marketplaces        `toml:"marketplaces"`
-	Agents        map[string]Agent    `toml:"agents"`
+	// Models captures any legacy [models.<tool>.<tier>] block so Load can
+	// detect and reject it. The field must be exported for pelletier/go-toml/v2
+	// to populate it; the private type is not an access restriction, since
+	// callers can read its exported fields.
+	Models       modelsTable      `toml:"models"`
+	Plugins      Plugins          `toml:"plugins"`
+	Settings     Settings         `toml:"settings"`
+	TUI          TUI              `toml:"tui"`
+	Marketplaces Marketplaces     `toml:"marketplaces"`
+	Agents       map[string]Agent `toml:"agents"`
 
 	// baseDir is the absolute directory of the homonto.toml this config was
 	// loaded from. It resolves a [frameworks.X] source="local:<path>" framework
@@ -334,4 +333,13 @@ func (c *Config) SubagentEntriesForTool(tool string) []NamedResource {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
+}
+
+// modelsTable is the post-removal detector shape for legacy [models.<tool>.<tier>]
+// blocks. Load rejects any non-empty value naming the offending key, so a
+// config edited for the old tier system gets a clear error instead of silently
+// dropping its model declarations.
+type modelsTable struct {
+	Claude   map[string]ModelRoute `toml:"claude"`
+	OpenCode map[string]ModelRoute `toml:"opencode"`
 }

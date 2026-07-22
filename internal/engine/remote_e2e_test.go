@@ -51,7 +51,10 @@ func pinFor(t *testing.T, tarPath string) remote.Digest {
 	return remote.CanonicalDigest(tree)
 }
 
-const remoteModels = "[models.claude.architectural]\nmodel=\"opus\"\n[models.claude.coding]\nmodel=\"sonnet\"\n[models.claude.review]\nmodel=\"opus\"\n[models.claude.trivial]\nmodel=\"haiku\"\n"
+// remoteModels was a [models.*.*] baseline that the old tier system required.
+// Tiers are gone and remote: subagents are projected verbatim (never rendered
+// through agentfm), so an empty baseline is all that's needed.
+const remoteModels = ""
 
 func TestRemoteSubagentEndToEnd(t *testing.T) {
 	home := t.TempDir()
