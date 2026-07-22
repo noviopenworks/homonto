@@ -227,3 +227,29 @@ Rewrite the models section: no tiers; subagent models in
 
 Single revert; no in-place downgrade (old config + new code is invalid both
 ways).
+
+## Implementation Divergence
+
+**D5 (drop the redundant `[subagents.*]` source blocks) was not applied.**
+
+D5 assumed the onto framework declares `onto-reviewer` / `onto-explorer`, so
+the top-level source blocks in `homonto.toml` were a colliding re-declaration.
+That premise does not hold in this repo: `homonto.toml` declares
+`frameworks.comet`, and comet was removed from the catalog (ADR 0015). No
+framework declares those two agents here, so deleting the source blocks would
+delete the agents rather than deduplicate them.
+
+Consequences:
+
+- The two `[subagents.onto-reviewer]` / `[subagents.onto-explorer]` source
+  blocks remain.
+- `homonto.toml` carries 4 model blocks (2 agents × 2 tools), not the 18 the
+  design projected. The 9×2 shape ships in the scaffold template instead
+  (`internal/scaffold/scaffold.go`), which is what new installs see.
+- Nothing in the delta spec (`specs/agent-models/spec.md`) depends on D5 — the
+  must-declare requirement is satisfied for exactly the agents this config
+  declares, and `homonto doctor` exits 0.
+
+The underlying question — that this repo's own config still names a framework
+the catalog no longer ships — is the repo-hygiene follow-up already noted under
+Risks, not a defect of this change.
